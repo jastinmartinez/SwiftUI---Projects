@@ -33,6 +33,11 @@
 		04D80DA8273BEE1D000252DC /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA7273BEE1D000252DC /* Article.swift */; };
 		04D80DAA273BEE59000252DC /* PurchaseOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA9273BEE59000252DC /* PurchaseOrder.swift */; };
 		04D80DAC273BF359000252DC /* MeasureUnitController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DAB273BF359000252DC /* MeasureUnitController.swift */; };
+		04D80DAF273BF6C7000252DC /* MeasureUnitListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DAE273BF6C7000252DC /* MeasureUnitListView.swift */; };
+		04D80DB1273BF82C000252DC /* MeasureUnitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB0273BF82C000252DC /* MeasureUnitView.swift */; };
+		04D80DB3273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB2273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift */; };
+		04D80DB5273BFE1F000252DC /* MeasureUnitImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB4273BFE1F000252DC /* MeasureUnitImageView.swift */; };
+		04D80DB7273BFEB5000252DC /* StatusPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB6273BFEB5000252DC /* StatusPicker.swift */; };
 		04F8C703273B4D8D0005F7EA /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C702273B4D8D0005F7EA /* MainMenuView.swift */; };
 		04F8C705273B4DD60005F7EA /* DepartmentImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C704273B4DD60005F7EA /* DepartmentImageView.swift */; };
 		04F8C707273B4E8F0005F7EA /* DepartmentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */; };
@@ -68,6 +73,11 @@
 		04D80DA7273BEE1D000252DC /* Article.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Article.swift; sourceTree = "<group>"; };
 		04D80DA9273BEE59000252DC /* PurchaseOrder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseOrder.swift; sourceTree = "<group>"; };
 		04D80DAB273BF359000252DC /* MeasureUnitController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitController.swift; sourceTree = "<group>"; };
+		04D80DAE273BF6C7000252DC /* MeasureUnitListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitListView.swift; sourceTree = "<group>"; };
+		04D80DB0273BF82C000252DC /* MeasureUnitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitView.swift; sourceTree = "<group>"; };
+		04D80DB2273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
+		04D80DB4273BFE1F000252DC /* MeasureUnitImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitImageView.swift; sourceTree = "<group>"; };
+		04D80DB6273BFEB5000252DC /* StatusPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPicker.swift; sourceTree = "<group>"; };
 		04F8C702273B4D8D0005F7EA /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
 		04F8C704273B4DD60005F7EA /* DepartmentImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentImageView.swift; sourceTree = "<group>"; };
 		04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DepartmentDetailView.swift; sourceTree = "<group>"; };
@@ -193,6 +203,7 @@
 			isa = PBXGroup;
 			children = (
 				0405F303273A22C900A36484 /* ActivityIndicator.swift */,
+				04D80DB6273BFEB5000252DC /* StatusPicker.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -239,6 +250,10 @@
 		04D80DAD273BF5F8000252DC /* MeasureUnit */ = {
 			isa = PBXGroup;
 			children = (
+				04D80DAE273BF6C7000252DC /* MeasureUnitListView.swift */,
+				04D80DB0273BF82C000252DC /* MeasureUnitView.swift */,
+				04D80DB2273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift */,
+				04D80DB4273BFE1F000252DC /* MeasureUnitImageView.swift */,
 			);
 			path = MeasureUnit;
 			sourceTree = "<group>";
@@ -323,9 +338,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				0405F2EB2739938E00A36484 /* DepartmetAddAndEditView.swift in Sources */,
+				04D80DB1273BF82C000252DC /* MeasureUnitView.swift in Sources */,
 				0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */,
 				0405F2F62739E7FA00A36484 /* JSONToModelError.swift in Sources */,
 				0405F2CA27396BE600A36484 /* PurchaseView.swift in Sources */,
+				04D80DB7273BFEB5000252DC /* StatusPicker.swift in Sources */,
 				0405F2C827396BE600A36484 /* PurchaseApp.swift in Sources */,
 				0405F2D727396CDF00A36484 /* Department.swift in Sources */,
 				04F8C709273B4EEB0005F7EA /* SingleMenuView.swift in Sources */,
@@ -333,7 +350,9 @@
 				0405F2F82739ED3F00A36484 /* HTTPMethods.swift in Sources */,
 				04D80DA0273BECE5000252DC /* APIService.swift in Sources */,
 				0405F2DE27396FD600A36484 /* DepartmentController.swift in Sources */,
+				04D80DAF273BF6C7000252DC /* MeasureUnitListView.swift in Sources */,
 				0405F2E82739871C00A36484 /* DepartmentView.swift in Sources */,
+				04D80DB5273BFE1F000252DC /* MeasureUnitImageView.swift in Sources */,
 				0405F2FA273A0AC500A36484 /* ModelToJSON.swift in Sources */,
 				04D80DAA273BEE59000252DC /* PurchaseOrder.swift in Sources */,
 				044E8E62273ABD40003D7010 /* APIError.swift in Sources */,
@@ -343,6 +362,7 @@
 				04D80DA6273BEDE4000252DC /* Provider.swift in Sources */,
 				04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */,
 				04F8C70B273B533F0005F7EA /* Menu.swift in Sources */,
+				04D80DB3273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift in Sources */,
 				0405F2E2273985A300A36484 /* BoolToString.swift in Sources */,
 				0405F2F12739E21400A36484 /* APIRequest.swift in Sources */,
 				04F8C703273B4D8D0005F7EA /* MainMenuView.swift in Sources */,
