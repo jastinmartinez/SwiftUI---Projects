@@ -7,19 +7,25 @@
 
 import SwiftUI
 
-struct DepartmentMenu: View {
+struct SingleMenuView: View {
+    
+    var menu: Menu
+    
     var body: some View {
+        
         VStack {
-            DepartmentImageView()
-            Text("Department")
+            Image(menu.Image)
+                .resizable()
+                .frame(width: 50, height: 50)
+            Text(menu.name)
                 .foregroundColor(.white)
-                .font(.title)
+                
         }
     }
 }
 
 struct DepartmentMenu_Previews: PreviewProvider {
     static var previews: some View {
-        DepartmentMenu()
+        SingleMenuView(menu: Menu(name: "Department", Image: "department"))
     }
 }

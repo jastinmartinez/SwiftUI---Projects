@@ -13,7 +13,7 @@ class DepartmentController : ObservableObject {
     
     @Published var departments = [Department]()
     
-    private var departmentAPI = DepartmentAPI()
+    private var departmentAPI = APIService<Department>(apiResource: .Department)
     
     typealias notifyChangesToView = (Bool) -> ()
     

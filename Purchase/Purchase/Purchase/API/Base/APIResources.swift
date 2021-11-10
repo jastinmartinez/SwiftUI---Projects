@@ -14,4 +14,6 @@ enum APIResources: String {
     case Article
     
     case PurchaseOrder
+    
+    case MeasureUnit
 }
