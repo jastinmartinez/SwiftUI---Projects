@@ -16,7 +16,7 @@ final class APIRequest {
     
     func getRequest(resource: APIResources,completion: @escaping dataTaskResult) {
         
-        requestSession(request: urlRequest(url:  BaseURL.Purchase.appendingPathComponent(resource.rawValue), httpMethod: .get), completion: completion)
+        requestSession(request: urlRequest(url:  BaseURL.Purchase.appendingPathComponent(resource.rawValue), httpMethod: .GET), completion: completion)
     }
     
     func postRequest(resource: APIResources, model: Data, httpMethod: HTTPMethods,  completion: @escaping dataTaskResult) {

@@ -20,7 +20,7 @@ struct ProviderControlelr : RouteCollection {
         routeGroup.get(use: index)
         routeGroup.post(use: create)
         routeGroup.patch(use: update)
-        routeGroup.delete(":id",use: delete)
+        routeGroup.delete(use: delete)
     }
     
     func index(_ req: Request) throws -> EventLoopFuture<[Provider]>
@@ -53,7 +53,9 @@ struct ProviderControlelr : RouteCollection {
     
     func delete(_ req: Request) throws -> EventLoopFuture<HTTPStatus>
     {
-        return Provider.find(req.parameters.get("id"), on: req.db)
+        let provider = try jsonToModel.parse(req)
+        
+        return Provider.find(provider.id, on: req.db)
             .unwrap(or: Abort(.notFound))
             .flatMap({$0.delete(on: req.db).transform(to: .ok)})
     }

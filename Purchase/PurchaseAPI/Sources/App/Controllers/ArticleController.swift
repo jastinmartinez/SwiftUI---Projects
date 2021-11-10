@@ -18,7 +18,7 @@ struct ArticleController: RouteCollection {
         routeGroup.get(use: index)
         routeGroup.post(use: create)
         routeGroup.patch(use: update)
-        routeGroup.delete(":id",use: delete)
+        routeGroup.delete(use: delete)
     }
     
     func index(_ req: Request) throws -> EventLoopFuture<[Article]>
@@ -53,7 +53,9 @@ struct ArticleController: RouteCollection {
     
     func delete(_ req: Request) throws -> EventLoopFuture<HTTPStatus>
     {
-        return Article.find(req.parameters.get("id"), on: req.db)
+        let article = try jsonToModel.parse(req)
+        
+        return Article.find(article.id, on: req.db)
             .unwrap(or: Abort(.notFound))
             .flatMap({$0.delete(on: req.db).transform(to: .ok)})
     }

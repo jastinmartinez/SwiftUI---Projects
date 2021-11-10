@@ -19,7 +19,11 @@ struct DepartmentView: View {
                 List {
                     ForEach(departmentController.departments, id: \.self ) { department in
                         
-                        DepartmentDetailView(department: department)
+                        NavigationLink(destination: DepartmetAddAndEditView(departmentController: departmentController,department: department)) {
+                            
+                            DepartmentDetailView(department: department)
+                        }
+                        
                     }
                     .onDelete(perform: departmentController.remove)
                 }
@@ -29,7 +33,7 @@ struct DepartmentView: View {
             }
             .navigationTitle("Department")
             .toolbar {
-                NavigationLink(destination: DepartmetAddOrEdit(departmentController: departmentController)) {
+                NavigationLink(destination: DepartmetAddAndEditView(departmentController: departmentController)) {
                     Text("New")
                 }
             }

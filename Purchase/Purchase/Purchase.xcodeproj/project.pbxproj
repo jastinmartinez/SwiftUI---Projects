@@ -14,9 +14,8 @@
 		0405F2D727396CDF00A36484 /* Department.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2D627396CDF00A36484 /* Department.swift */; };
 		0405F2DE27396FD600A36484 /* DepartmentController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2DD27396FD600A36484 /* DepartmentController.swift */; };
 		0405F2E2273985A300A36484 /* BoolToString.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2E1273985A300A36484 /* BoolToString.swift */; };
-		0405F2E62739861B00A36484 /* DepartmentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2E52739861B00A36484 /* DepartmentDetailView.swift */; };
 		0405F2E82739871C00A36484 /* DepartmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2E72739871C00A36484 /* DepartmentView.swift */; };
-		0405F2EB2739938E00A36484 /* DepartmetAddOrEdit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2EA2739938E00A36484 /* DepartmetAddOrEdit.swift */; };
+		0405F2EB2739938E00A36484 /* DepartmetAddAndEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2EA2739938E00A36484 /* DepartmetAddAndEditView.swift */; };
 		0405F2ED2739E04C00A36484 /* BaseURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2EC2739E04C00A36484 /* BaseURL.swift */; };
 		0405F2EF2739E1FC00A36484 /* APIResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2EE2739E1FC00A36484 /* APIResources.swift */; };
 		0405F2F12739E21400A36484 /* APIRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2F02739E21400A36484 /* APIRequest.swift */; };
@@ -28,8 +27,10 @@
 		0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F303273A22C900A36484 /* ActivityIndicator.swift */; };
 		044E8E62273ABD40003D7010 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044E8E61273ABD40003D7010 /* APIError.swift */; };
 		044E8E65273B14CB003D7010 /* DepartmentAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044E8E64273B14CB003D7010 /* DepartmentAPI.swift */; };
-		044E8E67273B14FF003D7010 /* APIProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044E8E66273B14FF003D7010 /* APIProtocol.swift */; };
-		044E8E69273B18F3003D7010 /* ServiceResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044E8E68273B18F3003D7010 /* ServiceResponse.swift */; };
+		04F8C703273B4D8D0005F7EA /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C702273B4D8D0005F7EA /* MainMenu.swift */; };
+		04F8C705273B4DD60005F7EA /* DepartmentImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C704273B4DD60005F7EA /* DepartmentImageView.swift */; };
+		04F8C707273B4E8F0005F7EA /* DepartmentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */; };
+		04F8C709273B4EEB0005F7EA /* DepartmentMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C708273B4EEB0005F7EA /* DepartmentMenu.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,9 +42,8 @@
 		0405F2D627396CDF00A36484 /* Department.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Department.swift; sourceTree = "<group>"; };
 		0405F2DD27396FD600A36484 /* DepartmentController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentController.swift; sourceTree = "<group>"; };
 		0405F2E1273985A300A36484 /* BoolToString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoolToString.swift; sourceTree = "<group>"; };
-		0405F2E52739861B00A36484 /* DepartmentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentDetailView.swift; sourceTree = "<group>"; };
 		0405F2E72739871C00A36484 /* DepartmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentView.swift; sourceTree = "<group>"; };
-		0405F2EA2739938E00A36484 /* DepartmetAddOrEdit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmetAddOrEdit.swift; sourceTree = "<group>"; };
+		0405F2EA2739938E00A36484 /* DepartmetAddAndEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmetAddAndEditView.swift; sourceTree = "<group>"; };
 		0405F2EC2739E04C00A36484 /* BaseURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseURL.swift; sourceTree = "<group>"; };
 		0405F2EE2739E1FC00A36484 /* APIResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIResources.swift; sourceTree = "<group>"; };
 		0405F2F02739E21400A36484 /* APIRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRequest.swift; sourceTree = "<group>"; };
@@ -55,8 +55,10 @@
 		0405F303273A22C900A36484 /* ActivityIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityIndicator.swift; sourceTree = "<group>"; };
 		044E8E61273ABD40003D7010 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		044E8E64273B14CB003D7010 /* DepartmentAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentAPI.swift; sourceTree = "<group>"; };
-		044E8E66273B14FF003D7010 /* APIProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIProtocol.swift; sourceTree = "<group>"; };
-		044E8E68273B18F3003D7010 /* ServiceResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceResponse.swift; sourceTree = "<group>"; };
+		04F8C702273B4D8D0005F7EA /* MainMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenu.swift; sourceTree = "<group>"; };
+		04F8C704273B4DD60005F7EA /* DepartmentImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentImageView.swift; sourceTree = "<group>"; };
+		04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DepartmentDetailView.swift; sourceTree = "<group>"; };
+		04F8C708273B4EEB0005F7EA /* DepartmentMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentMenu.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +134,7 @@
 		0405F2DB27396F2000A36484 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				04F8C701273B4D830005F7EA /* Main */,
 				0405F2E927398F0400A36484 /* Common */,
 				0405F2E0273979A700A36484 /* Department */,
 			);
@@ -157,9 +160,10 @@
 		0405F2E0273979A700A36484 /* Department */ = {
 			isa = PBXGroup;
 			children = (
-				0405F2E52739861B00A36484 /* DepartmentDetailView.swift */,
+				04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */,
 				0405F2E72739871C00A36484 /* DepartmentView.swift */,
-				0405F2EA2739938E00A36484 /* DepartmetAddOrEdit.swift */,
+				0405F2EA2739938E00A36484 /* DepartmetAddAndEditView.swift */,
+				04F8C704273B4DD60005F7EA /* DepartmentImageView.swift */,
 			);
 			path = Department;
 			sourceTree = "<group>";
@@ -206,10 +210,17 @@
 			isa = PBXGroup;
 			children = (
 				044E8E64273B14CB003D7010 /* DepartmentAPI.swift */,
-				044E8E66273B14FF003D7010 /* APIProtocol.swift */,
-				044E8E68273B18F3003D7010 /* ServiceResponse.swift */,
 			);
 			path = Service;
+			sourceTree = "<group>";
+		};
+		04F8C701273B4D830005F7EA /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				04F8C702273B4D8D0005F7EA /* MainMenu.swift */,
+				04F8C708273B4EEB0005F7EA /* DepartmentMenu.swift */,
+			);
+			path = Main;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -282,16 +293,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				044E8E67273B14FF003D7010 /* APIProtocol.swift in Sources */,
-				0405F2EB2739938E00A36484 /* DepartmetAddOrEdit.swift in Sources */,
+				0405F2EB2739938E00A36484 /* DepartmetAddAndEditView.swift in Sources */,
 				0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */,
 				0405F2F62739E7FA00A36484 /* JSONToModelError.swift in Sources */,
 				0405F2CA27396BE600A36484 /* PurchaseView.swift in Sources */,
 				0405F2C827396BE600A36484 /* PurchaseApp.swift in Sources */,
 				0405F2D727396CDF00A36484 /* Department.swift in Sources */,
+				04F8C709273B4EEB0005F7EA /* DepartmentMenu.swift in Sources */,
+				04F8C705273B4DD60005F7EA /* DepartmentImageView.swift in Sources */,
 				0405F2F82739ED3F00A36484 /* HTTPMethods.swift in Sources */,
-				0405F2E62739861B00A36484 /* DepartmentDetailView.swift in Sources */,
-				044E8E69273B18F3003D7010 /* ServiceResponse.swift in Sources */,
 				0405F2DE27396FD600A36484 /* DepartmentController.swift in Sources */,
 				0405F2E82739871C00A36484 /* DepartmentView.swift in Sources */,
 				0405F2FA273A0AC500A36484 /* ModelToJSON.swift in Sources */,
@@ -299,8 +309,10 @@
 				0405F2EF2739E1FC00A36484 /* APIResources.swift in Sources */,
 				0405F2E2273985A300A36484 /* BoolToString.swift in Sources */,
 				0405F2F12739E21400A36484 /* APIRequest.swift in Sources */,
+				04F8C703273B4D8D0005F7EA /* MainMenu.swift in Sources */,
 				044E8E65273B14CB003D7010 /* DepartmentAPI.swift in Sources */,
 				0405F2FD273A0B5D00A36484 /* ModelToJSONError.swift in Sources */,
+				04F8C707273B4E8F0005F7EA /* DepartmentDetailView.swift in Sources */,
 				0405F2ED2739E04C00A36484 /* BaseURL.swift in Sources */,
 				0405F2F32739E76500A36484 /* JSONToModel.swift in Sources */,
 			);

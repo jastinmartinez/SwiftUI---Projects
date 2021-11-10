@@ -10,11 +10,11 @@ import Foundation
 enum HTTPMethods: String
 
 {
-    case post
+    case POST
     
-    case get
+    case GET
     
-    case patch
+    case PATCH
     
-    case delete
+    case DELETE
 }

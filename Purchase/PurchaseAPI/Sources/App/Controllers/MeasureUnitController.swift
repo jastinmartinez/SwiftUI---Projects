@@ -19,7 +19,7 @@ struct MeasureUnitController: RouteCollection {
         routeGroup.get(use: index)
         routeGroup.post(use: create)
         routeGroup.patch(use: update)
-        routeGroup.delete(":id",use: delete)
+        routeGroup.delete(use: delete)
     }
     
     func create(_ req: Request) throws -> EventLoopFuture<MeasureUnit> {
@@ -52,7 +52,9 @@ struct MeasureUnitController: RouteCollection {
     
     func delete(_ req: Request) throws -> EventLoopFuture<HTTPStatus>
     {
-        return MeasureUnit.find(req.parameters.get("id"), on: req.db)
+        let measureUnit = try jsonParse.parse(req)
+        
+        return MeasureUnit.find(measureUnit.id, on: req.db)
             .unwrap(or: Abort(.notFound))
             .flatMap({$0.delete(on: req.db).transform(to: .ok)})
     }

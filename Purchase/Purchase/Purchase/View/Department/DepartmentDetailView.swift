@@ -14,10 +14,6 @@ struct DepartmentDetailView: View {
     var body: some View {
         VStack() {
             HStack {
-                Image("department")
-                    .resizable()
-                    .frame(width: 50, height: 50)
-                
                 VStack(alignment: .leading,spacing: 2) {
                     Text("\(department.id ?? 0)")
                     Text(department.name)

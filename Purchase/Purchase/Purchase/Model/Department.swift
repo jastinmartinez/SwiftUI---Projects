@@ -9,7 +9,7 @@ import Foundation
 
 struct Department : Codable, Identifiable, Hashable {
     
-    let id: Int?
+    var id: Int?
     
     var name: String
     

@@ -18,7 +18,7 @@ struct PurchaseOrderController: RouteCollection {
         routeGroup.get(use: index)
         routeGroup.post(use: create)
         routeGroup.patch(use: update)
-        routeGroup.delete(":id",use: delete)
+        routeGroup.delete(use: delete)
     }
     
     func index(_ req: Request) throws -> EventLoopFuture<[PurchaseOrder]>
@@ -54,7 +54,9 @@ struct PurchaseOrderController: RouteCollection {
     
     func delete(_ req: Request) throws -> EventLoopFuture<HTTPStatus>
     {
-        return PurchaseOrder.find(req.parameters.get("id"), on: req.db)
+        let purchaseOrder = try jsonToModel.parse(req)
+        
+        return PurchaseOrder.find(purchaseOrder.id, on: req.db)
             .unwrap(or: Abort(.notFound))
             .flatMap({$0.delete(on: req.db).transform(to: .ok)})
     }

@@ -22,7 +22,7 @@ final class DepartmentAPI {
         
         try? ModelToJSON<Department>().single(model: model, completion: { data in
             
-            APIRequest().postRequest(resource: .Department, model: data, httpMethod: .post) { data, response, error in
+            APIRequest().postRequest(resource: .Department, model: data, httpMethod: .POST) { data, response, error in
                 
                 try? JSONToModel<Department>().single(data: data, completion: completion)
             }
@@ -33,7 +33,7 @@ final class DepartmentAPI {
         
         try? ModelToJSON<Department>().single(model: model, completion: { data in
             
-            APIRequest().postRequest(resource: .Department, model: data,httpMethod: .patch) { data, response, error in
+            APIRequest().postRequest(resource: .Department, model: data,httpMethod: .PATCH) { data, response, error in
                 
                 guard let response = response as? HTTPURLResponse else { return }
                 
@@ -46,7 +46,7 @@ final class DepartmentAPI {
         
         try? ModelToJSON<Department>().single(model: model, completion: { data in
             
-            APIRequest().postRequest(resource: .Department, model: data,httpMethod: .delete) { data, response, error in
+            APIRequest().postRequest(resource: .Department, model: data,httpMethod: .DELETE) { data, response, error in
                 
                 guard let response = response as? HTTPURLResponse else { return }
     

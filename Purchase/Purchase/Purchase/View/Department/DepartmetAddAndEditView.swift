@@ -7,15 +7,26 @@
 
 import SwiftUI
 
-struct DepartmetAddOrEdit: View {
+struct DepartmetAddAndEditView: View {
     
     @Environment(\.presentationMode) var presentation
     
-    var departmentController: DepartmentController
+    @StateObject var departmentController: DepartmentController
     
-    @State private var name: String = ""
-    @State private var state: Bool = true
+    @State var department: Department = Department(id: nil, name: "", state: true)
+    
     @State private var isAnimating: Bool = false
+    
+    fileprivate func IsProcessComplete(_ value: Bool) {
+       
+        if value {
+            isAnimating = false
+            presentation.wrappedValue.dismiss()
+        }
+        else {
+            isAnimating = true
+        }
+    }
     
     var body: some View {
         
@@ -23,22 +34,26 @@ struct DepartmetAddOrEdit: View {
             
             VStack(spacing: 30) {
                 
-                Image("department")
-                    .resizable()
-                    .frame(width: 100, height: 100)
+                DepartmentImageView()
                 
                 
                 VStack(alignment: .leading, spacing: 15)
                 {
+                    
+                    if let id = department.id {
+                        
+                        Text("\(id)")
+                        
+                    }
                     HStack{
-                        if name.isEmpty {
+                        if department.name.isEmpty {
                             Text("*")
                                 .foregroundColor(.red)
                         }
-                        TextField("Name", text: $name)
+                        TextField("Name", text: $department.name)
                         
                     }
-                    Picker("Status", selection: $state) {
+                    Picker("Status", selection: $department.state) {
                         
                         Text("Active").tag(true)
                         
@@ -53,16 +68,18 @@ struct DepartmetAddOrEdit: View {
                     
                     Button("Save") {
                         
-                        if !name.isEmpty {
+                        if !department.name.isEmpty {
                             
-                            departmentController.create(Department(name: name, state: state)) {
-                                
-                                if $0 {
-                                    isAnimating = false
-                                    presentation.wrappedValue.dismiss()
+                            if department.id != nil {
+                                departmentController.update(department) {
+                                    
+                                    IsProcessComplete($0)
                                 }
-                                else {
-                                    isAnimating = true
+                            }
+                            else {
+                                departmentController.create(department) {
+                                    
+                                    IsProcessComplete($0)
                                 }
                             }
                         }
@@ -77,6 +94,6 @@ struct DepartmetAddOrEdit: View {
 
 struct DepartmetAddOrEdit_Previews: PreviewProvider {
     static var previews: some View {
-        DepartmetAddOrEdit(departmentController: DepartmentController())
+        DepartmetAddAndEditView(departmentController: DepartmentController())
     }
 }

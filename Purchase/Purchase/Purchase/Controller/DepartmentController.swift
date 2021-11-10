@@ -38,7 +38,6 @@ class DepartmentController : ObservableObject {
             
             }
         }
-        
         notify(false)
     }
     
@@ -48,12 +47,14 @@ class DepartmentController : ObservableObject {
             
             if dpto {
                 
-                self.departments.append(department)
+                if let index  = self.departments.firstIndex(where: { $0.id == department.id }) {
+                    
+                    self.departments[index] = department
+                }
             }
-            
             notify(dpto)
         }
-        
+        notify(false)
     }
     
     func remove(at index: IndexSet) {
