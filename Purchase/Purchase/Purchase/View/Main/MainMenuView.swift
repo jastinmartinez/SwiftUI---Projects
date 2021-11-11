@@ -19,16 +19,9 @@ struct MainMenuView: View {
                     .ignoresSafeArea()
                 
                 HStack {
-                    Spacer()
-                    Spacer()
-                    Spacer()
-                    Spacer()
-                    Spacer()
-                    Spacer()
-                    Spacer()
-                    Spacer()
-                    
-                    VStack(alignment: .trailing,spacing: 15) {
+                   Spacer()
+                   
+                    VStack(alignment: .leading,spacing: 15) {
                         
         
                         NavigationLink(destination: PurchaseOrderListView().navigationTitle("Ordernes de Compra")) {
@@ -56,6 +49,12 @@ struct MainMenuView: View {
                             MenuTitle(name: "Departamento")
                         }
                     }
+                    Spacer()
+                    Spacer()
+                    Spacer()
+                    Spacer()
+                    Spacer()
+                    Spacer()
                     Spacer()
                 }
             }
