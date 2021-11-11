@@ -19,15 +19,15 @@ final class PurchaseOrder: DbModel {
     var orderNumber: String
     
     @Field(key: "PurchaseOrderDate")
-    var orderDate: Date
+    var orderDate: String
     
-    @Parent(key: "ArticleID")
+    @Parent(key: "PurchaseOrderArticleID")
     var articleID: Article
     
     @Field(key: "PurchaseOrderQuantity")
     var quantity: Double
     
-    @Parent(key: "MeasureUnitID")
+    @Parent(key: "PurchaseOrderMeasureUnitID")
     var measureUnitID: MeasureUnit
     
     @Field(key: "PurchaseOrderUnitCost")
@@ -41,14 +41,13 @@ final class PurchaseOrder: DbModel {
     
     init() { }
     
-    init(id: Int? = nil, orderNumber: String, orderDate: Date, article: Int,quantity: Double,unitCost: Double,createdAt: Date? = nil,updatedAt: Date? = nil) {
+    init(id: Int? = nil, orderNumber: String, orderDate: String, article: Int,measureUnitID: Int ,quantity: Double,unitCost: Double) {
         self.id = id
         self.orderNumber = orderNumber
         self.orderDate = orderDate
         self.$articleID.id = article
+        self.$measureUnitID.id = measureUnitID
         self.quantity = quantity
         self.unitCost = unitCost
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
     }
 }

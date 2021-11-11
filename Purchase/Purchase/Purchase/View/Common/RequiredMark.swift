@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct RequeriedMark: View {
+struct RequiredMark: View {
     var body: some View {
         Text("*")
             .foregroundColor(.red)
@@ -16,6 +16,6 @@ struct RequeriedMark: View {
 
 struct RequeriedMark_Previews: PreviewProvider {
     static var previews: some View {
-        RequeriedMark()
+        RequiredMark()
     }
 }

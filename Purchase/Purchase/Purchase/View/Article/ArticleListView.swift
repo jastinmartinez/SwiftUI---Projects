@@ -11,6 +11,8 @@ struct ArticleListView: View {
     
     @StateObject var articleController = ArticleController()
     
+    @StateObject var measureUnitController = MeasureUnitController()
+    
     var body: some View {
         
         List {
@@ -18,7 +20,8 @@ struct ArticleListView: View {
             ForEach(articleController.articles, id: \.id) { article in
                 NavigationLink(destination: ArticleCreateAndUpdateOperationView(articleController: articleController, article: article).navigationTitle("Modificar")) {
                     
-                    ArticleView(article: article)
+                    ArticleView(article: article,
+                                measureUnit: self.measureUnitController.measureUnits.filter({$0.id == article.measureUnitID.id}).map({$0.description}).first ?? "N/A")
                 }
             }
             .onDelete(perform: articleController.remove)

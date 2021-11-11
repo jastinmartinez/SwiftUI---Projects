@@ -14,14 +14,14 @@ struct PurchaseOrder:Codable {
     
     var orderNumber: String
     
-    var orderDate:Date
+    var orderDate:String
     
-    var articleID: Int
+    var articleID: Parent
     
     var quantity: Double
     
-    var measureID:Int
+    var measureUnitID: Parent
     
-    var UnitCost: Double
+    var unitCost: Double
     
 }

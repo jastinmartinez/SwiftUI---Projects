@@ -30,14 +30,15 @@ struct MainMenuView: View {
                     
                     VStack(alignment: .trailing,spacing: 15) {
                         
-                        NavigationLink(destination: DepartmListView().navigationTitle("Departamentos")) {
-                            LogoView(name: "department")
-                            MenuTitle(name: "Departamento")
+        
+                        NavigationLink(destination: PurchaseOrderListView().navigationTitle("Ordernes de Compra")) {
+                            LogoView(name: "purchaseorder")
+                            MenuTitle(name: "Orden de compra")
                         }
                         
-                        NavigationLink(destination: MeasureUnitListView().navigationTitle("Unidad de Medidas")) {
-                            LogoView(name: "measureunit")
-                            MenuTitle(name: "Unidad Medida")
+                        NavigationLink(destination: ArticleListView().navigationTitle("Articulos")) {
+                            LogoView(name: "article")
+                            MenuTitle(name: "Articulo")
                         }
                         
                         NavigationLink(destination: ProviderListView().navigationTitle("Proveedores")) {
@@ -45,9 +46,14 @@ struct MainMenuView: View {
                             MenuTitle(name: "Proveedor")
                         }
                         
-                        NavigationLink(destination: ArticleListView().navigationTitle("Articulos")) {
-                            LogoView(name: "article")
-                            MenuTitle(name: "Articulo")
+                        NavigationLink(destination: MeasureUnitListView().navigationTitle("Unidad de Medidas")) {
+                            LogoView(name: "measureunit")
+                            MenuTitle(name: "Unidad Medida")
+                        }
+                        
+                        NavigationLink(destination: DepartmListView().navigationTitle("Departamentos")) {
+                            LogoView(name: "department")
+                            MenuTitle(name: "Departamento")
                         }
                     }
                     Spacer()

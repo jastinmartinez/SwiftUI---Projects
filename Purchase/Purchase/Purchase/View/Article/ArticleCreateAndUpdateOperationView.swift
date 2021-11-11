@@ -40,7 +40,7 @@ struct ArticleCreateAndUpdateOperationView: View {
                     
                     if article.description.isEmpty {
                         
-                        RequeriedMark()
+                        RequiredMark()
                     }
                     
                     TextField("Descripcion", text: $article.description)
@@ -50,7 +50,7 @@ struct ArticleCreateAndUpdateOperationView: View {
                     
                     if article.mark.isEmpty {
                         
-                        RequeriedMark()
+                        RequiredMark()
                     }
                     
                     TextField("Marca", text: $article.mark)
@@ -61,7 +61,7 @@ struct ArticleCreateAndUpdateOperationView: View {
                     
                     if article.measureUnitID.id == nil {
                         
-                        RequeriedMark()
+                        RequiredMark()
                     }
                     
                     Picker("Unidad de Medida", selection: $article.measureUnitID.id) {
@@ -77,10 +77,14 @@ struct ArticleCreateAndUpdateOperationView: View {
                     
                     if article.stock <= 0 {
                         
-                        RequeriedMark()
+                        RequiredMark()
                     }
                     
+                    Text("Cantidad")
+                        .foregroundColor(.secondary)
+                    
                     TextField("cantidad", value: $article.stock, formatter: NumberFormatter())
+                        .multilineTextAlignment(.trailing)
                 }
                 
                 StatusPicker(status: $article.state)

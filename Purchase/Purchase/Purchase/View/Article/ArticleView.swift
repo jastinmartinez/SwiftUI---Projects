@@ -11,6 +11,8 @@ struct ArticleView: View {
     
     var article: Article
     
+    var measureUnit: String
+    
     var body: some View {
         VStack {
             
@@ -32,7 +34,8 @@ struct ArticleView: View {
                         
                         Text(article.description)
                         Text(article.mark)
-                        Text("\(article.measureUnitID.id!)")
+                        Text(measureUnit)
+                        Text("\(article.stock,specifier: "%.2f")")
                         Text(article.state.toString())
                             .foregroundColor(.secondary)
                     }
@@ -44,6 +47,6 @@ struct ArticleView: View {
 
 struct ArticleView_Previews: PreviewProvider {
     static var previews: some View {
-        ArticleView(article: Article(id: 1, description: "Ejmplo", mark: "a", measureUnitID: Parent(id: 1), stock: 20, state: true))
+        ArticleView(article: Article(id: 1, description: "Ejmplo", mark: "a", measureUnitID: Parent(id: 1), stock: 20, state: true),measureUnit: "Gramo")
     }
 }
