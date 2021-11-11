@@ -13,25 +13,22 @@ struct ProviderListView: View {
     
     var body: some View {
         
-        NavigationView {
-            List {
+        List {
+            
+            ForEach(providerController.providers, id: \.id) { provider in
                 
-                ForEach(providerController.providers, id: \.id) { provider in
-                    
-                    NavigationLink(destination: ProviderCreateAndUpdateOperationView(providerController: providerController, provider: provider).navigationTitle("Modificar")) {
-                        ProviderView(provider: provider)
-                    }
+                NavigationLink(destination: ProviderCreateAndUpdateOperationView(providerController: providerController, provider: provider).navigationTitle("Modificar")) {
+                    ProviderView(provider: provider)
                 }
-                .onDelete(perform: providerController.remove)
-                
             }
-            .refreshable { providerController.getAll() }
-            .navigationTitle("Proveedores")
-            .toolbar {
-                NavigationLink(destination: ProviderCreateAndUpdateOperationView(providerController: providerController).navigationTitle("Nuevo")) {
-                    
-                    Text("Nuevo")
-                }
+            .onDelete(perform: providerController.remove)
+            
+        }
+        .refreshable { providerController.getAll() }
+        .toolbar {
+            NavigationLink(destination: ProviderCreateAndUpdateOperationView(providerController: providerController).navigationTitle("Nuevo")) {
+                
+                Text("Nuevo")
             }
         }
     }

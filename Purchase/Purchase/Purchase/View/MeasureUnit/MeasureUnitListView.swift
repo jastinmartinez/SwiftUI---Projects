@@ -13,30 +13,27 @@ struct MeasureUnitListView: View {
     
     var body: some View {
         
-        NavigationView {
+        List {
             
-            List {
+            ForEach(measureUnitController.measureUnits, id:\.id) { measure in
                 
-                ForEach(measureUnitController.measureUnits, id:\.id) { measure in
-                    
-                    NavigationLink {
-                        MeasureUnitCreateAndUpdateOperationView(measureUnitController: measureUnitController, measureUnit: measure)
-                            .navigationTitle("Modificar")
-                    }label: {
-                        MeasureUnitView(measureUnit: measure)
-                    }
-                }
-                .onDelete(perform: measureUnitController.remove)
-            }
-            .refreshable { measureUnitController.getAll() }
-            .navigationTitle("Unidad de Medida")
-            .toolbar {
                 NavigationLink {
-                    MeasureUnitCreateAndUpdateOperationView(measureUnitController: measureUnitController)
-                        .navigationTitle("Nuevo")
-                } label: {
-                    Text("Nuevo")
+                    MeasureUnitCreateAndUpdateOperationView(measureUnitController: measureUnitController, measureUnit: measure)
+                        .navigationTitle("Modificar")
+                }label: {
+                    MeasureUnitView(measureUnit: measure)
                 }
+            }
+            .onDelete(perform: measureUnitController.remove)
+        }
+        .refreshable { measureUnitController.getAll() }
+        .navigationTitle("Unidad de Medida")
+        .toolbar {
+            NavigationLink {
+                MeasureUnitCreateAndUpdateOperationView(measureUnitController: measureUnitController)
+                    .navigationTitle("Nuevo")
+            } label: {
+                Text("Nuevo")
             }
         }
     }

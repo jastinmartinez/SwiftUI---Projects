@@ -11,7 +11,7 @@ struct PurchaseView: View {
     
     var body: some View {
         
-        ProviderListView()
+        MainMenuView()
     }
 }
 

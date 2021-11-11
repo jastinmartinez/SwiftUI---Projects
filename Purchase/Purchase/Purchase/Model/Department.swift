@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Department : Codable, Identifiable, Hashable {
+struct Department : Codable{
     
     var id: Int?
     

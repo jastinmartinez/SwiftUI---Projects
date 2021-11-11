@@ -13,29 +13,25 @@ struct DepartmListView: View {
     
     var body: some View {
         
-        NavigationView {
-            VStack {
+        List {
+            ForEach(departmentController.departments, id: \.id ) { department in
                 
-                List {
-                    ForEach(departmentController.departments, id: \.self ) { department in
-                        
-                        NavigationLink(destination: DepartmentCreateAndUpdateOperationView(departmentController: departmentController,department: department).navigationTitle("Nuevo")) {
-                            
-                            DepartmentView(department: department)
-                        }
-                        
-                    }
-                    .onDelete(perform: departmentController.remove)
+                NavigationLink(destination: DepartmentCreateAndUpdateOperationView(departmentController: departmentController,department: department).navigationTitle("Nuevo")) {
+                    
+                    DepartmentView(department: department)
                 }
-            }.refreshable {
                 
-                departmentController.getAll()
             }
-            .navigationTitle("Departamentos")
-            .toolbar {
-                NavigationLink(destination: DepartmentCreateAndUpdateOperationView(departmentController: departmentController).navigationTitle("Modificar")) {
-                    Text("Nuevo")
-                }
+            .onDelete(perform: departmentController.remove)
+        }
+        .refreshable {
+            
+            departmentController.getAll()
+        }
+        .navigationTitle("Departamentos")
+        .toolbar {
+            NavigationLink(destination: DepartmentCreateAndUpdateOperationView(departmentController: departmentController).navigationTitle("Modificar")) {
+                Text("Nuevo")
             }
         }
     }

@@ -31,6 +31,7 @@
 		0473DB66273CAAAF000BF8C1 /* ProviderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB65273CAAAF000BF8C1 /* ProviderView.swift */; };
 		0473DB68273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */; };
 		0473DB6A273CB599000BF8C1 /* UserDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB69273CB599000BF8C1 /* UserDocument.swift */; };
+		0473DB6E273CC910000BF8C1 /* MenuTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB6D273CC910000BF8C1 /* MenuTitle.swift */; };
 		04D80DA0273BECE5000252DC /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80D9F273BECE5000252DC /* APIService.swift */; };
 		04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA1273BECF5000252DC /* APIProtocol.swift */; };
 		04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA3273BED6C000252DC /* MeasureUnit.swift */; };
@@ -75,6 +76,7 @@
 		0473DB65273CAAAF000BF8C1 /* ProviderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderView.swift; sourceTree = "<group>"; };
 		0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
 		0473DB69273CB599000BF8C1 /* UserDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDocument.swift; sourceTree = "<group>"; };
+		0473DB6D273CC910000BF8C1 /* MenuTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuTitle.swift; sourceTree = "<group>"; };
 		04D80D9F273BECE5000252DC /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		04D80DA1273BECF5000252DC /* APIProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIProtocol.swift; sourceTree = "<group>"; };
 		04D80DA3273BED6C000252DC /* MeasureUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnit.swift; sourceTree = "<group>"; };
@@ -217,6 +219,7 @@
 				04F8C704273B4DD60005F7EA /* LogoView.swift */,
 				0405F303273A22C900A36484 /* ActivityIndicator.swift */,
 				04D80DB6273BFEB5000252DC /* StatusPicker.swift */,
+				0473DB6D273CC910000BF8C1 /* MenuTitle.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -378,6 +381,7 @@
 				04D80DB1273BF82C000252DC /* MeasureUnitView.swift in Sources */,
 				0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */,
 				0405F2F62739E7FA00A36484 /* JSONToModelError.swift in Sources */,
+				0473DB6E273CC910000BF8C1 /* MenuTitle.swift in Sources */,
 				0405F2CA27396BE600A36484 /* PurchaseView.swift in Sources */,
 				04D80DB7273BFEB5000252DC /* StatusPicker.swift in Sources */,
 				0405F2C827396BE600A36484 /* PurchaseApp.swift in Sources */,
