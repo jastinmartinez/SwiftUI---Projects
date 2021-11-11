@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct DepartmetAddAndEditView: View {
+struct DepartmentCreateAndUpdateOperationView: View {
     
     @Environment(\.presentationMode) var presentation
     
@@ -32,10 +32,7 @@ struct DepartmetAddAndEditView: View {
         
         Form {
             
-            VStack(spacing: 30) {
-                
-                LogoView(name: "department")
-                
+            VStack(spacing: 15) {
                 
                 VStack(alignment: .leading, spacing: 15)
                 {
@@ -50,50 +47,47 @@ struct DepartmetAddAndEditView: View {
                             Text("*")
                                 .foregroundColor(.red)
                         }
-                        TextField("Name", text: $department.name)
+                        TextField("Nombre", text: $department.name)
                         
                     }
-                    Picker("Status", selection: $department.state) {
-                        
-                        Text("Active").tag(true)
-                        
-                        Text("Inactive").tag(false)
-                    }
-                    .pickerStyle(.segmented)
                     
-                    
+                    StatusPicker(status: $department.state)
                 }
                 
-                if !isAnimating {
-                    
-                    Button("Save") {
+                HStack {
+                    Spacer()
+                    if !isAnimating {
                         
-                        if !department.name.isEmpty {
+                        Button("Guardar") {
                             
-                            if department.id != nil {
-                                departmentController.update(department) {
-                                    
-                                    IsProcessComplete($0)
+                            if !department.name.isEmpty {
+                                
+                                if department.id != nil {
+                                    departmentController.update(department) {
+                                        
+                                        IsProcessComplete($0)
+                                    }
                                 }
-                            }
-                            else {
-                                departmentController.create(department) {
-                                    
-                                    IsProcessComplete($0)
+                                else {
+                                    departmentController.create(department) {
+                                        
+                                        IsProcessComplete($0)
+                                    }
                                 }
                             }
                         }
                     }
+                    else {
+                        ActivityIndicator(isAnimating: $isAnimating, style: .large)
+                    }
                 }
-                
-                ActivityIndicator(isAnimating: $isAnimating, style: .large)
             }
         }
     }
 }
 
-struct DepartmetAddOrEdit_Previews: PreviewProvider {
+struct DepartmetCreateAndUpdateOperation_Previews: PreviewProvider {
     static var previews: some View {
-        DepartmetAddAndEditView(departmentController: DepartmentController())
+        DepartmentCreateAndUpdateOperationView(departmentController: DepartmentController())
     }
 }

@@ -56,6 +56,7 @@ struct ProviderCreateAndUpdateOperationView: View {
         Form {
             Section("Proveedor") {
                 
+                
                 if provider.id != nil {
                     
                     Text("\(provider.id!)")
@@ -65,6 +66,7 @@ struct ProviderCreateAndUpdateOperationView: View {
                 }
                 
                 HStack {
+                    
                     
                     if provider.personID.isEmpty {
                     
@@ -100,6 +102,8 @@ struct ProviderCreateAndUpdateOperationView: View {
                 StatusPicker(status: $provider.state)
                 
                 HStack {
+                    
+                    Spacer()
                     
                     if !isClicked {
                         

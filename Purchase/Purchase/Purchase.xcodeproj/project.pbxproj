@@ -14,8 +14,8 @@
 		0405F2D727396CDF00A36484 /* Department.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2D627396CDF00A36484 /* Department.swift */; };
 		0405F2DE27396FD600A36484 /* DepartmentController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2DD27396FD600A36484 /* DepartmentController.swift */; };
 		0405F2E2273985A300A36484 /* BoolToString.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2E1273985A300A36484 /* BoolToString.swift */; };
-		0405F2E82739871C00A36484 /* DepartmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2E72739871C00A36484 /* DepartmentView.swift */; };
-		0405F2EB2739938E00A36484 /* DepartmetAddAndEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2EA2739938E00A36484 /* DepartmetAddAndEditView.swift */; };
+		0405F2E82739871C00A36484 /* DepartmListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2E72739871C00A36484 /* DepartmListView.swift */; };
+		0405F2EB2739938E00A36484 /* DepartmentCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2EA2739938E00A36484 /* DepartmentCreateAndUpdateOperationView.swift */; };
 		0405F2ED2739E04C00A36484 /* BaseURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2EC2739E04C00A36484 /* BaseURL.swift */; };
 		0405F2EF2739E1FC00A36484 /* APIResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2EE2739E1FC00A36484 /* APIResources.swift */; };
 		0405F2F12739E21400A36484 /* APIRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2F02739E21400A36484 /* APIRequest.swift */; };
@@ -31,7 +31,6 @@
 		0473DB66273CAAAF000BF8C1 /* ProviderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB65273CAAAF000BF8C1 /* ProviderView.swift */; };
 		0473DB68273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */; };
 		0473DB6A273CB599000BF8C1 /* UserDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB69273CB599000BF8C1 /* UserDocument.swift */; };
-		0473DB6C273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB6B273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift */; };
 		04D80DA0273BECE5000252DC /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80D9F273BECE5000252DC /* APIService.swift */; };
 		04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA1273BECF5000252DC /* APIProtocol.swift */; };
 		04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA3273BED6C000252DC /* MeasureUnit.swift */; };
@@ -45,7 +44,7 @@
 		04D80DB7273BFEB5000252DC /* StatusPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB6273BFEB5000252DC /* StatusPicker.swift */; };
 		04F8C703273B4D8D0005F7EA /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C702273B4D8D0005F7EA /* MainMenuView.swift */; };
 		04F8C705273B4DD60005F7EA /* LogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C704273B4DD60005F7EA /* LogoView.swift */; };
-		04F8C707273B4E8F0005F7EA /* DepartmentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */; };
+		04F8C707273B4E8F0005F7EA /* DepartmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C706273B4E8F0005F7EA /* DepartmentView.swift */; };
 		04F8C709273B4EEB0005F7EA /* SingleMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C708273B4EEB0005F7EA /* SingleMenuView.swift */; };
 		04F8C70B273B533F0005F7EA /* Menu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C70A273B533F0005F7EA /* Menu.swift */; };
 /* End PBXBuildFile section */
@@ -59,8 +58,8 @@
 		0405F2D627396CDF00A36484 /* Department.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Department.swift; sourceTree = "<group>"; };
 		0405F2DD27396FD600A36484 /* DepartmentController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentController.swift; sourceTree = "<group>"; };
 		0405F2E1273985A300A36484 /* BoolToString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoolToString.swift; sourceTree = "<group>"; };
-		0405F2E72739871C00A36484 /* DepartmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentView.swift; sourceTree = "<group>"; };
-		0405F2EA2739938E00A36484 /* DepartmetAddAndEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmetAddAndEditView.swift; sourceTree = "<group>"; };
+		0405F2E72739871C00A36484 /* DepartmListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmListView.swift; sourceTree = "<group>"; };
+		0405F2EA2739938E00A36484 /* DepartmentCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
 		0405F2EC2739E04C00A36484 /* BaseURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseURL.swift; sourceTree = "<group>"; };
 		0405F2EE2739E1FC00A36484 /* APIResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIResources.swift; sourceTree = "<group>"; };
 		0405F2F02739E21400A36484 /* APIRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRequest.swift; sourceTree = "<group>"; };
@@ -76,7 +75,6 @@
 		0473DB65273CAAAF000BF8C1 /* ProviderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderView.swift; sourceTree = "<group>"; };
 		0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
 		0473DB69273CB599000BF8C1 /* UserDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDocument.swift; sourceTree = "<group>"; };
-		0473DB6B273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProviderCreateAndUpdateOperationView+.swift"; sourceTree = "<group>"; };
 		04D80D9F273BECE5000252DC /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		04D80DA1273BECF5000252DC /* APIProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIProtocol.swift; sourceTree = "<group>"; };
 		04D80DA3273BED6C000252DC /* MeasureUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnit.swift; sourceTree = "<group>"; };
@@ -90,7 +88,7 @@
 		04D80DB6273BFEB5000252DC /* StatusPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPicker.swift; sourceTree = "<group>"; };
 		04F8C702273B4D8D0005F7EA /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
 		04F8C704273B4DD60005F7EA /* LogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoView.swift; sourceTree = "<group>"; };
-		04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DepartmentDetailView.swift; sourceTree = "<group>"; };
+		04F8C706273B4E8F0005F7EA /* DepartmentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DepartmentView.swift; sourceTree = "<group>"; };
 		04F8C708273B4EEB0005F7EA /* SingleMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleMenuView.swift; sourceTree = "<group>"; };
 		04F8C70A273B533F0005F7EA /* Menu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Menu.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -206,9 +204,9 @@
 		0405F2E0273979A700A36484 /* Department */ = {
 			isa = PBXGroup;
 			children = (
-				04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */,
-				0405F2E72739871C00A36484 /* DepartmentView.swift */,
-				0405F2EA2739938E00A36484 /* DepartmetAddAndEditView.swift */,
+				04F8C706273B4E8F0005F7EA /* DepartmentView.swift */,
+				0405F2E72739871C00A36484 /* DepartmListView.swift */,
+				0405F2EA2739938E00A36484 /* DepartmentCreateAndUpdateOperationView.swift */,
 			);
 			path = Department;
 			sourceTree = "<group>";
@@ -268,7 +266,6 @@
 				0473DB63273CAA15000BF8C1 /* ProviderListView.swift */,
 				0473DB65273CAAAF000BF8C1 /* ProviderView.swift */,
 				0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */,
-				0473DB6B273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift */,
 			);
 			path = Provider;
 			sourceTree = "<group>";
@@ -376,7 +373,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0405F2EB2739938E00A36484 /* DepartmetAddAndEditView.swift in Sources */,
+				0405F2EB2739938E00A36484 /* DepartmentCreateAndUpdateOperationView.swift in Sources */,
 				0473DB68273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift in Sources */,
 				04D80DB1273BF82C000252DC /* MeasureUnitView.swift in Sources */,
 				0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */,
@@ -391,13 +388,12 @@
 				04D80DA0273BECE5000252DC /* APIService.swift in Sources */,
 				0405F2DE27396FD600A36484 /* DepartmentController.swift in Sources */,
 				04D80DAF273BF6C7000252DC /* MeasureUnitListView.swift in Sources */,
-				0405F2E82739871C00A36484 /* DepartmentView.swift in Sources */,
+				0405F2E82739871C00A36484 /* DepartmListView.swift in Sources */,
 				0405F2FA273A0AC500A36484 /* ModelToJSON.swift in Sources */,
 				04D80DAA273BEE59000252DC /* PurchaseOrder.swift in Sources */,
 				0473DB6A273CB599000BF8C1 /* UserDocument.swift in Sources */,
 				044E8E62273ABD40003D7010 /* APIError.swift in Sources */,
 				04D80DA8273BEE1D000252DC /* Article.swift in Sources */,
-				0473DB6C273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift in Sources */,
 				0405F2EF2739E1FC00A36484 /* APIResources.swift in Sources */,
 				04D80DAC273BF359000252DC /* MeasureUnitController.swift in Sources */,
 				04D80DA6273BEDE4000252DC /* Provider.swift in Sources */,
@@ -409,7 +405,7 @@
 				0405F2F12739E21400A36484 /* APIRequest.swift in Sources */,
 				04F8C703273B4D8D0005F7EA /* MainMenuView.swift in Sources */,
 				0405F2FD273A0B5D00A36484 /* ModelToJSONError.swift in Sources */,
-				04F8C707273B4E8F0005F7EA /* DepartmentDetailView.swift in Sources */,
+				04F8C707273B4E8F0005F7EA /* DepartmentView.swift in Sources */,
 				04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */,
 				0473DB5F273C82B1000BF8C1 /* ProviderController.swift in Sources */,
 				0405F2ED2739E04C00A36484 /* BaseURL.swift in Sources */,

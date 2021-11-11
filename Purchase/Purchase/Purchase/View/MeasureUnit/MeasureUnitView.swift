@@ -13,14 +13,35 @@ struct MeasureUnitView: View {
     
     var body: some View {
         
-        VStack(alignment: .leading) {
-            Text("\(measureUnit.id ?? 0)")
-            Text(measureUnit.description)
-            Text(measureUnit.state.toString())
-                .foregroundColor(.secondary)
+        VStack {
+            
+            HStack {
+                Spacer()
+                LogoView(name: "measureunit")
+            }
+            
+            HStack(spacing: 20) {
+                
+                
+                Text("\(measureUnit.id!)")
+                    .font(.title2)
+                    .foregroundColor(.blue)
+                    .fontWeight(.bold)
+                
+                HStack {
+                    Spacer()
+                    VStack(alignment: .trailing) {
+                        
+                        Text(measureUnit.description)
+                        Text(measureUnit.state.toString())
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
         }
     }
 }
+
 
 struct MeasureUnitView_Previews: PreviewProvider {
     static var previews: some View {

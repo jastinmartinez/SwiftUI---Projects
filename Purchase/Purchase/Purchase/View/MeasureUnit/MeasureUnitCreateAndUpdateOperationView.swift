@@ -31,11 +31,11 @@ struct MeasureUnitCreateAndUpdateOperationView: View {
     var body: some View {
         
         
-            Form {
+        Form {
+            
+            Section("Unidad De Medida") {
                 
                 VStack() {
-                    
-                    LogoView(name: "measureunit")
                     
                     if measureUnit.id != nil {
                         
@@ -52,7 +52,7 @@ struct MeasureUnitCreateAndUpdateOperationView: View {
                                 .foregroundColor(.red)
                         }
                         
-                        TextField("Description",text: $measureUnit.description)
+                        TextField("Descripcion",text: $measureUnit.description)
                         
                     }
                     
@@ -61,12 +61,13 @@ struct MeasureUnitCreateAndUpdateOperationView: View {
                 }
                 
                 HStack {
-                 Spacer()
+                    
+                    Spacer()
                     
                     if !isClicked {
                         
-                      
-                        Button("Save", action: {
+                        
+                        Button("Guardar", action: {
                             
                             guard !measureUnit.description.isEmpty else { return }
                             
@@ -86,6 +87,9 @@ struct MeasureUnitCreateAndUpdateOperationView: View {
                         ActivityIndicator(isAnimating: $isClicked, style: .medium)
                     }
                 }
+            }
+            
+            
         }
     }
 }

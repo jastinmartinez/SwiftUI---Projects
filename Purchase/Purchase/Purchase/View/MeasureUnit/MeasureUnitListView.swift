@@ -21,7 +21,7 @@ struct MeasureUnitListView: View {
                     
                     NavigationLink {
                         MeasureUnitCreateAndUpdateOperationView(measureUnitController: measureUnitController, measureUnit: measure)
-                            .navigationTitle("Edit")
+                            .navigationTitle("Modificar")
                     }label: {
                         MeasureUnitView(measureUnit: measure)
                     }
@@ -29,13 +29,13 @@ struct MeasureUnitListView: View {
                 .onDelete(perform: measureUnitController.remove)
             }
             .refreshable { measureUnitController.getAll() }
-            .navigationTitle("Measure Unit")
+            .navigationTitle("Unidad de Medida")
             .toolbar {
                 NavigationLink {
                     MeasureUnitCreateAndUpdateOperationView(measureUnitController: measureUnitController)
-                        .navigationTitle("Create")
+                        .navigationTitle("Nuevo")
                 } label: {
-                    Text("New")
+                    Text("Nuevo")
                 }
             }
         }
