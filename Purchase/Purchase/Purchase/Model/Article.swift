@@ -15,7 +15,7 @@ struct Article: Codable {
     
     var mark: String
     
-    var measureUnitID: Int
+    var measureUnitID: Parent
     
     var stock: Double
     

@@ -18,8 +18,6 @@ struct MainMenuView: View {
                 RadialGradient(stops:[.init(color: Color(.white), location: 0.3),.init(color: Color(red: 0.1, green: 0.2, blue: 0.45), location: 0.3)], center: .top, startRadius: 100, endRadius: 700)
                     .ignoresSafeArea()
                 
-                
-                
                 HStack {
                     Spacer()
                     Spacer()
@@ -45,6 +43,11 @@ struct MainMenuView: View {
                         NavigationLink(destination: ProviderListView().navigationTitle("Proveedores")) {
                             LogoView(name: "provider")
                             MenuTitle(name: "Proveedor")
+                        }
+                        
+                        NavigationLink(destination: ArticleListView().navigationTitle("Articulos")) {
+                            LogoView(name: "article")
+                            MenuTitle(name: "Articulo")
                         }
                     }
                     Spacer()

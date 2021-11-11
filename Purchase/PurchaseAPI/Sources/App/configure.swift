@@ -23,9 +23,9 @@ public func configure(_ app: Application) throws {
     app.migrations.add(ArticleMigration())
     app.migrations.add(PurchaseOrderMigration())
     
-    //try app.autoRevert().wait()
+    try app.autoRevert().wait()
     
-    //try app.autoMigrate().wait()
+    try app.autoMigrate().wait()
     
     // register routes
     try routes(app)

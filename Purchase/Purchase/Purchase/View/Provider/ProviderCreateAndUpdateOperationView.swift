@@ -70,8 +70,7 @@ struct ProviderCreateAndUpdateOperationView: View {
                     
                     if provider.personID.isEmpty {
                     
-                        Text("*")
-                            .foregroundColor(.red)
+                        RequeriedMark()
                     }
                     
                     VStack {
@@ -92,8 +91,7 @@ struct ProviderCreateAndUpdateOperationView: View {
                     
                     if provider.comercialName.isEmpty {
                     
-                        Text("*")
-                            .foregroundColor(.red)
+                        RequeriedMark()
                     }
                     
                     TextField("Nombre Comercial", text: $provider.comercialName)
