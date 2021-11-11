@@ -7,16 +7,19 @@
 
 import SwiftUI
 
-struct DepartmentImageView: View {
+struct LogoView: View {
+   
+    var name: String
+    
     var body: some View {
-        Image("department")
+        Image(name)
             .resizable()
             .frame(width: 50, height: 50)
     }
 }
 
-struct DepartmentImage_Previews: PreviewProvider {
+struct LogoView_Previews: PreviewProvider {
     static var previews: some View {
-        DepartmentImageView()
+        LogoView(name: "department")
     }
 }

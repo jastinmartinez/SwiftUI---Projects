@@ -26,6 +26,12 @@
 		0405F2FD273A0B5D00A36484 /* ModelToJSONError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2FC273A0B5D00A36484 /* ModelToJSONError.swift */; };
 		0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F303273A22C900A36484 /* ActivityIndicator.swift */; };
 		044E8E62273ABD40003D7010 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044E8E61273ABD40003D7010 /* APIError.swift */; };
+		0473DB5F273C82B1000BF8C1 /* ProviderController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB5E273C82B1000BF8C1 /* ProviderController.swift */; };
+		0473DB64273CAA15000BF8C1 /* ProviderListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB63273CAA15000BF8C1 /* ProviderListView.swift */; };
+		0473DB66273CAAAF000BF8C1 /* ProviderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB65273CAAAF000BF8C1 /* ProviderView.swift */; };
+		0473DB68273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */; };
+		0473DB6A273CB599000BF8C1 /* UserDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB69273CB599000BF8C1 /* UserDocument.swift */; };
+		0473DB6C273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB6B273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift */; };
 		04D80DA0273BECE5000252DC /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80D9F273BECE5000252DC /* APIService.swift */; };
 		04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA1273BECF5000252DC /* APIProtocol.swift */; };
 		04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA3273BED6C000252DC /* MeasureUnit.swift */; };
@@ -36,10 +42,9 @@
 		04D80DAF273BF6C7000252DC /* MeasureUnitListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DAE273BF6C7000252DC /* MeasureUnitListView.swift */; };
 		04D80DB1273BF82C000252DC /* MeasureUnitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB0273BF82C000252DC /* MeasureUnitView.swift */; };
 		04D80DB3273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB2273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift */; };
-		04D80DB5273BFE1F000252DC /* MeasureUnitImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB4273BFE1F000252DC /* MeasureUnitImageView.swift */; };
 		04D80DB7273BFEB5000252DC /* StatusPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB6273BFEB5000252DC /* StatusPicker.swift */; };
 		04F8C703273B4D8D0005F7EA /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C702273B4D8D0005F7EA /* MainMenuView.swift */; };
-		04F8C705273B4DD60005F7EA /* DepartmentImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C704273B4DD60005F7EA /* DepartmentImageView.swift */; };
+		04F8C705273B4DD60005F7EA /* LogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C704273B4DD60005F7EA /* LogoView.swift */; };
 		04F8C707273B4E8F0005F7EA /* DepartmentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */; };
 		04F8C709273B4EEB0005F7EA /* SingleMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C708273B4EEB0005F7EA /* SingleMenuView.swift */; };
 		04F8C70B273B533F0005F7EA /* Menu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C70A273B533F0005F7EA /* Menu.swift */; };
@@ -66,6 +71,12 @@
 		0405F2FC273A0B5D00A36484 /* ModelToJSONError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelToJSONError.swift; sourceTree = "<group>"; };
 		0405F303273A22C900A36484 /* ActivityIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityIndicator.swift; sourceTree = "<group>"; };
 		044E8E61273ABD40003D7010 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
+		0473DB5E273C82B1000BF8C1 /* ProviderController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderController.swift; sourceTree = "<group>"; };
+		0473DB63273CAA15000BF8C1 /* ProviderListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderListView.swift; sourceTree = "<group>"; };
+		0473DB65273CAAAF000BF8C1 /* ProviderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderView.swift; sourceTree = "<group>"; };
+		0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
+		0473DB69273CB599000BF8C1 /* UserDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDocument.swift; sourceTree = "<group>"; };
+		0473DB6B273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProviderCreateAndUpdateOperationView+.swift"; sourceTree = "<group>"; };
 		04D80D9F273BECE5000252DC /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		04D80DA1273BECF5000252DC /* APIProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIProtocol.swift; sourceTree = "<group>"; };
 		04D80DA3273BED6C000252DC /* MeasureUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnit.swift; sourceTree = "<group>"; };
@@ -76,10 +87,9 @@
 		04D80DAE273BF6C7000252DC /* MeasureUnitListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitListView.swift; sourceTree = "<group>"; };
 		04D80DB0273BF82C000252DC /* MeasureUnitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitView.swift; sourceTree = "<group>"; };
 		04D80DB2273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
-		04D80DB4273BFE1F000252DC /* MeasureUnitImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitImageView.swift; sourceTree = "<group>"; };
 		04D80DB6273BFEB5000252DC /* StatusPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPicker.swift; sourceTree = "<group>"; };
 		04F8C702273B4D8D0005F7EA /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
-		04F8C704273B4DD60005F7EA /* DepartmentImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentImageView.swift; sourceTree = "<group>"; };
+		04F8C704273B4DD60005F7EA /* LogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoView.swift; sourceTree = "<group>"; };
 		04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DepartmentDetailView.swift; sourceTree = "<group>"; };
 		04F8C708273B4EEB0005F7EA /* SingleMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleMenuView.swift; sourceTree = "<group>"; };
 		04F8C70A273B533F0005F7EA /* Menu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Menu.swift; sourceTree = "<group>"; };
@@ -162,6 +172,9 @@
 		0405F2DB27396F2000A36484 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				0473DB62273CA9CB000BF8C1 /* PurchaseOrder */,
+				0473DB61273CA9C5000BF8C1 /* Article */,
+				0473DB60273CA9BB000BF8C1 /* Provider */,
 				04D80DAD273BF5F8000252DC /* MeasureUnit */,
 				04F8C701273B4D830005F7EA /* Main */,
 				0405F2E927398F0400A36484 /* Common */,
@@ -175,6 +188,7 @@
 			children = (
 				0405F2DD27396FD600A36484 /* DepartmentController.swift */,
 				04D80DAB273BF359000252DC /* MeasureUnitController.swift */,
+				0473DB5E273C82B1000BF8C1 /* ProviderController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -184,6 +198,7 @@
 			children = (
 				0405F2E1273985A300A36484 /* BoolToString.swift */,
 				04F8C70A273B533F0005F7EA /* Menu.swift */,
+				0473DB69273CB599000BF8C1 /* UserDocument.swift */,
 			);
 			path = Helper;
 			sourceTree = "<group>";
@@ -194,7 +209,6 @@
 				04F8C706273B4E8F0005F7EA /* DepartmentDetailView.swift */,
 				0405F2E72739871C00A36484 /* DepartmentView.swift */,
 				0405F2EA2739938E00A36484 /* DepartmetAddAndEditView.swift */,
-				04F8C704273B4DD60005F7EA /* DepartmentImageView.swift */,
 			);
 			path = Department;
 			sourceTree = "<group>";
@@ -202,6 +216,7 @@
 		0405F2E927398F0400A36484 /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				04F8C704273B4DD60005F7EA /* LogoView.swift */,
 				0405F303273A22C900A36484 /* ActivityIndicator.swift */,
 				04D80DB6273BFEB5000252DC /* StatusPicker.swift */,
 			);
@@ -247,13 +262,37 @@
 			path = Service;
 			sourceTree = "<group>";
 		};
+		0473DB60273CA9BB000BF8C1 /* Provider */ = {
+			isa = PBXGroup;
+			children = (
+				0473DB63273CAA15000BF8C1 /* ProviderListView.swift */,
+				0473DB65273CAAAF000BF8C1 /* ProviderView.swift */,
+				0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */,
+				0473DB6B273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift */,
+			);
+			path = Provider;
+			sourceTree = "<group>";
+		};
+		0473DB61273CA9C5000BF8C1 /* Article */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Article;
+			sourceTree = "<group>";
+		};
+		0473DB62273CA9CB000BF8C1 /* PurchaseOrder */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = PurchaseOrder;
+			sourceTree = "<group>";
+		};
 		04D80DAD273BF5F8000252DC /* MeasureUnit */ = {
 			isa = PBXGroup;
 			children = (
 				04D80DAE273BF6C7000252DC /* MeasureUnitListView.swift */,
 				04D80DB0273BF82C000252DC /* MeasureUnitView.swift */,
 				04D80DB2273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift */,
-				04D80DB4273BFE1F000252DC /* MeasureUnitImageView.swift */,
 			);
 			path = MeasureUnit;
 			sourceTree = "<group>";
@@ -338,6 +377,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0405F2EB2739938E00A36484 /* DepartmetAddAndEditView.swift in Sources */,
+				0473DB68273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift in Sources */,
 				04D80DB1273BF82C000252DC /* MeasureUnitView.swift in Sources */,
 				0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */,
 				0405F2F62739E7FA00A36484 /* JSONToModelError.swift in Sources */,
@@ -346,20 +386,22 @@
 				0405F2C827396BE600A36484 /* PurchaseApp.swift in Sources */,
 				0405F2D727396CDF00A36484 /* Department.swift in Sources */,
 				04F8C709273B4EEB0005F7EA /* SingleMenuView.swift in Sources */,
-				04F8C705273B4DD60005F7EA /* DepartmentImageView.swift in Sources */,
+				04F8C705273B4DD60005F7EA /* LogoView.swift in Sources */,
 				0405F2F82739ED3F00A36484 /* HTTPMethods.swift in Sources */,
 				04D80DA0273BECE5000252DC /* APIService.swift in Sources */,
 				0405F2DE27396FD600A36484 /* DepartmentController.swift in Sources */,
 				04D80DAF273BF6C7000252DC /* MeasureUnitListView.swift in Sources */,
 				0405F2E82739871C00A36484 /* DepartmentView.swift in Sources */,
-				04D80DB5273BFE1F000252DC /* MeasureUnitImageView.swift in Sources */,
 				0405F2FA273A0AC500A36484 /* ModelToJSON.swift in Sources */,
 				04D80DAA273BEE59000252DC /* PurchaseOrder.swift in Sources */,
+				0473DB6A273CB599000BF8C1 /* UserDocument.swift in Sources */,
 				044E8E62273ABD40003D7010 /* APIError.swift in Sources */,
 				04D80DA8273BEE1D000252DC /* Article.swift in Sources */,
+				0473DB6C273CB634000BF8C1 /* ProviderCreateAndUpdateOperationView+.swift in Sources */,
 				0405F2EF2739E1FC00A36484 /* APIResources.swift in Sources */,
 				04D80DAC273BF359000252DC /* MeasureUnitController.swift in Sources */,
 				04D80DA6273BEDE4000252DC /* Provider.swift in Sources */,
+				0473DB64273CAA15000BF8C1 /* ProviderListView.swift in Sources */,
 				04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */,
 				04F8C70B273B533F0005F7EA /* Menu.swift in Sources */,
 				04D80DB3273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift in Sources */,
@@ -369,7 +411,9 @@
 				0405F2FD273A0B5D00A36484 /* ModelToJSONError.swift in Sources */,
 				04F8C707273B4E8F0005F7EA /* DepartmentDetailView.swift in Sources */,
 				04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */,
+				0473DB5F273C82B1000BF8C1 /* ProviderController.swift in Sources */,
 				0405F2ED2739E04C00A36484 /* BaseURL.swift in Sources */,
+				0473DB66273CAAAF000BF8C1 /* ProviderView.swift in Sources */,
 				0405F2F32739E76500A36484 /* JSONToModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

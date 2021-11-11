@@ -34,7 +34,7 @@ struct DepartmetAddAndEditView: View {
             
             VStack(spacing: 30) {
                 
-                DepartmentImageView()
+                LogoView(name: "department")
                 
                 
                 VStack(alignment: .leading, spacing: 15)

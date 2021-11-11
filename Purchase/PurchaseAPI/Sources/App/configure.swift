@@ -15,6 +15,8 @@ public func configure(_ app: Application) throws {
         database: Environment.get("DATABASE_NAME") ?? "Purchase"
     ), as: .psql)
 
+    
+    
     app.migrations.add(DepartamentMigration())
     app.migrations.add(MeasureUnitMigration())
     app.migrations.add(ProviderMigration())

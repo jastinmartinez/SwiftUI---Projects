@@ -35,7 +35,7 @@ struct MeasureUnitCreateAndUpdateOperationView: View {
                 
                 VStack() {
                     
-                    MeasureUnitImageView()
+                    LogoView(name: "measureunit")
                     
                     if measureUnit.id != nil {
                         

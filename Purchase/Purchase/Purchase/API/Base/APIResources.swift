@@ -16,4 +16,6 @@ enum APIResources: String {
     case PurchaseOrder
     
     case MeasureUnit
+    
+    case Provider
 }

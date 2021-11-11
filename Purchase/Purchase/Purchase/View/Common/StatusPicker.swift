@@ -13,11 +13,11 @@ struct StatusPicker: View {
     
     var body: some View {
     
-        Picker("Status", selection: $status) {
+        Picker("Estado", selection: $status) {
             
-            Text("Active").tag(true)
+            Text("Activo").tag(true)
             
-            Text("Inactive").tag(false)
+            Text("Inactivo").tag(false)
         }
         .pickerStyle(.segmented)
     }
