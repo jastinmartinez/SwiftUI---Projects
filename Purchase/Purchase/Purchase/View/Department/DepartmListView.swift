@@ -9,12 +9,12 @@ import SwiftUI
 
 struct DepartmListView: View {
     
-    @StateObject private var departmentController = DepartmentController()
+    @StateObject private var departmentController =  PurchaseController<Department>()
     
     var body: some View {
         
         List {
-            ForEach(departmentController.departments, id: \.id ) { department in
+            ForEach(departmentController.data, id: \.id ) { department in
                 
                 NavigationLink(destination: DepartmentCreateAndUpdateOperationView(departmentController: departmentController,department: department).navigationTitle("Nuevo")) {
                     

@@ -9,13 +9,13 @@ import SwiftUI
 
 struct MeasureUnitListView: View {
     
-    @StateObject var measureUnitController = MeasureUnitController()
+    @StateObject var measureUnitController = PurchaseController<MeasureUnit>()
     
     var body: some View {
         
         List {
             
-            ForEach(measureUnitController.measureUnits, id:\.id) { measure in
+            ForEach(measureUnitController.data, id:\.id) { measure in
                 
                 NavigationLink {
                     MeasureUnitCreateAndUpdateOperationView(measureUnitController: measureUnitController, measureUnit: measure)

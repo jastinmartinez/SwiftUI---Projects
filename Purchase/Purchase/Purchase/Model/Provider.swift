@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Provider: Codable {
+struct Provider: ModelProtocol,Codable {
     
     var id: Int?
     

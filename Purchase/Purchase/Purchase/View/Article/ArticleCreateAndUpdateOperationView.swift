@@ -12,9 +12,9 @@ struct ArticleCreateAndUpdateOperationView: View {
     
     @Environment(\.presentationMode) var presentation
     
-    @StateObject var articleController: ArticleController
+    @StateObject var articleController: PurchaseController<Article>
     
-    @StateObject private var measureUnit = MeasureUnitController()
+    @StateObject private var measureUnit = PurchaseController<MeasureUnit>()
     
     @State var article: Article = Article(id: nil, description: "", mark: "", measureUnitID: Parent(id: nil), stock: 0.0, state: true)
     
@@ -66,7 +66,7 @@ struct ArticleCreateAndUpdateOperationView: View {
                     
                     Picker("Unidad de Medida", selection: $article.measureUnitID.id) {
                         
-                        ForEach(measureUnit.measureUnits.filter({$0.state}), id: \.id) { unit in
+                        ForEach(measureUnit.data.filter({$0.state}), id: \.id) { unit in
                             
                             Text(unit.description).tag(unit.id)
                         }
@@ -124,6 +124,6 @@ struct ArticleCreateAndUpdateOperationView: View {
 
 struct ArticleCreateAndUpdateOperationView_Previews: PreviewProvider {
     static var previews: some View {
-        ArticleCreateAndUpdateOperationView(articleController: ArticleController())
+        ArticleCreateAndUpdateOperationView(articleController: PurchaseController<Article>())
     }
 }

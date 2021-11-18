@@ -9,19 +9,19 @@ import SwiftUI
 
 struct ArticleListView: View {
     
-    @StateObject var articleController = ArticleController()
+    @StateObject var articleController = PurchaseController<Article>()
     
-    @StateObject var measureUnitController = MeasureUnitController()
+    @StateObject var measureUnitController = PurchaseController<MeasureUnit>()
     
     var body: some View {
         
         List {
             
-            ForEach(articleController.articles, id: \.id) { article in
+            ForEach(articleController.data, id: \.id) { article in
                 NavigationLink(destination: ArticleCreateAndUpdateOperationView(articleController: articleController, article: article).navigationTitle("Modificar")) {
                     
                     ArticleView(article: article,
-                                measureUnit: self.measureUnitController.measureUnits.filter({$0.id == article.measureUnitID.id}).map({$0.description}).first ?? "N/A")
+                                measureUnit: self.measureUnitController.data.filter({$0.id == article.measureUnitID.id}).map({$0.description}).first ?? "N/A")
                 }
             }
             .onDelete(perform: articleController.remove)

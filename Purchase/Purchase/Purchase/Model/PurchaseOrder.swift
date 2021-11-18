@@ -8,7 +8,7 @@
 import Foundation
 
 
-struct PurchaseOrder:Codable {
+struct PurchaseOrder: ModelProtocol, Codable {
     
     var id: Int?
     

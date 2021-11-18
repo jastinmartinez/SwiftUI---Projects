@@ -12,11 +12,11 @@ struct PurchaseOrderCreateAndUpdateView: View {
     
     @Environment(\.presentationMode) var presentation
     
-    @StateObject var purchaseOrderController: PurchaseOrderController
+    @StateObject var purchaseOrderController: PurchaseController<PurchaseOrder>
     
-    @StateObject var articleController: ArticleController
+    @StateObject var articleController: PurchaseController<Article>
     
-    @StateObject var measureUnitController: MeasureUnitController
+    @StateObject var measureUnitController: PurchaseController<MeasureUnit>
     
     @State private var date: Date = .now
     
@@ -24,9 +24,9 @@ struct PurchaseOrderCreateAndUpdateView: View {
     
     @State var isCliked = false
     
-    fileprivate func isOperationComplete(_ val: Bool) {
+    fileprivate func isOperationComplete(_ isComplete: Bool) {
         
-        if val {
+        if isComplete {
             presentation.wrappedValue.dismiss()
             isCliked = false
         }
@@ -72,7 +72,7 @@ struct PurchaseOrderCreateAndUpdateView: View {
                     }
                     Picker("Unidades de Medida", selection: $purchaseOrder.measureUnitID.id) {
                         
-                        ForEach(measureUnitController.measureUnits.filter({$0.state}), id: \.id) { unit in
+                        ForEach(measureUnitController.data.filter({$0.state}), id: \.id) { unit in
                             
                             Text(unit.description).tag(unit.id)
                         }
@@ -87,7 +87,7 @@ struct PurchaseOrderCreateAndUpdateView: View {
                     
                     Picker("Articulos", selection: $purchaseOrder.articleID.id) {
                         
-                        ForEach(articleController.articles.filter({$0.state}), id: \.id) { article in
+                        ForEach(articleController.data.filter({$0.state}), id: \.id) { article in
                             
                             Text(article.description).tag(article.id)
                         }
@@ -162,7 +162,7 @@ struct PurchaseOrderCreateAndUpdateView: View {
 
 struct PurchaseOrderCreateAndUpdateView_Previews: PreviewProvider {
     static var previews: some View {
-        PurchaseOrderCreateAndUpdateView(purchaseOrderController: PurchaseOrderController(),
-                                         articleController: ArticleController(), measureUnitController: MeasureUnitController())
+        PurchaseOrderCreateAndUpdateView(purchaseOrderController: PurchaseController<PurchaseOrder>(),
+                                         articleController: PurchaseController<Article>(), measureUnitController: PurchaseController<MeasureUnit>())
     }
 }

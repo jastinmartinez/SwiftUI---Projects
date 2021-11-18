@@ -7,10 +7,10 @@
 
 import Foundation
 
-struct Department : Codable{
-    
+struct Department : ModelProtocol, Codable{
+
     var id: Int?
-    
+
     var name: String
     
     var state: Bool
