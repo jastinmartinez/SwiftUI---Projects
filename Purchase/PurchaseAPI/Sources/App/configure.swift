@@ -16,14 +16,14 @@ public func configure(_ app: Application) throws {
     ), as: .psql)
 
     
-    
+    app.migrations.add(User.UserMigration())
     app.migrations.add(DepartamentMigration())
     app.migrations.add(MeasureUnitMigration())
     app.migrations.add(ProviderMigration())
     app.migrations.add(ArticleMigration())
     app.migrations.add(PurchaseOrderMigration())
     
-   // try app.autoRevert().wait()
+    //try app.autoRevert().wait()
     
     //try app.autoMigrate().wait()
     

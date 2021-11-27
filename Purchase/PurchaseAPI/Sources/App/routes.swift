@@ -3,9 +3,13 @@ import Vapor
 
 func routes(_ app: Application) throws {
     
-    try app.register(collection: DepartmentController())
-    try app.register(collection: ArticleController())
-    try app.register(collection: MeasureUnitController())
-    try app.register(collection: ProviderControlelr())
-    try app.register(collection: PurchaseOrderController())
+    try app.register(collection: UserController())
+    
+    try app.routes.grouped(User.authenticator()).group(User.guardMiddleware()) {secure in
+        try secure.register(collection: DepartmentController())
+        try secure.register(collection: ArticleController())
+        try secure.register(collection: MeasureUnitController())
+        try secure.register(collection: ProviderControlelr())
+        try secure.register(collection: PurchaseOrderController())
+    }
 }
