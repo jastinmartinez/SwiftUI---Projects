@@ -49,7 +49,7 @@ class APIService<E : Codable>: APIProtocol
                 
                 guard let response = response as? HTTPURLResponse else { return }
                 
-                completion(response.statusCode == 200 ? true : false)
+                completion(response.statusCode == 200)
             }
         })
     }
@@ -62,7 +62,7 @@ class APIService<E : Codable>: APIProtocol
                 
                 guard let response = response as? HTTPURLResponse else { return }
                 
-                completion(response.statusCode == 200 ? true : false)
+                completion(response.statusCode == 200)
                 
             }
         })
