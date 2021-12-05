@@ -31,7 +31,13 @@
 		0473DB6A273CB599000BF8C1 /* UserDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB69273CB599000BF8C1 /* UserDocument.swift */; };
 		0473DB6E273CC910000BF8C1 /* MenuTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB6D273CC910000BF8C1 /* MenuTitle.swift */; };
 		0477EFCD2758038600A0D2C2 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0477EFCC2758038600A0D2C2 /* AuthView.swift */; };
-		0477EFCF2758048800A0D2C2 /* Auth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0477EFCE2758048800A0D2C2 /* Auth.swift */; };
+		0477EFCF2758048800A0D2C2 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0477EFCE2758048800A0D2C2 /* User.swift */; };
+		04790639275D37C800F06699 /* User+SignUp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04790638275D37C800F06699 /* User+SignUp.swift */; };
+		0479063B275D383900F06699 /* User+SignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479063A275D383900F06699 /* User+SignIn.swift */; };
+		0479064C275D7E8900F06699 /* AuthIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064B275D7E8900F06699 /* AuthIconView.swift */; };
+		0479064E275D7EFD00F06699 /* AuthSignInFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */; };
+		04790650275D7F4A00F06699 /* AuthSignUpFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */; };
+		04790652275D7F9800F06699 /* AuthFormButtonAndToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */; };
 		048BF1662746905000563E69 /* PurchaseController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF1652746905000563E69 /* PurchaseController.swift */; };
 		048BF1682746917E00563E69 /* PurchaseControllerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF1672746917E00563E69 /* PurchaseControllerProtocol.swift */; };
 		048BF16A274693BB00563E69 /* ModelProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF169274693BB00563E69 /* ModelProtocol.swift */; };
@@ -86,7 +92,13 @@
 		0473DB69273CB599000BF8C1 /* UserDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDocument.swift; sourceTree = "<group>"; };
 		0473DB6D273CC910000BF8C1 /* MenuTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuTitle.swift; sourceTree = "<group>"; };
 		0477EFCC2758038600A0D2C2 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
-		0477EFCE2758048800A0D2C2 /* Auth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Auth.swift; sourceTree = "<group>"; };
+		0477EFCE2758048800A0D2C2 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		04790638275D37C800F06699 /* User+SignUp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "User+SignUp.swift"; sourceTree = "<group>"; };
+		0479063A275D383900F06699 /* User+SignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "User+SignIn.swift"; sourceTree = "<group>"; };
+		0479064B275D7E8900F06699 /* AuthIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthIconView.swift; sourceTree = "<group>"; };
+		0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSignInFormView.swift; sourceTree = "<group>"; };
+		0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSignUpFormView.swift; sourceTree = "<group>"; };
+		04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFormButtonAndToggleView.swift; sourceTree = "<group>"; };
 		048BF1652746905000563E69 /* PurchaseController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseController.swift; sourceTree = "<group>"; };
 		048BF1672746917E00563E69 /* PurchaseControllerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseControllerProtocol.swift; sourceTree = "<group>"; };
 		048BF169274693BB00563E69 /* ModelProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelProtocol.swift; sourceTree = "<group>"; };
@@ -176,7 +188,7 @@
 				04D80DA9273BEE59000252DC /* PurchaseOrder.swift */,
 				04F1E387273D418D0060DF63 /* Parent.swift */,
 				048BF169274693BB00563E69 /* ModelProtocol.swift */,
-				0477EFCE2758048800A0D2C2 /* Auth.swift */,
+				04790637275D37A300F06699 /* User */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -322,8 +334,22 @@
 			isa = PBXGroup;
 			children = (
 				0477EFCC2758038600A0D2C2 /* AuthView.swift */,
+				0479064B275D7E8900F06699 /* AuthIconView.swift */,
+				0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */,
+				0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */,
+				04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */,
 			);
 			path = Auth;
+			sourceTree = "<group>";
+		};
+		04790637275D37A300F06699 /* User */ = {
+			isa = PBXGroup;
+			children = (
+				0477EFCE2758048800A0D2C2 /* User.swift */,
+				04790638275D37C800F06699 /* User+SignUp.swift */,
+				0479063A275D383900F06699 /* User+SignIn.swift */,
+			);
+			path = User;
 			sourceTree = "<group>";
 		};
 		048BF16F2746A31200563E69 /* Error */ = {
@@ -427,9 +453,12 @@
 				0473DB68273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift in Sources */,
 				04D80DB1273BF82C000252DC /* MeasureUnitView.swift in Sources */,
 				0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */,
+				0479064E275D7EFD00F06699 /* AuthSignInFormView.swift in Sources */,
 				0405F2F62739E7FA00A36484 /* JSONToModelError.swift in Sources */,
 				048BF1682746917E00563E69 /* PurchaseControllerProtocol.swift in Sources */,
 				0473DB6E273CC910000BF8C1 /* MenuTitle.swift in Sources */,
+				04790639275D37C800F06699 /* User+SignUp.swift in Sources */,
+				04790650275D7F4A00F06699 /* AuthSignUpFormView.swift in Sources */,
 				0405F2CA27396BE600A36484 /* PurchaseView.swift in Sources */,
 				048BF1662746905000563E69 /* PurchaseController.swift in Sources */,
 				04F1E386273D3F840060DF63 /* ArticleCreateAndUpdateOperationView.swift in Sources */,
@@ -439,10 +468,12 @@
 				0405F2D727396CDF00A36484 /* Department.swift in Sources */,
 				04F1E392273D52C00060DF63 /* PurchaseOrderCreateAndUpdateView.swift in Sources */,
 				048BF16A274693BB00563E69 /* ModelProtocol.swift in Sources */,
+				0479063B275D383900F06699 /* User+SignIn.swift in Sources */,
 				04F8C705273B4DD60005F7EA /* LogoView.swift in Sources */,
 				0405F2F82739ED3F00A36484 /* HTTPMethods.swift in Sources */,
 				04D80DA0273BECE5000252DC /* APIService.swift in Sources */,
 				04F1E382273D3D380060DF63 /* ArticleListView.swift in Sources */,
+				04790652275D7F9800F06699 /* AuthFormButtonAndToggleView.swift in Sources */,
 				04D80DAF273BF6C7000252DC /* MeasureUnitListView.swift in Sources */,
 				0405F2E82739871C00A36484 /* DepartmListView.swift in Sources */,
 				04F1E38A273D44D20060DF63 /* RequiredMark.swift in Sources */,
@@ -454,11 +485,12 @@
 				04D80DA8273BEE1D000252DC /* Article.swift in Sources */,
 				0405F2EF2739E1FC00A36484 /* APIResources.swift in Sources */,
 				048BF1712746A32000563E69 /* ControllerError.swift in Sources */,
-				0477EFCF2758048800A0D2C2 /* Auth.swift in Sources */,
+				0477EFCF2758048800A0D2C2 /* User.swift in Sources */,
 				04D80DA6273BEDE4000252DC /* Provider.swift in Sources */,
 				0473DB64273CAA15000BF8C1 /* ProviderListView.swift in Sources */,
 				04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */,
 				04F8C70B273B533F0005F7EA /* Menu.swift in Sources */,
+				0479064C275D7E8900F06699 /* AuthIconView.swift in Sources */,
 				04D80DB3273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift in Sources */,
 				0405F2E2273985A300A36484 /* BoolToString.swift in Sources */,
 				0477EFCD2758038600A0D2C2 /* AuthView.swift in Sources */,

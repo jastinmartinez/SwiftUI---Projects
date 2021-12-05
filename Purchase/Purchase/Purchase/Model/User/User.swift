@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Auth : Codable {
+struct User : Decodable {
     
     
     let id: Int?
@@ -16,8 +16,6 @@ struct Auth : Codable {
     
     let email: String
     
-    let password: String
-    
-    let passwordConfirmation: String
+    let passwordHash: String
     
 }
