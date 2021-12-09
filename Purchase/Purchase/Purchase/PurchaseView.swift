@@ -11,7 +11,7 @@ struct PurchaseView: View {
     
     var body: some View {
     
-        if RealmLocalUser().getUser() != nil {
+        if UserHelper.userInfo != nil {
             
             MainMenuView()
         }

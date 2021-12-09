@@ -7,21 +7,20 @@
 
 import Foundation
 import RealmSwift
+import Realm
 
-final class RealmLocalUser {
-    
-    private var dbRealm: Realm
-    
-    init () {
-        
-        self.dbRealm = try! Realm()
-    }
-    
 
-    func getUser() -> UserInfo? {
+
+final class UserHelper {
+    
+    private var dbRealm: Realm = RealmHelper.shared
+    
+    static var userInfo: UserInfo? = {
         
-        return dbRealm.objects(UserInfo.self).first
-    }
+        let instance = RealmHelper.shared.objects(UserInfo.self).first
+        
+        return instance
+    }()
     
     func saveUser(user: User, withPassword: String) {
         
