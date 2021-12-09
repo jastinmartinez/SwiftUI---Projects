@@ -11,7 +11,7 @@ struct PurchaseView: View {
     
     var body: some View {
     
-        if UserDefaults.standard.bool(forKey: "userInfo") {
+        if RealmLocalUser().getUser() != nil {
             
             MainMenuView()
         }

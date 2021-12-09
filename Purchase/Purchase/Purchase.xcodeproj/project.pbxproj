@@ -44,12 +44,13 @@
 		0479064E275D7EFD00F06699 /* AuthSignInFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */; };
 		04790650275D7F4A00F06699 /* AuthSignUpFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */; };
 		04790652275D7F9800F06699 /* AuthFormButtonAndToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */; };
+		048B80CF2762730F0089D313 /* UserInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048B80CE2762730F0089D313 /* UserInfo.swift */; };
 		048BF1662746905000563E69 /* PurchaseController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF1652746905000563E69 /* PurchaseController.swift */; };
 		048BF1682746917E00563E69 /* PurchaseControllerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF1672746917E00563E69 /* PurchaseControllerProtocol.swift */; };
 		048BF16A274693BB00563E69 /* ModelProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF169274693BB00563E69 /* ModelProtocol.swift */; };
 		048BF1712746A32000563E69 /* ControllerError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF1702746A32000563E69 /* ControllerError.swift */; };
 		048D91C6276142E9000BBD72 /* AuthValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048D91C5276142E9000BBD72 /* AuthValidation.swift */; };
-		04BDFA0427619F0300BEAD7C /* LocalUserHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04BDFA0327619F0300BEAD7C /* LocalUserHelper.swift */; };
+		04BDFA0427619F0300BEAD7C /* RealmLocalUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04BDFA0327619F0300BEAD7C /* RealmLocalUser.swift */; };
 		04D80DA0273BECE5000252DC /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80D9F273BECE5000252DC /* APIService.swift */; };
 		04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA1273BECF5000252DC /* APIProtocol.swift */; };
 		04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA3273BED6C000252DC /* MeasureUnit.swift */; };
@@ -113,12 +114,13 @@
 		0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSignInFormView.swift; sourceTree = "<group>"; };
 		0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSignUpFormView.swift; sourceTree = "<group>"; };
 		04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFormButtonAndToggleView.swift; sourceTree = "<group>"; };
+		048B80CE2762730F0089D313 /* UserInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInfo.swift; sourceTree = "<group>"; };
 		048BF1652746905000563E69 /* PurchaseController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseController.swift; sourceTree = "<group>"; };
 		048BF1672746917E00563E69 /* PurchaseControllerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseControllerProtocol.swift; sourceTree = "<group>"; };
 		048BF169274693BB00563E69 /* ModelProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelProtocol.swift; sourceTree = "<group>"; };
 		048BF1702746A32000563E69 /* ControllerError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerError.swift; sourceTree = "<group>"; };
 		048D91C5276142E9000BBD72 /* AuthValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthValidation.swift; sourceTree = "<group>"; };
-		04BDFA0327619F0300BEAD7C /* LocalUserHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalUserHelper.swift; sourceTree = "<group>"; };
+		04BDFA0327619F0300BEAD7C /* RealmLocalUser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealmLocalUser.swift; sourceTree = "<group>"; };
 		04D80D9F273BECE5000252DC /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		04D80DA1273BECF5000252DC /* APIProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIProtocol.swift; sourceTree = "<group>"; };
 		04D80DA3273BED6C000252DC /* MeasureUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnit.swift; sourceTree = "<group>"; };
@@ -259,7 +261,7 @@
 				04F8C70A273B533F0005F7EA /* Menu.swift */,
 				0473DB69273CB599000BF8C1 /* UserDocument.swift */,
 				048D91C5276142E9000BBD72 /* AuthValidation.swift */,
-				04BDFA0327619F0300BEAD7C /* LocalUserHelper.swift */,
+				04BDFA0327619F0300BEAD7C /* RealmLocalUser.swift */,
 			);
 			path = Helper;
 			sourceTree = "<group>";
@@ -376,6 +378,7 @@
 				0477EFCE2758048800A0D2C2 /* User.swift */,
 				04790638275D37C800F06699 /* User+SignUp.swift */,
 				0479063A275D383900F06699 /* User+SignIn.swift */,
+				048B80CE2762730F0089D313 /* UserInfo.swift */,
 			);
 			path = User;
 			sourceTree = "<group>";
@@ -412,7 +415,6 @@
 				924982F27D89528911F5CA30 /* Pods-Purchase.debug.xcconfig */,
 				85F2884F2C74BA5B6A90ED7C /* Pods-Purchase.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -564,7 +566,7 @@
 				04F8C705273B4DD60005F7EA /* LogoView.swift in Sources */,
 				0405F2F82739ED3F00A36484 /* HTTPMethods.swift in Sources */,
 				04D80DA0273BECE5000252DC /* APIService.swift in Sources */,
-				04BDFA0427619F0300BEAD7C /* LocalUserHelper.swift in Sources */,
+				04BDFA0427619F0300BEAD7C /* RealmLocalUser.swift in Sources */,
 				042246C82760EDE500E45412 /* AuthController.swift in Sources */,
 				04F1E382273D3D380060DF63 /* ArticleListView.swift in Sources */,
 				048D91C6276142E9000BBD72 /* AuthValidation.swift in Sources */,
@@ -599,6 +601,7 @@
 				04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */,
 				0405F2ED2739E04C00A36484 /* BaseURL.swift in Sources */,
 				0473DB66273CAAAF000BF8C1 /* ProviderView.swift in Sources */,
+				048B80CF2762730F0089D313 /* UserInfo.swift in Sources */,
 				0405F2F32739E76500A36484 /* JSONToModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

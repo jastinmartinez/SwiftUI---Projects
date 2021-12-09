@@ -15,7 +15,7 @@ class AuthController : ObservableObject  {
             
             if user.id != nil {
                 
-                LocalUserHelper().saveUser(user: user, withPassword: model.password)
+                RealmLocalUser().saveUser(user: user, withPassword: model.password)
             }
             completion(user.id != nil)
         }
