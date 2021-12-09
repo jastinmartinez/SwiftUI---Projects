@@ -12,7 +12,7 @@ struct ProviderCreateAndUpdateOperationView: View {
     
     @Environment(\.presentationMode) var presetation
     
-    @StateObject var providerController: ProviderController
+    @StateObject var providerController: PurchaseController<Provider>
     
     @State var provider: Provider = Provider(id: nil, personID: "", comercialName: "", state: true)
    
@@ -133,6 +133,6 @@ struct ProviderCreateAndUpdateOperationView: View {
 
 struct ProviderCreateAndUpdateOperationView_Previews: PreviewProvider {
     static var previews: some View {
-        ProviderCreateAndUpdateOperationView(providerController: ProviderController())
+        ProviderCreateAndUpdateOperationView(providerController: PurchaseController<Provider>())
     }
 }

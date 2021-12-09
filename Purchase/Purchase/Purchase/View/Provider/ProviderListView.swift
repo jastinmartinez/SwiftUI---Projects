@@ -9,13 +9,13 @@ import SwiftUI
 
 struct ProviderListView: View {
     
-    @StateObject var providerController = ProviderController()
+    @StateObject var providerController = PurchaseController<Provider>()
     
     var body: some View {
         
         List {
             
-            ForEach(providerController.providers, id: \.id) { provider in
+            ForEach(providerController.data, id: \.id) { provider in
                 
                 NavigationLink(destination: ProviderCreateAndUpdateOperationView(providerController: providerController, provider: provider).navigationTitle("Modificar")) {
                     ProviderView(provider: provider)

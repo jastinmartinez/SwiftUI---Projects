@@ -8,18 +8,18 @@
 import Foundation
 
 
- class APIService<E : Codable>: APIProtocol
+class APIService<E : Codable>: APIProtocol
 {
     
-     private (set) var apiResource: APIResources
-     
-     typealias T = E
-     
-     
-     init (apiResource: APIResources)
-     {
-         self.apiResource = apiResource
-     }
+    private(set) var apiResource: APIResources
+    
+    typealias T = E
+    
+    init (apiResource: APIResources)
+    {
+        
+        self.apiResource = apiResource
+    }
     
     func getAll(completion: @escaping ([T]) -> ())  {
         
@@ -48,7 +48,7 @@ import Foundation
                 
                 guard let response = response as? HTTPURLResponse else { return }
                 
-                completion(response.statusCode == 200 ? true : false)
+                completion(response.statusCode == 200)
             }
         })
     }
@@ -60,8 +60,8 @@ import Foundation
             APIRequest().postRequest(resource: self.apiResource, model: data,httpMethod: .DELETE) { data, response, error in
                 
                 guard let response = response as? HTTPURLResponse else { return }
-    
-                completion(response.statusCode == 200 ? true : false)
+                
+                completion(response.statusCode == 200)
                 
             }
         })

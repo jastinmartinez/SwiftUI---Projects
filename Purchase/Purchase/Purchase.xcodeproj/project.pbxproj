@@ -12,7 +12,6 @@
 		0405F2CC27396BEA00A36484 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0405F2CB27396BEA00A36484 /* Assets.xcassets */; };
 		0405F2CF27396BEA00A36484 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0405F2CE27396BEA00A36484 /* Preview Assets.xcassets */; };
 		0405F2D727396CDF00A36484 /* Department.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2D627396CDF00A36484 /* Department.swift */; };
-		0405F2DE27396FD600A36484 /* DepartmentController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2DD27396FD600A36484 /* DepartmentController.swift */; };
 		0405F2E2273985A300A36484 /* BoolToString.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2E1273985A300A36484 /* BoolToString.swift */; };
 		0405F2E82739871C00A36484 /* DepartmListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2E72739871C00A36484 /* DepartmListView.swift */; };
 		0405F2EB2739938E00A36484 /* DepartmentCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2EA2739938E00A36484 /* DepartmentCreateAndUpdateOperationView.swift */; };
@@ -25,21 +24,38 @@
 		0405F2FA273A0AC500A36484 /* ModelToJSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2F9273A0AC500A36484 /* ModelToJSON.swift */; };
 		0405F2FD273A0B5D00A36484 /* ModelToJSONError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F2FC273A0B5D00A36484 /* ModelToJSONError.swift */; };
 		0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405F303273A22C900A36484 /* ActivityIndicator.swift */; };
+		042246C42760CBA800E45412 /* EmailAddressTextFieldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042246C32760CBA800E45412 /* EmailAddressTextFieldView.swift */; };
+		042246C62760CBB900E45412 /* PasswordTextFieldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042246C52760CBB900E45412 /* PasswordTextFieldView.swift */; };
+		042246C82760EDE500E45412 /* AuthController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042246C72760EDE500E45412 /* AuthController.swift */; };
+		042246CA27610F8900E45412 /* AuthAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042246C927610F8900E45412 /* AuthAPIService.swift */; };
+		042246CE276128B300E45412 /* PurchaseDefaultInitProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042246CD276128B300E45412 /* PurchaseDefaultInitProtocol.swift */; };
+		042246D027612D0A00E45412 /* Parent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042246CF27612D0A00E45412 /* Parent.swift */; };
 		044E8E62273ABD40003D7010 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044E8E61273ABD40003D7010 /* APIError.swift */; };
-		0473DB5F273C82B1000BF8C1 /* ProviderController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB5E273C82B1000BF8C1 /* ProviderController.swift */; };
 		0473DB64273CAA15000BF8C1 /* ProviderListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB63273CAA15000BF8C1 /* ProviderListView.swift */; };
 		0473DB66273CAAAF000BF8C1 /* ProviderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB65273CAAAF000BF8C1 /* ProviderView.swift */; };
 		0473DB68273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */; };
 		0473DB6A273CB599000BF8C1 /* UserDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB69273CB599000BF8C1 /* UserDocument.swift */; };
 		0473DB6E273CC910000BF8C1 /* MenuTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB6D273CC910000BF8C1 /* MenuTitle.swift */; };
-		0473DB70273CCC29000BF8C1 /* ArticleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0473DB6F273CCC29000BF8C1 /* ArticleController.swift */; };
+		0477EFCD2758038600A0D2C2 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0477EFCC2758038600A0D2C2 /* AuthView.swift */; };
+		0477EFCF2758048800A0D2C2 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0477EFCE2758048800A0D2C2 /* User.swift */; };
+		04790639275D37C800F06699 /* User+SignUp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04790638275D37C800F06699 /* User+SignUp.swift */; };
+		0479063B275D383900F06699 /* User+SignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479063A275D383900F06699 /* User+SignIn.swift */; };
+		0479064C275D7E8900F06699 /* AuthIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064B275D7E8900F06699 /* AuthIconView.swift */; };
+		0479064E275D7EFD00F06699 /* AuthSignInFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */; };
+		04790650275D7F4A00F06699 /* AuthSignUpFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */; };
+		04790652275D7F9800F06699 /* AuthFormButtonAndToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */; };
+		048BF1662746905000563E69 /* PurchaseController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF1652746905000563E69 /* PurchaseController.swift */; };
+		048BF1682746917E00563E69 /* PurchaseControllerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF1672746917E00563E69 /* PurchaseControllerProtocol.swift */; };
+		048BF16A274693BB00563E69 /* ModelProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF169274693BB00563E69 /* ModelProtocol.swift */; };
+		048BF1712746A32000563E69 /* ControllerError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF1702746A32000563E69 /* ControllerError.swift */; };
+		048D91C6276142E9000BBD72 /* AuthValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048D91C5276142E9000BBD72 /* AuthValidation.swift */; };
+		04BDFA0427619F0300BEAD7C /* LocalUserHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04BDFA0327619F0300BEAD7C /* LocalUserHelper.swift */; };
 		04D80DA0273BECE5000252DC /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80D9F273BECE5000252DC /* APIService.swift */; };
 		04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA1273BECF5000252DC /* APIProtocol.swift */; };
 		04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA3273BED6C000252DC /* MeasureUnit.swift */; };
 		04D80DA6273BEDE4000252DC /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA5273BEDE4000252DC /* Provider.swift */; };
 		04D80DA8273BEE1D000252DC /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA7273BEE1D000252DC /* Article.swift */; };
 		04D80DAA273BEE59000252DC /* PurchaseOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DA9273BEE59000252DC /* PurchaseOrder.swift */; };
-		04D80DAC273BF359000252DC /* MeasureUnitController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DAB273BF359000252DC /* MeasureUnitController.swift */; };
 		04D80DAF273BF6C7000252DC /* MeasureUnitListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DAE273BF6C7000252DC /* MeasureUnitListView.swift */; };
 		04D80DB1273BF82C000252DC /* MeasureUnitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB0273BF82C000252DC /* MeasureUnitView.swift */; };
 		04D80DB3273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB2273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift */; };
@@ -47,10 +63,8 @@
 		04F1E382273D3D380060DF63 /* ArticleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E381273D3D380060DF63 /* ArticleListView.swift */; };
 		04F1E384273D3D450060DF63 /* ArticleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E383273D3D450060DF63 /* ArticleView.swift */; };
 		04F1E386273D3F840060DF63 /* ArticleCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E385273D3F840060DF63 /* ArticleCreateAndUpdateOperationView.swift */; };
-		04F1E388273D418D0060DF63 /* Parent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E387273D418D0060DF63 /* Parent.swift */; };
 		04F1E38A273D44D20060DF63 /* RequiredMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E389273D44D20060DF63 /* RequiredMark.swift */; };
 		04F1E38C273D51AC0060DF63 /* PurchaseOrderListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E38B273D51AC0060DF63 /* PurchaseOrderListView.swift */; };
-		04F1E38E273D52000060DF63 /* PurchaseOrderController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E38D273D52000060DF63 /* PurchaseOrderController.swift */; };
 		04F1E390273D52B20060DF63 /* PurchaserOrderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E38F273D52B20060DF63 /* PurchaserOrderView.swift */; };
 		04F1E392273D52C00060DF63 /* PurchaseOrderCreateAndUpdateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E391273D52C00060DF63 /* PurchaseOrderCreateAndUpdateView.swift */; };
 		04F8C703273B4D8D0005F7EA /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F8C702273B4D8D0005F7EA /* MainMenuView.swift */; };
@@ -66,7 +80,6 @@
 		0405F2CB27396BEA00A36484 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0405F2CE27396BEA00A36484 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		0405F2D627396CDF00A36484 /* Department.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Department.swift; sourceTree = "<group>"; };
-		0405F2DD27396FD600A36484 /* DepartmentController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentController.swift; sourceTree = "<group>"; };
 		0405F2E1273985A300A36484 /* BoolToString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoolToString.swift; sourceTree = "<group>"; };
 		0405F2E72739871C00A36484 /* DepartmListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmListView.swift; sourceTree = "<group>"; };
 		0405F2EA2739938E00A36484 /* DepartmentCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepartmentCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
@@ -79,21 +92,38 @@
 		0405F2F9273A0AC500A36484 /* ModelToJSON.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelToJSON.swift; sourceTree = "<group>"; };
 		0405F2FC273A0B5D00A36484 /* ModelToJSONError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelToJSONError.swift; sourceTree = "<group>"; };
 		0405F303273A22C900A36484 /* ActivityIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityIndicator.swift; sourceTree = "<group>"; };
+		042246C32760CBA800E45412 /* EmailAddressTextFieldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailAddressTextFieldView.swift; sourceTree = "<group>"; };
+		042246C52760CBB900E45412 /* PasswordTextFieldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordTextFieldView.swift; sourceTree = "<group>"; };
+		042246C72760EDE500E45412 /* AuthController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthController.swift; sourceTree = "<group>"; };
+		042246C927610F8900E45412 /* AuthAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAPIService.swift; sourceTree = "<group>"; };
+		042246CD276128B300E45412 /* PurchaseDefaultInitProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseDefaultInitProtocol.swift; sourceTree = "<group>"; };
+		042246CF27612D0A00E45412 /* Parent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Parent.swift; sourceTree = "<group>"; };
 		044E8E61273ABD40003D7010 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
-		0473DB5E273C82B1000BF8C1 /* ProviderController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderController.swift; sourceTree = "<group>"; };
 		0473DB63273CAA15000BF8C1 /* ProviderListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderListView.swift; sourceTree = "<group>"; };
 		0473DB65273CAAAF000BF8C1 /* ProviderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderView.swift; sourceTree = "<group>"; };
 		0473DB67273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
 		0473DB69273CB599000BF8C1 /* UserDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDocument.swift; sourceTree = "<group>"; };
 		0473DB6D273CC910000BF8C1 /* MenuTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuTitle.swift; sourceTree = "<group>"; };
-		0473DB6F273CCC29000BF8C1 /* ArticleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleController.swift; sourceTree = "<group>"; };
+		0477EFCC2758038600A0D2C2 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		0477EFCE2758048800A0D2C2 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		04790638275D37C800F06699 /* User+SignUp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "User+SignUp.swift"; sourceTree = "<group>"; };
+		0479063A275D383900F06699 /* User+SignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "User+SignIn.swift"; sourceTree = "<group>"; };
+		0479064B275D7E8900F06699 /* AuthIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthIconView.swift; sourceTree = "<group>"; };
+		0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSignInFormView.swift; sourceTree = "<group>"; };
+		0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSignUpFormView.swift; sourceTree = "<group>"; };
+		04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFormButtonAndToggleView.swift; sourceTree = "<group>"; };
+		048BF1652746905000563E69 /* PurchaseController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseController.swift; sourceTree = "<group>"; };
+		048BF1672746917E00563E69 /* PurchaseControllerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseControllerProtocol.swift; sourceTree = "<group>"; };
+		048BF169274693BB00563E69 /* ModelProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelProtocol.swift; sourceTree = "<group>"; };
+		048BF1702746A32000563E69 /* ControllerError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerError.swift; sourceTree = "<group>"; };
+		048D91C5276142E9000BBD72 /* AuthValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthValidation.swift; sourceTree = "<group>"; };
+		04BDFA0327619F0300BEAD7C /* LocalUserHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalUserHelper.swift; sourceTree = "<group>"; };
 		04D80D9F273BECE5000252DC /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		04D80DA1273BECF5000252DC /* APIProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIProtocol.swift; sourceTree = "<group>"; };
 		04D80DA3273BED6C000252DC /* MeasureUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnit.swift; sourceTree = "<group>"; };
 		04D80DA5273BEDE4000252DC /* Provider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Provider.swift; sourceTree = "<group>"; };
 		04D80DA7273BEE1D000252DC /* Article.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Article.swift; sourceTree = "<group>"; };
 		04D80DA9273BEE59000252DC /* PurchaseOrder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseOrder.swift; sourceTree = "<group>"; };
-		04D80DAB273BF359000252DC /* MeasureUnitController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitController.swift; sourceTree = "<group>"; };
 		04D80DAE273BF6C7000252DC /* MeasureUnitListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitListView.swift; sourceTree = "<group>"; };
 		04D80DB0273BF82C000252DC /* MeasureUnitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitView.swift; sourceTree = "<group>"; };
 		04D80DB2273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureUnitCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
@@ -101,10 +131,8 @@
 		04F1E381273D3D380060DF63 /* ArticleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleListView.swift; sourceTree = "<group>"; };
 		04F1E383273D3D450060DF63 /* ArticleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleView.swift; sourceTree = "<group>"; };
 		04F1E385273D3F840060DF63 /* ArticleCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
-		04F1E387273D418D0060DF63 /* Parent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parent.swift; sourceTree = "<group>"; };
 		04F1E389273D44D20060DF63 /* RequiredMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequiredMark.swift; sourceTree = "<group>"; };
 		04F1E38B273D51AC0060DF63 /* PurchaseOrderListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseOrderListView.swift; sourceTree = "<group>"; };
-		04F1E38D273D52000060DF63 /* PurchaseOrderController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseOrderController.swift; sourceTree = "<group>"; };
 		04F1E38F273D52B20060DF63 /* PurchaserOrderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaserOrderView.swift; sourceTree = "<group>"; };
 		04F1E391273D52C00060DF63 /* PurchaseOrderCreateAndUpdateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseOrderCreateAndUpdateView.swift; sourceTree = "<group>"; };
 		04F8C702273B4D8D0005F7EA /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
@@ -168,11 +196,13 @@
 			isa = PBXGroup;
 			children = (
 				0405F2D627396CDF00A36484 /* Department.swift */,
+				042246CF27612D0A00E45412 /* Parent.swift */,
 				04D80DA3273BED6C000252DC /* MeasureUnit.swift */,
 				04D80DA5273BEDE4000252DC /* Provider.swift */,
 				04D80DA7273BEE1D000252DC /* Article.swift */,
 				04D80DA9273BEE59000252DC /* PurchaseOrder.swift */,
-				04F1E387273D418D0060DF63 /* Parent.swift */,
+				048BF169274693BB00563E69 /* ModelProtocol.swift */,
+				04790637275D37A300F06699 /* User */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -191,6 +221,7 @@
 		0405F2DB27396F2000A36484 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				0477EFC92758035A00A0D2C2 /* Auth */,
 				0473DB62273CA9CB000BF8C1 /* PurchaseOrder */,
 				0473DB61273CA9C5000BF8C1 /* Article */,
 				0473DB60273CA9BB000BF8C1 /* Provider */,
@@ -205,11 +236,11 @@
 		0405F2DC27396FB800A36484 /* Controller */ = {
 			isa = PBXGroup;
 			children = (
-				0405F2DD27396FD600A36484 /* DepartmentController.swift */,
-				04D80DAB273BF359000252DC /* MeasureUnitController.swift */,
-				0473DB5E273C82B1000BF8C1 /* ProviderController.swift */,
-				0473DB6F273CCC29000BF8C1 /* ArticleController.swift */,
-				04F1E38D273D52000060DF63 /* PurchaseOrderController.swift */,
+				048BF16F2746A31200563E69 /* Error */,
+				048BF1652746905000563E69 /* PurchaseController.swift */,
+				048BF1672746917E00563E69 /* PurchaseControllerProtocol.swift */,
+				042246C72760EDE500E45412 /* AuthController.swift */,
+				042246CD276128B300E45412 /* PurchaseDefaultInitProtocol.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -220,6 +251,8 @@
 				0405F2E1273985A300A36484 /* BoolToString.swift */,
 				04F8C70A273B533F0005F7EA /* Menu.swift */,
 				0473DB69273CB599000BF8C1 /* UserDocument.swift */,
+				048D91C5276142E9000BBD72 /* AuthValidation.swift */,
+				04BDFA0327619F0300BEAD7C /* LocalUserHelper.swift */,
 			);
 			path = Helper;
 			sourceTree = "<group>";
@@ -281,6 +314,7 @@
 			children = (
 				04D80D9F273BECE5000252DC /* APIService.swift */,
 				04D80DA1273BECF5000252DC /* APIProtocol.swift */,
+				042246C927610F8900E45412 /* AuthAPIService.swift */,
 			);
 			path = Service;
 			sourceTree = "<group>";
@@ -313,6 +347,38 @@
 				04F1E391273D52C00060DF63 /* PurchaseOrderCreateAndUpdateView.swift */,
 			);
 			path = PurchaseOrder;
+			sourceTree = "<group>";
+		};
+		0477EFC92758035A00A0D2C2 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				0477EFCC2758038600A0D2C2 /* AuthView.swift */,
+				0479064B275D7E8900F06699 /* AuthIconView.swift */,
+				0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */,
+				0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */,
+				04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */,
+				042246C32760CBA800E45412 /* EmailAddressTextFieldView.swift */,
+				042246C52760CBB900E45412 /* PasswordTextFieldView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		04790637275D37A300F06699 /* User */ = {
+			isa = PBXGroup;
+			children = (
+				0477EFCE2758048800A0D2C2 /* User.swift */,
+				04790638275D37C800F06699 /* User+SignUp.swift */,
+				0479063A275D383900F06699 /* User+SignIn.swift */,
+			);
+			path = User;
+			sourceTree = "<group>";
+		};
+		048BF16F2746A31200563E69 /* Error */ = {
+			isa = PBXGroup;
+			children = (
+				048BF1702746A32000563E69 /* ControllerError.swift */,
+			);
+			path = Error;
 			sourceTree = "<group>";
 		};
 		04D80DAD273BF5F8000252DC /* MeasureUnit */ = {
@@ -408,46 +474,60 @@
 				0473DB68273CAD6B000BF8C1 /* ProviderCreateAndUpdateOperationView.swift in Sources */,
 				04D80DB1273BF82C000252DC /* MeasureUnitView.swift in Sources */,
 				0405F304273A22C900A36484 /* ActivityIndicator.swift in Sources */,
+				0479064E275D7EFD00F06699 /* AuthSignInFormView.swift in Sources */,
 				0405F2F62739E7FA00A36484 /* JSONToModelError.swift in Sources */,
+				048BF1682746917E00563E69 /* PurchaseControllerProtocol.swift in Sources */,
 				0473DB6E273CC910000BF8C1 /* MenuTitle.swift in Sources */,
+				042246C42760CBA800E45412 /* EmailAddressTextFieldView.swift in Sources */,
+				04790639275D37C800F06699 /* User+SignUp.swift in Sources */,
+				04790650275D7F4A00F06699 /* AuthSignUpFormView.swift in Sources */,
 				0405F2CA27396BE600A36484 /* PurchaseView.swift in Sources */,
+				048BF1662746905000563E69 /* PurchaseController.swift in Sources */,
+				042246CE276128B300E45412 /* PurchaseDefaultInitProtocol.swift in Sources */,
+				042246CA27610F8900E45412 /* AuthAPIService.swift in Sources */,
 				04F1E386273D3F840060DF63 /* ArticleCreateAndUpdateOperationView.swift in Sources */,
 				04D80DB7273BFEB5000252DC /* StatusPicker.swift in Sources */,
-				04F1E388273D418D0060DF63 /* Parent.swift in Sources */,
 				0405F2C827396BE600A36484 /* PurchaseApp.swift in Sources */,
 				0405F2D727396CDF00A36484 /* Department.swift in Sources */,
 				04F1E392273D52C00060DF63 /* PurchaseOrderCreateAndUpdateView.swift in Sources */,
+				048BF16A274693BB00563E69 /* ModelProtocol.swift in Sources */,
+				0479063B275D383900F06699 /* User+SignIn.swift in Sources */,
 				04F8C705273B4DD60005F7EA /* LogoView.swift in Sources */,
 				0405F2F82739ED3F00A36484 /* HTTPMethods.swift in Sources */,
 				04D80DA0273BECE5000252DC /* APIService.swift in Sources */,
+				04BDFA0427619F0300BEAD7C /* LocalUserHelper.swift in Sources */,
+				042246C82760EDE500E45412 /* AuthController.swift in Sources */,
 				04F1E382273D3D380060DF63 /* ArticleListView.swift in Sources */,
-				0405F2DE27396FD600A36484 /* DepartmentController.swift in Sources */,
+				048D91C6276142E9000BBD72 /* AuthValidation.swift in Sources */,
+				04790652275D7F9800F06699 /* AuthFormButtonAndToggleView.swift in Sources */,
+				042246D027612D0A00E45412 /* Parent.swift in Sources */,
 				04D80DAF273BF6C7000252DC /* MeasureUnitListView.swift in Sources */,
 				0405F2E82739871C00A36484 /* DepartmListView.swift in Sources */,
 				04F1E38A273D44D20060DF63 /* RequiredMark.swift in Sources */,
 				0405F2FA273A0AC500A36484 /* ModelToJSON.swift in Sources */,
-				04F1E38E273D52000060DF63 /* PurchaseOrderController.swift in Sources */,
 				04F1E384273D3D450060DF63 /* ArticleView.swift in Sources */,
 				04D80DAA273BEE59000252DC /* PurchaseOrder.swift in Sources */,
 				0473DB6A273CB599000BF8C1 /* UserDocument.swift in Sources */,
 				044E8E62273ABD40003D7010 /* APIError.swift in Sources */,
 				04D80DA8273BEE1D000252DC /* Article.swift in Sources */,
 				0405F2EF2739E1FC00A36484 /* APIResources.swift in Sources */,
-				04D80DAC273BF359000252DC /* MeasureUnitController.swift in Sources */,
+				048BF1712746A32000563E69 /* ControllerError.swift in Sources */,
+				0477EFCF2758048800A0D2C2 /* User.swift in Sources */,
 				04D80DA6273BEDE4000252DC /* Provider.swift in Sources */,
 				0473DB64273CAA15000BF8C1 /* ProviderListView.swift in Sources */,
-				0473DB70273CCC29000BF8C1 /* ArticleController.swift in Sources */,
 				04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */,
 				04F8C70B273B533F0005F7EA /* Menu.swift in Sources */,
+				0479064C275D7E8900F06699 /* AuthIconView.swift in Sources */,
 				04D80DB3273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift in Sources */,
 				0405F2E2273985A300A36484 /* BoolToString.swift in Sources */,
+				0477EFCD2758038600A0D2C2 /* AuthView.swift in Sources */,
 				04F1E38C273D51AC0060DF63 /* PurchaseOrderListView.swift in Sources */,
 				0405F2F12739E21400A36484 /* APIRequest.swift in Sources */,
+				042246C62760CBB900E45412 /* PasswordTextFieldView.swift in Sources */,
 				04F8C703273B4D8D0005F7EA /* MainMenuView.swift in Sources */,
 				0405F2FD273A0B5D00A36484 /* ModelToJSONError.swift in Sources */,
 				04F8C707273B4E8F0005F7EA /* DepartmentView.swift in Sources */,
 				04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */,
-				0473DB5F273C82B1000BF8C1 /* ProviderController.swift in Sources */,
 				0405F2ED2739E04C00A36484 /* BaseURL.swift in Sources */,
 				0473DB66273CAAAF000BF8C1 /* ProviderView.swift in Sources */,
 				0405F2F32739E76500A36484 /* JSONToModel.swift in Sources */,

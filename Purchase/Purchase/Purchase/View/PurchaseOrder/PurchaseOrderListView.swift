@@ -9,21 +9,21 @@ import SwiftUI
 
 struct PurchaseOrderListView: View {
     
-    @StateObject var articleController = ArticleController()
-    @StateObject var measureUnitController = MeasureUnitController()
-    @StateObject var purchaseOrderController = PurchaseOrderController()
+    @StateObject var articleController = PurchaseController<Article>()
+    @StateObject var measureUnitController = PurchaseController<MeasureUnit>()
+    @StateObject var purchaseOrderController = PurchaseController<PurchaseOrder>()
     
     var body: some View {
         
         List {
-            ForEach(purchaseOrderController.purchaseOrders, id:\.id) { order in
+            ForEach(purchaseOrderController.data, id:\.id) { order in
                 NavigationLink {
                     PurchaseOrderCreateAndUpdateView(purchaseOrderController: purchaseOrderController, articleController: articleController, measureUnitController: measureUnitController, purchaseOrder: order)
                         .navigationTitle("Modificar")
                 } label: {
                     PurchaserOrderView(purchaseOrder: order,
-                                       mesuare: self.measureUnitController.measureUnits.filter({$0.id == order.measureUnitID.id}).map({$0.description}).first ?? "N/A",
-                                       article: self.articleController.articles.filter({$0.id == order.articleID.id}).map({$0.description}).first ?? "N/A")
+                                       mesuare: self.measureUnitController.data.filter({$0.id == order.measureUnitID.id}).map({$0.description}).first ?? "N/A",
+                                       article: self.articleController.data.filter({$0.id == order.articleID.id}).map({$0.description}).first ?? "N/A")
                 }
             }
             .onDelete(perform: purchaseOrderController.remove)

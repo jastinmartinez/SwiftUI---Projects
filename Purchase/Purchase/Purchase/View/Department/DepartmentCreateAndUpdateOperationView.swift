@@ -11,7 +11,7 @@ struct DepartmentCreateAndUpdateOperationView: View {
     
     @Environment(\.presentationMode) var presentation
     
-    @StateObject var departmentController: DepartmentController
+    @StateObject var departmentController: PurchaseController<Department>
     
     @State var department: Department = Department(id: nil, name: "", state: true)
     
@@ -88,6 +88,6 @@ struct DepartmentCreateAndUpdateOperationView: View {
 
 struct DepartmetCreateAndUpdateOperation_Previews: PreviewProvider {
     static var previews: some View {
-        DepartmentCreateAndUpdateOperationView(departmentController: DepartmentController())
+        DepartmentCreateAndUpdateOperationView(departmentController:  PurchaseController<Department>() )
     }
 }

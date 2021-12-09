@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Article: Codable {
+struct Article: ModelProtocol, Codable {
     
     var id: Int?
     

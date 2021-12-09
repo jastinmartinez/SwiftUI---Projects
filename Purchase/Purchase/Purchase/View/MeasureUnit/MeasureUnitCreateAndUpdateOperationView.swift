@@ -12,7 +12,7 @@ struct MeasureUnitCreateAndUpdateOperationView: View {
     
     @Environment(\.presentationMode) private var presentation
     
-    @StateObject var measureUnitController: MeasureUnitController
+    @StateObject var measureUnitController: PurchaseController<MeasureUnit>
     
     @State var measureUnit: MeasureUnit = MeasureUnit(id: nil, description: "", state: true)
     
@@ -97,6 +97,6 @@ struct MeasureUnitCreateAndUpdateOperationView: View {
 
 struct MeasureUnitCreateAndUpdateOperationView_Previews: PreviewProvider {
     static var previews: some View {
-        MeasureUnitCreateAndUpdateOperationView(measureUnitController: MeasureUnitController(), measureUnit: MeasureUnit(id: nil, description: "", state: true))
+        MeasureUnitCreateAndUpdateOperationView(measureUnitController: PurchaseController<MeasureUnit>(), measureUnit: MeasureUnit(id: nil, description: "", state: true))
     }
 }

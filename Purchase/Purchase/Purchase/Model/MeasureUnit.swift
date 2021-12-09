@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct MeasureUnit: Codable {
+struct MeasureUnit: ModelProtocol,Codable {
     
     var id: Int?
     
