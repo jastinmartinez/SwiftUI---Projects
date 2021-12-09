@@ -21,4 +21,6 @@ protocol PurchaseControllerProtocol {
     func remove(at index: IndexSet)
     
     func getAll()
+    
+    
 }

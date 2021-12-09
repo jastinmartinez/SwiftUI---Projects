@@ -10,8 +10,15 @@ import SwiftUI
 struct PurchaseView: View {
     
     var body: some View {
-        
-        AuthView()
+    
+        if UserDefaults.standard.bool(forKey: "userInfo") {
+            
+            MainMenuView()
+        }
+        else {
+            
+            AuthView()
+        }
     }
 }
 

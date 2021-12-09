@@ -29,7 +29,7 @@ struct ArticleCreateAndUpdateOperationView: View {
         
         isCliked = false
     }
-    
+     
     var body: some View {
         
         Form {

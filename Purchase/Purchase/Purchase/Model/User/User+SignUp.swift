@@ -8,8 +8,8 @@
 import Foundation
 
 extension User {
-
-    struct SignUp: Encodable {
+    
+    struct SignUp: Codable, Equatable {
         
         var name: String
         
@@ -19,4 +19,10 @@ extension User {
         
         var confirmPassword: String
     }
+}
+
+
+extension User.SignUp {
+    
+    var isPasswordSame: Bool { password == confirmPassword }
 }

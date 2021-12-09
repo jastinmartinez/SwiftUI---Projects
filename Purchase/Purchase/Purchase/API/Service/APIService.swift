@@ -11,10 +11,9 @@ import Foundation
 class APIService<E : Codable>: APIProtocol
 {
     
-    private var apiResource: APIResources
+    private(set) var apiResource: APIResources
     
     typealias T = E
-    
     
     init (apiResource: APIResources)
     {

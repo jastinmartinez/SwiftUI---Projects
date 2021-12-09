@@ -8,7 +8,7 @@
 import Foundation
 
 
-class PurchaseController<T: ModelProtocol > : ObservableObject , PurchaseControllerProtocol {
+class PurchaseController<T: ModelProtocol > : ObservableObject , PurchaseControllerProtocol,PurchaseDefaultInitProtocol {
     
     @Published private (set) var data = [T]()
     
@@ -31,13 +31,6 @@ class PurchaseController<T: ModelProtocol > : ObservableObject , PurchaseControl
             
             print(error)
         }
-    }
-    
-    fileprivate func initResource() throws -> APIResources {
-        
-        guard let apiResource = APIResources.init(rawValue: String(describing: T.self)) else { throw ControlleError.InvalidModelToApiResource }
-        
-        return apiResource
     }
     
     func create(_ model: T, notify: @escaping notifyChangesToView) {

@@ -15,24 +15,30 @@ struct AuthView: View {
     
     @State private var isSignUp:Bool = false
     
-    var body: some View {
+    @State private var showMainView: Bool = false
     
+    var body: some View {
+        
         VStack {
             
             AuthIconView()
             
             if !isSignUp {
                 
-                AuthSignInFormView(userSignIn: userSignIn)
+                AuthSignInFormView(userSignIn: $userSignIn)
             }
             else {
                 
-                AuthSignUpFormView(userSignUp: userSignUp)
+                AuthSignUpFormView(userSignUp: $userSignUp)
             }
             
-            AuthFormButtonAndToggleView(isSignUp: $isSignUp)
+            AuthFormButtonAndToggleView(isSignUp: $isSignUp, isAuthenticationSuccesful: $showMainView,signUp: userSignUp,signIn: userSignIn)
+        }
+        .fullScreenCover(isPresented: $showMainView) {
+            MainMenuView()
         }
     }
+    
 }
 
 struct AuthView_Previews: PreviewProvider {

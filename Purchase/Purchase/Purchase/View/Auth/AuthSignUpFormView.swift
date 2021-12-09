@@ -9,32 +9,26 @@ import SwiftUI
 
 struct AuthSignUpFormView: View {
     
-    @State var userSignUp: User.SignUp
+    @Binding var userSignUp: User.SignUp
     
     var body: some View {
         
         VStack {
-        
-            TextField("Correo",text: $userSignUp.email)
-                .keyboardType(.emailAddress)
-                .padding()
-               
+            
+            EmailAddressTextFieldView(emailAddress: $userSignUp.email)
             Divider()
-    
+            
             TextField("Nombre",text: $userSignUp.name)
                 .keyboardType(.namePhonePad)
                 .padding()
-               
             Divider()
-            SecureField("Contraseña",text: $userSignUp.password)
-                .padding()
-               
             
+            PasswordTextFieldView(password: $userSignUp.password)
             Divider()
-            SecureField("Confirmar Contraseña",text: $userSignUp.confirmPassword)
-                .padding()
+            
+            PasswordTextFieldView(password: $userSignUp.confirmPassword)
             Divider()
-               
+            
         }
         .padding()
     }
@@ -42,6 +36,6 @@ struct AuthSignUpFormView: View {
 
 struct AuthSignUpFormView_Previews: PreviewProvider {
     static var previews: some View {
-        AuthSignUpFormView(userSignUp: User.SignUp(name: "", email: "" ,password: "",confirmPassword: ""))
+        AuthSignUpFormView(userSignUp: .constant( User.SignUp(name: "", email: "" ,password: "",confirmPassword: "")))
     }
 }

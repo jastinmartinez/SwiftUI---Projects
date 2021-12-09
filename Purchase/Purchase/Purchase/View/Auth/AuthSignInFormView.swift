@@ -9,21 +9,18 @@ import SwiftUI
 
 struct AuthSignInFormView: View {
     
-    @State var userSignIn: User.SignIn
+    @Binding var userSignIn: User.SignIn
     
     var body: some View {
         
         VStack {
             
-            TextField("Correo",text: $userSignIn.email)
-                .keyboardType(.emailAddress)
-                .padding()
+            EmailAddressTextFieldView(emailAddress: $userSignIn.email)
         
             Divider()
             
-            SecureField("Contraseña",text: $userSignIn.password)
-                .padding()
-               
+            PasswordTextFieldView(password: $userSignIn.password)
+            
             Divider()
         }
         .padding()
@@ -32,6 +29,6 @@ struct AuthSignInFormView: View {
 
 struct AuthSignInFormView_Previews: PreviewProvider {
     static var previews: some View {
-        AuthSignInFormView(userSignIn: User.SignIn(email: "", password: ""))
+        AuthSignInFormView(userSignIn: .constant( User.SignIn(email: "", password: "")))
     }
 }

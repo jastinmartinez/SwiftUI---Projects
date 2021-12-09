@@ -10,13 +10,16 @@ import Foundation
 
 protocol APIProtocol {
     
-    associatedtype T
+  associatedtype T
     
-    func getAll(completion: @escaping ([T]) -> ())
+  associatedtype W
     
-    func create(model: T,completion: @escaping (T) -> ())
+    func getAll(completion: @escaping ([W]) -> ())
+    
+    func create(model: T,completion: @escaping (W) -> ())
     
     func update(model: T,completion: @escaping (Bool) -> ())
     
     func remove(model: T,completion: @escaping (Bool) -> ())
 }
+

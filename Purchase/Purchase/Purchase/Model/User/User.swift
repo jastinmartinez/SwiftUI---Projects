@@ -7,10 +7,10 @@
 
 import Foundation
 
-struct User : Decodable {
+struct User : Codable, ModelProtocol {
     
     
-    let id: Int?
+    var id: Int?
     
     let name: String
     

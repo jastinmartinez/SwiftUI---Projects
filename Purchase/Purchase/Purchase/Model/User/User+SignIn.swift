@@ -9,7 +9,7 @@ import Foundation
 
 extension User {
     
-    struct SignIn: Encodable {
+    struct SignIn: Codable {
         
         var email: String
         

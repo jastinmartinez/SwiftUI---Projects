@@ -18,4 +18,9 @@ enum APIResources: String {
     case MeasureUnit
     
     case Provider
+    
+    case SignUp = "Auth/SignUp"
+    
+    case SignIn = "Auth/SignIn"
+    
 }

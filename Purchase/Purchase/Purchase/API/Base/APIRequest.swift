@@ -8,8 +8,6 @@
 import Foundation
 import SwiftUI
 
-
-
 final class APIRequest {
     
     typealias dataTaskResult = ((Data?, URLResponse?,Error?) -> ())
