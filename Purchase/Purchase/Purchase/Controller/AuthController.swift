@@ -10,12 +10,12 @@ import Foundation
 class AuthController : ObservableObject  {
     
     func authenticateSignUp(_ model: User.SignUp, completion: @escaping (Bool) -> () ) {
-        
+    
         AuthAPIService<User.SignUp>(apiResource: .SignUp).create(model: model) { user in
             
             if user.id != nil {
                 
-                LocalUserHelper().saveUser(user: user, withPassword: model.password)
+                UserHelper().saveUser(user: user, withPassword: model.password)
             }
             completion(user.id != nil)
         }
@@ -23,7 +23,15 @@ class AuthController : ObservableObject  {
     
     func authenticateSignIn(_ model: User.SignIn, completion: @escaping (Bool) -> () ) {
         
+        UserHelper().temporaryUserInfoHolder(user: model)
+        
         AuthAPIService<User.SignIn>(apiResource: .SignIn).create(model: model) { user in
+            
+            if user.id != nil {
+                
+                UserHelper().saveUser(user: user, withPassword: model.password)
+                
+            }
             
             completion(user.id != nil)
             

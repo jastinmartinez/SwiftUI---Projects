@@ -11,13 +11,21 @@ struct PasswordTextFieldView: View {
     
     @State private var validationDescription: String = ""
     
+    var passwordTitle: String = "Contraseña"
+
     @Binding var password: String
     
     var body: some View {
         
-        SecureField("Contraseña",text: $password)
+        SecureField(passwordTitle,text: $password)
             .padding()
-            .onChange(of: password){ validationDescription = AuthValidation().passwordValidation($0) }
+            .onChange(of: password){
+                
+                password = $0.trimmingCharacters(in: .whitespaces)
+                
+                validationDescription = AuthValidation().passwordValidation($0)
+                
+            }
         
         if !validationDescription.isEmpty {
             
@@ -29,6 +37,6 @@ struct PasswordTextFieldView: View {
 
 struct PasswordTextFieldView_Previews: PreviewProvider {
     static var previews: some View {
-        PasswordTextFieldView( password: .constant(""))
+        PasswordTextFieldView( passwordTitle: "", password: .constant("") )
     }
 }

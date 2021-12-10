@@ -13,16 +13,10 @@ extension User {
         
         var name: String
         
-        var email: String
+        var email: String 
         
         var password: String
         
         var confirmPassword: String
     }
-}
-
-
-extension User.SignUp {
-    
-    var isPasswordSame: Bool { password == confirmPassword }
 }

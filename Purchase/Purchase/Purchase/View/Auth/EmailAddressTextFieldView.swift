@@ -20,7 +20,12 @@ struct EmailAddressTextFieldView: View {
             TextField("Correo",text: $emailAddress)
                 .keyboardType(.emailAddress)
                 .padding()
-                .onChange(of: emailAddress) { isAValidationRequired = !AuthValidation().emailValidation(email: $0) }
+                .onChange(of: emailAddress) {
+                    
+                    emailAddress = $0.trimmingCharacters(in: .whitespaces).lowercased()
+                    
+                    isAValidationRequired = !AuthValidation().emailValidation(email: $0)
+                }
             
             if isAValidationRequired {
                 

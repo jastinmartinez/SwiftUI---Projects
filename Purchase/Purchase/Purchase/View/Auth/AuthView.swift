@@ -15,7 +15,7 @@ struct AuthView: View {
     
     @State private var isSignUp:Bool = false
     
-    @State private var showMainView: Bool = false
+    @State private var isAuthenticationSuccesful: Bool = false
     
     var body: some View {
         
@@ -32,9 +32,10 @@ struct AuthView: View {
                 AuthSignUpFormView(userSignUp: $userSignUp)
             }
             
-            AuthFormButtonAndToggleView(isSignUp: $isSignUp, isAuthenticationSuccesful: $showMainView,signUp: userSignUp,signIn: userSignIn)
+            AuthFormButtonAndToggleView(authFormButtonAndToggleProperties: AuthFormButtonAndToggleProperties(  isSignUp: $isSignUp,  isAuthenticationSuccesful: $isAuthenticationSuccesful, signUp: userSignUp,signIn: userSignIn))
         }
-        .fullScreenCover(isPresented: $showMainView) {
+        .fullScreenCover(isPresented: $isAuthenticationSuccesful) {
+            
             MainMenuView()
         }
     }

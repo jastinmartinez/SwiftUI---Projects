@@ -9,6 +9,8 @@ import SwiftUI
 
 struct MainMenuView: View {
     
+    @Environment(\.presentationMode) var presentation
+    @State private var userInfo = UserHelper().userInfo
     var body: some View {
         
         NavigationView {
@@ -19,11 +21,11 @@ struct MainMenuView: View {
                     .ignoresSafeArea()
                 
                 HStack {
-                   Spacer()
-                   
+                    Spacer()
+                    
                     VStack(alignment: .leading,spacing: 15) {
                         
-        
+                        
                         NavigationLink(destination: PurchaseOrderListView().navigationTitle("Ordernes de Compra")) {
                             LogoView(name: "purchaseorder")
                             MenuTitle(name: "Orden de compra")
@@ -60,19 +62,35 @@ struct MainMenuView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                   Text("Compras")
+                    Text("Compras")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack {
-                        Image(systemName: "person.fill")
-                            .foregroundColor(.blue)
-                        Text("Bienvenido Jastin!!").font(.headline)
+                    
+                    VStack(alignment: .trailing) {
                         
+                        Spacer()
+                        
+                        HStack {
+                            
+                            Button("Cerrar") {
+                                
+                                UserHelper().removeUser()
+                                presentation.wrappedValue.dismiss()
+                            }
+                            .foregroundColor(.red)
+                        }
+                        
+                        Image(systemName: "person.fill")
+                            .resizable()
+                            .frame(width: 20, height: 20)
+                            .foregroundColor(.blue)
+                        
+                        Text("Bienvenido \(userInfo?.name ?? "Not Authorized") !!").font(.footnote)
+                        Text("\(userInfo?.email ?? "Not Authorized")").font(.footnote)
                     }
                 }
-                
             }
         }
     }
