@@ -9,16 +9,14 @@ import SwiftUI
 
 struct PurchaseView: View {
     
+    @State private var userHelp: Bool = UserHelper().userInfo != nil
+    
     var body: some View {
     
-        if UserHelper.userInfo != nil {
+        AuthView().fullScreenCover(isPresented: $userHelp) {
             
             MainMenuView()
-        }
-        else {
-            
-            AuthView()
-        }
+        } 
     }
 }
 

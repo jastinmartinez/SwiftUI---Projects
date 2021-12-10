@@ -9,25 +9,15 @@ import SwiftUI
 
 struct AuthFormButtonAndToggleView: View {
     
-    @Binding var isSignUp: Bool
+    var authFormButtonAndToggleProperties: AuthFormButtonAndToggleProperties
     
-    @Binding var isAuthenticationSuccesful: Bool
-    
-    var authController =  AuthController()
-    
-    var signUp: User.SignUp
-    
-    var signIn: User.SignIn
+    private (set) var authController:AuthController =  AuthController()
     
     var body: some View {
         
-        let buttonTitle = !isSignUp ? "Iniciar Sesion" : "Regitrarse"
-        
-        let toggleTitile = isSignUp ? "Iniciar Sesion?" : "Regitrarse?"
-        
         VStack {
             
-            Toggle(toggleTitile,isOn: $isSignUp)
+            Toggle(authFormButtonAndToggleProperties.isSignUp ? "Iniciar Sesion?" : "Regitrarse?",isOn: authFormButtonAndToggleProperties.$isSignUp)
                 .foregroundColor(.secondary)
                 .padding()
             
@@ -35,20 +25,16 @@ struct AuthFormButtonAndToggleView: View {
                 
                 Spacer()
                 
-                Button(buttonTitle) {
+                Button(!authFormButtonAndToggleProperties.isSignUp ? "Iniciar Sesion" : "Regitrarse" ) {
                     
-                    if isSignUp {
+                    if authFormButtonAndToggleProperties.isSignUp {
                         
-                        if   AuthValidation().emailValidation(email: signUp.email) && AuthValidation().passwordValidation(signUp.password).isEmpty  && signUp.isPasswordSame {
-                            
-                            authController.authenticateSignUp(signUp) { isAuthenticationSuccesful = $0 }
-                        }
+                        authController.authenticateSignUp(authFormButtonAndToggleProperties.signUp) { authFormButtonAndToggleProperties.isAuthenticationSuccesful = $0 }
+                        
                     }
                     else {
-                        if   AuthValidation().emailValidation(email: signUp.email) && !AuthValidation().passwordValidation(signUp.password).isEmpty  {
-                         
-                            authController.authenticateSignIn(signIn) { isAuthenticationSuccesful = $0 }
-                        }
+                        
+                        authController.authenticateSignIn(authFormButtonAndToggleProperties.signIn) { authFormButtonAndToggleProperties.isAuthenticationSuccesful = $0 }
                     }
                 }
                 Spacer()
@@ -61,6 +47,7 @@ struct AuthFormButtonAndToggleView: View {
 struct AuthFormButtonAndToggle_Previews: PreviewProvider {
     static var previews: some View {
         
-        AuthFormButtonAndToggleView(isSignUp: .constant(false), isAuthenticationSuccesful: .constant(false), signUp:User.SignUp(name: "", email: "" ,password: "",confirmPassword: "") ,signIn: User.SignIn(email: "", password: ""))
+        AuthFormButtonAndToggleView(authFormButtonAndToggleProperties: AuthFormButtonAndToggleProperties(isSignUp: .constant(false), isAuthenticationSuccesful: .constant(false), signUp:User.SignUp(name: "", email: "" ,password: "",confirmPassword: "") ,signIn: User.SignIn(email: "", password: "")))
     }
 }
+

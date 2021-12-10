@@ -26,7 +26,13 @@ struct AuthSignUpFormView: View {
             PasswordTextFieldView(password: $userSignUp.password)
             Divider()
             
-            PasswordTextFieldView(password: $userSignUp.confirmPassword)
+            PasswordTextFieldView(passwordTitle: "Confirmar Contraseña", password: $userSignUp.confirmPassword)
+            
+            if userSignUp.password != userSignUp.confirmPassword {
+                
+                Text("Contraseña no coinciden")
+                    .foregroundColor(.red)
+            }
             Divider()
             
         }

@@ -44,6 +44,7 @@
 		0479064E275D7EFD00F06699 /* AuthSignInFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */; };
 		04790650275D7F4A00F06699 /* AuthSignUpFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */; };
 		04790652275D7F9800F06699 /* AuthFormButtonAndToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */; };
+		0479FFF12762C621006DE9B6 /* AuthFormButtonAndToggleProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479FFF02762C621006DE9B6 /* AuthFormButtonAndToggleProperties.swift */; };
 		048B80CF2762730F0089D313 /* UserInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048B80CE2762730F0089D313 /* UserInfo.swift */; };
 		048B80D1276277730089D313 /* RealmHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048B80D0276277730089D313 /* RealmHelper.swift */; };
 		048BF1662746905000563E69 /* PurchaseController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048BF1652746905000563E69 /* PurchaseController.swift */; };
@@ -115,6 +116,7 @@
 		0479064D275D7EFD00F06699 /* AuthSignInFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSignInFormView.swift; sourceTree = "<group>"; };
 		0479064F275D7F4A00F06699 /* AuthSignUpFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSignUpFormView.swift; sourceTree = "<group>"; };
 		04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFormButtonAndToggleView.swift; sourceTree = "<group>"; };
+		0479FFF02762C621006DE9B6 /* AuthFormButtonAndToggleProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFormButtonAndToggleProperties.swift; sourceTree = "<group>"; };
 		048B80CE2762730F0089D313 /* UserInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInfo.swift; sourceTree = "<group>"; };
 		048B80D0276277730089D313 /* RealmHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealmHelper.swift; sourceTree = "<group>"; };
 		048BF1652746905000563E69 /* PurchaseController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseController.swift; sourceTree = "<group>"; };
@@ -371,6 +373,7 @@
 				04790651275D7F9800F06699 /* AuthFormButtonAndToggleView.swift */,
 				042246C32760CBA800E45412 /* EmailAddressTextFieldView.swift */,
 				042246C52760CBB900E45412 /* PasswordTextFieldView.swift */,
+				0479FFF02762C621006DE9B6 /* AuthFormButtonAndToggleProperties.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -580,6 +583,7 @@
 				04F1E38A273D44D20060DF63 /* RequiredMark.swift in Sources */,
 				0405F2FA273A0AC500A36484 /* ModelToJSON.swift in Sources */,
 				04F1E384273D3D450060DF63 /* ArticleView.swift in Sources */,
+				0479FFF12762C621006DE9B6 /* AuthFormButtonAndToggleProperties.swift in Sources */,
 				04D80DAA273BEE59000252DC /* PurchaseOrder.swift in Sources */,
 				0473DB6A273CB599000BF8C1 /* UserDocument.swift in Sources */,
 				044E8E62273ABD40003D7010 /* APIError.swift in Sources */,

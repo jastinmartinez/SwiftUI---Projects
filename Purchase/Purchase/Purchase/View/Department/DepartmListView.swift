@@ -16,7 +16,7 @@ struct DepartmListView: View {
         List {
             ForEach(departmentController.data, id: \.id ) { department in
                 
-                NavigationLink(destination: DepartmentCreateAndUpdateOperationView(departmentController: departmentController,department: department).navigationTitle("Nuevo")) {
+                NavigationLink(destination: DepartmentCreateAndUpdateOperationView(departmentController: departmentController,department: department).navigationTitle("Modificar")) {
                     
                     DepartmentView(department: department)
                 }
@@ -30,7 +30,7 @@ struct DepartmListView: View {
         }
         .navigationTitle("Departamentos")
         .toolbar {
-            NavigationLink(destination: DepartmentCreateAndUpdateOperationView(departmentController: departmentController).navigationTitle("Modificar")) {
+            NavigationLink(destination: DepartmentCreateAndUpdateOperationView(departmentController: departmentController).navigationTitle("Nuevo")) {
                 Text("Nuevo")
             }
         }
