@@ -16,11 +16,11 @@ final class APIRequest {
         
         let apiResourceHandler  = ApiResourceHandlerType(apiResource: resource)
         
-        if apiResourceHandler ==  .AccountableSeatIntegration {
+        if apiResourceHandler ==  .AccountableSeatIntegration || apiResourceHandler == .AccountableIntegrationWithParam  {
             
             requestSession(request: urlRequest(url:  BaseURL.AccountableSeat.appendingPathComponent(resource.rawValue), httpMethod: .GET, apiResourceType: apiResourceHandler), completion: completion)
         }
-        else {
+        else  {
             requestSession(request: urlRequest(url:  BaseURL.Purchase.appendingPathComponent(resource.rawValue), httpMethod: .GET, apiResourceType: apiResourceHandler), completion: completion)
         }
     }
@@ -45,8 +45,14 @@ final class APIRequest {
         URLSession.shared.dataTask(with: request) { data, response, error in DispatchQueue.main.async { completion(data,response,error) } }.resume()
     }
     
-    
     private func urlRequest(url: URL, httpMethod: HTTPMethods, body: Data? = nil, apiResourceType: APIResourceType) -> URLRequest {
+        
+        var url = url
+        
+        if apiResourceType == .AccountableIntegrationWithParam {
+            
+            url.appendQueryItem(name: "id", value: "350")
+        }
         
         var request = URLRequest(url: url)
         
@@ -86,7 +92,7 @@ final class APIRequest {
         case .SignUp:
             return .UnAuthorized
         case .AccountableSeatList:
-            return .AccountableSeatIntegration
+            return .AccountableIntegrationWithParam
         case .AccountableSeatRegister:
             return .AccountableSeatIntegration
         }
@@ -99,6 +105,8 @@ final class APIRequest {
         case UnAuthorized
         
         case AccountableSeatIntegration
+        
+        case AccountableIntegrationWithParam
     }
     
 }

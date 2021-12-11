@@ -51,10 +51,7 @@ struct MainMenuView: View {
                             MenuTitle(name: "Departamento")
                         }
                         
-                        NavigationLink(destination: AccountableSeatView().navigationTitle("Asientos Contables")) {
-                            LogoView(name: "accountingSeat")
-                            MenuTitle(name: "Asientos Contables")
-                        }
+                      
                     }
                     Spacer()
                     Spacer()

@@ -65,8 +65,8 @@
 		04D80DB7273BFEB5000252DC /* StatusPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D80DB6273BFEB5000252DC /* StatusPicker.swift */; };
 		04EB594F2764F40C002EF618 /* AccoutableSeat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04EB594E2764F40C002EF618 /* AccoutableSeat.swift */; };
 		04EB59512765052A002EF618 /* AccountableSeatAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04EB59502765052A002EF618 /* AccountableSeatAPIService.swift */; };
-		04EB595427650986002EF618 /* AccountableSeatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04EB595327650986002EF618 /* AccountableSeatView.swift */; };
 		04EB595627650A14002EF618 /* AccountableSeatController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04EB595527650A14002EF618 /* AccountableSeatController.swift */; };
+		04EB59582765307F002EF618 /* URL+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04EB59572765307F002EF618 /* URL+.swift */; };
 		04F1E382273D3D380060DF63 /* ArticleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E381273D3D380060DF63 /* ArticleListView.swift */; };
 		04F1E384273D3D450060DF63 /* ArticleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E383273D3D450060DF63 /* ArticleView.swift */; };
 		04F1E386273D3F840060DF63 /* ArticleCreateAndUpdateOperationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F1E385273D3F840060DF63 /* ArticleCreateAndUpdateOperationView.swift */; };
@@ -141,8 +141,8 @@
 		04D80DB6273BFEB5000252DC /* StatusPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPicker.swift; sourceTree = "<group>"; };
 		04EB594E2764F40C002EF618 /* AccoutableSeat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccoutableSeat.swift; sourceTree = "<group>"; };
 		04EB59502765052A002EF618 /* AccountableSeatAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountableSeatAPIService.swift; sourceTree = "<group>"; };
-		04EB595327650986002EF618 /* AccountableSeatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountableSeatView.swift; sourceTree = "<group>"; };
 		04EB595527650A14002EF618 /* AccountableSeatController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountableSeatController.swift; sourceTree = "<group>"; };
+		04EB59572765307F002EF618 /* URL+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URL+.swift"; sourceTree = "<group>"; };
 		04F1E381273D3D380060DF63 /* ArticleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleListView.swift; sourceTree = "<group>"; };
 		04F1E383273D3D450060DF63 /* ArticleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleView.swift; sourceTree = "<group>"; };
 		04F1E385273D3F840060DF63 /* ArticleCreateAndUpdateOperationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleCreateAndUpdateOperationView.swift; sourceTree = "<group>"; };
@@ -243,7 +243,6 @@
 		0405F2DB27396F2000A36484 /* View */ = {
 			isa = PBXGroup;
 			children = (
-				04EB59522765094B002EF618 /* AccountableSeat */,
 				0477EFC92758035A00A0D2C2 /* Auth */,
 				0473DB62273CA9CB000BF8C1 /* PurchaseOrder */,
 				0473DB61273CA9C5000BF8C1 /* Article */,
@@ -320,6 +319,7 @@
 				0405F2EC2739E04C00A36484 /* BaseURL.swift */,
 				0405F2EE2739E1FC00A36484 /* APIResources.swift */,
 				0405F2F02739E21400A36484 /* APIRequest.swift */,
+				04EB59572765307F002EF618 /* URL+.swift */,
 			);
 			path = Base;
 			sourceTree = "<group>";
@@ -417,14 +417,6 @@
 				04D80DB2273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift */,
 			);
 			path = MeasureUnit;
-			sourceTree = "<group>";
-		};
-		04EB59522765094B002EF618 /* AccountableSeat */ = {
-			isa = PBXGroup;
-			children = (
-				04EB595327650986002EF618 /* AccountableSeatView.swift */,
-			);
-			path = AccountableSeat;
 			sourceTree = "<group>";
 		};
 		04F8C701273B4D830005F7EA /* Main */ = {
@@ -616,7 +608,6 @@
 				04D80DA6273BEDE4000252DC /* Provider.swift in Sources */,
 				0473DB64273CAA15000BF8C1 /* ProviderListView.swift in Sources */,
 				04D80DA2273BECF5000252DC /* APIProtocol.swift in Sources */,
-				04EB595427650986002EF618 /* AccountableSeatView.swift in Sources */,
 				04F8C70B273B533F0005F7EA /* Menu.swift in Sources */,
 				0479064C275D7E8900F06699 /* AuthIconView.swift in Sources */,
 				04D80DB3273BFDBD000252DC /* MeasureUnitCreateAndUpdateOperationView.swift in Sources */,
@@ -631,6 +622,7 @@
 				04F8C707273B4E8F0005F7EA /* DepartmentView.swift in Sources */,
 				04D80DA4273BED6C000252DC /* MeasureUnit.swift in Sources */,
 				0405F2ED2739E04C00A36484 /* BaseURL.swift in Sources */,
+				04EB59582765307F002EF618 /* URL+.swift in Sources */,
 				0473DB66273CAAAF000BF8C1 /* ProviderView.swift in Sources */,
 				048B80D1276277730089D313 /* RealmHelper.swift in Sources */,
 				048B80CF2762730F0089D313 /* UserInfo.swift in Sources */,

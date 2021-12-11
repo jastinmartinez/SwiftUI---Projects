@@ -23,7 +23,7 @@ enum APIResources: String {
     
     case SignUp = "Auth/SignUp"
     
-    case AccountableSeatList = "ById?id=350"
+    case AccountableSeatList = "ByID"
     
     case AccountableSeatRegister = "Register"
     

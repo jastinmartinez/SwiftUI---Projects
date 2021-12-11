@@ -44,14 +44,13 @@ struct PurchaserOrderView: View {
                         Text("\(purchaseOrder.unitCost, specifier: "%.2f")")
                         if purchaseOrder.orderState {
                             
-                            Text("Contabilizada")
+                            Text("Contabilizada No.(\(purchaseOrder.accountID))")
                                 .foregroundColor(.blue)
                         }
                         else {
                             Text("No Contabilizada")
                                 .foregroundColor(.red)
                         }
-
                     }
                 }
             }
