@@ -24,4 +24,8 @@ struct PurchaseOrder: ModelProtocol, Codable {
     
     var unitCost: Double
     
+    var orderState: Bool
+    
+    var accountID: Int
+    
 }

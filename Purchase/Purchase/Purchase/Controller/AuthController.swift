@@ -9,7 +9,7 @@ import Foundation
 
 class AuthController : ObservableObject  {
     
-    func authenticateSignUp(_ model: User.SignUp, completion: @escaping (Bool) -> () ) {
+    func registerUsingEmailAndPassword(_ model: User.SignUp, completion: @escaping (Bool) -> () ) {
     
         AuthAPIService<User.SignUp>(apiResource: .SignUp).create(model: model) { user in
             
@@ -21,7 +21,7 @@ class AuthController : ObservableObject  {
         }
     }
     
-    func authenticateSignIn(_ model: User.SignIn, completion: @escaping (Bool) -> () ) {
+    func authenticateUsingEmailAndPassword(_ model: User.SignIn, completion: @escaping (Bool) -> () ) {
         
         UserHelper().temporaryUserInfoHolder(user: model)
         

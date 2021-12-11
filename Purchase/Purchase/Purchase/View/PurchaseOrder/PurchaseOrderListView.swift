@@ -13,6 +13,31 @@ struct PurchaseOrderListView: View {
     @StateObject var measureUnitController = PurchaseController<MeasureUnit>()
     @StateObject var purchaseOrderController = PurchaseController<PurchaseOrder>()
     
+    fileprivate func AccountSeatProcess() {
+        
+        let purchaseOrders = purchaseOrderController.data.filter({ !$0.orderState })
+        
+        if purchaseOrders.filter({ !$0.orderState }).count > 0 {
+            
+            for var purchaseOrder in purchaseOrders {
+                
+                AccountableSeatController().register(accountableSeat: AccountableSeat(description: "Asientos Contables Compras -> \(Date.now)",auxiliar: 1, currencyCode: 1, detail: AccoutableSeatDetail(cuentaCR: "6", cuentaDB: "13", amountCR: (purchaseOrder.quantity * purchaseOrder.unitCost), amountDB: (purchaseOrder.quantity * purchaseOrder.unitCost)))) {
+                    purchaseOrder.orderState = true
+                    purchaseOrder.accountID = $0
+                    purchaseOrderController.update(purchaseOrder){ _ in}
+                }
+            }
+            
+            refreshScreen()
+        }
+    }
+    
+    fileprivate func refreshScreen() {
+        articleController.getAll()
+        measureUnitController.getAll()
+        purchaseOrderController.getAll()
+    }
+    
     var body: some View {
         
         List {
@@ -29,17 +54,23 @@ struct PurchaseOrderListView: View {
             .onDelete(perform: purchaseOrderController.remove)
         }
         .toolbar {
-            NavigationLink {
-                PurchaseOrderCreateAndUpdateView(purchaseOrderController: purchaseOrderController, articleController: articleController, measureUnitController: measureUnitController)
-                    .navigationTitle("Nuevo")
-            } label: {
-                Text("Nuevo")
+            
+            HStack(spacing: 5) {
+                NavigationLink {
+                    PurchaseOrderCreateAndUpdateView(purchaseOrderController: purchaseOrderController, articleController: articleController, measureUnitController: measureUnitController)
+                        .navigationTitle("Nuevo")
+                } label: {
+                    Text("Nuevo")
+                }
+                
+                Button("Contabilizar") {
+                    
+                    AccountSeatProcess()
+                }
             }
         }
         .refreshable {
-            articleController.getAll()
-            measureUnitController.getAll()
-            purchaseOrderController.getAll()
+            refreshScreen()
         }
     }
 }

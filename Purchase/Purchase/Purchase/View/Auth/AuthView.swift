@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AuthView: View {
     
+    
     @State  var userSignIn: User.SignIn = User.SignIn(email: "", password: "")
     
     @State  var userSignUp: User.SignUp = User.SignUp(name: "", email: "" ,password: "",confirmPassword: "")
@@ -37,7 +38,21 @@ struct AuthView: View {
         .fullScreenCover(isPresented: $isAuthenticationSuccesful) {
             
             MainMenuView()
+            
+        }.onDisappear {
+            
+            cleanPropertiesAfterAuthenticationComplete()
         }
+    }
+    
+    
+    fileprivate func cleanPropertiesAfterAuthenticationComplete() {
+        
+        userSignIn = User.SignIn(email: "", password: "")
+        
+        userSignUp = User.SignUp(name: "", email: "" ,password: "",confirmPassword: "")
+        
+        isSignUp = false
     }
     
 }

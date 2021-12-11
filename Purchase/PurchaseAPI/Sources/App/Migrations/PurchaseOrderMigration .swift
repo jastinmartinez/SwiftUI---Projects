@@ -23,6 +23,8 @@ struct PurchaseOrderMigration: Migration {
             .field("PurchaseOrderQuantity",.double,.required)
             .field("PurchaseOrderMeasureUnitID",.int,.required,.references("MeasureUnit", "MeasureUnitID"))
             .field("PurchaseOrderUnitCost",.double,.required)
+            .field("PurchaseOrderState",.bool,.required)
+            .field("PurchaseOrderAccountableID",.int)
             .field("PurchasedOrderCreatedAt",.date)
             .field("PurchasedOrderUpdatedAt",.date)
             .unique(on: "PurchaseOrderNumber")
