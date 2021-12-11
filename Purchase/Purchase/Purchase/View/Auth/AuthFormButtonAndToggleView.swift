@@ -29,12 +29,12 @@ struct AuthFormButtonAndToggleView: View {
                     
                     if authFormButtonAndToggleProperties.isSignUp {
                         
-                        authController.authenticateSignUp(authFormButtonAndToggleProperties.signUp) { authFormButtonAndToggleProperties.isAuthenticationSuccesful = $0 }
+                        authController.registerUsingEmailAndPassword(authFormButtonAndToggleProperties.signUp) { authFormButtonAndToggleProperties.isAuthenticationSuccesful = $0 }
                         
                     }
                     else {
                         
-                        authController.authenticateSignIn(authFormButtonAndToggleProperties.signIn) { authFormButtonAndToggleProperties.isAuthenticationSuccesful = $0 }
+                        authController.authenticateUsingEmailAndPassword(authFormButtonAndToggleProperties.signIn) { authFormButtonAndToggleProperties.isAuthenticationSuccesful = $0 }
                     }
                 }
                 Spacer()

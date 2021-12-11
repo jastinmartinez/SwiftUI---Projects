@@ -33,6 +33,12 @@ final class PurchaseOrder: DbModel {
     @Field(key: "PurchaseOrderUnitCost")
     var unitCost: Double
     
+    @Field(key: "PurchaseOrderState")
+    var orderState: Bool
+    
+    @Field(key: "PurchaseOrderAccountableID")
+    var accountID: Int
+    
     @Timestamp(key: "PurchasedOrderCreatedAt", on: .create, format: .default)
     var createdAt: Date?
     
@@ -41,7 +47,7 @@ final class PurchaseOrder: DbModel {
     
     init() { }
     
-    init(id: Int? = nil, orderNumber: String, orderDate: String, article: Int,measureUnitID: Int ,quantity: Double,unitCost: Double) {
+    init(id: Int? = nil, orderNumber: String, orderDate: String, article: Int,measureUnitID: Int ,quantity: Double,unitCost: Double, orderState: Bool = false,accountID: Int = 0) {
         self.id = id
         self.orderNumber = orderNumber
         self.orderDate = orderDate
@@ -49,5 +55,7 @@ final class PurchaseOrder: DbModel {
         self.$measureUnitID.id = measureUnitID
         self.quantity = quantity
         self.unitCost = unitCost
+        self.orderState = orderState
+        self.accountID = accountID
     }
 }

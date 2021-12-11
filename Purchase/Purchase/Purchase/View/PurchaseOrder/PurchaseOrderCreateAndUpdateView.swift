@@ -20,7 +20,7 @@ struct PurchaseOrderCreateAndUpdateView: View {
     
     @State private var date: Date = .now
     
-    @State var purchaseOrder: PurchaseOrder =  PurchaseOrder(id: nil, orderNumber: "", orderDate: Date.now.formatted(date: .abbreviated, time: .omitted) , articleID: Parent(id: nil), quantity: 0.0, measureUnitID: Parent(id: nil), unitCost: 0.0)
+    @State var purchaseOrder: PurchaseOrder =  PurchaseOrder(id: nil, orderNumber: "", orderDate: Date.now.formatted(date: .abbreviated, time: .omitted) , articleID: Parent(id: nil), quantity: 0.0, measureUnitID: Parent(id: nil), unitCost: 0.0, orderState: false, accountID: 0)
     
     @State var isCliked = false
     

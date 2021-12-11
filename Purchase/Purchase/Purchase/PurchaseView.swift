@@ -13,10 +13,11 @@ struct PurchaseView: View {
     
     var body: some View {
     
+    
         AuthView().fullScreenCover(isPresented: $userHelp) {
-            
+
             MainMenuView()
-        } 
+        }
     }
 }
 

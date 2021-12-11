@@ -50,6 +50,11 @@ struct MainMenuView: View {
                             LogoView(name: "department")
                             MenuTitle(name: "Departamento")
                         }
+                        
+                        NavigationLink(destination: AccountableSeatView().navigationTitle("Asientos Contables")) {
+                            LogoView(name: "accountingSeat")
+                            MenuTitle(name: "Asientos Contables")
+                        }
                     }
                     Spacer()
                     Spacer()
@@ -62,34 +67,29 @@ struct MainMenuView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Text("Compras")
-                        .font(.largeTitle)
+                    
+                    HStack {
+                    
+                        Image(systemName: "person.fill")
+                            .foregroundColor(.blue)
+                        
+                    Text("\(userInfo?.name ?? "Not Authorized")")
+                        .font(.title)
                         .fontWeight(.bold)
+                    }
+                    
+                    
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     
-                    VStack(alignment: .trailing) {
+                    
+                    Button("Cerrar") {
                         
-                        Spacer()
-                        
-                        HStack {
-                            
-                            Button("Cerrar") {
-                                
-                                UserHelper().removeUser()
-                                presentation.wrappedValue.dismiss()
-                            }
-                            .foregroundColor(.red)
-                        }
-                        
-                        Image(systemName: "person.fill")
-                            .resizable()
-                            .frame(width: 20, height: 20)
-                            .foregroundColor(.blue)
-                        
-                        Text("Bienvenido \(userInfo?.name ?? "Not Authorized") !!").font(.footnote)
-                        Text("\(userInfo?.email ?? "Not Authorized")").font(.footnote)
+                        UserHelper().removeUser()
+                        presentation.wrappedValue.dismiss()
                     }
+                    .foregroundColor(.red)
+                    
                 }
             }
         }

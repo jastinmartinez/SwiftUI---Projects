@@ -24,8 +24,8 @@ struct PurchaseOrderController: RouteCollection {
         routeGroup.post(use: create)
         routeGroup.patch(use: update)
         routeGroup.delete(use: delete)
+        
     }
-    
     
     private func updateArticleAmount(_ value: (operationType:OperationType ,order: PurchaseOrder,req: Request)) -> EventLoopFuture<HTTPStatus>  {
      
@@ -54,6 +54,7 @@ struct PurchaseOrderController: RouteCollection {
         
         return result
     }
+    
     func update(_ req: Request) throws -> EventLoopFuture<HTTPStatus>
     {
         let purchaseOrder = try jsonToModel.parse(req)
@@ -68,6 +69,8 @@ struct PurchaseOrderController: RouteCollection {
                 $0.quantity = purchaseOrder.quantity
                 $0.$measureUnitID.id = purchaseOrder.$measureUnitID.id
                 $0.unitCost = purchaseOrder.unitCost
+                $0.orderState = purchaseOrder.orderState
+                $0.accountID = purchaseOrder.accountID
                 
                 return $0.update(on: req.db)
                     .transform(to: .ok)

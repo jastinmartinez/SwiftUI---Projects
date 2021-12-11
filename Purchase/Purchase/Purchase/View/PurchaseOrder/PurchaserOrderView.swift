@@ -42,6 +42,16 @@ struct PurchaserOrderView: View {
                         Text(mesuare)
                         Text("\(purchaseOrder.quantity, specifier: "%.2f")")
                         Text("\(purchaseOrder.unitCost, specifier: "%.2f")")
+                        if purchaseOrder.orderState {
+                            
+                            Text("Contabilizada")
+                                .foregroundColor(.blue)
+                        }
+                        else {
+                            Text("No Contabilizada")
+                                .foregroundColor(.red)
+                        }
+
                     }
                 }
             }
@@ -51,6 +61,6 @@ struct PurchaserOrderView: View {
 
 struct PurchaserOrderView_Previews: PreviewProvider {
     static var previews: some View {
-        PurchaserOrderView(purchaseOrder: PurchaseOrder(id: 1, orderNumber: "0001", orderDate: Date.now.formatted(date: .abbreviated, time: .omitted), articleID: Parent(id: 1), quantity: 1, measureUnitID: Parent(id: 1), unitCost: 10), mesuare: "Kilo",article: "Avon")
+        PurchaserOrderView(purchaseOrder: PurchaseOrder(id: 1, orderNumber: "0001", orderDate: Date.now.formatted(date: .abbreviated, time: .omitted), articleID: Parent(id: 1), quantity: 1, measureUnitID: Parent(id: 1), unitCost: 10, orderState: false, accountID: 0), mesuare: "Kilo",article: "Avon")
     }
 }

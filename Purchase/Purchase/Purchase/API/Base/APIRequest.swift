@@ -14,35 +14,49 @@ final class APIRequest {
     
     func getRequest(resource: APIResources,completion: @escaping dataTaskResult) {
         
-        requestSession(request: AuthorizedUrlRequest(url:  BaseURL.Purchase.appendingPathComponent(resource.rawValue), httpMethod: .GET), completion: completion)
+        let apiResourceHandler  = ApiResourceHandlerType(apiResource: resource)
+        
+        if apiResourceHandler ==  .AccountableSeatIntegration {
+            
+            requestSession(request: urlRequest(url:  BaseURL.AccountableSeat.appendingPathComponent(resource.rawValue), httpMethod: .GET, apiResourceType: apiResourceHandler), completion: completion)
+        }
+        else {
+            requestSession(request: urlRequest(url:  BaseURL.Purchase.appendingPathComponent(resource.rawValue), httpMethod: .GET, apiResourceType: apiResourceHandler), completion: completion)
+        }
     }
     
     func postRequest(resource: APIResources, model: Data, httpMethod: HTTPMethods,  completion: @escaping dataTaskResult) {
         
         
-        if resource != .SignUp {
+        let apiResourceHandler  = ApiResourceHandlerType(apiResource: resource)
+        
+        if apiResourceHandler ==  .AccountableSeatIntegration {
             
-            requestSession(request: AuthorizedUrlRequest(url: BaseURL.Purchase.appendingPathComponent(resource.rawValue), httpMethod: httpMethod, body: model), completion: completion)
+            requestSession(request: urlRequest(url: BaseURL.AccountableSeat.appendingPathComponent(resource.rawValue), httpMethod: httpMethod, body: model, apiResourceType: apiResourceHandler) , completion: completion)
         }
         else {
             
-            requestSession(request: UnAuthorizedUrlRequest(url: BaseURL.Purchase.appendingPathComponent(resource.rawValue), httpMethod: httpMethod, body: model), completion: completion)
+            requestSession(request: urlRequest(url: BaseURL.Purchase.appendingPathComponent(resource.rawValue), httpMethod: httpMethod, body: model, apiResourceType: apiResourceHandler) , completion: completion)
         }
     }
-   
+    
     private func requestSession(request: URLRequest,completion: @escaping dataTaskResult) {
         
         URLSession.shared.dataTask(with: request) { data, response, error in DispatchQueue.main.async { completion(data,response,error) } }.resume()
     }
     
     
-    private func AuthorizedUrlRequest(url: URL, httpMethod: HTTPMethods, body: Data? = nil) -> URLRequest {
+    private func urlRequest(url: URL, httpMethod: HTTPMethods, body: Data? = nil, apiResourceType: APIResourceType) -> URLRequest {
         
         var request = URLRequest(url: url)
         
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        request.addValue("Basic \(UserHelper().userInfo?.key ?? "Not Authorized")", forHTTPHeaderField: "Authorization")
+        if apiResourceType == .Authorized {
+            
+            request.addValue("Basic \(UserHelper().userInfo?.key ?? "Not Authorized")", forHTTPHeaderField: "Authorization")
+            
+        }
         
         request.httpMethod = httpMethod.rawValue
         
@@ -54,19 +68,37 @@ final class APIRequest {
         return request
     }
     
-    private func UnAuthorizedUrlRequest(url: URL, httpMethod: HTTPMethods, body: Data? = nil) -> URLRequest {
+    private func ApiResourceHandlerType(apiResource: APIResources) -> APIResourceType {
         
-        var request = URLRequest(url: url)
-        
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        request.httpMethod = httpMethod.rawValue
-        
-        if let body = body {
-            
-            request.httpBody = body
+        switch apiResource {
+        case .Department:
+            return .Authorized
+        case .Article:
+            return .Authorized
+        case .PurchaseOrder:
+            return .Authorized
+        case .MeasureUnit:
+            return .Authorized
+        case .Provider:
+            return .Authorized
+        case .SignIn:
+            return .Authorized
+        case .SignUp:
+            return .UnAuthorized
+        case .AccountableSeatList:
+            return .AccountableSeatIntegration
+        case .AccountableSeatRegister:
+            return .AccountableSeatIntegration
         }
-        
-        return request
     }
+    
+    private enum APIResourceType {
+        
+        case Authorized
+        
+        case UnAuthorized
+        
+        case AccountableSeatIntegration
+    }
+    
 }
