@@ -9,7 +9,7 @@ import Foundation
 
 class AuthAPIService<T: Codable>  {
     
-    private(set) var apiResource: APIResources
+    private var apiResource: APIResources
     
     init (apiResource: APIResources)
     {
@@ -20,7 +20,7 @@ class AuthAPIService<T: Codable>  {
         
         try? ModelToJSON<T>().single(model: model, completion: { data in
             
-            APIRequest().postRequest(resource: self.apiResource, model: data, httpMethod: .POST) { data, response, error in
+            APIRequest().sentData(resource: self.apiResource, model: data, httpMethod: .POST) { data, response, error in
                 
                 try? JSONToModel<User>().single(data: data, completion: completion)
             }

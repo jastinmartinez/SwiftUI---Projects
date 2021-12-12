@@ -29,3 +29,8 @@ struct PurchaseOrder: ModelProtocol, Codable {
     var accountID: Int
     
 }
+
+extension PurchaseOrder {
+    
+    var orderAmount: Double { get { return unitCost * quantity } }
+}

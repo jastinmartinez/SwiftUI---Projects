@@ -12,23 +12,21 @@ struct PurchaseOrderListView: View {
     @StateObject var articleController = PurchaseController<Article>()
     @StateObject var measureUnitController = PurchaseController<MeasureUnit>()
     @StateObject var purchaseOrderController = PurchaseController<PurchaseOrder>()
+    @State private var istherePendingPurchasesOrderToSend: Bool = false
     
-    fileprivate func AccountSeatProcess() {
+    private var accountableSeatController: AccountableSeatController = AccountableSeatController()
+    
+    fileprivate func MarkAndSentPurchaseOrderToAccounting() {
         
-        let purchaseOrders = purchaseOrderController.data.filter({ !$0.orderState })
-        
-        if purchaseOrders.filter({ !$0.orderState }).count > 0 {
+        accountableSeatController.registerPurchaserOrderToAccounting(purchaseOrderController: purchaseOrderController) { _istherePendingPurchasesOrderToSend in
             
-            for var purchaseOrder in purchaseOrders {
+            istherePendingPurchasesOrderToSend = _istherePendingPurchasesOrderToSend
+            
+            if _istherePendingPurchasesOrderToSend {
                 
-                AccountableSeatController().register(accountableSeat: AccountableSeat(description: "Asientos Contables Compras -> \(Date.now)",auxiliar: 1, currencyCode: 1, detail: AccoutableSeatDetail(cuentaCR: "6", cuentaDB: "13", amountCR: (purchaseOrder.quantity * purchaseOrder.unitCost), amountDB: (purchaseOrder.quantity * purchaseOrder.unitCost)))) {
-                    purchaseOrder.orderState = true
-                    purchaseOrder.accountID = $0
-                    purchaseOrderController.update(purchaseOrder){ _ in}
-                }
+                refreshScreen()
             }
-            
-            refreshScreen()
+          
         }
     }
     
@@ -60,12 +58,17 @@ struct PurchaseOrderListView: View {
                     PurchaseOrderCreateAndUpdateView(purchaseOrderController: purchaseOrderController, articleController: articleController, measureUnitController: measureUnitController)
                         .navigationTitle("Nuevo")
                 } label: {
+                    
                     Text("Nuevo")
+                    
                 }
-                
                 Button("Contabilizar") {
                     
-                    AccountSeatProcess()
+                     MarkAndSentPurchaseOrderToAccounting()
+                    
+                }.alert("No hay transacciones disponibles para contabilizar",isPresented: $istherePendingPurchasesOrderToSend) {
+                    
+                    Button("Ok", role: .cancel) {}
                 }
             }
         }

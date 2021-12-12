@@ -23,7 +23,7 @@ class APIService<E : Codable>: APIProtocol
     
     func getAll(completion: @escaping ([T]) -> ())  {
         
-        APIRequest().getRequest(resource: self.apiResource) {data,  response, error in
+        APIRequest().retrieveData(resource: self.apiResource) {data,  response, error in
             
             try? JSONToModel<T>().array(data: data, completion: completion)
         }
@@ -33,7 +33,7 @@ class APIService<E : Codable>: APIProtocol
         
         try? ModelToJSON<T>().single(model: model, completion: { data in
             
-            APIRequest().postRequest(resource: self.apiResource, model: data, httpMethod: .POST) { data, response, error in
+            APIRequest().sentData(resource: self.apiResource, model: data, httpMethod: .POST) { data, response, error in
                 
                 try? JSONToModel<T>().single(data: data, completion: completion)
             }
@@ -44,7 +44,7 @@ class APIService<E : Codable>: APIProtocol
         
         try? ModelToJSON<T>().single(model: model, completion: { data in
             
-            APIRequest().postRequest(resource: self.apiResource, model: data,httpMethod: .PATCH) { data, response, error in
+            APIRequest().sentData(resource: self.apiResource, model: data,httpMethod: .PATCH) { data, response, error in
                 
                 guard let response = response as? HTTPURLResponse else { return }
                 
@@ -57,7 +57,7 @@ class APIService<E : Codable>: APIProtocol
         
         try? ModelToJSON<T>().single(model: model, completion: { data in
             
-            APIRequest().postRequest(resource: self.apiResource, model: data,httpMethod: .DELETE) { data, response, error in
+            APIRequest().sentData(resource: self.apiResource, model: data,httpMethod: .DELETE) { data, response, error in
                 
                 guard let response = response as? HTTPURLResponse else { return }
                 

@@ -8,23 +8,23 @@
 import Foundation
 
 
-struct AccountableSeat: Codable {
+struct AccountableSeat: Encodable {
     
-    let description: String
+    let description: String = "Asientos Contables Compras -> \(Date.now)"
     
-    let auxiliar: Int
+    let auxiliar: Int = 1
     
-    let currencyCode: Int
+    let currencyCode: Int = 1
     
     let detail: AccoutableSeatDetail
     
 }
 
-struct AccoutableSeatDetail: Codable {
+struct AccoutableSeatDetail: Encodable {
     
-    let cuentaCR:String
+    let cuentaCR:String = "6"
     
-    let cuentaDB:String
+    let cuentaDB:String = "13"
     
     let amountCR: Double
     
@@ -36,19 +36,4 @@ struct AccountableSeatResponse : Decodable {
     var id: Int
 }
 
-struct AccoubtableSeatListResponse: Decodable {
-    
-    let results: [AccoubtableSeatListResponseDetail]
-}
-
-struct AccoubtableSeatListResponseDetail: Decodable  {
-    
-    let id: Int
-    
-    let description: String
-    
-    let date: String
-    
-    let accountingSeatDetail: AccoutableSeatDetail
-}
 

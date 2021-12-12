@@ -7,31 +7,29 @@
 
 import Foundation
 
-class AccountableSeatController: ObservableObject {
+class AccountableSeatController {
     
-    @Published private(set) var auccoutableSeats = [AccoubtableSeatListResponseDetail]()
-    
-    init () {
+    func registerPurchaserOrderToAccounting(purchaseOrderController: PurchaseController<PurchaseOrder>, istherePendingPurchaseOrder: @escaping (Bool) -> ())  {
         
-        getAll()
-    }
-    
-    func register(accountableSeat: AccountableSeat,completion: @escaping(Int) -> ())  {
+        let purchaseOrders = purchaseOrderController.data.filter({ !$0.orderState })
         
-        AccountableSeatAPIService(apiResource: .AccountableSeatRegister).register(accountableSeat: accountableSeat) { accountableSeatResponse in
-            
-            completion(accountableSeatResponse.id)
-        }
-    }
-    
-    func getAll()  {
+        let istherePendingPurchasesOrderToSend = purchaseOrders.filter({ !$0.orderState }).count == 0
         
-        AccountableSeatAPIService(apiResource: .AccountableSeatList).getAll { AccountableSeatListRes in
+        istherePendingPurchaseOrder(istherePendingPurchasesOrderToSend)
+        
+        guard !istherePendingPurchasesOrderToSend else { return }
+        
+        for var purchaseOrder in purchaseOrders {
             
-            
-            self.auccoutableSeats = AccountableSeatListRes.results.filter({$0.accountingSeatDetail.cuentaDB == "13" && $0.accountingSeatDetail.cuentaCR == "6"})
-                .sorted(by: {$0.id > $1.id})
-            
+            AccountableSeatAPIService().register(accountableSeat: AccountableSeat(detail: AccoutableSeatDetail(amountCR: purchaseOrder.orderAmount, amountDB: purchaseOrder.orderAmount))) { accountSeatResponse in
+                
+                purchaseOrder.orderState = accountSeatResponse.id > 0
+                
+                purchaseOrder.accountID = accountSeatResponse.id
+                
+                purchaseOrderController.update(purchaseOrder){ _ in}
+            }
         }
     }
 }
+
