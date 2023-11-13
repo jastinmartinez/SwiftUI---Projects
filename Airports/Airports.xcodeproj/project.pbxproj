@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0419A8132B01A62D00572C56 /* URLSessionAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0419A8122B01A62D00572C56 /* URLSessionAdapter.swift */; };
+		0419A8152B01A6C500572C56 /* RemoteRequestMaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0419A8142B01A6C500572C56 /* RemoteRequestMaker.swift */; };
 		047ED55D2B00716500629D70 /* AirportsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047ED55C2B00716500629D70 /* AirportsApp.swift */; };
 		047ED55F2B00716500629D70 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047ED55E2B00716500629D70 /* ContentView.swift */; };
 		047ED5612B00716800629D70 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 047ED5602B00716800629D70 /* Assets.xcassets */; };
@@ -25,6 +27,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0419A8122B01A62D00572C56 /* URLSessionAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSessionAdapter.swift; sourceTree = "<group>"; };
+		0419A8142B01A6C500572C56 /* RemoteRequestMaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteRequestMaker.swift; sourceTree = "<group>"; };
 		047ED5592B00716500629D70 /* Airports.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Airports.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		047ED55C2B00716500629D70 /* AirportsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportsApp.swift; sourceTree = "<group>"; };
 		047ED55E2B00716500629D70 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -53,6 +57,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0419A8112B01A61100572C56 /* API */ = {
+			isa = PBXGroup;
+			children = (
+				0419A8122B01A62D00572C56 /* URLSessionAdapter.swift */,
+				0419A8142B01A6C500572C56 /* RemoteRequestMaker.swift */,
+			);
+			path = API;
+			sourceTree = "<group>";
+		};
 		047ED5502B00716500629D70 = {
 			isa = PBXGroup;
 			children = (
@@ -74,6 +87,7 @@
 		047ED55B2B00716500629D70 /* Airports */ = {
 			isa = PBXGroup;
 			children = (
+				0419A8112B01A61100572C56 /* API */,
 				047ED5772B0071EB00629D70 /* Airports.entitlements */,
 				047ED55C2B00716500629D70 /* AirportsApp.swift */,
 				047ED55E2B00716500629D70 /* ContentView.swift */,
@@ -199,6 +213,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0419A8152B01A6C500572C56 /* RemoteRequestMaker.swift in Sources */,
+				0419A8132B01A62D00572C56 /* URLSessionAdapter.swift in Sources */,
 				047ED55F2B00716500629D70 /* ContentView.swift in Sources */,
 				047ED55D2B00716500629D70 /* AirportsApp.swift in Sources */,
 			);

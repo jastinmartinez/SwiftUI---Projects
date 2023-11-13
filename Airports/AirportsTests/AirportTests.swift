@@ -6,68 +6,15 @@
 //
 
 import XCTest
+import Airports
 
 
-protocol URLSessionAdapter {
-    func data(for request: URLRequest) async throws -> (Data, URLResponse)
-}
-
-private class HTTPClient {
-    
-    private let session: URLSessionAdapter
-    private var baseURL: URL
-    private let apiKey: String
-    private var uRLQueryItems = [URLQueryItem]()
-    
-    init(session: URLSessionAdapter,
-         baseURL: URL,
-         apiKey: String) {
-        self.session = session
-        self.baseURL = baseURL
-        self.apiKey = apiKey
-    }
-    
-    enum Error: Swift.Error, Equatable {
-        case invalidResponse
-        case failRequest(String)
-    }
-    
-    func perform() async -> Result<(Data, HTTPURLResponse), Error> {
-        do {
-            let request = buildRequest(from: baseURL)
-            let (data, response) = try await session.data(for: request)
-            guard let response = response as? HTTPURLResponse,
-                  response.statusCode == 200 else {
-                return .failure(Error.invalidResponse)
-            }
-            return .success((data, response))
-        } catch {
-            return .failure(.failRequest(error.localizedDescription))
-        }
-    }
-    
-    @discardableResult func setParameter(with: (name: String, value: String)) -> Self {
-        uRLQueryItems.append(URLQueryItem(name: with.name, value: with.value))
-        return self
-    }
-    
-    func buildURL() {
-        baseURL.append(queryItems: uRLQueryItems)
-    }
-    
-    private func buildRequest(from url: URL) -> URLRequest {
-        var request = URLRequest(url: baseURL)
-        request.setValue(apiKey, forHTTPHeaderField: "X-Api-Key")
-        return request
-    }
-}
-
-final class HTTPClientTests: XCTestCase {
+final class RemoteRequestMakerTests: XCTestCase {
     
     func test_client_canPerformRequest() async {
         let client = MockURLSession()
         let baseURL = URL(string: "www.any-url.com")!
-        let sut = HTTPClient(session: client, baseURL: baseURL, apiKey: "")
+        let sut = RemoteRequestMaker(session: client, baseURL: baseURL, apiKey: "")
         
         let _ = await  sut.perform()
         
@@ -133,7 +80,8 @@ final class HTTPClientTests: XCTestCase {
         
         let result = await sut.perform()
         if case let .failure(error) = result {
-            XCTAssertEqual(error, .invalidResponse)
+            XCTAssertEqual(error.localizedDescription,
+                           RemoteRequestMaker.Error.invalidResponse.localizedDescription)
         } else {
             XCTFail("expected success but instead go \(result)")
         }
@@ -146,16 +94,17 @@ final class HTTPClientTests: XCTestCase {
         
         let result = await sut.perform()
         if case let .failure(error) = result {
-            XCTAssertEqual(error, .failRequest(anyError().localizedDescription))
+            XCTAssertEqual(error.localizedDescription,
+                           RemoteRequestMaker.Error.failRequest(anyError().localizedDescription).localizedDescription)
         } else {
             XCTFail("expected success but instead go \(result)")
         }
     }
     
-    private func makeSUT() -> (HTTPClient, MockURLSession) {
+    private func makeSUT() -> (RemoteRequestMaker, MockURLSession) {
         let apiKey = anyAPIKey()
         let client = MockURLSession()
-        let sut = HTTPClient(session: client, baseURL: anyURL(), apiKey: apiKey)
+        let sut = RemoteRequestMaker(session: client, baseURL: anyURL(), apiKey: apiKey)
         return (sut, client)
     }
     
