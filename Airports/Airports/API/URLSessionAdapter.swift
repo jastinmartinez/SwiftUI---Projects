@@ -6,6 +6,9 @@
 //
 
 import Foundation
+
 public protocol URLSessionAdapter {
     func data(for request: URLRequest) async throws -> (Data, URLResponse)
 }
+
+extension URLSession: URLSessionAdapter {}

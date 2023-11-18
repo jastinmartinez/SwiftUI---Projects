@@ -8,12 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		0419A8132B01A62D00572C56 /* URLSessionAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0419A8122B01A62D00572C56 /* URLSessionAdapter.swift */; };
-		0419A8152B01A6C500572C56 /* RemoteRequestMaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0419A8142B01A6C500572C56 /* RemoteRequestMaker.swift */; };
+		0419A8152B01A6C500572C56 /* RemoteDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0419A8142B01A6C500572C56 /* RemoteDataSource.swift */; };
+		0419A8172B01A84C00572C56 /* RemoteAirportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0419A8162B01A84C00572C56 /* RemoteAirportTests.swift */; };
 		047ED55D2B00716500629D70 /* AirportsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047ED55C2B00716500629D70 /* AirportsApp.swift */; };
 		047ED55F2B00716500629D70 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047ED55E2B00716500629D70 /* ContentView.swift */; };
 		047ED5612B00716800629D70 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 047ED5602B00716800629D70 /* Assets.xcassets */; };
 		047ED5642B00716800629D70 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 047ED5632B00716800629D70 /* Preview Assets.xcassets */; };
-		047ED57F2B00723900629D70 /* AirportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047ED57E2B00723900629D70 /* AirportTests.swift */; };
+		047ED57F2B00723900629D70 /* HTTPClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047ED57E2B00723900629D70 /* HTTPClientTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,7 +29,8 @@
 
 /* Begin PBXFileReference section */
 		0419A8122B01A62D00572C56 /* URLSessionAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSessionAdapter.swift; sourceTree = "<group>"; };
-		0419A8142B01A6C500572C56 /* RemoteRequestMaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteRequestMaker.swift; sourceTree = "<group>"; };
+		0419A8142B01A6C500572C56 /* RemoteDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDataSource.swift; sourceTree = "<group>"; };
+		0419A8162B01A84C00572C56 /* RemoteAirportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAirportTests.swift; sourceTree = "<group>"; };
 		047ED5592B00716500629D70 /* Airports.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Airports.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		047ED55C2B00716500629D70 /* AirportsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportsApp.swift; sourceTree = "<group>"; };
 		047ED55E2B00716500629D70 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -36,7 +38,7 @@
 		047ED5632B00716800629D70 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		047ED5772B0071EB00629D70 /* Airports.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Airports.entitlements; sourceTree = "<group>"; };
 		047ED57C2B00723900629D70 /* AirportsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AirportsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		047ED57E2B00723900629D70 /* AirportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportTests.swift; sourceTree = "<group>"; };
+		047ED57E2B00723900629D70 /* HTTPClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClientTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,7 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				0419A8122B01A62D00572C56 /* URLSessionAdapter.swift */,
-				0419A8142B01A6C500572C56 /* RemoteRequestMaker.swift */,
+				0419A8142B01A6C500572C56 /* RemoteDataSource.swift */,
 			);
 			path = API;
 			sourceTree = "<group>";
@@ -108,7 +110,8 @@
 		047ED57D2B00723900629D70 /* AirportsTests */ = {
 			isa = PBXGroup;
 			children = (
-				047ED57E2B00723900629D70 /* AirportTests.swift */,
+				047ED57E2B00723900629D70 /* HTTPClientTests.swift */,
+				0419A8162B01A84C00572C56 /* RemoteAirportTests.swift */,
 			);
 			path = AirportsTests;
 			sourceTree = "<group>";
@@ -213,7 +216,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0419A8152B01A6C500572C56 /* RemoteRequestMaker.swift in Sources */,
+				0419A8152B01A6C500572C56 /* RemoteDataSource.swift in Sources */,
 				0419A8132B01A62D00572C56 /* URLSessionAdapter.swift in Sources */,
 				047ED55F2B00716500629D70 /* ContentView.swift in Sources */,
 				047ED55D2B00716500629D70 /* AirportsApp.swift in Sources */,
@@ -224,7 +227,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				047ED57F2B00723900629D70 /* AirportTests.swift in Sources */,
+				047ED57F2B00723900629D70 /* HTTPClientTests.swift in Sources */,
+				0419A8172B01A84C00572C56 /* RemoteAirportTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

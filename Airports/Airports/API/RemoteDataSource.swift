@@ -7,16 +7,16 @@
 
 import Foundation
 
-public enum RequestMakerError: Swift.Error {
+public enum HTTPClientError: Swift.Error {
     case invalidResponse
     case failRequest(String)
 }
 
-public protocol RequestMaker {
-    func perform() async -> Result<Data, RequestMakerError>
+public protocol HTTPClient {
+    func perform() async -> Result<Data, HTTPClientError>
 }
 
-public class RemoteDataSource: RequestMaker {
+public class RemoteDataSource: HTTPClient {
     
     private let session: URLSessionAdapter
     private var baseURL: URL
@@ -31,13 +31,13 @@ public class RemoteDataSource: RequestMaker {
         self.apiKey = apiKey
     }
     
-    public func perform() async -> Result<Data, RequestMakerError> {
+    public func perform() async -> Result<Data, HTTPClientError> {
         do {
             let request = buildRequest(from: baseURL)
             let (data, response) = try await session.data(for: request)
             guard let response = response as? HTTPURLResponse,
                   response.statusCode == 200 else {
-                return .failure(RequestMakerError.invalidResponse)
+                return .failure(HTTPClientError.invalidResponse)
             }
             return .success(data)
         } catch {
