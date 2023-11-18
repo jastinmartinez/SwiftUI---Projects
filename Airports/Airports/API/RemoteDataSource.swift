@@ -7,7 +7,16 @@
 
 import Foundation
 
-public class RemoteRequestMaker {
+public enum RequestMakerError: Swift.Error {
+    case invalidResponse
+    case failRequest(String)
+}
+
+public protocol RequestMaker {
+    func perform() async -> Result<Data, RequestMakerError>
+}
+
+public class RemoteDataSource: RequestMaker {
     
     private let session: URLSessionAdapter
     private var baseURL: URL
@@ -22,20 +31,15 @@ public class RemoteRequestMaker {
         self.apiKey = apiKey
     }
     
-    public enum Error: Swift.Error {
-        case invalidResponse
-        case failRequest(String)
-    }
-    
-    public func perform() async -> Result<(Data, HTTPURLResponse), Error> {
+    public func perform() async -> Result<Data, RequestMakerError> {
         do {
             let request = buildRequest(from: baseURL)
             let (data, response) = try await session.data(for: request)
             guard let response = response as? HTTPURLResponse,
                   response.statusCode == 200 else {
-                return .failure(Error.invalidResponse)
+                return .failure(RequestMakerError.invalidResponse)
             }
-            return .success((data, response))
+            return .success(data)
         } catch {
             return .failure(.failRequest(error.localizedDescription))
         }
