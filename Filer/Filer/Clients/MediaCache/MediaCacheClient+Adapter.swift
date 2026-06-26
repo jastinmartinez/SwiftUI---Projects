@@ -1,0 +1,20 @@
+import Foundation
+
+extension MediaCacheClient {
+    enum Failure: Error {
+        case unsupportedStorageLocation
+    }
+
+    nonisolated static let defaultTimeToLive: TimeInterval = 60 * 60 * 24
+
+    nonisolated static func expiredIDs(
+        in objects: [StoredObject],
+        now: Date,
+        timeToLive: TimeInterval
+    ) -> [String] {
+        objects.compactMap { object in
+            guard let modifiedAt = object.modifiedAt else { return nil }
+            return now.timeIntervalSince(modifiedAt) > timeToLive ? object.id : nil
+        }
+    }
+}

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Pre-commit: enforce SwiftFormat on staged Swift files under Filer/.
+# Activate once per clone:  git config core.hooksPath .githooks
+set -eu
+
+if ! command -v swiftformat >/dev/null 2>&1; then
+  echo "pre-commit: swiftformat not installed. Install with: brew install swiftformat" >&2
+  exit 1
+fi
+
+files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^Filer/.*\.swift$' || true)
+[ -z "$files" ] && exit 0
+
+if ! printf '%s\n' "$files" | xargs swiftformat --lint --config Filer/.swiftformat; then
+  echo "" >&2
+  echo "pre-commit: the staged Swift files above are not formatted." >&2
+  echo "Fix with:  swiftformat Filer --config Filer/.swiftformat" >&2
+  echo "then re-stage and commit." >&2
+  exit 1
+fi
+exit 0
