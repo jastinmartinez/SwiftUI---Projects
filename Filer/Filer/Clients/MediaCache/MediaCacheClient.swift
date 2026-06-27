@@ -2,19 +2,12 @@ import Dependencies
 import Foundation
 
 struct MediaCacheClient: Sendable {
-    var store: @Sendable (_ payload: MediaImportPayload) async throws -> ImportedMedia
-    var removeExpired: @Sendable () async throws -> Void
+    var store: @Sendable (_ payload: MediaImportPayload) async throws -> ImportedMedia = { _ in
+        throw Unimplemented()
+    }
 
-    nonisolated init(
-        store: @escaping @Sendable (_ payload: MediaImportPayload) async throws -> ImportedMedia = { _ in
-            throw Unimplemented()
-        },
-        removeExpired: @escaping @Sendable () async throws -> Void = {
-            throw Unimplemented()
-        }
-    ) {
-        self.store = store
-        self.removeExpired = removeExpired
+    var removeExpired: @Sendable () async throws -> Void = {
+        throw Unimplemented()
     }
 }
 

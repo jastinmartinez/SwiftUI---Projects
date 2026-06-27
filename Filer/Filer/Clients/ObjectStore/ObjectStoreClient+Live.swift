@@ -1,7 +1,7 @@
 import Foundation
 
 extension ObjectStoreClient {
-    nonisolated static func live(
+    static func live(
         root: URL = URL(fileURLWithPath: NSTemporaryDirectory()).appending(path: "FilerImportCache"),
         fileManager: FileManager = .default
     ) -> ObjectStoreClient {

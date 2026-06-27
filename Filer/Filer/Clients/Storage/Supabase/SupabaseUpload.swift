@@ -4,21 +4,16 @@ enum SupabaseUpload {
     struct Request: Equatable, Sendable {
         let endpoint: URL
         let headers: [String: String]
-
-        nonisolated init(endpoint: URL, headers: [String: String]) {
-            self.endpoint = endpoint
-            self.headers = headers
-        }
     }
 
-    nonisolated static func request(for media: ImportedMedia, config: SupabaseConfig) -> Request {
+    static func request(for media: ImportedMedia, config: SupabaseConfig) -> Request {
         Request(
             endpoint: config.projectURL.appending(path: "storage/v1/upload/resumable"),
             headers: headers(for: media, config: config)
         )
     }
 
-    private nonisolated static func headers(for media: ImportedMedia, config: SupabaseConfig) -> [String: String] {
+    private static func headers(for media: ImportedMedia, config: SupabaseConfig) -> [String: String] {
         [
             "Authorization": "Bearer \(config.anonKey)",
             "apikey": config.anonKey,
@@ -28,7 +23,7 @@ enum SupabaseUpload {
     }
 
     // "<key> <base64(value)>,…"  — custom "name" key round-trips the display filename (§9)
-    private nonisolated static func metadata(_ media: ImportedMedia, bucket: String) -> String {
+    private static func metadata(_ media: ImportedMedia, bucket: String) -> String {
         [
             "bucketName": bucket,
             "objectName": media.id,

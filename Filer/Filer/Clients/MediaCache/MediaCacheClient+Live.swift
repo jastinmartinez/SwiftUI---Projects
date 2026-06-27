@@ -2,9 +2,9 @@ import Dependencies
 import Foundation
 
 extension MediaCacheClient: DependencyKey {
-    nonisolated static let liveValue = live()
+    static let liveValue = live()
 
-    nonisolated static func live(
+    static func live(
         objectStore: ObjectStoreClient = .live(),
         now: @escaping @Sendable () -> Date = Date.init,
         timeToLive: TimeInterval = defaultTimeToLive

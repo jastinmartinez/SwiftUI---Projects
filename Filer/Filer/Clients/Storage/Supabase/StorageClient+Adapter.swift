@@ -7,7 +7,7 @@ import Storage
 // no typed .size/.mimetype/.displayName members; read by key with AnyJSON unwrapping.
 // Non-media objects map to nil so the live `list` compactMaps them away (§12).
 extension FileItem {
-    nonisolated init?(_ object: FileObject) {
+    init?(_ object: FileObject) {
         let meta = object.metadata
         guard let kind = FileItem.Kind(mimeType: meta?["mimetype"]?.stringValue) else { return nil }
         self.init(
