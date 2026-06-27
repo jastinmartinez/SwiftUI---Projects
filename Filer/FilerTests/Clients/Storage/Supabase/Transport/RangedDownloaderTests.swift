@@ -7,7 +7,7 @@ import Testing
 
     @Test func rangedPathProbesAndWritesContiguously() async throws {
         let total = 14 * 1024 * 1024 // 6 + 6 + 2
-        let chunk = 6 * 1024 * 1024
+        let chunk = TransferProgress.chunkSize
         let out = dest()
         let ranges = LockedBox<[String]>([])
 
@@ -79,7 +79,7 @@ import Testing
 
     @Test func cancellationStopsTheStream() async throws {
         let total = 14 * 1024 * 1024
-        let chunk = 6 * 1024 * 1024
+        let chunk = TransferProgress.chunkSize
         let out = dest()
 
         StubURLProtocol.handler = { req in

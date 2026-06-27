@@ -16,7 +16,7 @@ actor ResumableUploader {
         _ file: URL,
         to endpoint: URL,
         headers: [String: String],
-        chunkSize: Int = 6 * 1024 * 1024
+        chunkSize: Int = TransferProgress.chunkSize
     ) -> AsyncThrowingStream<TransferProgress, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {

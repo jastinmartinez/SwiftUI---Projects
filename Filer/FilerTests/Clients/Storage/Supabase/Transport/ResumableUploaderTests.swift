@@ -32,7 +32,7 @@ import Testing
 
     @Test func patchOffsetSequenceAcrossChunkBoundaries() async throws {
         let size = 14 * 1024 * 1024 // 6 + 6 + 2
-        let chunk = 6 * 1024 * 1024
+        let chunk = TransferProgress.chunkSize
         let file = try makeFile(bytes: size)
         let offsets = LockedBox<[String]>([])
 
@@ -62,7 +62,7 @@ import Testing
 
     @Test func resumesAfterInjectedFailureViaHead() async throws {
         let size = 12 * 1024 * 1024 // 6 + 6
-        let chunk = 6 * 1024 * 1024
+        let chunk = TransferProgress.chunkSize
         let file = try makeFile(bytes: size)
         let didFail = LockedBox<Bool>(false)
         let heads = LockedBox<Int>(0)
@@ -107,8 +107,8 @@ import Testing
     }
 
     @Test func recreatesUploadOn409() async throws {
-        let size = 6 * 1024 * 1024
-        let chunk = 6 * 1024 * 1024
+        let size = TransferProgress.chunkSize
+        let chunk = TransferProgress.chunkSize
         let file = try makeFile(bytes: size)
         let posts = LockedBox<Int>(0)
         let conflicted = LockedBox<Bool>(false)
