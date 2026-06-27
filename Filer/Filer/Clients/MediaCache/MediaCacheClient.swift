@@ -1,3 +1,4 @@
+import Dependencies
 import Foundation
 
 struct MediaCacheClient: Sendable {
@@ -19,4 +20,11 @@ struct MediaCacheClient: Sendable {
 
 extension MediaCacheClient {
     struct Unimplemented: Error {}
+}
+
+extension DependencyValues {
+    var mediaCache: MediaCacheClient {
+        get { self[MediaCacheClient.self] }
+        set { self[MediaCacheClient.self] = newValue }
+    }
 }
