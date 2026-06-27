@@ -13,3 +13,10 @@ extension StorageClient {
     enum UploadEvent: Equatable { case progress(TransferProgress), finished(FileItem) }
     enum DownloadEvent: Equatable { case progress(TransferProgress), finished(URL) }
 }
+
+extension DependencyValues {
+    var storage: StorageClient {
+        get { self[StorageClient.self] }
+        set { self[StorageClient.self] = newValue }
+    }
+}
