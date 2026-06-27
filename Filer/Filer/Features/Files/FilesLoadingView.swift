@@ -6,3 +6,8 @@ struct FilesLoadingView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+#Preview {
+    FilesLoadingView()
+        .background(Color.filerGroupedBackground)
+}

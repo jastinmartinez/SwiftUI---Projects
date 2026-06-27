@@ -21,3 +21,8 @@ struct FilesErrorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+#Preview {
+    FilesErrorView(model: .init(message: "The network connection was lost.", send: { _ in }))
+        .background(Color.filerGroupedBackground)
+}

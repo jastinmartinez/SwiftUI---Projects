@@ -25,3 +25,9 @@ struct FilesEmptyView: View {
         .padding(.horizontal, 40)
     }
 }
+
+#Preview {
+    FilesEmptyView()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.filerGroupedBackground)
+}
