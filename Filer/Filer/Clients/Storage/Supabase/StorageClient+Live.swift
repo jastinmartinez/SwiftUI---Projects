@@ -19,7 +19,7 @@ extension StorageClient: DependencyKey {
                 try await storage.from(config.bucket).list().compactMap(FileItem.init)
             },
             upload: { media in
-                let req = SupabaseUpload(media, config: config)
+                let req = SupabaseUpload.request(for: media, config: config)
                 return ResumableUploader(session: .shared)
                     .upload(media.fileURL, to: req.endpoint, headers: req.headers)
                     .mapToUploadEvent(media)

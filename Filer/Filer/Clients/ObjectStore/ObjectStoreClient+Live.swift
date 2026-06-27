@@ -13,7 +13,7 @@ extension ObjectStoreClient {
                 let size = (try? fileManager.attributesOfItem(atPath: destination.path)[.size] as? Int64)
                     ?? Int64(object.data.count)
                 let modifiedAt = (try? destination.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
-                return StoredObject(id: object.id, size: size, modifiedAt: modifiedAt, location: .file(destination))
+                return StoredObject(id: object.id, size: size, modifiedAt: modifiedAt, fileURL: destination)
             },
             list: {
                 guard fileManager.fileExists(atPath: root.path) else { return [] }
@@ -29,7 +29,7 @@ extension ObjectStoreClient {
                         id: url.lastPathComponent,
                         size: size,
                         modifiedAt: values.contentModificationDate,
-                        location: .file(url)
+                        fileURL: url
                     )
                 }
             },

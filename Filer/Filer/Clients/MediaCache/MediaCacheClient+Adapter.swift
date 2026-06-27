@@ -8,7 +8,7 @@ extension MediaCacheClient {
     nonisolated static let defaultTimeToLive: TimeInterval = 60 * 60 * 24
 
     nonisolated static func expiredIDs(
-        in objects: [StoredObject],
+        in objects: [ObjectStoreClient.StoredObject],
         now: Date,
         timeToLive: TimeInterval
     ) -> [String] {

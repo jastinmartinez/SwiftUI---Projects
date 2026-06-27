@@ -20,19 +20,19 @@ struct SupabaseUploadTests {
     }
 
     @Test func endpointIsResumableUploadPath() {
-        let upload = SupabaseUpload(makeMedia(), config: makeConfig())
+        let upload = SupabaseUpload.request(for: makeMedia(), config: makeConfig())
         #expect(upload.endpoint.absoluteString == "https://xyz.supabase.co/storage/v1/upload/resumable")
     }
 
     @Test func headersCarryAuthApikeyAndUpsert() {
-        let upload = SupabaseUpload(makeMedia(), config: makeConfig())
+        let upload = SupabaseUpload.request(for: makeMedia(), config: makeConfig())
         #expect(upload.headers["Authorization"] == "Bearer anon-123")
         #expect(upload.headers["apikey"] == "anon-123")
         #expect(upload.headers["x-upsert"] == "true")
     }
 
     @Test func uploadMetadataIsCommaJoinedBase64KeyValues() {
-        let upload = SupabaseUpload(makeMedia(), config: makeConfig())
+        let upload = SupabaseUpload.request(for: makeMedia(), config: makeConfig())
         let raw = try! #require(upload.headers["Upload-Metadata"])
 
         // parse "<key> <base64>,<key> <base64>,…" back into a dict of decoded values
@@ -52,7 +52,7 @@ struct SupabaseUploadTests {
 
     @Test func uploadMetadataRoundTripsDisplayNameViaCustomKey() {
         // display-name round-trip: a custom "name" key holds the human filename
-        let upload = SupabaseUpload(makeMedia(), config: makeConfig())
+        let upload = SupabaseUpload.request(for: makeMedia(), config: makeConfig())
         let raw = try! #require(upload.headers["Upload-Metadata"])
 
         var decoded: [String: String] = [:]

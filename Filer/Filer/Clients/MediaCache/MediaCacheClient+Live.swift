@@ -15,7 +15,7 @@ extension MediaCacheClient: DependencyKey {
                     try await objectStore.remove(id)
                 }
 
-                let stored = try await objectStore.put(ObjectStoreWrite(id: payload.id, data: payload.data))
+                let stored = try await objectStore.put(ObjectStoreClient.Write(id: payload.id, data: payload.data))
                 guard let fileURL = stored.fileURL else {
                     throw Failure.unsupportedStorageLocation
                 }

@@ -1,23 +1,34 @@
 import Foundation
 
-// wire model: the shape of a Supabase TUS upload request.
-// domain → wire ⇒ init on the WIRE type (the wire value consumes the domain); ImportedMedia stays pure.
-struct SupabaseUpload {
-    let endpoint: URL
-    let headers: [String: String] // Authorization + apikey + Upload-Metadata + x-upsert
+enum SupabaseUpload {
+    struct Request: Equatable, Sendable {
+        let endpoint: URL
+        let headers: [String: String]
 
-    init(_ media: ImportedMedia, config: SupabaseConfig) {
-        endpoint = config.projectURL.appending(path: "storage/v1/upload/resumable")
-        headers = [
+        nonisolated init(endpoint: URL, headers: [String: String]) {
+            self.endpoint = endpoint
+            self.headers = headers
+        }
+    }
+
+    nonisolated static func request(for media: ImportedMedia, config: SupabaseConfig) -> Request {
+        Request(
+            endpoint: config.projectURL.appending(path: "storage/v1/upload/resumable"),
+            headers: headers(for: media, config: config)
+        )
+    }
+
+    private nonisolated static func headers(for media: ImportedMedia, config: SupabaseConfig) -> [String: String] {
+        [
             "Authorization": "Bearer \(config.anonKey)",
             "apikey": config.anonKey,
-            "Upload-Metadata": Self.metadata(media, bucket: config.bucket),
+            "Upload-Metadata": metadata(media, bucket: config.bucket),
             "x-upsert": "true",
         ]
     }
 
     // "<key> <base64(value)>,…"  — custom "name" key round-trips the display filename (§9)
-    private static func metadata(_ media: ImportedMedia, bucket: String) -> String {
+    private nonisolated static func metadata(_ media: ImportedMedia, bucket: String) -> String {
         [
             "bucketName": bucket,
             "objectName": media.id,

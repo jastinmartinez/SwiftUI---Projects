@@ -12,22 +12,22 @@ struct RangeProbeTests {
     }
 
     @Test func status206SignalsRangeSupport() {
-        let probe = RangeProbe(response(status: 206, headers: ["Content-Range": "bytes 0-0/12345"]))
+        let probe = RangeProbe.parse(response(status: 206, headers: ["Content-Range": "bytes 0-0/12345"]))
         #expect(probe.supportsRanges)
     }
 
     @Test func acceptRangesBytesSignalsRangeSupport() {
-        let probe = RangeProbe(response(status: 200, headers: ["Accept-Ranges": "bytes"]))
+        let probe = RangeProbe.parse(response(status: 200, headers: ["Accept-Ranges": "bytes"]))
         #expect(probe.supportsRanges)
     }
 
     @Test func plain200WithoutAcceptRangesDoesNotSupportRanges() {
-        let probe = RangeProbe(response(status: 200, headers: ["Content-Length": "12345"]))
+        let probe = RangeProbe.parse(response(status: 200, headers: ["Content-Length": "12345"]))
         #expect(!probe.supportsRanges)
     }
 
     @Test func totalLengthComesFromContentRangeTotal() {
-        let probe = RangeProbe(response(status: 206, headers: [
+        let probe = RangeProbe.parse(response(status: 206, headers: [
             "Content-Range": "bytes 0-0/98765",
             "Content-Length": "1", // must NOT win — Content-Range total is authoritative
         ]))
@@ -35,12 +35,12 @@ struct RangeProbeTests {
     }
 
     @Test func totalLengthFallsBackToContentLength() {
-        let probe = RangeProbe(response(status: 200, headers: ["Content-Length": "54321"]))
+        let probe = RangeProbe.parse(response(status: 200, headers: ["Content-Length": "54321"]))
         #expect(probe.totalLength == 54321)
     }
 
     @Test func totalLengthNilWhenNeitherHeaderPresent() {
-        let probe = RangeProbe(response(status: 200, headers: [:]))
+        let probe = RangeProbe.parse(response(status: 200, headers: [:]))
         #expect(probe.totalLength == nil)
     }
 }

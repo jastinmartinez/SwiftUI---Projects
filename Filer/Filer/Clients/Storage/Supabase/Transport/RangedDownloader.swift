@@ -56,7 +56,7 @@ actor RangedDownloader {
     private func probeRange(
         _ url: URL,
         _ headers: [String: String]
-    ) async throws -> (RangeProbe, Data) {
+    ) async throws -> (RangeProbe.Result, Data) {
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
         req.setValue("bytes=0-0", forHTTPHeaderField: "Range")
@@ -65,7 +65,7 @@ actor RangedDownloader {
         }
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-        return (RangeProbe(http), data)
+        return (RangeProbe.parse(http), data)
     }
 
     private func rangedLoop(
