@@ -31,14 +31,16 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage.upload = { _ in
-                AsyncThrowingStream { cont in
-                    cont.yield(.progress(p1))
-                    cont.yield(.progress(p2))
-                    cont.yield(.finished(finished))
-                    cont.finish()
+            $0.mediaRemoteStorage = .mock(
+                upload: { _ in
+                    AsyncThrowingStream { cont in
+                        cont.yield(.progress(p1))
+                        cont.yield(.progress(p2))
+                        cont.yield(.finished(finished))
+                        cont.finish()
+                    }
                 }
-            }
+            )
         }
 
         await store.send(.startUpload(media)) {
@@ -67,12 +69,14 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage.download = { _ in
-                AsyncThrowingStream { cont in
-                    cont.yield(.finished(dest))
-                    cont.finish()
+            $0.mediaRemoteStorage = .mock(
+                download: { _ in
+                    AsyncThrowingStream { cont in
+                        cont.yield(.finished(dest))
+                        cont.finish()
+                    }
                 }
-            }
+            )
         }
 
         await store.send(.tapped) {
@@ -108,9 +112,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage.upload = { _ in
-                AsyncThrowingStream { _ in } // never finishes; cancel terminates it
-            }
+            $0.mediaRemoteStorage = .mock(upload: { _ in AsyncThrowingStream { _ in } })
         }
         store.exhaustivity = .off
 
@@ -130,7 +132,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage.download = { _ in AsyncThrowingStream { _ in } }
+            $0.mediaRemoteStorage = .mock(download: { _ in AsyncThrowingStream { _ in } })
         }
         store.exhaustivity = .off
 
@@ -154,12 +156,14 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage.upload = { _ in
-                AsyncThrowingStream { cont in
-                    cont.yield(.finished(finished))
-                    cont.finish()
+            $0.mediaRemoteStorage = .mock(
+                upload: { _ in
+                    AsyncThrowingStream { cont in
+                        cont.yield(.finished(finished))
+                        cont.finish()
+                    }
                 }
-            }
+            )
         }
 
         await store.send(.retryTapped) {
@@ -183,12 +187,14 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage.download = { _ in
-                AsyncThrowingStream { cont in
-                    cont.yield(.finished(dest))
-                    cont.finish()
+            $0.mediaRemoteStorage = .mock(
+                download: { _ in
+                    AsyncThrowingStream { cont in
+                        cont.yield(.finished(dest))
+                        cont.finish()
+                    }
                 }
-            }
+            )
         }
 
         await store.send(.retryTapped) {
