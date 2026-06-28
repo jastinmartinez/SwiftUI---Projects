@@ -53,7 +53,7 @@ extension MediaRemoteStorageClient: DependencyKey {
                     do {
                         let url = try storage.from(config.bucket).getPublicURL(path: file.id)
                         let target = try await downloadStore.downloadTarget(file)
-                        for try await event in RangedDownloader(session: .shared)
+                        for try await event in RangedDownloader(transport: .live(session: .shared))
                             .download(
                                 url,
                                 headers: [:],
