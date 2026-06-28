@@ -42,10 +42,14 @@ import Testing
         #expect(writes.value == [Write(key: "abc.jpg", data: Data([1, 2]), offset: 6)])
     }
 
+    // MARK: - Helpers
+
     private func file() -> FileItem {
         FileItem(id: "abc.jpg", name: "Photo", kind: .image, size: 12, status: .remote)
     }
 }
+
+// MARK: - Helpers
 
 private struct Write: Equatable {
     let key: String

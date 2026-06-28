@@ -4,13 +4,6 @@ import Testing
 
 @MainActor
 struct FileRowModelTests {
-    private func makeSUT(_ item: FileItem) -> FileRowView.Model {
-        let store = Store(initialState: FileFeature.State(item: item)) { FileFeature() }
-        return FileRowView.Model(store)
-    }
-
-    private func model(_ item: FileItem) -> FileRowView.Model { makeSUT(item) }
-
     @Test func nameComesFromTheItem() {
         let m = model(FileItem(id: "a.jpg", name: "Sunset", kind: .image, size: 2_400_000, status: .remote))
         #expect(m.name == "Sunset")
@@ -64,4 +57,13 @@ struct FileRowModelTests {
             Issue.record("expected .downloading after send(.tapped), got \(store.item.status)")
         }
     }
+
+    // MARK: - Helpers
+
+    private func makeSUT(_ item: FileItem) -> FileRowView.Model {
+        let store = Store(initialState: FileFeature.State(item: item)) { FileFeature() }
+        return FileRowView.Model(store)
+    }
+
+    private func model(_ item: FileItem) -> FileRowView.Model { makeSUT(item) }
 }

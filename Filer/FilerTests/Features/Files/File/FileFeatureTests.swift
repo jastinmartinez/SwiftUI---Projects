@@ -5,21 +5,6 @@ import Testing
 
 @MainActor
 struct FileFeatureTests {
-    private var sampleMedia: ImportedMedia {
-        ImportedMedia(
-            id: "abc.jpg",
-            name: "photo.jpg",
-            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
-            contentType: "image/jpeg",
-            kind: .image,
-            size: 12_000_000
-        )
-    }
-
-    private func remoteItem(id: String = "remote.jpg", size: Int64? = 6_000_000) -> FileItem {
-        FileItem(id: id, name: "remote.jpg", kind: .image, size: size, status: .remote)
-    }
-
     @Test func startUploadWalksProgressToFinished() async {
         let media = sampleMedia
         let p1 = TransferProgress(bytesTransferred: 6_000_000, totalBytes: 12_000_000, completedChunks: 1, totalChunks: 2)
@@ -220,5 +205,22 @@ struct FileFeatureTests {
         await store.send(.failed(error)) {
             $0.item = $0.item.with(status: .failed(error))
         }
+    }
+
+    // MARK: - Helpers
+
+    private var sampleMedia: ImportedMedia {
+        ImportedMedia(
+            id: "abc.jpg",
+            name: "photo.jpg",
+            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
+            contentType: "image/jpeg",
+            kind: .image,
+            size: 12_000_000
+        )
+    }
+
+    private func remoteItem(id: String = "remote.jpg", size: Int64? = 6_000_000) -> FileItem {
+        FileItem(id: id, name: "remote.jpg", kind: .image, size: size, status: .remote)
     }
 }

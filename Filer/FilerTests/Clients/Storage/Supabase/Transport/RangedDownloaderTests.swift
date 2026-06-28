@@ -3,8 +3,6 @@ import Foundation
 import Testing
 
 @Suite(.serialized) struct RangedDownloaderTests {
-    private let source = URL(string: "https://example.supabase.co/object/public/bucket/file.bin")!
-
     @Test func rangedPathProbesAndWritesContiguously() async throws {
         let total = 14 * 1024 * 1024 // 6 + 6 + 2
         let chunk = TransferProgress.chunkSize
@@ -114,6 +112,10 @@ import Testing
 
     // MARK: - Helpers
 
+    private var source: URL {
+        URL(string: "https://example.supabase.co/object/public/bucket/file.bin")!
+    }
+
     private static func resp(_ url: URL, _ code: Int, _ headers: [String: String]) -> HTTPURLResponse {
         HTTPURLResponse(url: url, statusCode: code, httpVersion: "HTTP/1.1", headerFields: headers)!
     }
@@ -123,6 +125,8 @@ import Testing
         Data(repeating: 0xAB, count: count)
     }
 }
+
+// MARK: - Helpers
 
 private final class MemoryDownloadWriter: @unchecked Sendable {
     private let box = LockedBox<Data>(Data())

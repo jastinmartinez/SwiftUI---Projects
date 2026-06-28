@@ -3,9 +3,6 @@ import Foundation
 import Testing
 
 @Suite(.serialized) struct ResumableUploaderTests {
-    private let endpoint = URL(string: "https://example.supabase.co/storage/v1/upload/resumable")!
-    private let uploadURL = URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1")!
-
     @Test func postCreationSendsTusHeaders() async throws {
         let size = 2 * 1024 * 1024
         let file = try makeFile(bytes: size)
@@ -140,6 +137,14 @@ import Testing
     }
 
     // MARK: - Helpers
+
+    private var endpoint: URL {
+        URL(string: "https://example.supabase.co/storage/v1/upload/resumable")!
+    }
+
+    private var uploadURL: URL {
+        URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1")!
+    }
 
     private static func resp(_ url: URL, _ code: Int, _ headers: [String: String]) -> HTTPURLResponse {
         HTTPURLResponse(url: url, statusCode: code, httpVersion: "HTTP/1.1", headerFields: headers)!

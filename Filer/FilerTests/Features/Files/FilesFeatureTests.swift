@@ -5,21 +5,6 @@ import Testing
 
 @MainActor
 struct FilesFeatureTests {
-    private func remoteFile(_ id: String) -> FileItem {
-        FileItem(id: id, name: id, kind: .image, size: 100, status: .remote)
-    }
-
-    private func media(_ id: String) -> ImportedMedia {
-        ImportedMedia(
-            id: id,
-            name: id,
-            fileURL: URL(fileURLWithPath: "/tmp/\(id)"),
-            contentType: "image/jpeg",
-            kind: .image,
-            size: 1000
-        )
-    }
-
     @Test func onAppearLoadsFilesToReady() async {
         let files = [remoteFile("a.jpg"), remoteFile("b.jpg")]
         let store = TestStore(initialState: FilesFeature.State()) {
@@ -113,5 +98,22 @@ struct FilesFeatureTests {
         await store.send(.previewDismissed) {
             $0.preview = nil
         }
+    }
+
+    // MARK: - Helpers
+
+    private func remoteFile(_ id: String) -> FileItem {
+        FileItem(id: id, name: id, kind: .image, size: 100, status: .remote)
+    }
+
+    private func media(_ id: String) -> ImportedMedia {
+        ImportedMedia(
+            id: id,
+            name: id,
+            fileURL: URL(fileURLWithPath: "/tmp/\(id)"),
+            contentType: "image/jpeg",
+            kind: .image,
+            size: 1000
+        )
     }
 }

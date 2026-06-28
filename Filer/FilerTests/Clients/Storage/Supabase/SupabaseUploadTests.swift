@@ -3,22 +3,6 @@ import Foundation
 import Testing
 
 struct SupabaseUploadTests {
-    private func makeConfig() -> SupabaseConfig {
-        SupabaseConfig(
-            projectURL: URL(string: "https://xyz.supabase.co")!,
-            anonKey: "anon-123",
-            bucket: "media"
-        )
-    }
-
-    private func makeMedia() -> ImportedMedia {
-        ImportedMedia(
-            id: "abc.jpg", name: "Holiday Photo",
-            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
-            contentType: "image/jpeg", kind: .image, size: 2048
-        )
-    }
-
     @Test func endpointIsResumableUploadPath() {
         let upload = SupabaseUpload.request(for: makeMedia(), config: makeConfig())
         #expect(upload.endpoint.absoluteString == "https://xyz.supabase.co/storage/v1/upload/resumable")
@@ -61,5 +45,23 @@ struct SupabaseUploadTests {
             decoded[String(parts[0])] = String(data: Data(base64Encoded: String(parts[1]))!, encoding: .utf8)!
         }
         #expect(decoded["name"] == "Holiday Photo")
+    }
+
+    // MARK: - Helpers
+
+    private func makeConfig() -> SupabaseConfig {
+        SupabaseConfig(
+            projectURL: URL(string: "https://xyz.supabase.co")!,
+            anonKey: "anon-123",
+            bucket: "media"
+        )
+    }
+
+    private func makeMedia() -> ImportedMedia {
+        ImportedMedia(
+            id: "abc.jpg", name: "Holiday Photo",
+            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
+            contentType: "image/jpeg", kind: .image, size: 2048
+        )
     }
 }

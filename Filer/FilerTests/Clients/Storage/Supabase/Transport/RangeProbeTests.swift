@@ -4,13 +4,6 @@ import Foundation
 import Testing
 
 struct RangeProbeTests {
-    private func response(status: Int, headers: [String: String]) -> HTTPURLResponse {
-        HTTPURLResponse(
-            url: URL(string: "https://xyz.supabase.co/object")!,
-            statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers
-        )!
-    }
-
     @Test func status206SignalsRangeSupport() {
         let probe = RangeProbe.parse(response(status: 206, headers: ["Content-Range": "bytes 0-0/12345"]))
         #expect(probe.supportsRanges)
@@ -42,5 +35,14 @@ struct RangeProbeTests {
     @Test func totalLengthNilWhenNeitherHeaderPresent() {
         let probe = RangeProbe.parse(response(status: 200, headers: [:]))
         #expect(probe.totalLength == nil)
+    }
+
+    // MARK: - Helpers
+
+    private func response(status: Int, headers: [String: String]) -> HTTPURLResponse {
+        HTTPURLResponse(
+            url: URL(string: "https://xyz.supabase.co/object")!,
+            statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers
+        )!
     }
 }

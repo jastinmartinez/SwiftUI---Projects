@@ -40,6 +40,8 @@ import Testing
         }
     }
 
+    // MARK: - Helpers
+
     private func media() -> ImportedMedia {
         ImportedMedia(
             id: "abc.jpg",

@@ -38,26 +38,6 @@ import Testing
 
     // MARK: mapToUploadEvent / mapToDownloadEvent
 
-    private func source(_ progresses: [TransferProgress]) -> AsyncThrowingStream<TransferProgress, Error> {
-        AsyncThrowingStream { cont in
-            for p in progresses {
-                cont.yield(p)
-            }
-            cont.finish()
-        }
-    }
-
-    private func failingSource(_ error: Error) -> AsyncThrowingStream<TransferProgress, Error> {
-        AsyncThrowingStream { cont in cont.finish(throwing: error) }
-    }
-
-    private var media: ImportedMedia {
-        ImportedMedia(
-            id: "abc.jpg", name: "Photo", fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
-            contentType: "image/jpeg", kind: .image, size: 12
-        )
-    }
-
     @Test func mapToUploadEvent_emitsProgressThenFinished() async throws {
         let p0 = TransferProgress(bytesTransferred: 0, totalBytes: 12, completedChunks: 0, totalChunks: 1)
         let p1 = TransferProgress(bytesTransferred: 12, totalBytes: 12, completedChunks: 1, totalChunks: 1)
@@ -103,5 +83,27 @@ import Testing
             for try await _ in failingSource(Boom()).mapToDownloadEvent(dest) {}
         } catch { caught = error }
         #expect(caught is Boom)
+    }
+
+    // MARK: - Helpers
+
+    private func source(_ progresses: [TransferProgress]) -> AsyncThrowingStream<TransferProgress, Error> {
+        AsyncThrowingStream { cont in
+            for p in progresses {
+                cont.yield(p)
+            }
+            cont.finish()
+        }
+    }
+
+    private func failingSource(_ error: Error) -> AsyncThrowingStream<TransferProgress, Error> {
+        AsyncThrowingStream { cont in cont.finish(throwing: error) }
+    }
+
+    private var media: ImportedMedia {
+        ImportedMedia(
+            id: "abc.jpg", name: "Photo", fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
+            contentType: "image/jpeg", kind: .image, size: 12
+        )
     }
 }
