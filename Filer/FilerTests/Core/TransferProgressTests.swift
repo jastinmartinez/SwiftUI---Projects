@@ -2,9 +2,16 @@
 import Testing
 
 struct TransferProgressTests {
+    @Test func pendingZeroesProgressWithoutOwningChunkPolicy() {
+        let p = TransferProgress.pending(total: 14 * 1024 * 1024)
+        #expect(p.bytesTransferred == 0)
+        #expect(p.totalBytes == 14 * 1024 * 1024)
+        #expect(p.completedChunks == 0)
+        #expect(p.totalChunks == 0)
+    }
+
     @Test func startZeroesProgressAndComputesChunkCount() {
-        // 14 MB with 6 MB chunks → ceil(14/6) = 3 chunks
-        let p = TransferProgress.start(total: 14 * 1024 * 1024)
+        let p = TransferProgress.start(total: 14 * 1024 * 1024, chunkSize: 6 * 1024 * 1024)
         #expect(p.bytesTransferred == 0)
         #expect(p.totalBytes == 14 * 1024 * 1024)
         #expect(p.completedChunks == 0)
@@ -12,12 +19,12 @@ struct TransferProgressTests {
     }
 
     @Test func startExactMultipleHasNoPartialChunk() {
-        let p = TransferProgress.start(total: 12 * 1024 * 1024) // exactly 2 chunks
+        let p = TransferProgress.start(total: 12 * 1024 * 1024, chunkSize: 6 * 1024 * 1024)
         #expect(p.totalChunks == 2)
     }
 
     @Test func startWithNilTotalIsZeroChunks() {
-        let p = TransferProgress.start(total: nil)
+        let p = TransferProgress.start(total: nil, chunkSize: 6 * 1024 * 1024)
         #expect(p.totalBytes == 0)
         #expect(p.totalChunks == 0)
     }

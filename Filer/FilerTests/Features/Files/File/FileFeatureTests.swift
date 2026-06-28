@@ -30,7 +30,7 @@ struct FileFeatureTests {
 
         await store.send(.startUpload(media)) {
             $0.source = media
-            $0.item = $0.item.with(status: .uploading(.start(total: media.size)))
+            $0.item = $0.item.with(status: .uploading(.pending(total: media.size)))
         }
         await store.receive(\.upload)
         await store.receive(\.progress) {
@@ -65,7 +65,7 @@ struct FileFeatureTests {
         }
 
         await store.send(.tapped) {
-            $0.item = $0.item.with(status: .downloading(.start(total: item.size)))
+            $0.item = $0.item.with(status: .downloading(.pending(total: item.size)))
         }
         await store.receive(\.download)
         await store.receive(\.downloadFinished) {
@@ -105,7 +105,7 @@ struct FileFeatureTests {
 
         await store.send(.startUpload(media)) {
             $0.source = media
-            $0.item = $0.item.with(status: .uploading(.start(total: media.size)))
+            $0.item = $0.item.with(status: .uploading(.pending(total: media.size)))
         }
         await store.receive(\.upload)
         await store.send(.cancelTapped)
@@ -124,7 +124,7 @@ struct FileFeatureTests {
         store.exhaustivity = .off
 
         await store.send(.tapped) {
-            $0.item = $0.item.with(status: .downloading(.start(total: item.size)))
+            $0.item = $0.item.with(status: .downloading(.pending(total: item.size)))
         }
         await store.receive(\.download)
         await store.send(.cancelTapped) {
@@ -154,7 +154,7 @@ struct FileFeatureTests {
         }
 
         await store.send(.retryTapped) {
-            $0.item = $0.item.with(status: .uploading(.start(total: media.size)))
+            $0.item = $0.item.with(status: .uploading(.pending(total: media.size)))
         }
         await store.receive(\.upload)
         await store.receive(\.uploadFinished) {
@@ -183,7 +183,7 @@ struct FileFeatureTests {
         }
 
         await store.send(.retryTapped) {
-            $0.item = $0.item.with(status: .downloading(.start(total: item.size)))
+            $0.item = $0.item.with(status: .downloading(.pending(total: item.size)))
         }
         await store.receive(\.download)
         await store.receive(\.downloadFinished) {
@@ -195,7 +195,7 @@ struct FileFeatureTests {
         let item = remoteItem()
         let store = TestStore(
             initialState: FileFeature.State(
-                item: item.with(status: .downloading(.start(total: item.size))),
+                item: item.with(status: .downloading(.pending(total: item.size))),
                 source: nil
             )
         ) {

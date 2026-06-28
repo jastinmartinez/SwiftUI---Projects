@@ -43,7 +43,7 @@ extension FileItem {
 
 extension FileItem {
     init(importing media: ImportedMedia) {
-        self.init(metadata: media.metadata, status: .uploading(.start(total: media.metadata.size)))
+        self.init(metadata: media.metadata, status: .uploading(.pending(total: media.metadata.size)))
     }
 
     init(uploaded media: ImportedMedia) {

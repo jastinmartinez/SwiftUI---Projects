@@ -15,13 +15,12 @@ struct ResumableUploader: Sendable {
 
     func upload(
         _ request: Request,
-        source: UploadSource,
-        chunkSize: Int
+        source: UploadSource
     ) -> AsyncThrowingStream<TransferProgress, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    try await run(request, source, max(chunkSize, 1), continuation)
+                    try await run(request, source, continuation)
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -34,9 +33,9 @@ struct ResumableUploader: Sendable {
     private func run(
         _ upload: Request,
         _ source: UploadSource,
-        _ chunkSize: Int,
         _ continuation: AsyncThrowingStream<TransferProgress, Error>.Continuation
     ) async throws {
+        let chunkSize = max(retryPolicy.chunkSize, 1)
         let length = source.size
         let totalChunks = length > 0
             ? (length + chunkSize - 1) / chunkSize

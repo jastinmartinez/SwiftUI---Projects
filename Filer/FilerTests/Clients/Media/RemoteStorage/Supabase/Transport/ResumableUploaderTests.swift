@@ -31,8 +31,7 @@ import Testing
                 endpoint: endpoint(),
                 headers: ["Upload-Metadata": "name dGVzdA=="]
             ),
-            source: source(bytes: size),
-            chunkSize: size
+            source: source(bytes: size)
         ) {}
 
         let post = try #require(captured.value.first { $0.httpMethod == "POST" })
@@ -43,7 +42,7 @@ import Testing
 
     @Test func patchOffsetSequenceAcrossChunkBoundaries() async throws {
         let size = 14 * 1024 * 1024
-        let chunk = TransferProgress.chunkSize
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
         let offsets = LockedBox<[String]>([])
         let transport = HTTPTransport(
             data: { _ in
@@ -69,8 +68,7 @@ import Testing
 
         for try await progress in try uploader.upload(
             ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
-            source: source(bytes: size),
-            chunkSize: chunk
+            source: source(bytes: size)
         ) {
             last = progress
         }
@@ -84,7 +82,7 @@ import Testing
 
     @Test func resumesAfterInjectedFailureViaHead() async throws {
         let size = 12 * 1024 * 1024
-        let chunk = TransferProgress.chunkSize
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
         let didFail = LockedBox<Bool>(false)
         let heads = LockedBox<Int>(0)
         let transport = HTTPTransport(
@@ -125,8 +123,7 @@ import Testing
 
         for try await progress in try uploader.upload(
             ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
-            source: source(bytes: size),
-            chunkSize: chunk
+            source: source(bytes: size)
         ) {
             progresses.append(progress)
         }
@@ -142,7 +139,7 @@ import Testing
     }
 
     @Test func recreatesUploadOn409() async throws {
-        let size = TransferProgress.chunkSize
+        let size = MediaRemoteTransferPolicy.default.chunkSize
         let posts = LockedBox<Int>(0)
         let conflicted = LockedBox<Bool>(false)
         let transport = HTTPTransport(
@@ -172,8 +169,7 @@ import Testing
 
         for try await progress in try uploader.upload(
             ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
-            source: source(bytes: size),
-            chunkSize: size
+            source: source(bytes: size)
         ) {
             last = progress
         }
@@ -183,7 +179,7 @@ import Testing
     }
 
     @Test func invalidPatchOffsetFailsWithoutRetrying() async throws {
-        let size = TransferProgress.chunkSize
+        let size = MediaRemoteTransferPolicy.default.chunkSize
         let heads = LockedBox<Int>(0)
         let transport = HTTPTransport(
             data: { request in
@@ -209,8 +205,7 @@ import Testing
         await #expect(throws: ResumableUploader.Failure.invalidPatchResponse) {
             for try await _ in try uploader.upload(
                 ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
-                source: source(bytes: size),
-                chunkSize: size
+                source: source(bytes: size)
             ) {}
         }
         #expect(heads.value == 0)
@@ -240,8 +235,7 @@ import Testing
         await #expect(throws: ResumableUploader.Failure.invalidUploadSource) {
             for try await _ in try uploader.upload(
                 ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
-                source: shortSource,
-                chunkSize: 4
+                source: shortSource
             ) {}
         }
         #expect(uploads.value == 0)

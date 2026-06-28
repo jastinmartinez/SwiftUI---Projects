@@ -50,8 +50,7 @@ extension MediaRemoteStorageClient: DependencyKey {
                                 endpoint: req.endpoint,
                                 headers: req.headers
                             ),
-                            source: uploadSource,
-                            chunkSize: TransferProgress.chunkSize
+                            source: uploadSource
                         ) {
                             continuation.yield(.progress(progress))
                         }

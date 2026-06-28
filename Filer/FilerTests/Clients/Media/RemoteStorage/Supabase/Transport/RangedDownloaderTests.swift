@@ -6,7 +6,7 @@ import Testing
     @Test func rangedPathProbesAndWritesContiguously() async throws {
         let url = try source()
         let total = 14 * 1024 * 1024
-        let chunk = TransferProgress.chunkSize
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
         let body = Data(repeating: 0xAB, count: total)
         let requests = LockedBox<[URLRequest]>([])
         let sink = MemoryDownloadSink()
@@ -45,8 +45,7 @@ import Testing
                 headers: ["Authorization": "Bearer token"],
                 expectedSize: nil
             ),
-            sink: sink.sink,
-            chunkSize: chunk
+            sink: sink.sink
         ) {
             progress.append(update)
         }
@@ -71,7 +70,7 @@ import Testing
     @Test func resumesFromConfirmedSinkOffsetAfterTransientFailure() async throws {
         let url = try source()
         let total = 12 * 1024 * 1024
-        let chunk = TransferProgress.chunkSize
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
         let body = Data(repeating: 0xCD, count: total)
         let requests = LockedBox<[URLRequest]>([])
         let failedSecondChunk = LockedBox(false)
@@ -111,8 +110,7 @@ import Testing
         let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         for try await _ in downloader.download(
             RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-            sink: sink.sink,
-            chunkSize: chunk
+            sink: sink.sink
         ) {}
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
@@ -145,12 +143,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: Self.policy(chunkSize: total))
         await #expect(throws: RangedDownloader.Failure.invalidResumeState) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink,
-                chunkSize: total
+                sink: sink.sink
             ) {}
         }
 
@@ -267,7 +264,7 @@ import Testing
 
     @Test func invalidRangeByteCountFails() async throws {
         let url = try source()
-        let total = TransferProgress.chunkSize
+        let total = MediaRemoteTransferPolicy.default.chunkSize
         let requests = LockedBox<[URLRequest]>([])
         let sink = MemoryDownloadSink()
         let transport = HTTPTransport(
@@ -298,8 +295,7 @@ import Testing
         await #expect(throws: RangedDownloader.Failure.byteCountMismatch) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink,
-                chunkSize: total
+                sink: sink.sink
             ) {}
         }
 
@@ -342,11 +338,10 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: Self.policy(chunkSize: total))
         for try await _ in downloader.download(
             RangedDownloader.Request(url: url, headers: [:], expectedSize: Int64(total)),
-            sink: sink.sink,
-            chunkSize: total
+            sink: sink.sink
         ) {}
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
@@ -360,7 +355,7 @@ import Testing
 
     @Test func mismatchedContentRangeFailsWithoutWritingOrRetrying() async throws {
         let url = try source()
-        let total = TransferProgress.chunkSize
+        let total = MediaRemoteTransferPolicy.default.chunkSize
         let requests = LockedBox<[URLRequest]>([])
         let sink = MemoryDownloadSink()
         let transport = HTTPTransport(
@@ -391,8 +386,7 @@ import Testing
         await #expect(throws: RangedDownloader.Failure.invalidRangeResponse) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink,
-                chunkSize: total
+                sink: sink.sink
             ) {}
         }
 
@@ -433,12 +427,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: Self.policy(chunkSize: total))
         await #expect(throws: RangedDownloader.Failure.invalidRangeResponse) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink,
-                chunkSize: total
+                sink: sink.sink
             ) {}
         }
 
@@ -448,10 +441,6 @@ import Testing
             "bytes=0-\(total - 1)",
         ])
         #expect(sink.data.isEmpty)
-    }
-
-    private func source() throws -> URL {
-        try #require(URL(string: "https://example.supabase.co/object/authenticated/bucket/file.bin"))
     }
 
     private static func rangeBounds(_ value: String?) throws -> (start: Int, end: Int) {
@@ -470,6 +459,21 @@ import Testing
         try #require(count >= 0)
         try #require(end <= body.count)
         return body.subdata(in: start ..< end)
+    }
+
+    // MARK: - Helpers
+
+    private func source() throws -> URL {
+        try #require(URL(string: "https://example.supabase.co/object/authenticated/bucket/file.bin"))
+    }
+
+    private static func policy(chunkSize: Int) -> MediaRemoteTransferPolicy {
+        MediaRemoteTransferPolicy(
+            chunkSize: chunkSize,
+            maxRetries: MediaRemoteTransferPolicy.default.maxRetries,
+            maxResumes: MediaRemoteTransferPolicy.default.maxResumes,
+            maxRecreates: MediaRemoteTransferPolicy.default.maxRecreates
+        )
     }
 }
 

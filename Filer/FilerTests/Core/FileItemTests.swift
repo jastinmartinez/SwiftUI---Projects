@@ -49,7 +49,7 @@ struct FileItemTests {
         #expect(item.name == "Clip")
         #expect(item.kind == .video)
         #expect(item.size == 12_000_000)
-        #expect(item.status == .uploading(.start(total: 12_000_000)))
+        #expect(item.status == .uploading(.pending(total: 12_000_000)))
     }
 
     @Test func uploadedInitLandsLocal() {

@@ -36,13 +36,13 @@ struct FileFeature {
             switch action {
             case let .startUpload(media):
                 state.source = media
-                state.item = state.item.with(status: .uploading(.start(total: media.size)))
+                state.item = state.item.with(status: .uploading(.pending(total: media.size)))
                 return .send(.upload(media))
 
             case .tapped:
                 switch state.item.status {
                 case .remote:
-                    state.item = state.item.with(status: .downloading(.start(total: state.item.size)))
+                    state.item = state.item.with(status: .downloading(.pending(total: state.item.size)))
                     return .send(.download(state.item))
                 case let .local(url):
                     return .send(.delegate(.preview(url, state.item.kind)))
@@ -119,10 +119,10 @@ struct FileFeature {
                 switch e.operation {
                 case .upload:
                     guard let m = state.source else { return .none }
-                    state.item = state.item.with(status: .uploading(.start(total: m.size)))
+                    state.item = state.item.with(status: .uploading(.pending(total: m.size)))
                     return .send(.upload(m))
                 case .download:
-                    state.item = state.item.with(status: .downloading(.start(total: state.item.size)))
+                    state.item = state.item.with(status: .downloading(.pending(total: state.item.size)))
                     return .send(.download(state.item))
                 }
 

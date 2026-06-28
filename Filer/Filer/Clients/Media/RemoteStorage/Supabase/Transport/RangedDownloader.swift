@@ -18,13 +18,12 @@ struct RangedDownloader: Sendable {
 
     func download(
         _ request: Request,
-        sink: DownloadSink,
-        chunkSize: Int = TransferProgress.chunkSize
+        sink: DownloadSink
     ) -> AsyncThrowingStream<TransferProgress, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    try await run(request, sink, chunkSize, continuation)
+                    try await run(request, sink, retryPolicy.chunkSize, continuation)
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
