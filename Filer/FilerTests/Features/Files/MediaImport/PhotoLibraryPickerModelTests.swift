@@ -19,7 +19,14 @@ struct PhotoLibraryPickerModelTests {
     // MARK: - Helpers
 
     private func makeSUT(_ phase: MediaImportFeature.State.Phase) -> PhotoLibraryPickerView.Model {
-        let store = Store(initialState: MediaImportFeature.State(phase: phase)) { MediaImportFeature() }
+        let store = withDependencies {
+            $0.mediaImport = MediaImportClient()
+            $0.mediaImportStore = MediaImportStoreClient()
+        } operation: {
+            Store(initialState: MediaImportFeature.State(phase: phase)) {
+                MediaImportFeature()
+            }
+        }
         return PhotoLibraryPickerView.Model(store)
     }
 }

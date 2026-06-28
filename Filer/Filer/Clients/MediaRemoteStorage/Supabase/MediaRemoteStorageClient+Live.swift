@@ -3,7 +3,9 @@ import Foundation
 import Storage
 
 extension MediaRemoteStorageClient: DependencyKey {
-    static let liveValue = make(config: .loadFromBundle())
+    static var liveValue: MediaRemoteStorageClient {
+        make(config: .loadFromBundle())
+    }
 
     static func make(
         config: SupabaseConfig,
@@ -16,7 +18,11 @@ extension MediaRemoteStorageClient: DependencyKey {
             "apikey": config.anonKey,
         ]
         let storage = SupabaseStorageClient(
-            configuration: StorageClientConfiguration(url: storageURL, headers: headers, logger: nil)
+            configuration: StorageClientConfiguration(
+                url: storageURL,
+                headers: headers,
+                logger: nil
+            )
         )
         let list: List = {
             try await storage.from(config.bucket).list().compactMap(FileItem.init)
@@ -48,9 +54,14 @@ extension MediaRemoteStorageClient: DependencyKey {
                         let url = try storage.from(config.bucket).getPublicURL(path: file.id)
                         let target = try await downloadStore.downloadTarget(file)
                         for try await event in RangedDownloader(session: .shared)
-                            .download(url, headers: [:], expectedSize: file.size, write: { data, offset in
-                                try await downloadStore.writeDownloadChunk(target, data, offset)
-                            })
+                            .download(
+                                url,
+                                headers: [:],
+                                expectedSize: file.size,
+                                write: { data, offset in
+                                    try await downloadStore.writeDownloadChunk(target, data, offset)
+                                }
+                            )
                             .mapToDownloadEvent(target.localURL)
                         {
                             continuation.yield(event)

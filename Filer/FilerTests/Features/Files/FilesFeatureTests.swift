@@ -10,7 +10,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: FilesFeature.State()) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage = .mock(list: { files })
+            $0.mediaRemoteStorage = MediaRemoteStorageClient(list: { files })
         }
 
         await store.send(.onAppear)
@@ -28,7 +28,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: FilesFeature.State()) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage = .mock(list: { throw ListError() })
+            $0.mediaRemoteStorage = MediaRemoteStorageClient(list: { throw ListError() })
         }
 
         await store.send(.onAppear)
@@ -43,7 +43,7 @@ struct FilesFeatureTests {
             FilesFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.mediaRemoteStorage = .mock(upload: { _ in AsyncThrowingStream { $0.finish() } })
+            $0.mediaRemoteStorage = MediaRemoteStorageClient(upload: { _ in AsyncThrowingStream { $0.finish() } })
         }
         store.exhaustivity = .off
 
@@ -60,6 +60,8 @@ struct FilesFeatureTests {
 
         let store = TestStore(initialState: state) {
             FilesFeature()
+        } withDependencies: {
+            $0.mediaRemoteStorage = MediaRemoteStorageClient()
         }
         store.exhaustivity = .off
 
@@ -79,6 +81,8 @@ struct FilesFeatureTests {
 
         let store = TestStore(initialState: state) {
             FilesFeature()
+        } withDependencies: {
+            $0.mediaRemoteStorage = MediaRemoteStorageClient()
         }
         store.exhaustivity = .off
 
@@ -93,6 +97,8 @@ struct FilesFeatureTests {
 
         let store = TestStore(initialState: state) {
             FilesFeature()
+        } withDependencies: {
+            $0.mediaRemoteStorage = MediaRemoteStorageClient()
         }
 
         await store.send(.previewDismissed) {

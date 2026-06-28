@@ -49,7 +49,7 @@ struct FileRowModelTests {
         let store = Store(initialState: FileFeature.State(item: item)) {
             FileFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage = .mock(download: { _ in AsyncThrowingStream { $0.finish() } })
+            $0.mediaRemoteStorage = MediaRemoteStorageClient(download: { _ in AsyncThrowingStream { $0.finish() } })
         }
         let m = FileRowView.Model(store)
         m.send(.tapped)
@@ -61,7 +61,13 @@ struct FileRowModelTests {
     // MARK: - Helpers
 
     private func makeSUT(_ item: FileItem) -> FileRowView.Model {
-        let store = Store(initialState: FileFeature.State(item: item)) { FileFeature() }
+        let store = withDependencies {
+            $0.mediaRemoteStorage = MediaRemoteStorageClient()
+        } operation: {
+            Store(initialState: FileFeature.State(item: item)) {
+                FileFeature()
+            }
+        }
         return FileRowView.Model(store)
     }
 

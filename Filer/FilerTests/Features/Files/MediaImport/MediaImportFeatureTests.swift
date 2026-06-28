@@ -19,13 +19,16 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImportStore.removeExpired = {
-                events.mutate { $0.append("removeExpired") }
-            }
-            $0.mediaImportStore.store = { payload in
-                events.mutate { $0.append("store:\(payload.id)") }
-                return cached
-            }
+            $0.mediaImport = MediaImportClient()
+            $0.mediaImportStore = MediaImportStoreClient(
+                store: { payload in
+                    events.mutate { $0.append("store:\(payload.id)") }
+                    return cached
+                },
+                removeExpired: {
+                    events.mutate { $0.append("removeExpired") }
+                }
+            )
         }
 
         await store.send(.loaded([loaded]))
@@ -42,6 +45,9 @@ struct MediaImportFeatureTests {
 
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
+        } withDependencies: {
+            $0.mediaImport = MediaImportClient()
+            $0.mediaImportStore = MediaImportStoreClient()
         }
 
         await store.send(.cached(loaded)) {
@@ -57,8 +63,11 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImportStore.removeExpired = {}
-            $0.mediaImportStore.store = { _ in throw CacheError() }
+            $0.mediaImport = MediaImportClient()
+            $0.mediaImportStore = MediaImportStoreClient(
+                store: { _ in throw CacheError() },
+                removeExpired: {}
+            )
         }
 
         await store.send(.loaded([Self.payload("a.jpeg")]))
@@ -75,11 +84,14 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImportStore.removeExpired = { throw CleanupError() }
-            $0.mediaImportStore.store = { payload in
-                storedIDs.mutate { $0.append(payload.id) }
-                return Self.media(from: payload)
-            }
+            $0.mediaImport = MediaImportClient()
+            $0.mediaImportStore = MediaImportStoreClient(
+                store: { payload in
+                    storedIDs.mutate { $0.append(payload.id) }
+                    return Self.media(from: payload)
+                },
+                removeExpired: { throw CleanupError() }
+            )
         }
 
         await store.send(.loaded([Self.payload("a.jpeg")]))
@@ -93,6 +105,9 @@ struct MediaImportFeatureTests {
     @Test func failedSetsFailedPhase() async {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
+        } withDependencies: {
+            $0.mediaImport = MediaImportClient()
+            $0.mediaImportStore = MediaImportStoreClient()
         }
 
         await store.send(.failed("boom")) {
@@ -103,6 +118,9 @@ struct MediaImportFeatureTests {
     @Test func emptyPickedIsNoop() async {
         let store = TestStore(initialState: MediaImportFeature.State()) {
             MediaImportFeature()
+        } withDependencies: {
+            $0.mediaImport = MediaImportClient()
+            $0.mediaImportStore = MediaImportStoreClient()
         }
         await store.send(.picked([]))
     }
