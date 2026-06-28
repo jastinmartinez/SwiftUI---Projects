@@ -42,7 +42,8 @@ extension MediaRemoteStorageClient: DependencyKey {
                             fileManager: .default
                         )
                         for try await progress in ResumableUploader(
-                            transport: .live(session: .shared)
+                            transport: .live(session: .shared),
+                            retryPolicy: .default
                         )
                         .upload(
                             ResumableUploader.Request(

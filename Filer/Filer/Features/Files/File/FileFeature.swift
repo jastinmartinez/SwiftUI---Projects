@@ -59,7 +59,7 @@ struct FileFeature {
                         }
                     }
                 } catch: { error, send in
-                    await send(.failed(TransferError(operation: .upload, message: error.localizedDescription)))
+                    await send(.failed(.upload(error)))
                 }
                 .cancellable(id: CancelID.transfer)
 
@@ -72,7 +72,7 @@ struct FileFeature {
                         }
                     }
                 } catch: { error, send in
-                    await send(.failed(TransferError(operation: .download, message: error.localizedDescription)))
+                    await send(.failed(.download(error)))
                 }
                 .cancellable(id: CancelID.transfer)
 

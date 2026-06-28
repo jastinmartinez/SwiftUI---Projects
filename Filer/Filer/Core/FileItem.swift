@@ -5,28 +5,28 @@ import Foundation
 /// A file managed by the Files feature.
 struct FileItem: Equatable {
     let metadata: MediaMetadata
-    let status: Status // immutable — transitions replace the whole value
+    let status: Status
 }
 
 // MARK: - Metadata accessors
 
 extension FileItem {
-    var id: String { metadata.id } // storage object path — stable identity (minted at import for new files)
-    var name: String { metadata.name } // display filename (from import or list metadata)
+    var id: String { metadata.id }
+    var name: String { metadata.name }
     var contentType: String { metadata.contentType }
     var kind: MediaKind { metadata.kind }
-    var size: Int64? { metadata.size } // bytes (always known from import; from list metadata otherwise)
+    var size: Int64? { metadata.size }
 }
 
 // MARK: - Status
 
 extension FileItem {
     enum Status: Equatable {
-        case remote // in bucket, not downloaded
+        case remote
         case uploading(TransferProgress)
         case downloading(TransferProgress)
-        case local(URL) // cached locally → previewable
-        case failed(TransferError) // retriable
+        case local(URL)
+        case failed(TransferError)
     }
 }
 

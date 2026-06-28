@@ -34,28 +34,6 @@ struct RangedDownloader: Sendable {
         }
     }
 
-    func download(
-        _ url: URL,
-        headers: [String: String],
-        expectedSize: Int64?,
-        chunkSize: Int = TransferProgress.chunkSize,
-        write: @escaping DownloadSink.Write
-    ) -> AsyncThrowingStream<TransferProgress, Error> {
-        let confirmedOffset = ConfirmedDownloadOffset()
-        let sink = DownloadSink(
-            currentOffset: { await confirmedOffset.value },
-            write: { data, offset in
-                try await write(data, offset)
-                await confirmedOffset.confirm(offset + UInt64(data.count))
-            }
-        )
-        return download(
-            Request(url: url, headers: headers, expectedSize: expectedSize),
-            sink: sink,
-            chunkSize: chunkSize
-        )
-    }
-
     private func run(
         _ download: Request,
         _ sink: DownloadSink,
@@ -330,18 +308,14 @@ struct TransferRetryPolicy: Equatable, Sendable {
     let maxResumes: Int
     let maxRecreates: Int
 
-    static let `default` = TransferRetryPolicy(maxRetries: 2, maxResumes: 1, maxRecreates: 0)
+    static let `default` = TransferRetryPolicy(
+        maxRetries: 2,
+        maxResumes: 3,
+        maxRecreates: 1
+    )
 
     func shouldRetry(_ error: Error) -> Bool {
         guard let urlError = error as? URLError else { return false }
         return urlError.code != .cancelled
-    }
-}
-
-private actor ConfirmedDownloadOffset {
-    private(set) var value: UInt64 = 0
-
-    func confirm(_ offset: UInt64) {
-        value = max(value, offset)
     }
 }

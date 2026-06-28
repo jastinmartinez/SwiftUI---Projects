@@ -32,4 +32,11 @@ struct TransferProgressTests {
         #expect(e.operation == .download)
         #expect(e.message == "404")
     }
+
+    @Test func transferErrorFactoriesKeepRetryOperation() {
+        struct Boom: Error {}
+
+        #expect(TransferError.upload(Boom()).operation == .upload)
+        #expect(TransferError.download(Boom()).operation == .download)
+    }
 }

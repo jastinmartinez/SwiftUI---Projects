@@ -24,7 +24,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport)
+        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
 
         for try await _ in try uploader.upload(
             ResumableUploader.Request(
@@ -64,7 +64,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport)
+        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
         var last: TransferProgress?
 
         for try await progress in try uploader.upload(
@@ -120,7 +120,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport)
+        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
         var progresses: [TransferProgress] = []
 
         for try await progress in try uploader.upload(
@@ -167,7 +167,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport)
+        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
         var last: TransferProgress?
 
         for try await progress in try uploader.upload(
@@ -204,7 +204,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport)
+        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
 
         await #expect(throws: ResumableUploader.Failure.invalidPatchResponse) {
             for try await _ in try uploader.upload(
@@ -231,7 +231,7 @@ import Testing
                 return HTTPResponse(statusCode: 204, headers: [:], body: Data())
             }
         )
-        let uploader = ResumableUploader(transport: transport)
+        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
         let shortSource = ResumableUploader.UploadSource(
             size: 4,
             read: { _, _ in Data([1, 2]) }

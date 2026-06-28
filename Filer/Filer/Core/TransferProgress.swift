@@ -1,6 +1,6 @@
 import Foundation
 
-// chunk counts make "multipart" visible in the UI
+/// User-facing progress for upload and download transfers.
 struct TransferProgress: Equatable {
     let bytesTransferred: Int64
     let totalBytes: Int64

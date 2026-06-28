@@ -3,11 +3,14 @@ import Foundation
 /// TUS-resumable upload engine. Generic HTTP machinery: no Supabase, no TCA.
 struct ResumableUploader: Sendable {
     private let transport: HTTPTransport
-    private static let maxRecreates = 1
-    private static let maxResumes = 3
+    private let retryPolicy: TransferRetryPolicy
 
-    init(transport: HTTPTransport) {
+    init(
+        transport: HTTPTransport,
+        retryPolicy: TransferRetryPolicy
+    ) {
         self.transport = transport
+        self.retryPolicy = retryPolicy
     }
 
     func upload(
@@ -41,8 +44,8 @@ struct ResumableUploader: Sendable {
 
         var uploadURL = try await create(upload, length)
         var offset = 0
-        var resumesLeft = Self.maxResumes
-        var recreatesLeft = Self.maxRecreates
+        var resumesLeft = retryPolicy.maxResumes
+        var recreatesLeft = retryPolicy.maxRecreates
 
         while offset < length {
             try Task.checkCancellation()
@@ -65,7 +68,7 @@ struct ResumableUploader: Sendable {
                 }
                 throw failure
             } catch {
-                guard isRetriable(error), resumesLeft > 0 else {
+                guard retryPolicy.shouldRetry(error), resumesLeft > 0 else {
                     throw error
                 }
                 resumesLeft -= 1
@@ -135,11 +138,6 @@ struct ResumableUploader: Sendable {
             throw Failure.invalidResumeResponse
         }
         return offset
-    }
-
-    private func isRetriable(_ error: Error) -> Bool {
-        guard let urlError = error as? URLError else { return false }
-        return urlError.code != .cancelled
     }
 }
 
