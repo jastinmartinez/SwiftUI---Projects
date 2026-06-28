@@ -6,15 +6,19 @@ struct MediaDownloadStoreClient: Sendable {
     typealias DownloadSink = @Sendable (_ target: Target) -> RangedDownloader.DownloadSink
     typealias WriteDownloadChunk = @Sendable (_ target: Target, _ data: Data, _ offset: UInt64) async throws -> Void
 
-    var downloadTarget: DownloadTarget = { _ in throw Unimplemented() }
-    var downloadSink: DownloadSink = { _ in
-        RangedDownloader.DownloadSink(
-            currentOffset: { throw Unimplemented() },
-            write: { _, _ in throw Unimplemented() }
-        )
-    }
+    var downloadTarget: DownloadTarget
+    var downloadSink: DownloadSink
+    var writeDownloadChunk: WriteDownloadChunk
 
-    var writeDownloadChunk: WriteDownloadChunk = { _, _, _ in throw Unimplemented() }
+    init(
+        downloadTarget: @escaping DownloadTarget,
+        downloadSink: @escaping DownloadSink,
+        writeDownloadChunk: @escaping WriteDownloadChunk
+    ) {
+        self.downloadTarget = downloadTarget
+        self.downloadSink = downloadSink
+        self.writeDownloadChunk = writeDownloadChunk
+    }
 }
 
 extension MediaDownloadStoreClient {

@@ -2,10 +2,10 @@ import Dependencies
 import Foundation
 
 extension MediaUploadStoreClient: DependencyKey {
-    static let liveValue = live()
+    static let liveValue = live(contentStorage: .liveValue)
 
     static func live(
-        contentStorage: MediaContentStorageClient = .liveValue
+        contentStorage: MediaContentStorageClient
     ) -> MediaUploadStoreClient {
         let uploadSource: UploadSource = { media in
             let source = try await contentStorage.importUploadSource(media.metadata.id)

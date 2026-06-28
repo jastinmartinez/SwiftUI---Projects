@@ -4,13 +4,17 @@ import Storage
 
 extension MediaRemoteStorageClient: DependencyKey {
     static var liveValue: MediaRemoteStorageClient {
-        make(config: .loadFromBundle())
+        make(
+            config: .loadFromBundle(),
+            uploadStore: .liveValue,
+            downloadStore: .liveValue
+        )
     }
 
     static func make(
         config: SupabaseConfig,
-        uploadStore: MediaUploadStoreClient = .liveValue,
-        downloadStore: MediaDownloadStoreClient = .liveValue
+        uploadStore: MediaUploadStoreClient,
+        downloadStore: MediaDownloadStoreClient
     ) -> MediaRemoteStorageClient {
         let storageURL = config.projectURL.appending(path: "storage/v1")
         let headers: [String: String] = [
@@ -53,17 +57,19 @@ extension MediaRemoteStorageClient: DependencyKey {
                     do {
                         let url = try storage.from(config.bucket).getPublicURL(path: file.id)
                         let target = try await downloadStore.downloadTarget(file)
-                        for try await event in RangedDownloader(transport: .live(session: .shared))
-                            .download(
-                                RangedDownloader.Request(
-                                    url: url,
-                                    headers: SupabaseStorageHeaders.download(config: config),
-                                    expectedSize: file.size
-                                ),
-                                sink: downloadStore.downloadSink(target)
-                            )
-                            .mapToDownloadEvent(target.localURL)
-                        {
+                        for try await event in RangedDownloader(
+                            transport: .live(session: .shared),
+                            retryPolicy: .default
+                        )
+                        .download(
+                            RangedDownloader.Request(
+                                url: url,
+                                headers: SupabaseStorageHeaders.download(config: config),
+                                expectedSize: file.size
+                            ),
+                            sink: downloadStore.downloadSink(target)
+                        )
+                        .mapToDownloadEvent(target.localURL) {
                             continuation.yield(event)
                         }
                         continuation.finish()

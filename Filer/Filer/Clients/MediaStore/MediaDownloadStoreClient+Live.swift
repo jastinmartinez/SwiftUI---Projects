@@ -2,10 +2,10 @@ import Dependencies
 import Foundation
 
 extension MediaDownloadStoreClient: DependencyKey {
-    static let liveValue = live()
+    static let liveValue = live(contentStorage: .liveValue)
 
     static func live(
-        contentStorage: MediaContentStorageClient = .liveValue
+        contentStorage: MediaContentStorageClient
     ) -> MediaDownloadStoreClient {
         let downloadTarget: DownloadTarget = { file in
             let target = try await contentStorage.prepareDownloadTarget(file.id)

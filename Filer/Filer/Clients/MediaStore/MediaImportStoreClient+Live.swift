@@ -2,12 +2,16 @@ import Dependencies
 import Foundation
 
 extension MediaImportStoreClient: DependencyKey {
-    static let liveValue = live()
+    static let liveValue = live(
+        contentStorage: .liveValue,
+        now: Date.init,
+        timeToLive: defaultTimeToLive
+    )
 
     static func live(
-        contentStorage: MediaContentStorageClient = .liveValue,
-        now: @escaping @Sendable () -> Date = Date.init,
-        timeToLive: TimeInterval = defaultTimeToLive
+        contentStorage: MediaContentStorageClient,
+        now: @escaping @Sendable () -> Date,
+        timeToLive: TimeInterval
     ) -> MediaImportStoreClient {
         let store: Store = { payload in
             let stored = try await contentStorage.storeImport(payload.metadata.id, payload.data)

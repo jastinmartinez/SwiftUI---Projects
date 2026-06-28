@@ -4,7 +4,11 @@ import Foundation
 struct MediaUploadStoreClient: Sendable {
     typealias UploadSource = @Sendable (_ media: ImportedMedia) async throws -> Source
 
-    var uploadSource: UploadSource = { _ in throw Unimplemented() }
+    var uploadSource: UploadSource
+
+    init(uploadSource: @escaping UploadSource) {
+        self.uploadSource = uploadSource
+    }
 }
 
 extension MediaUploadStoreClient {

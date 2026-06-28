@@ -37,7 +37,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         var progress: [TransferProgress] = []
         for try await update in downloader.download(
             RangedDownloader.Request(
@@ -108,7 +108,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         for try await _ in downloader.download(
             RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
             sink: sink.sink,
@@ -145,7 +145,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         await #expect(throws: RangedDownloader.Failure.invalidResumeState) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
@@ -172,7 +172,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         await #expect(throws: RangedDownloader.Failure.partialFallbackUnsupported) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
@@ -197,7 +197,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         await #expect(throws: RangedDownloader.Failure.invalidFallbackResponse) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
@@ -225,7 +225,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         await #expect(throws: RangedDownloader.Failure.byteCountMismatch) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: 4),
@@ -253,7 +253,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         await #expect(throws: RangedDownloader.Failure.byteCountMismatch) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
@@ -294,7 +294,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         await #expect(throws: RangedDownloader.Failure.byteCountMismatch) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
@@ -342,7 +342,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         for try await _ in downloader.download(
             RangedDownloader.Request(url: url, headers: [:], expectedSize: Int64(total)),
             sink: sink.sink,
@@ -387,7 +387,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         await #expect(throws: RangedDownloader.Failure.invalidRangeResponse) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
@@ -433,7 +433,7 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport)
+        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
         await #expect(throws: RangedDownloader.Failure.invalidRangeResponse) {
             for try await _ in downloader.download(
                 RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),

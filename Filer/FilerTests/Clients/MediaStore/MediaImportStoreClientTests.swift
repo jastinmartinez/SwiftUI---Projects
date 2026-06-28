@@ -5,7 +5,7 @@ import Testing
 @Suite struct MediaImportStoreClientTests {
     @Test func storeWritesPayloadThroughContentStorageAndReturnsImportedMedia() async throws {
         let storedImports = LockedBox<[(key: String, data: Data)]>([])
-        let contentStorage = MediaContentStorageClient(
+        let contentStorage = Self.contentStorage(
             storeImport: { key, data in
                 storedImports.mutate { $0.append((key: key, data: data)) }
                 return MediaContentStorageClient.StoredContent(
@@ -16,7 +16,11 @@ import Testing
                 )
             }
         )
-        let client = MediaImportStoreClient.live(contentStorage: contentStorage)
+        let client = MediaImportStoreClient.live(
+            contentStorage: contentStorage,
+            now: Date.init,
+            timeToLive: MediaImportStoreClient.defaultTimeToLive
+        )
 
         let media = try await client.store(payload())
 
@@ -31,7 +35,7 @@ import Testing
     }
 
     @Test func storeMapsVideoMetadataToImportedMediaKind() async throws {
-        let contentStorage = MediaContentStorageClient(
+        let contentStorage = Self.contentStorage(
             storeImport: { key, data in
                 MediaContentStorageClient.StoredContent(
                     key: key,
@@ -41,7 +45,11 @@ import Testing
                 )
             }
         )
-        let client = MediaImportStoreClient.live(contentStorage: contentStorage)
+        let client = MediaImportStoreClient.live(
+            contentStorage: contentStorage,
+            now: Date.init,
+            timeToLive: MediaImportStoreClient.defaultTimeToLive
+        )
 
         let media = try await client.store(
             payload(
@@ -56,7 +64,7 @@ import Testing
 
     @Test func storeDoesNotRemoveExpiredImports() async throws {
         let removedKeys = LockedBox<[String]>([])
-        let contentStorage = MediaContentStorageClient(
+        let contentStorage = Self.contentStorage(
             storeImport: { key, data in
                 MediaContentStorageClient.StoredContent(
                     key: key,
@@ -72,7 +80,8 @@ import Testing
         )
         let client = MediaImportStoreClient.live(
             contentStorage: contentStorage,
-            now: { Date(timeIntervalSince1970: 86400 * 3) }
+            now: { Date(timeIntervalSince1970: 86400 * 3) },
+            timeToLive: MediaImportStoreClient.defaultTimeToLive
         )
 
         _ = try await client.store(payload("new.jpeg"))
@@ -83,7 +92,7 @@ import Testing
     @Test func removeExpiredRemovesOnlyExpiredImports() async throws {
         let now = Date(timeIntervalSince1970: 86400 * 3)
         let removedKeys = LockedBox<[String]>([])
-        let contentStorage = MediaContentStorageClient(
+        let contentStorage = Self.contentStorage(
             listImports: {
                 [
                     Self.stored("expired.jpeg", modifiedAt: now.addingTimeInterval(-86401)),
@@ -93,7 +102,11 @@ import Testing
             },
             removeImport: { key in removedKeys.mutate { $0.append(key) } }
         )
-        let client = MediaImportStoreClient.live(contentStorage: contentStorage, now: { now })
+        let client = MediaImportStoreClient.live(
+            contentStorage: contentStorage,
+            now: { now },
+            timeToLive: MediaImportStoreClient.defaultTimeToLive
+        )
 
         try await client.removeExpired()
 
@@ -129,6 +142,43 @@ import Testing
             size: 1,
             modifiedAt: modifiedAt,
             localURL: URL(fileURLWithPath: "/memory/imports/\(key)")
+        )
+    }
+
+    private static func contentStorage(
+        storeImport: @escaping MediaContentStorageClient.StoreImport
+    ) -> MediaContentStorageClient {
+        contentStorage(
+            storeImport: storeImport,
+            listImports: { throw MediaContentStorageClient.Unimplemented() },
+            removeImport: { _ in throw MediaContentStorageClient.Unimplemented() }
+        )
+    }
+
+    private static func contentStorage(
+        listImports: @escaping MediaContentStorageClient.ListImports,
+        removeImport: @escaping MediaContentStorageClient.RemoveImport
+    ) -> MediaContentStorageClient {
+        contentStorage(
+            storeImport: { _, _ in throw MediaContentStorageClient.Unimplemented() },
+            listImports: listImports,
+            removeImport: removeImport
+        )
+    }
+
+    private static func contentStorage(
+        storeImport: @escaping MediaContentStorageClient.StoreImport,
+        listImports: @escaping MediaContentStorageClient.ListImports,
+        removeImport: @escaping MediaContentStorageClient.RemoveImport
+    ) -> MediaContentStorageClient {
+        MediaContentStorageClient(
+            storeImport: storeImport,
+            listImports: listImports,
+            removeImport: removeImport,
+            importUploadSource: { _ in throw MediaContentStorageClient.Unimplemented() },
+            prepareDownloadTarget: { _ in throw MediaContentStorageClient.Unimplemented() },
+            downloadOffset: { _ in throw MediaContentStorageClient.Unimplemented() },
+            writeDownload: { _, _, _ in throw MediaContentStorageClient.Unimplemented() }
         )
     }
 }

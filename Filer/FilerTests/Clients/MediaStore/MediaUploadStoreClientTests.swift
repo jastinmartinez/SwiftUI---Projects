@@ -5,7 +5,7 @@ import Testing
 @Suite struct MediaUploadStoreClientTests {
     @Test func uploadSourceResolvesStoredImportForMediaID() async throws {
         let requestedKeys = LockedBox<[String]>([])
-        let contentStorage = MediaContentStorageClient(
+        let contentStorage = Self.contentStorage(
             importUploadSource: { key in
                 requestedKeys.mutate { $0.append(key) }
                 return MediaContentStorageClient.UploadSource(
@@ -27,7 +27,7 @@ import Testing
     }
 
     @Test func uploadSourcePropagatesMissingContent() async {
-        let contentStorage = MediaContentStorageClient(
+        let contentStorage = Self.contentStorage(
             importUploadSource: { key in throw MediaContentStorageClient.MissingContent(key: key) }
         )
         let client = MediaUploadStoreClient.live(contentStorage: contentStorage)
@@ -52,6 +52,20 @@ import Testing
                 size: 1
             ),
             fileURL: URL(fileURLWithPath: "/tmp/abc.jpg")
+        )
+    }
+
+    private static func contentStorage(
+        importUploadSource: @escaping MediaContentStorageClient.ImportUploadSource
+    ) -> MediaContentStorageClient {
+        MediaContentStorageClient(
+            storeImport: { _, _ in throw MediaContentStorageClient.Unimplemented() },
+            listImports: { throw MediaContentStorageClient.Unimplemented() },
+            removeImport: { _ in throw MediaContentStorageClient.Unimplemented() },
+            importUploadSource: importUploadSource,
+            prepareDownloadTarget: { _ in throw MediaContentStorageClient.Unimplemented() },
+            downloadOffset: { _ in throw MediaContentStorageClient.Unimplemented() },
+            writeDownload: { _, _, _ in throw MediaContentStorageClient.Unimplemented() }
         )
     }
 }

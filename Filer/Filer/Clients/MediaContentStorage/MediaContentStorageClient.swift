@@ -10,13 +10,31 @@ struct MediaContentStorageClient: Sendable {
     typealias DownloadOffset = @Sendable (_ key: String) async throws -> UInt64
     typealias WriteDownload = @Sendable (_ key: String, _ data: Data, _ offset: UInt64) async throws -> Void
 
-    var storeImport: StoreImport = { _, _ in throw Unimplemented() }
-    var listImports: ListImports = { throw Unimplemented() }
-    var removeImport: RemoveImport = { _ in throw Unimplemented() }
-    var importUploadSource: ImportUploadSource = { _ in throw Unimplemented() }
-    var prepareDownloadTarget: PrepareDownloadTarget = { _ in throw Unimplemented() }
-    var downloadOffset: DownloadOffset = { _ in throw Unimplemented() }
-    var writeDownload: WriteDownload = { _, _, _ in throw Unimplemented() }
+    var storeImport: StoreImport
+    var listImports: ListImports
+    var removeImport: RemoveImport
+    var importUploadSource: ImportUploadSource
+    var prepareDownloadTarget: PrepareDownloadTarget
+    var downloadOffset: DownloadOffset
+    var writeDownload: WriteDownload
+
+    init(
+        storeImport: @escaping StoreImport,
+        listImports: @escaping ListImports,
+        removeImport: @escaping RemoveImport,
+        importUploadSource: @escaping ImportUploadSource,
+        prepareDownloadTarget: @escaping PrepareDownloadTarget,
+        downloadOffset: @escaping DownloadOffset,
+        writeDownload: @escaping WriteDownload
+    ) {
+        self.storeImport = storeImport
+        self.listImports = listImports
+        self.removeImport = removeImport
+        self.importUploadSource = importUploadSource
+        self.prepareDownloadTarget = prepareDownloadTarget
+        self.downloadOffset = downloadOffset
+        self.writeDownload = writeDownload
+    }
 }
 
 extension MediaContentStorageClient {

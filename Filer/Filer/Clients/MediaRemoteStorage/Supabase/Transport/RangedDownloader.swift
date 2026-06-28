@@ -10,7 +10,7 @@ struct RangedDownloader: Sendable {
 
     init(
         transport: HTTPTransport,
-        retryPolicy: TransferRetryPolicy = .default
+        retryPolicy: TransferRetryPolicy
     ) {
         self.transport = transport
         self.retryPolicy = retryPolicy

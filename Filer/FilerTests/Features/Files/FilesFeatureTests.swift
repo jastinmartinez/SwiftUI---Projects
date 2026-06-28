@@ -10,7 +10,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: FilesFeature.State()) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage = MediaRemoteStorageClient(list: { files })
+            $0.mediaRemoteStorage = Self.remoteStorage(list: { files })
         }
 
         await store.send(.onAppear)
@@ -28,7 +28,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: FilesFeature.State()) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage = MediaRemoteStorageClient(list: { throw ListError() })
+            $0.mediaRemoteStorage = Self.remoteStorage(list: { throw ListError() })
         }
 
         await store.send(.onAppear)
@@ -43,7 +43,7 @@ struct FilesFeatureTests {
             FilesFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.mediaRemoteStorage = MediaRemoteStorageClient(upload: { _ in AsyncThrowingStream { $0.finish() } })
+            $0.mediaRemoteStorage = Self.remoteStorage(upload: { _ in AsyncThrowingStream { $0.finish() } })
         }
         store.exhaustivity = .off
 
@@ -61,7 +61,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: state) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage = MediaRemoteStorageClient()
+            $0.mediaRemoteStorage = Self.failingRemoteStorage()
         }
         store.exhaustivity = .off
 
@@ -82,7 +82,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: state) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage = MediaRemoteStorageClient()
+            $0.mediaRemoteStorage = Self.failingRemoteStorage()
         }
         store.exhaustivity = .off
 
@@ -98,7 +98,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: state) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage = MediaRemoteStorageClient()
+            $0.mediaRemoteStorage = Self.failingRemoteStorage()
         }
 
         await store.send(.previewDismissed) {
@@ -131,6 +131,34 @@ struct FilesFeatureTests {
                 size: 1000
             ),
             fileURL: URL(fileURLWithPath: "/tmp/\(id)")
+        )
+    }
+
+    private static func remoteStorage(
+        list: @escaping MediaRemoteStorageClient.List
+    ) -> MediaRemoteStorageClient {
+        MediaRemoteStorageClient(
+            list: list,
+            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.upload")) } },
+            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.download")) } }
+        )
+    }
+
+    private static func remoteStorage(
+        upload: @escaping MediaRemoteStorageClient.Upload
+    ) -> MediaRemoteStorageClient {
+        MediaRemoteStorageClient(
+            list: { throw MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.list") },
+            upload: upload,
+            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.download")) } }
+        )
+    }
+
+    private static func failingRemoteStorage() -> MediaRemoteStorageClient {
+        MediaRemoteStorageClient(
+            list: { throw MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.list") },
+            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.upload")) } },
+            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.download")) } }
         )
     }
 }

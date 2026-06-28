@@ -6,9 +6,19 @@ struct MediaRemoteStorageClient: Sendable {
     typealias Upload = @Sendable (_ media: ImportedMedia) -> AsyncThrowingStream<UploadEvent, Error>
     typealias Download = @Sendable (_ file: FileItem) -> AsyncThrowingStream<DownloadEvent, Error>
 
-    var list: List = { throw Unimplemented("mediaRemoteStorage.list") }
-    var upload: Upload = { _ in AsyncThrowingStream { $0.finish(throwing: Unimplemented("mediaRemoteStorage.upload")) } }
-    var download: Download = { _ in AsyncThrowingStream { $0.finish(throwing: Unimplemented("mediaRemoteStorage.download")) } }
+    var list: List
+    var upload: Upload
+    var download: Download
+
+    init(
+        list: @escaping List,
+        upload: @escaping Upload,
+        download: @escaping Download
+    ) {
+        self.list = list
+        self.upload = upload
+        self.download = download
+    }
 }
 
 extension MediaRemoteStorageClient {

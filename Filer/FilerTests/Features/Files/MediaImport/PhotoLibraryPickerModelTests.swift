@@ -20,13 +20,24 @@ struct PhotoLibraryPickerModelTests {
 
     private func makeSUT(_ phase: MediaImportFeature.State.Phase) -> PhotoLibraryPickerView.Model {
         let store = withDependencies {
-            $0.mediaImport = MediaImportClient()
-            $0.mediaImportStore = MediaImportStoreClient()
+            $0.mediaImport = Self.failingMediaImport()
+            $0.mediaImportStore = Self.failingImportStore()
         } operation: {
             Store(initialState: MediaImportFeature.State(phase: phase)) {
                 MediaImportFeature()
             }
         }
         return PhotoLibraryPickerView.Model(store)
+    }
+
+    private nonisolated static func failingMediaImport() -> MediaImportClient {
+        MediaImportClient(load: { _ in throw MediaImportClient.Unimplemented() })
+    }
+
+    private nonisolated static func failingImportStore() -> MediaImportStoreClient {
+        MediaImportStoreClient(
+            store: { _ in throw MediaImportStoreClient.Unimplemented() },
+            removeExpired: { throw MediaImportStoreClient.Unimplemented() }
+        )
     }
 }

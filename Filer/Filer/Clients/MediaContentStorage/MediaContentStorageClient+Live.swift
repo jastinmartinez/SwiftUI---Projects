@@ -2,10 +2,17 @@ import Dependencies
 import Foundation
 
 extension MediaContentStorageClient: DependencyKey {
-    static let liveValue = live()
+    static let liveValue = live(
+        fileStore: MediaContentFileStore(
+            root: URL(fileURLWithPath: NSTemporaryDirectory()).appending(
+                path: "FilerMediaContent"
+            ),
+            fileManager: .default
+        )
+    )
 
     static func live(
-        fileStore: MediaContentFileStore = MediaContentFileStore()
+        fileStore: MediaContentFileStore
     ) -> MediaContentStorageClient {
         let storeImport: StoreImport = { key, data in
             try await fileStore.storeImport(key, data)

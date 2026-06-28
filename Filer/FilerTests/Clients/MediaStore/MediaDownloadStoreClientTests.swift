@@ -5,7 +5,7 @@ import Testing
 @Suite struct MediaDownloadStoreClientTests {
     @Test func downloadTargetResolvesContentStorageTargetForFileID() async throws {
         let requestedKeys = LockedBox<[String]>([])
-        let contentStorage = MediaContentStorageClient(
+        let contentStorage = Self.contentStorage(
             prepareDownloadTarget: { key in
                 requestedKeys.mutate { $0.append(key) }
                 return MediaContentStorageClient.DownloadTarget(
@@ -25,7 +25,7 @@ import Testing
 
     @Test func writeDownloadChunkWritesToContentStorageTargetKey() async throws {
         let writes = LockedBox<[Write]>([])
-        let contentStorage = MediaContentStorageClient(
+        let contentStorage = Self.contentStorage(
             writeDownload: { key, data, offset in
                 writes.mutate { $0.append(Write(key: key, data: data, offset: offset)) }
             }
@@ -45,7 +45,7 @@ import Testing
     @Test func downloadSinkReportsPersistedOffsetAndWritesChunks() async throws {
         let offsets = LockedBox<[String: UInt64]>(["abc.jpg": 6])
         let writes = LockedBox<[Write]>([])
-        let contentStorage = MediaContentStorageClient(
+        let contentStorage = Self.contentStorage(
             prepareDownloadTarget: { key in
                 MediaContentStorageClient.DownloadTarget(
                     key: key,
@@ -82,6 +82,42 @@ import Testing
                 size: 12
             ),
             status: .remote
+        )
+    }
+
+    private static func contentStorage(
+        prepareDownloadTarget: @escaping MediaContentStorageClient.PrepareDownloadTarget
+    ) -> MediaContentStorageClient {
+        contentStorage(
+            prepareDownloadTarget: prepareDownloadTarget,
+            downloadOffset: { _ in throw MediaContentStorageClient.Unimplemented() },
+            writeDownload: { _, _, _ in throw MediaContentStorageClient.Unimplemented() }
+        )
+    }
+
+    private static func contentStorage(
+        writeDownload: @escaping MediaContentStorageClient.WriteDownload
+    ) -> MediaContentStorageClient {
+        contentStorage(
+            prepareDownloadTarget: { _ in throw MediaContentStorageClient.Unimplemented() },
+            downloadOffset: { _ in throw MediaContentStorageClient.Unimplemented() },
+            writeDownload: writeDownload
+        )
+    }
+
+    private static func contentStorage(
+        prepareDownloadTarget: @escaping MediaContentStorageClient.PrepareDownloadTarget,
+        downloadOffset: @escaping MediaContentStorageClient.DownloadOffset,
+        writeDownload: @escaping MediaContentStorageClient.WriteDownload
+    ) -> MediaContentStorageClient {
+        MediaContentStorageClient(
+            storeImport: { _, _ in throw MediaContentStorageClient.Unimplemented() },
+            listImports: { throw MediaContentStorageClient.Unimplemented() },
+            removeImport: { _ in throw MediaContentStorageClient.Unimplemented() },
+            importUploadSource: { _ in throw MediaContentStorageClient.Unimplemented() },
+            prepareDownloadTarget: prepareDownloadTarget,
+            downloadOffset: downloadOffset,
+            writeDownload: writeDownload
         )
     }
 }

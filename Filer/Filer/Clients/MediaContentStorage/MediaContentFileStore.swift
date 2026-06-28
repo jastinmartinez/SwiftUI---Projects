@@ -6,10 +6,8 @@ actor MediaContentFileStore {
     private let fileManager: FileManager
 
     init(
-        root: URL = URL(fileURLWithPath: NSTemporaryDirectory()).appending(
-            path: "FilerMediaContent"
-        ),
-        fileManager: FileManager = .default
+        root: URL,
+        fileManager: FileManager
     ) {
         importsDirectory = root.appending(path: "imports")
         downloadsDirectory = root.appending(path: "downloads")

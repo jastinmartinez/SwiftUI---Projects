@@ -6,7 +6,11 @@ import SwiftUI
 struct MediaImportClient: Sendable {
     typealias Load = @Sendable (_ items: [PhotosPickerItem]) async throws -> [Payload]
 
-    var load: Load = { _ in [] }
+    var load: Load
+
+    init(load: @escaping Load) {
+        self.load = load
+    }
 }
 
 extension MediaImportClient {
@@ -14,6 +18,8 @@ extension MediaImportClient {
         let metadata: MediaMetadata
         let data: Data
     }
+
+    struct Unimplemented: Error {}
 }
 
 extension DependencyValues {

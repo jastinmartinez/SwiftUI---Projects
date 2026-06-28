@@ -5,8 +5,16 @@ struct MediaImportStoreClient: Sendable {
     typealias Store = @Sendable (_ payload: MediaImportClient.Payload) async throws -> ImportedMedia
     typealias RemoveExpired = @Sendable () async throws -> Void
 
-    var store: Store = { _ in throw Unimplemented() }
-    var removeExpired: RemoveExpired = { throw Unimplemented() }
+    var store: Store
+    var removeExpired: RemoveExpired
+
+    init(
+        store: @escaping Store,
+        removeExpired: @escaping RemoveExpired
+    ) {
+        self.store = store
+        self.removeExpired = removeExpired
+    }
 }
 
 extension MediaImportStoreClient {

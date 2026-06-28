@@ -49,7 +49,7 @@ struct FileRowModelTests {
         let store = Store(initialState: FileFeature.State(item: item)) {
             FileFeature()
         } withDependencies: {
-            $0.mediaRemoteStorage = MediaRemoteStorageClient(download: { _ in AsyncThrowingStream { $0.finish() } })
+            $0.mediaRemoteStorage = Self.remoteStorage(download: { _ in AsyncThrowingStream { $0.finish() } })
         }
         let m = FileRowView.Model(store)
         m.send(.tapped)
@@ -62,7 +62,7 @@ struct FileRowModelTests {
 
     private func makeSUT(_ item: FileItem) -> FileRowView.Model {
         let store = withDependencies {
-            $0.mediaRemoteStorage = MediaRemoteStorageClient()
+            $0.mediaRemoteStorage = Self.failingRemoteStorage()
         } operation: {
             Store(initialState: FileFeature.State(item: item)) {
                 FileFeature()
@@ -90,6 +90,24 @@ struct FileRowModelTests {
                 size: size
             ),
             status: status
+        )
+    }
+
+    private static func remoteStorage(
+        download: @escaping MediaRemoteStorageClient.Download
+    ) -> MediaRemoteStorageClient {
+        MediaRemoteStorageClient(
+            list: { throw MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.list") },
+            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.upload")) } },
+            download: download
+        )
+    }
+
+    private static func failingRemoteStorage() -> MediaRemoteStorageClient {
+        MediaRemoteStorageClient(
+            list: { throw MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.list") },
+            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.upload")) } },
+            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaRemoteStorageClient.Unimplemented("mediaRemoteStorage.download")) } }
         )
     }
 }

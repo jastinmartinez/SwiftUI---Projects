@@ -19,7 +19,7 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = MediaImportClient()
+            $0.mediaImport = Self.failingMediaImport()
             $0.mediaImportStore = MediaImportStoreClient(
                 store: { payload in
                     events.mutate { $0.append("store:\(payload.metadata.id)") }
@@ -46,8 +46,8 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = MediaImportClient()
-            $0.mediaImportStore = MediaImportStoreClient()
+            $0.mediaImport = Self.failingMediaImport()
+            $0.mediaImportStore = Self.failingImportStore()
         }
 
         await store.send(.cached(loaded)) {
@@ -63,7 +63,7 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = MediaImportClient()
+            $0.mediaImport = Self.failingMediaImport()
             $0.mediaImportStore = MediaImportStoreClient(
                 store: { _ in throw CacheError() },
                 removeExpired: {}
@@ -84,7 +84,7 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = MediaImportClient()
+            $0.mediaImport = Self.failingMediaImport()
             $0.mediaImportStore = MediaImportStoreClient(
                 store: { payload in
                     storedIDs.mutate { $0.append(payload.metadata.id) }
@@ -106,8 +106,8 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = MediaImportClient()
-            $0.mediaImportStore = MediaImportStoreClient()
+            $0.mediaImport = Self.failingMediaImport()
+            $0.mediaImportStore = Self.failingImportStore()
         }
 
         await store.send(.failed("boom")) {
@@ -119,8 +119,8 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State()) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = MediaImportClient()
-            $0.mediaImportStore = MediaImportStoreClient()
+            $0.mediaImport = Self.failingMediaImport()
+            $0.mediaImportStore = Self.failingImportStore()
         }
         await store.send(.picked([]))
     }
@@ -157,6 +157,17 @@ struct MediaImportFeatureTests {
         ImportedMedia(
             metadata: payload.metadata.with(size: Int64(payload.data.count)),
             fileURL: URL(fileURLWithPath: "/tmp/\(payload.metadata.id)")
+        )
+    }
+
+    private nonisolated static func failingMediaImport() -> MediaImportClient {
+        MediaImportClient(load: { _ in throw MediaImportClient.Unimplemented() })
+    }
+
+    private nonisolated static func failingImportStore() -> MediaImportStoreClient {
+        MediaImportStoreClient(
+            store: { _ in throw MediaImportStoreClient.Unimplemented() },
+            removeExpired: { throw MediaImportStoreClient.Unimplemented() }
         )
     }
 }

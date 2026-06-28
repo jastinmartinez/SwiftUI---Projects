@@ -13,7 +13,7 @@ struct HTTPTransport: Sendable {
 }
 
 extension HTTPTransport {
-    static func live(session: URLSession = .shared) -> HTTPTransport {
+    static func live(session: URLSession) -> HTTPTransport {
         let data: DataRequest = { request in
             let (body, response) = try await session.data(for: request)
             return try HTTPResponse(body: body, response: response)
