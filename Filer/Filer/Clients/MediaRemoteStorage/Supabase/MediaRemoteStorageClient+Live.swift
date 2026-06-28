@@ -37,12 +37,24 @@ extension MediaRemoteStorageClient: DependencyKey {
                     do {
                         let source = try await uploadStore.uploadSource(media)
                         let req = SupabaseUpload.request(for: source.media, config: config)
-                        for try await event in ResumableUploader(session: .shared)
-                            .upload(source.localURL, to: req.endpoint, headers: req.headers)
-                            .mapToUploadEvent(source.media)
-                        {
-                            continuation.yield(event)
+                        let uploadSource = try ResumableUploader.UploadSource.file(
+                            source.localURL,
+                            fileManager: .default
+                        )
+                        for try await progress in ResumableUploader(
+                            transport: .live(session: .shared)
+                        )
+                        .upload(
+                            ResumableUploader.Request(
+                                endpoint: req.endpoint,
+                                headers: req.headers
+                            ),
+                            source: uploadSource,
+                            chunkSize: TransferProgress.chunkSize
+                        ) {
+                            continuation.yield(.progress(progress))
                         }
+                        continuation.yield(.finished(FileItem(uploaded: source.media)))
                         continuation.finish()
                     } catch {
                         continuation.finish(throwing: error)
@@ -68,10 +80,10 @@ extension MediaRemoteStorageClient: DependencyKey {
                                 expectedSize: file.size
                             ),
                             sink: downloadStore.downloadSink(target)
-                        )
-                        .mapToDownloadEvent(target.localURL) {
-                            continuation.yield(event)
+                        ) {
+                            continuation.yield(.progress(event))
                         }
+                        continuation.yield(.finished(target.localURL))
                         continuation.finish()
                     } catch {
                         continuation.finish(throwing: error)

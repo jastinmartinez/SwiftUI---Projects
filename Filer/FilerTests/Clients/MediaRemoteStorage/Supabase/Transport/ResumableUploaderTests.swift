@@ -5,21 +5,35 @@ import Testing
 @Suite(.serialized) struct ResumableUploaderTests {
     @Test func postCreationSendsTusHeaders() async throws {
         let size = 2 * 1024 * 1024
-        let file = try makeFile(bytes: size)
         let captured = LockedBox<[URLRequest]>([])
-
-        StubURLProtocol.handler = { req in
-            captured.mutate { $0.append(req) }
-            if req.httpMethod == "POST" {
-                return (Self.resp(req.url!, 201, ["Location": uploadURL.absoluteString]), Data())
+        let transport = HTTPTransport(
+            data: { request in
+                captured.mutate { $0.append(request) }
+                return try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { request, _ in
+                captured.mutate { $0.append(request) }
+                return HTTPResponse(
+                    statusCode: 204,
+                    headers: ["Upload-Offset": "\(size)"],
+                    body: Data()
+                )
             }
-            return (Self.resp(req.url!, 204, ["Upload-Offset": "\(size)"]), Data())
-        }
-        defer { StubURLProtocol.handler = nil }
+        )
+        let uploader = ResumableUploader(transport: transport)
 
-        let uploader = ResumableUploader(session: StubURLProtocol.session())
-        for try await _ in uploader.upload(file, to: endpoint,
-                                           headers: ["Upload-Metadata": "name dGVzdA=="]) {}
+        for try await _ in try uploader.upload(
+            ResumableUploader.Request(
+                endpoint: endpoint(),
+                headers: ["Upload-Metadata": "name dGVzdA=="]
+            ),
+            source: source(bytes: size),
+            chunkSize: size
+        ) {}
 
         let post = try #require(captured.value.first { $0.httpMethod == "POST" })
         #expect(post.value(forHTTPHeaderField: "Tus-Resumable") == "1.0.0")
@@ -28,26 +42,37 @@ import Testing
     }
 
     @Test func patchOffsetSequenceAcrossChunkBoundaries() async throws {
-        let size = 14 * 1024 * 1024 // 6 + 6 + 2
+        let size = 14 * 1024 * 1024
         let chunk = TransferProgress.chunkSize
-        let file = try makeFile(bytes: size)
         let offsets = LockedBox<[String]>([])
-
-        StubURLProtocol.handler = { req in
-            if req.httpMethod == "POST" {
-                return (Self.resp(req.url!, 201, ["Location": uploadURL.absoluteString]), Data())
+        let transport = HTTPTransport(
+            data: { _ in
+                try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { request, _ in
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                offsets.mutate { $0.append("\(offset)") }
+                let sent = offset + min(chunk, size - offset)
+                return HTTPResponse(
+                    statusCode: 204,
+                    headers: ["Upload-Offset": "\(sent)"],
+                    body: Data()
+                )
             }
-            let off = req.value(forHTTPHeaderField: "Upload-Offset") ?? "?"
-            offsets.mutate { $0.append(off) }
-            let sent = Int(off)! + min(chunk, size - Int(off)!)
-            return (Self.resp(req.url!, 204, ["Upload-Offset": "\(sent)"]), Data())
-        }
-        defer { StubURLProtocol.handler = nil }
-
-        let uploader = ResumableUploader(session: StubURLProtocol.session())
+        )
+        let uploader = ResumableUploader(transport: transport)
         var last: TransferProgress?
-        for try await p in uploader.upload(file, to: endpoint, headers: [:], chunkSize: chunk) {
-            last = p
+
+        for try await progress in try uploader.upload(
+            ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+            source: source(bytes: size),
+            chunkSize: chunk
+        ) {
+            last = progress
         }
 
         #expect(offsets.value == ["0", "\(chunk)", "\(2 * chunk)"])
@@ -58,102 +83,186 @@ import Testing
     }
 
     @Test func resumesAfterInjectedFailureViaHead() async throws {
-        let size = 12 * 1024 * 1024 // 6 + 6
+        let size = 12 * 1024 * 1024
         let chunk = TransferProgress.chunkSize
-        let file = try makeFile(bytes: size)
         let didFail = LockedBox<Bool>(false)
         let heads = LockedBox<Int>(0)
-
-        StubURLProtocol.handler = { req in
-            switch req.httpMethod {
-            case "POST":
-                return (Self.resp(req.url!, 201, ["Location": uploadURL.absoluteString]), Data())
-            case "HEAD":
-                heads.mutate { $0 += 1 }
-                return (Self.resp(req.url!, 200, ["Upload-Offset": "\(chunk)"]), Data())
-            default: // PATCH
-                let off = Int(req.value(forHTTPHeaderField: "Upload-Offset") ?? "0")!
-                if off == chunk, didFail.value == false {
-                    didFail.mutate { $0 = true }
-                    throw URLError(.networkConnectionLost) // transient blip on 2nd chunk
+        let transport = HTTPTransport(
+            data: { request in
+                switch request.httpMethod {
+                case "POST":
+                    return try HTTPResponse(
+                        statusCode: 201,
+                        headers: ["Location": uploadURL().absoluteString],
+                        body: Data()
+                    )
+                case "HEAD":
+                    heads.mutate { $0 += 1 }
+                    return HTTPResponse(
+                        statusCode: 200,
+                        headers: ["Upload-Offset": "\(chunk)"],
+                        body: Data()
+                    )
+                default:
+                    throw URLError(.badServerResponse)
                 }
-                return (Self.resp(req.url!, 204, ["Upload-Offset": "\(off + min(chunk, size - off))"]), Data())
+            },
+            upload: { request, _ in
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                if offset == chunk, didFail.value == false {
+                    didFail.mutate { $0 = true }
+                    throw URLError(.networkConnectionLost)
+                }
+                return HTTPResponse(
+                    statusCode: 204,
+                    headers: ["Upload-Offset": "\(offset + min(chunk, size - offset))"],
+                    body: Data()
+                )
             }
-        }
-        defer { StubURLProtocol.handler = nil }
-
-        let uploader = ResumableUploader(session: StubURLProtocol.session())
+        )
+        let uploader = ResumableUploader(transport: transport)
         var progresses: [TransferProgress] = []
-        for try await p in uploader.upload(file, to: endpoint, headers: [:], chunkSize: chunk) {
-            progresses.append(p)
+
+        for try await progress in try uploader.upload(
+            ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+            source: source(bytes: size),
+            chunkSize: chunk
+        ) {
+            progresses.append(progress)
         }
 
-        #expect(heads.value == 1) // one resume probe
-
-        // Robust assertions: don't pin the exact intermediate completedChunks (the resume
-        // path may re-yield a chunk). Require monotonic non-decreasing progress across
-        // yields, and a final progress that reflects the whole file.
-        for (prev, next) in zip(progresses, progresses.dropFirst()) {
-            #expect(next.bytesTransferred >= prev.bytesTransferred)
-            #expect(next.completedChunks >= prev.completedChunks)
+        #expect(heads.value == 1)
+        for (previous, next) in zip(progresses, progresses.dropFirst()) {
+            #expect(next.bytesTransferred >= previous.bytesTransferred)
+            #expect(next.completedChunks >= previous.completedChunks)
         }
         let last = try #require(progresses.last)
         #expect(last.completedChunks == last.totalChunks)
-        #expect(last.bytesTransferred == last.totalBytes)
         #expect(last.bytesTransferred == Int64(size))
     }
 
     @Test func recreatesUploadOn409() async throws {
         let size = TransferProgress.chunkSize
-        let chunk = TransferProgress.chunkSize
-        let file = try makeFile(bytes: size)
         let posts = LockedBox<Int>(0)
         let conflicted = LockedBox<Bool>(false)
-
-        StubURLProtocol.handler = { req in
-            switch req.httpMethod {
-            case "POST":
+        let transport = HTTPTransport(
+            data: { _ in
                 posts.mutate { $0 += 1 }
-                return (Self.resp(req.url!, 201, ["Location": uploadURL.absoluteString]), Data())
-            default: // PATCH
+                return try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { request, _ in
                 if conflicted.value == false {
                     conflicted.mutate { $0 = true }
-                    return (Self.resp(req.url!, 409, [:]), Data()) // concurrent / expired
+                    return HTTPResponse(statusCode: 409, headers: [:], body: Data())
                 }
-                let off = Int(req.value(forHTTPHeaderField: "Upload-Offset") ?? "0")!
-                return (Self.resp(req.url!, 204, ["Upload-Offset": "\(off + chunk)"]), Data())
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                return HTTPResponse(
+                    statusCode: 204,
+                    headers: ["Upload-Offset": "\(offset + size)"],
+                    body: Data()
+                )
             }
-        }
-        defer { StubURLProtocol.handler = nil }
-
-        let uploader = ResumableUploader(session: StubURLProtocol.session())
+        )
+        let uploader = ResumableUploader(transport: transport)
         var last: TransferProgress?
-        for try await p in uploader.upload(file, to: endpoint, headers: [:], chunkSize: chunk) {
-            last = p
+
+        for try await progress in try uploader.upload(
+            ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+            source: source(bytes: size),
+            chunkSize: size
+        ) {
+            last = progress
         }
 
-        #expect(posts.value == 2) // recreated after 409
+        #expect(posts.value == 2)
         #expect(last?.bytesTransferred == Int64(size))
+    }
+
+    @Test func invalidPatchOffsetFailsWithoutRetrying() async throws {
+        let size = TransferProgress.chunkSize
+        let heads = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { request in
+                if request.httpMethod == "HEAD" {
+                    heads.mutate { $0 += 1 }
+                }
+                return try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { _, _ in
+                HTTPResponse(
+                    statusCode: 204,
+                    headers: ["Upload-Offset": "\(size + 1)"],
+                    body: Data()
+                )
+            }
+        )
+        let uploader = ResumableUploader(transport: transport)
+
+        await #expect(throws: ResumableUploader.Failure.invalidPatchResponse) {
+            for try await _ in try uploader.upload(
+                ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+                source: source(bytes: size),
+                chunkSize: size
+            ) {}
+        }
+        #expect(heads.value == 0)
+    }
+
+    @Test func shortReadFailsBeforeUploadingChunk() async throws {
+        let uploads = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { _ in
+                try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { _, _ in
+                uploads.mutate { $0 += 1 }
+                return HTTPResponse(statusCode: 204, headers: [:], body: Data())
+            }
+        )
+        let uploader = ResumableUploader(transport: transport)
+        let shortSource = ResumableUploader.UploadSource(
+            size: 4,
+            read: { _, _ in Data([1, 2]) }
+        )
+
+        await #expect(throws: ResumableUploader.Failure.invalidUploadSource) {
+            for try await _ in try uploader.upload(
+                ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+                source: shortSource,
+                chunkSize: 4
+            ) {}
+        }
+        #expect(uploads.value == 0)
     }
 
     // MARK: - Helpers
 
-    private var endpoint: URL {
-        URL(string: "https://example.supabase.co/storage/v1/upload/resumable")!
+    private func endpoint() throws -> URL {
+        try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable"))
     }
 
-    private var uploadURL: URL {
-        URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1")!
+    private func uploadURL() throws -> URL {
+        try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1"))
     }
 
-    private static func resp(_ url: URL, _ code: Int, _ headers: [String: String]) -> HTTPURLResponse {
-        HTTPURLResponse(url: url, statusCode: code, httpVersion: "HTTP/1.1", headerFields: headers)!
-    }
-
-    private func makeFile(bytes: Int) throws -> URL {
-        let url = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appending(path: "\(UUID().uuidString).bin")
-        try Data(repeating: 0xAB, count: bytes).write(to: url)
-        return url
+    private func source(bytes size: Int) -> ResumableUploader.UploadSource {
+        ResumableUploader.UploadSource(
+            size: size,
+            read: { offset, length in
+                Data(repeating: UInt8(offset % 255), count: length)
+            }
+        )
     }
 }

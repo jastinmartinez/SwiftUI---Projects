@@ -24,7 +24,7 @@ struct SupabaseConfigTests {
     }
 
     @Test("loadFromBundle builds the config from Info-dictionary keys")
-    func loadFromBundleBuildsConfig() {
+    func loadFromBundleBuildsConfig() throws {
         let bundle = StubBundle(values: [
             "SUPABASE_URL": "https://xyz.supabase.co",
             "SUPABASE_ANON_KEY": "anon-123",
@@ -33,8 +33,8 @@ struct SupabaseConfigTests {
 
         let config = SupabaseConfig.loadFromBundle(bundle)
 
-        #expect(config == SupabaseConfig(
-            projectURL: URL(string: "https://xyz.supabase.co")!,
+        #expect(try config == SupabaseConfig(
+            projectURL: #require(URL(string: "https://xyz.supabase.co")),
             anonKey: "anon-123",
             bucket: "media"
         ))

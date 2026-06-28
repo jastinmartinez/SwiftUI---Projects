@@ -22,37 +22,3 @@ extension FileItem {
         self.init(remote: metadata)
     }
 }
-
-// MARK: - TransferProgress stream → MediaRemoteStorageClient events
-
-extension AsyncThrowingStream where Element == TransferProgress, Failure == Error {
-    func mapToUploadEvent(_ media: ImportedMedia) -> AsyncThrowingStream<MediaRemoteStorageClient.UploadEvent, Error> {
-        AsyncThrowingStream<MediaRemoteStorageClient.UploadEvent, Error> { cont in
-            let task = Task {
-                do {
-                    for try await p in self {
-                        cont.yield(.progress(p))
-                    }
-                    cont.yield(.finished(FileItem(uploaded: media)))
-                    cont.finish()
-                } catch { cont.finish(throwing: error) }
-            }
-            cont.onTermination = { _ in task.cancel() }
-        }
-    }
-
-    func mapToDownloadEvent(_ dest: URL) -> AsyncThrowingStream<MediaRemoteStorageClient.DownloadEvent, Error> {
-        AsyncThrowingStream<MediaRemoteStorageClient.DownloadEvent, Error> { cont in
-            let task = Task {
-                do {
-                    for try await p in self {
-                        cont.yield(.progress(p))
-                    }
-                    cont.yield(.finished(dest))
-                    cont.finish()
-                } catch { cont.finish(throwing: error) }
-            }
-            cont.onTermination = { _ in task.cancel() }
-        }
-    }
-}
