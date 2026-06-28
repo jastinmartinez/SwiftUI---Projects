@@ -23,7 +23,7 @@ struct FileFeature {
         @CasePathable
         enum Delegate: Equatable {
             case cancelled
-            case preview(URL, FileItem.Kind)
+            case preview(URL, MediaKind)
         }
     }
 

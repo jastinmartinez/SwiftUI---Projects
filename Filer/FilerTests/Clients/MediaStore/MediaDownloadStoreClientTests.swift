@@ -45,7 +45,16 @@ import Testing
     // MARK: - Helpers
 
     private func file() -> FileItem {
-        FileItem(id: "abc.jpg", name: "Photo", kind: .image, size: 12, status: .remote)
+        FileItem(
+            metadata: MediaMetadata(
+                id: "abc.jpg",
+                name: "Photo",
+                contentType: "image/jpeg",
+                kind: .image,
+                size: 12
+            ),
+            status: .remote
+        )
     }
 }
 

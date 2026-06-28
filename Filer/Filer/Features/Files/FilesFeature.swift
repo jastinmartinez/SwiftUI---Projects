@@ -82,7 +82,7 @@ extension FilesFeature {
     /// Sheet payload: the locally-cached file presented in the preview sheet.
     struct PreviewItem: Equatable, Identifiable {
         let url: URL
-        let kind: FileItem.Kind
+        let kind: MediaKind
         var id: URL { url }
     }
 }

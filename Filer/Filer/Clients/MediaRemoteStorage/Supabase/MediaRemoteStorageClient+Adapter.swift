@@ -9,14 +9,17 @@ import Storage
 extension FileItem {
     init?(_ object: FileObject) {
         let meta = object.metadata
-        guard let kind = FileItem.Kind(mimeType: meta?["mimetype"]?.stringValue) else { return nil }
-        self.init(
+        guard let contentType = meta?["mimetype"]?.stringValue,
+              let kind = MediaKind(mimeType: contentType)
+        else { return nil }
+        let metadata = MediaMetadata(
             id: object.name,
             name: meta?["name"]?.stringValue ?? object.name,
+            contentType: contentType,
             kind: kind,
-            size: meta?["size"]?.doubleValue.map(Int64.init),
-            status: .remote
+            size: meta?["size"]?.doubleValue.map(Int64.init)
         )
+        self.init(remote: metadata)
     }
 }
 

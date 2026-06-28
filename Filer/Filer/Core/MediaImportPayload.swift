@@ -5,5 +5,5 @@ struct MediaImportPayload: Equatable, Sendable {
     let name: String
     let data: Data
     let contentType: String
-    let kind: FileItem.Kind
+    let kind: MediaKind
 }

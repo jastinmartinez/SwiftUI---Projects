@@ -15,6 +15,7 @@ import Testing
         let item = try! #require(FileItem(object))
         #expect(item.id == "abc.jpg")
         #expect(item.name == "Holiday Photo")
+        #expect(item.contentType == "image/jpeg")
         #expect(item.kind == .image)
         #expect(item.size == 2048)
         #expect(item.status == .remote)

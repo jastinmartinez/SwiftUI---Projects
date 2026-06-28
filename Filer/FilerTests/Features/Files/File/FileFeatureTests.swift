@@ -75,7 +75,7 @@ struct FileFeatureTests {
 
     @Test func tappedLocalSendsPreviewDelegate() async {
         let url = URL(fileURLWithPath: "/tmp/local.jpg")
-        let item = FileItem(id: "local.jpg", name: "local.jpg", kind: .image, size: 100, status: .local(url))
+        let item = remoteItem(id: "local.jpg", size: 100).with(status: .local(url))
 
         let store = TestStore(
             initialState: FileFeature.State(item: item, source: nil)
@@ -165,10 +165,8 @@ struct FileFeatureTests {
 
     @Test func retryTappedAfterDownloadFailureRestartsDownload() async {
         let dest = URL(fileURLWithPath: "/tmp/remote.jpg")
-        let item = FileItem(
-            id: "remote.jpg", name: "remote.jpg", kind: .image, size: 6_000_000,
-            status: .failed(TransferError(operation: .download, message: "boom"))
-        )
+        let item = remoteItem()
+            .with(status: .failed(TransferError(operation: .download, message: "boom")))
         let store = TestStore(
             initialState: FileFeature.State(item: item, source: nil)
         ) {
@@ -227,6 +225,15 @@ struct FileFeatureTests {
     }
 
     private func remoteItem(id: String = "remote.jpg", size: Int64? = 6_000_000) -> FileItem {
-        FileItem(id: id, name: "remote.jpg", kind: .image, size: size, status: .remote)
+        FileItem(
+            metadata: MediaMetadata(
+                id: id,
+                name: "remote.jpg",
+                contentType: "image/jpeg",
+                kind: .image,
+                size: size
+            ),
+            status: .remote
+        )
     }
 }

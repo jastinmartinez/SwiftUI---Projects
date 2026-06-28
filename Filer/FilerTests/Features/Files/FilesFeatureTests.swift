@@ -75,7 +75,7 @@ struct FilesFeatureTests {
         let url = URL(fileURLWithPath: "/tmp/y.jpg")
         var state = FilesFeature.State()
         state.files.insert(
-            FileFeature.State(item: FileItem(id: m.id, name: m.name, kind: .image, size: 100, status: .local(url))),
+            FileFeature.State(item: remoteFile(m.id).with(status: .local(url))),
             at: 0
         )
 
@@ -109,7 +109,16 @@ struct FilesFeatureTests {
     // MARK: - Helpers
 
     private func remoteFile(_ id: String) -> FileItem {
-        FileItem(id: id, name: id, kind: .image, size: 100, status: .remote)
+        FileItem(
+            metadata: MediaMetadata(
+                id: id,
+                name: id,
+                contentType: "image/jpeg",
+                kind: .image,
+                size: 100
+            ),
+            status: .remote
+        )
     }
 
     private func media(_ id: String) -> ImportedMedia {

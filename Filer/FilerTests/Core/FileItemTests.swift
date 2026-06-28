@@ -4,11 +4,20 @@ import Testing
 
 struct FileItemTests {
     @Test func withStatusReplacesOnlyStatus() {
-        let item = FileItem(id: "a.jpg", name: "A", kind: .image, size: 100, status: .remote)
+        let metadata = MediaMetadata(
+            id: "a.jpg",
+            name: "A",
+            contentType: "image/jpeg",
+            kind: .image,
+            size: 100
+        )
+        let item = FileItem(remote: metadata)
         let next = item.with(status: .local(URL(fileURLWithPath: "/tmp/a.jpg")))
 
+        #expect(next.metadata == metadata)
         #expect(next.id == "a.jpg")
         #expect(next.name == "A")
+        #expect(next.contentType == "image/jpeg")
         #expect(next.kind == .image)
         #expect(next.size == 100)
         #expect(next.status == .local(URL(fileURLWithPath: "/tmp/a.jpg")))
@@ -61,25 +70,17 @@ struct FileItemTests {
         #expect(item.id == "u.mp4")
     }
 
-    // MARK: Kind(mimeType:)
+    @Test func remoteInitStartsRemote() {
+        let metadata = MediaMetadata(
+            id: "remote.jpg",
+            name: "Remote",
+            contentType: "image/jpeg",
+            kind: .image,
+            size: nil
+        )
+        let item = FileItem(remote: metadata)
 
-    @Test func imageMimeMapsToImageKind() {
-        #expect(FileItem.Kind(mimeType: "image/jpeg") == .image)
-        #expect(FileItem.Kind(mimeType: "image/png") == .image)
-    }
-
-    @Test func videoMimeMapsToVideoKind() {
-        #expect(FileItem.Kind(mimeType: "video/mp4") == .video)
-        #expect(FileItem.Kind(mimeType: "video/quicktime") == .video)
-    }
-
-    @Test func nonMediaMimeIsNil() {
-        #expect(FileItem.Kind(mimeType: "application/pdf") == nil)
-        #expect(FileItem.Kind(mimeType: "text/plain") == nil)
-    }
-
-    @Test func nilOrEmptyMimeIsNil() {
-        #expect(FileItem.Kind(mimeType: nil) == nil)
-        #expect(FileItem.Kind(mimeType: "") == nil)
+        #expect(item.metadata == metadata)
+        #expect(item.status == .remote)
     }
 }
