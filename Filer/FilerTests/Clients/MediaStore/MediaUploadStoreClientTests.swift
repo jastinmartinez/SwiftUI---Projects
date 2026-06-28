@@ -44,12 +44,14 @@ import Testing
 
     private func media() -> ImportedMedia {
         ImportedMedia(
-            id: "abc.jpg",
-            name: "Photo",
-            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
-            contentType: "image/jpeg",
-            kind: .image,
-            size: 1
+            metadata: MediaMetadata(
+                id: "abc.jpg",
+                name: "Photo",
+                contentType: "image/jpeg",
+                kind: .image,
+                size: 1
+            ),
+            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg")
         )
     }
 }

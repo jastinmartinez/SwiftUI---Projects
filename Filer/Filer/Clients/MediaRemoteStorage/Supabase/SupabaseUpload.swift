@@ -26,10 +26,10 @@ enum SupabaseUpload {
     private static func metadata(_ media: ImportedMedia, bucket: String) -> String {
         [
             "bucketName": bucket,
-            "objectName": media.id,
-            "contentType": media.contentType,
+            "objectName": media.metadata.id,
+            "contentType": media.metadata.contentType,
             "cacheControl": "3600",
-            "name": media.name,
+            "name": media.metadata.name,
         ]
         .map { "\($0.key) \(Data($0.value.utf8).base64EncodedString())" }
         .joined(separator: ",")

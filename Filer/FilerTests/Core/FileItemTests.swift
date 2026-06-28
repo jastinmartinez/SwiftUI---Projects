@@ -25,8 +25,14 @@ struct FileItemTests {
 
     @Test func importingInitStartsUploading() {
         let media = ImportedMedia(
-            id: "u.mp4", name: "Clip", fileURL: URL(fileURLWithPath: "/tmp/u.mp4"),
-            contentType: "video/mp4", kind: .video, size: 12_000_000
+            metadata: MediaMetadata(
+                id: "u.mp4",
+                name: "Clip",
+                contentType: "video/mp4",
+                kind: .video,
+                size: 12_000_000
+            ),
+            fileURL: URL(fileURLWithPath: "/tmp/u.mp4")
         )
         let item = FileItem(importing: media)
 
@@ -40,8 +46,14 @@ struct FileItemTests {
     @Test func uploadedInitLandsLocal() {
         let url = URL(fileURLWithPath: "/tmp/u.mp4")
         let media = ImportedMedia(
-            id: "u.mp4", name: "Clip", fileURL: url,
-            contentType: "video/mp4", kind: .video, size: 12_000_000
+            metadata: MediaMetadata(
+                id: "u.mp4",
+                name: "Clip",
+                contentType: "video/mp4",
+                kind: .video,
+                size: 12_000_000
+            ),
+            fileURL: url
         )
         let item = FileItem(uploaded: media)
 

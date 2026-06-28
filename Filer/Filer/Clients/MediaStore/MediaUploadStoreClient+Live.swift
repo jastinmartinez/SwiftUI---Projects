@@ -8,14 +8,10 @@ extension MediaUploadStoreClient: DependencyKey {
         contentStorage: MediaContentStorageClient = .liveValue
     ) -> MediaUploadStoreClient {
         let uploadSource: UploadSource = { media in
-            let source = try await contentStorage.importUploadSource(media.id)
+            let source = try await contentStorage.importUploadSource(media.metadata.id)
             let storedMedia = ImportedMedia(
-                id: media.id,
-                name: media.name,
-                fileURL: source.localURL,
-                contentType: media.contentType,
-                kind: media.kind,
-                size: source.size
+                metadata: media.metadata.with(size: source.size),
+                fileURL: source.localURL
             )
             return Source(media: storedMedia, localURL: source.localURL)
         }

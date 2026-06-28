@@ -142,23 +142,21 @@ struct MediaImportFeatureTests {
 
     private nonisolated static func media(_ id: String) -> ImportedMedia {
         ImportedMedia(
-            id: id,
-            name: id,
-            fileURL: URL(fileURLWithPath: "/tmp/\(id)"),
-            contentType: "image/jpeg",
-            kind: .image,
-            size: 1000
+            metadata: MediaMetadata(
+                id: id,
+                name: id,
+                contentType: "image/jpeg",
+                kind: .image,
+                size: 1000
+            ),
+            fileURL: URL(fileURLWithPath: "/tmp/\(id)")
         )
     }
 
     private nonisolated static func media(from payload: MediaImportClient.Payload) -> ImportedMedia {
         ImportedMedia(
-            id: payload.metadata.id,
-            name: payload.metadata.name,
-            fileURL: URL(fileURLWithPath: "/tmp/\(payload.metadata.id)"),
-            contentType: payload.metadata.contentType,
-            kind: .image,
-            size: Int64(payload.data.count)
+            metadata: payload.metadata.with(size: Int64(payload.data.count)),
+            fileURL: URL(fileURLWithPath: "/tmp/\(payload.metadata.id)")
         )
     }
 }

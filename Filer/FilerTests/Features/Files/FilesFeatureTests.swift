@@ -114,12 +114,14 @@ struct FilesFeatureTests {
 
     private func media(_ id: String) -> ImportedMedia {
         ImportedMedia(
-            id: id,
-            name: id,
-            fileURL: URL(fileURLWithPath: "/tmp/\(id)"),
-            contentType: "image/jpeg",
-            kind: .image,
-            size: 1000
+            metadata: MediaMetadata(
+                id: id,
+                name: id,
+                contentType: "image/jpeg",
+                kind: .image,
+                size: 1000
+            ),
+            fileURL: URL(fileURLWithPath: "/tmp/\(id)")
         )
     }
 }

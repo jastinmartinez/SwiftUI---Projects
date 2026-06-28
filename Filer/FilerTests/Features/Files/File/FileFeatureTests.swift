@@ -215,12 +215,14 @@ struct FileFeatureTests {
 
     private var sampleMedia: ImportedMedia {
         ImportedMedia(
-            id: "abc.jpg",
-            name: "photo.jpg",
-            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
-            contentType: "image/jpeg",
-            kind: .image,
-            size: 12_000_000
+            metadata: MediaMetadata(
+                id: "abc.jpg",
+                name: "photo.jpg",
+                contentType: "image/jpeg",
+                kind: .image,
+                size: 12_000_000
+            ),
+            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg")
         )
     }
 

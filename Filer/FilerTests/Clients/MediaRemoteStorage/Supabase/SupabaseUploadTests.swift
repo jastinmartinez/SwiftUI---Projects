@@ -59,9 +59,14 @@ struct SupabaseUploadTests {
 
     private func makeMedia() -> ImportedMedia {
         ImportedMedia(
-            id: "abc.jpg", name: "Holiday Photo",
-            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
-            contentType: "image/jpeg", kind: .image, size: 2048
+            metadata: MediaMetadata(
+                id: "abc.jpg",
+                name: "Holiday Photo",
+                contentType: "image/jpeg",
+                kind: .image,
+                size: 2048
+            ),
+            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg")
         )
     }
 }

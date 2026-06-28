@@ -102,8 +102,14 @@ import Testing
 
     private var media: ImportedMedia {
         ImportedMedia(
-            id: "abc.jpg", name: "Photo", fileURL: URL(fileURLWithPath: "/tmp/abc.jpg"),
-            contentType: "image/jpeg", kind: .image, size: 12
+            metadata: MediaMetadata(
+                id: "abc.jpg",
+                name: "Photo",
+                contentType: "image/jpeg",
+                kind: .image,
+                size: 12
+            ),
+            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg")
         )
     }
 }

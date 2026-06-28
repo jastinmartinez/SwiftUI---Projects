@@ -58,12 +58,23 @@ extension FileItem {
 
 extension FileItem {
     init(importing media: ImportedMedia) {
-        self.init(id: media.id, name: media.name, kind: media.kind, size: media.size,
+        self.init(id: media.id, name: media.name, kind: .init(media.kind), size: media.size,
                   status: .uploading(.start(total: media.size)))
     }
 
     init(uploaded media: ImportedMedia) {
-        self.init(id: media.id, name: media.name, kind: media.kind, size: media.size,
+        self.init(id: media.id, name: media.name, kind: .init(media.kind), size: media.size,
                   status: .local(media.fileURL))
+    }
+}
+
+private extension FileItem.Kind {
+    init(_ mediaKind: MediaKind) {
+        switch mediaKind {
+        case .image:
+            self = .image
+        case .video:
+            self = .video
+        }
     }
 }
