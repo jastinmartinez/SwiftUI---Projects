@@ -53,13 +53,3 @@ extension AsyncThrowingStream where Element == TransferProgress, Failure == Erro
         }
     }
 }
-
-// MARK: - Download destination
-
-extension FileManager {
-    /// Download destination: object id under the caches dir (system-evictable).
-    func cachesURL(for file: FileItem) -> URL {
-        let caches = urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        return caches.appending(path: file.id)
-    }
-}

@@ -7,7 +7,8 @@ extension MediaRemoteStorageClient: DependencyKey {
 
     static func make(
         config: SupabaseConfig,
-        uploadStore: MediaUploadStoreClient = .liveValue
+        uploadStore: MediaUploadStoreClient = .liveValue,
+        downloadStore: MediaDownloadStoreClient = .liveValue
     ) -> MediaRemoteStorageClient {
         let storageURL = config.projectURL.appending(path: "storage/v1")
         let headers: [String: String] = [
@@ -41,14 +42,25 @@ extension MediaRemoteStorageClient: DependencyKey {
             }
         }
         let download: Download = { file in
-            do {
-                let url = try storage.from(config.bucket).getPublicURL(path: file.id)
-                let dest = FileManager.default.cachesURL(for: file)
-                return RangedDownloader(session: .shared)
-                    .download(url, to: dest, headers: [:], expectedSize: file.size)
-                    .mapToDownloadEvent(dest)
-            } catch {
-                return AsyncThrowingStream { $0.finish(throwing: error) }
+            AsyncThrowingStream { continuation in
+                let task = Task {
+                    do {
+                        let url = try storage.from(config.bucket).getPublicURL(path: file.id)
+                        let target = try await downloadStore.downloadTarget(file)
+                        for try await event in RangedDownloader(session: .shared)
+                            .download(url, headers: [:], expectedSize: file.size, write: { data, offset in
+                                try await downloadStore.writeDownloadChunk(target, data, offset)
+                            })
+                            .mapToDownloadEvent(target.localURL)
+                        {
+                            continuation.yield(event)
+                        }
+                        continuation.finish()
+                    } catch {
+                        continuation.finish(throwing: error)
+                    }
+                }
+                continuation.onTermination = { _ in task.cancel() }
             }
         }
 

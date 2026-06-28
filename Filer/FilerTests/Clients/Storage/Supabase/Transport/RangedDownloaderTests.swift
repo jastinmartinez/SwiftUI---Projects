@@ -8,7 +8,6 @@ import Testing
     @Test func rangedPathProbesAndWritesContiguously() async throws {
         let total = 14 * 1024 * 1024 // 6 + 6 + 2
         let chunk = TransferProgress.chunkSize
-        let out = dest()
         let ranges = LockedBox<[String]>([])
 
         StubURLProtocol.handler = { req in
@@ -29,9 +28,11 @@ import Testing
         defer { StubURLProtocol.handler = nil }
 
         let downloader = RangedDownloader(session: StubURLProtocol.session())
+        let writer = MemoryDownloadWriter()
         var last: TransferProgress?
-        for try await p in downloader.download(source, to: out, headers: [:],
-                                               expectedSize: nil, chunkSize: chunk)
+        for try await p in downloader.download(source, headers: [:],
+                                               expectedSize: nil, chunkSize: chunk,
+                                               write: writer.write)
         {
             last = p
         }
@@ -43,13 +44,11 @@ import Testing
         ])
         #expect(last?.bytesTransferred == Int64(total))
         #expect(last?.totalBytes == Int64(total)) // authoritative total from probe (expectedSize nil)
-        let written = try Data(contentsOf: out)
-        #expect(written.count == total)
+        #expect(writer.data.count == total)
     }
 
     @Test func streamingFallbackUsesContentLength() async throws {
         let total = 5 * 1024 * 1024
-        let out = dest()
 
         StubURLProtocol.handler = { req in
             // probe: server ignores Range → 200, no Accept-Ranges
@@ -64,23 +63,23 @@ import Testing
         defer { StubURLProtocol.handler = nil }
 
         let downloader = RangedDownloader(session: StubURLProtocol.session())
+        let writer = MemoryDownloadWriter()
         var last: TransferProgress?
-        for try await p in downloader.download(source, to: out, headers: [:],
-                                               expectedSize: nil)
+        for try await p in downloader.download(source, headers: [:],
+                                               expectedSize: nil,
+                                               write: writer.write)
         {
             last = p
         }
 
         #expect(last?.bytesTransferred == Int64(total))
         #expect(last?.totalBytes == Int64(total)) // from Content-Length
-        let written = try Data(contentsOf: out)
-        #expect(written.count == total)
+        #expect(writer.data.count == total)
     }
 
     @Test func cancellationStopsTheStream() async throws {
         let total = 14 * 1024 * 1024
         let chunk = TransferProgress.chunkSize
-        let out = dest()
 
         StubURLProtocol.handler = { req in
             if req.value(forHTTPHeaderField: "Range") == "bytes=0-0" {
@@ -97,10 +96,12 @@ import Testing
         defer { StubURLProtocol.handler = nil }
 
         let downloader = RangedDownloader(session: StubURLProtocol.session())
+        let writer = MemoryDownloadWriter()
         let task = Task {
             var count = 0
-            for try await _ in downloader.download(source, to: out, headers: [:],
-                                                   expectedSize: Int64(total), chunkSize: chunk)
+            for try await _ in downloader.download(source, headers: [:],
+                                                   expectedSize: Int64(total), chunkSize: chunk,
+                                                   write: writer.write)
             {
                 count += 1
                 if count == 1 { break } // consumer stops early → onTermination cancels engine
@@ -117,13 +118,27 @@ import Testing
         HTTPURLResponse(url: url, statusCode: code, httpVersion: "HTTP/1.1", headerFields: headers)!
     }
 
-    private func dest() -> URL {
-        URL(fileURLWithPath: NSTemporaryDirectory())
-            .appending(path: "dl-\(UUID().uuidString).bin")
-    }
-
     // bytes 0xAB repeated; the engine writes whatever the stub returns.
     private func slice(_: Int, _: Int, _ count: Int) -> Data {
         Data(repeating: 0xAB, count: count)
+    }
+}
+
+private final class MemoryDownloadWriter: @unchecked Sendable {
+    private let box = LockedBox<Data>(Data())
+
+    var data: Data { box.value }
+
+    func write(_ data: Data, _ offset: UInt64) {
+        box.mutate { stored in
+            let offset = Int(offset)
+            if stored.count < offset {
+                stored.append(Data(repeating: 0, count: offset - stored.count))
+            }
+            if stored.count < offset + data.count {
+                stored.append(Data(repeating: 0, count: offset + data.count - stored.count))
+            }
+            stored.replaceSubrange(offset ..< offset + data.count, with: data)
+        }
     }
 }

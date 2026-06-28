@@ -5,6 +5,8 @@ import Foundation
 /// streaming GET (progress against Content-Length) when the server ignores Range.
 /// Generic HTTP machinery — no Supabase, no TCA.
 actor RangedDownloader {
+    typealias Write = @Sendable (_ data: Data, _ offset: UInt64) async throws -> Void
+
     private let session: URLSession
 
     init(session: URLSession) {
@@ -13,15 +15,15 @@ actor RangedDownloader {
 
     nonisolated func download(
         _ url: URL,
-        to dest: URL,
         headers: [String: String],
         expectedSize: Int64?,
-        chunkSize: Int = TransferProgress.chunkSize
+        chunkSize: Int = TransferProgress.chunkSize,
+        write: @escaping Write
     ) -> AsyncThrowingStream<TransferProgress, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    try await self.run(url, dest, headers, expectedSize, chunkSize, continuation)
+                    try await self.run(url, headers, expectedSize, chunkSize, write, continuation)
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -33,23 +35,19 @@ actor RangedDownloader {
 
     private func run(
         _ url: URL,
-        _ dest: URL,
         _ headers: [String: String],
         _ expectedSize: Int64?,
         _ chunkSize: Int,
+        _ write: Write,
         _ continuation: AsyncThrowingStream<TransferProgress, Error>.Continuation
     ) async throws {
-        FileManager.default.createFile(atPath: dest.path, contents: nil)
-        let handle = try FileHandle(forWritingTo: dest)
-        defer { try? handle.close() }
-
         let (probe, probeBody) = try await probeRange(url, headers)
         let total = probe.totalLength ?? expectedSize ?? 0
 
         if probe.supportsRanges, total > 0 {
-            try await rangedLoop(url, headers, handle, Int(total), chunkSize, continuation)
+            try await rangedLoop(url, headers, write, Int(total), chunkSize, continuation)
         } else {
-            try streamWhole(probeBody, handle, Int(total), continuation)
+            try await streamWhole(probeBody, write, Int(total), continuation)
         }
     }
 
@@ -71,7 +69,7 @@ actor RangedDownloader {
     private func rangedLoop(
         _ url: URL,
         _ headers: [String: String],
-        _ handle: FileHandle,
+        _ write: Write,
         _ total: Int,
         _ chunkSize: Int,
         _ continuation: AsyncThrowingStream<TransferProgress, Error>.Continuation
@@ -94,8 +92,7 @@ actor RangedDownloader {
                   http.statusCode == 206 || http.statusCode == 200
             else { throw URLError(.badServerResponse) }
 
-            try handle.seek(toOffset: UInt64(offset))
-            handle.write(data)
+            try await write(data, UInt64(offset))
             offset += data.count
             completed += 1
 
@@ -110,12 +107,12 @@ actor RangedDownloader {
 
     private func streamWhole(
         _ body: Data,
-        _ handle: FileHandle,
+        _ write: Write,
         _ total: Int,
         _ continuation: AsyncThrowingStream<TransferProgress, Error>.Continuation
-    ) throws {
+    ) async throws {
         try Task.checkCancellation()
-        handle.write(body)
+        try await write(body, 0)
         let written = body.count
         continuation.yield(TransferProgress(
             bytesTransferred: Int64(written),

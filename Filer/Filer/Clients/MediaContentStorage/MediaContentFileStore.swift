@@ -72,7 +72,6 @@ actor MediaContentFileStore {
     func writeDownload(_ key: String, _ data: Data, _ offset: UInt64) throws {
         let destination = downloadURL(for: key)
         let handle = try FileHandle(forWritingTo: destination)
-        defer { try? handle.close() }
         try handle.seek(toOffset: offset)
         try handle.write(contentsOf: data)
     }

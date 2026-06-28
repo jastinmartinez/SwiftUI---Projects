@@ -104,14 +104,4 @@ import Testing
         } catch { caught = error }
         #expect(caught is Boom)
     }
-
-    // MARK: cachesURL(for:)
-
-    @Test func cachesURLUsesObjectIDUnderCaches() {
-        let item = FileItem(id: "abc.jpg", name: "photo", kind: .image, size: 10, status: .remote)
-        let url = FileManager.default.cachesURL(for: item)
-        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        #expect(url.deletingLastPathComponent().standardizedFileURL == caches.standardizedFileURL)
-        #expect(url.lastPathComponent == "abc.jpg")
-    }
 }
