@@ -3,7 +3,7 @@ import Foundation
 import Storage
 import Testing
 
-@Suite struct StorageClientAdapterTests {
+@Suite struct MediaRemoteStorageClientAdapterTests {
     // MARK: FileItem(_ FileObject)
 
     @Test func fileObjectWithImageMetadataMapsToRemoteFileItem() {
@@ -62,7 +62,7 @@ import Testing
         let p0 = TransferProgress(bytesTransferred: 0, totalBytes: 12, completedChunks: 0, totalChunks: 1)
         let p1 = TransferProgress(bytesTransferred: 12, totalBytes: 12, completedChunks: 1, totalChunks: 1)
 
-        var events: [StorageClient.UploadEvent] = []
+        var events: [MediaRemoteStorageClient.UploadEvent] = []
         for try await e in source([p0, p1]).mapToUploadEvent(media) {
             events.append(e)
         }
@@ -87,7 +87,7 @@ import Testing
         let dest = URL(fileURLWithPath: "/tmp/dest.jpg")
         let p0 = TransferProgress(bytesTransferred: 6, totalBytes: 12, completedChunks: 1, totalChunks: 2)
 
-        var events: [StorageClient.DownloadEvent] = []
+        var events: [MediaRemoteStorageClient.DownloadEvent] = []
         for try await e in source([p0]).mapToDownloadEvent(dest) {
             events.append(e)
         }

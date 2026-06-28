@@ -56,7 +56,7 @@ struct FileRowModelTests {
         let store = Store(initialState: FileFeature.State(item: item)) {
             FileFeature()
         } withDependencies: {
-            $0.storage.download = { _ in AsyncThrowingStream { $0.finish() } }
+            $0.mediaRemoteStorage.download = { _ in AsyncThrowingStream { $0.finish() } }
         }
         let m = FileRowView.Model(store)
         m.send(.tapped)

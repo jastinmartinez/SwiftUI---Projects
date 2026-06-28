@@ -20,11 +20,11 @@ extension FileItem {
     }
 }
 
-// MARK: - TransferProgress stream → StorageClient events
+// MARK: - TransferProgress stream → MediaRemoteStorageClient events
 
 extension AsyncThrowingStream where Element == TransferProgress, Failure == Error {
-    func mapToUploadEvent(_ media: ImportedMedia) -> AsyncThrowingStream<StorageClient.UploadEvent, Error> {
-        AsyncThrowingStream<StorageClient.UploadEvent, Error> { cont in
+    func mapToUploadEvent(_ media: ImportedMedia) -> AsyncThrowingStream<MediaRemoteStorageClient.UploadEvent, Error> {
+        AsyncThrowingStream<MediaRemoteStorageClient.UploadEvent, Error> { cont in
             let task = Task {
                 do {
                     for try await p in self {
@@ -38,8 +38,8 @@ extension AsyncThrowingStream where Element == TransferProgress, Failure == Erro
         }
     }
 
-    func mapToDownloadEvent(_ dest: URL) -> AsyncThrowingStream<StorageClient.DownloadEvent, Error> {
-        AsyncThrowingStream<StorageClient.DownloadEvent, Error> { cont in
+    func mapToDownloadEvent(_ dest: URL) -> AsyncThrowingStream<MediaRemoteStorageClient.DownloadEvent, Error> {
+        AsyncThrowingStream<MediaRemoteStorageClient.DownloadEvent, Error> { cont in
             let task = Task {
                 do {
                     for try await p in self {

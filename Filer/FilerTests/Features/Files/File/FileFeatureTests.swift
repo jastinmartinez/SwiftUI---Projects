@@ -31,7 +31,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.storage.upload = { _ in
+            $0.mediaRemoteStorage.upload = { _ in
                 AsyncThrowingStream { cont in
                     cont.yield(.progress(p1))
                     cont.yield(.progress(p2))
@@ -67,7 +67,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.storage.download = { _ in
+            $0.mediaRemoteStorage.download = { _ in
                 AsyncThrowingStream { cont in
                     cont.yield(.finished(dest))
                     cont.finish()
@@ -108,7 +108,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.storage.upload = { _ in
+            $0.mediaRemoteStorage.upload = { _ in
                 AsyncThrowingStream { _ in } // never finishes; cancel terminates it
             }
         }
@@ -130,7 +130,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.storage.download = { _ in AsyncThrowingStream { _ in } }
+            $0.mediaRemoteStorage.download = { _ in AsyncThrowingStream { _ in } }
         }
         store.exhaustivity = .off
 
@@ -154,7 +154,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.storage.upload = { _ in
+            $0.mediaRemoteStorage.upload = { _ in
                 AsyncThrowingStream { cont in
                     cont.yield(.finished(finished))
                     cont.finish()
@@ -183,7 +183,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.storage.download = { _ in
+            $0.mediaRemoteStorage.download = { _ in
                 AsyncThrowingStream { cont in
                     cont.yield(.finished(dest))
                     cont.finish()

@@ -25,7 +25,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: FilesFeature.State()) {
             FilesFeature()
         } withDependencies: {
-            $0.storage.list = { files }
+            $0.mediaRemoteStorage.list = { files }
         }
 
         await store.send(.onAppear)
@@ -43,7 +43,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: FilesFeature.State()) {
             FilesFeature()
         } withDependencies: {
-            $0.storage.list = { throw ListError() }
+            $0.mediaRemoteStorage.list = { throw ListError() }
         }
 
         await store.send(.onAppear)
@@ -58,7 +58,7 @@ struct FilesFeatureTests {
             FilesFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.storage.upload = { _ in AsyncThrowingStream { $0.finish() } }
+            $0.mediaRemoteStorage.upload = { _ in AsyncThrowingStream { $0.finish() } }
         }
         store.exhaustivity = .off
 
