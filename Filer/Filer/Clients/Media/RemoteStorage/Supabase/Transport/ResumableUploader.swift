@@ -3,11 +3,11 @@ import Foundation
 /// TUS-resumable upload engine. Generic HTTP machinery: no Supabase, no TCA.
 struct ResumableUploader: Sendable {
     private let transport: HTTPTransport
-    private let retryPolicy: TransferRetryPolicy
+    private let retryPolicy: MediaRemoteTransferPolicy
 
     init(
         transport: HTTPTransport,
-        retryPolicy: TransferRetryPolicy
+        retryPolicy: MediaRemoteTransferPolicy
     ) {
         self.transport = transport
         self.retryPolicy = retryPolicy

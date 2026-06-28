@@ -1,12 +1,12 @@
 import Foundation
 
-/// Retry limits shared by upload and download transfer engines.
-struct TransferRetryPolicy: Equatable, Sendable {
+/// Retry limits shared by media remote upload and download transfer engines.
+struct MediaRemoteTransferPolicy: Equatable, Sendable {
     let maxRetries: Int
     let maxResumes: Int
     let maxRecreates: Int
 
-    static let `default` = TransferRetryPolicy(
+    static let `default` = MediaRemoteTransferPolicy(
         maxRetries: 2,
         maxResumes: 3,
         maxRecreates: 1

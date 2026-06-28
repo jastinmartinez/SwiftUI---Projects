@@ -6,11 +6,11 @@ import Foundation
 /// validation, and progress emission. Persisted byte truth belongs to the sink.
 struct RangedDownloader: Sendable {
     private let transport: HTTPTransport
-    private let retryPolicy: TransferRetryPolicy
+    private let retryPolicy: MediaRemoteTransferPolicy
 
     init(
         transport: HTTPTransport,
-        retryPolicy: TransferRetryPolicy
+        retryPolicy: MediaRemoteTransferPolicy
     ) {
         self.transport = transport
         self.retryPolicy = retryPolicy
