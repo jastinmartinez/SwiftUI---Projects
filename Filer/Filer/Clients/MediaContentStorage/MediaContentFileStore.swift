@@ -65,15 +65,33 @@ actor MediaContentFileStore {
             withIntermediateDirectories: true
         )
         let destination = downloadURL(for: key)
-        fileManager.createFile(atPath: destination.path, contents: nil)
+        if !fileManager.fileExists(atPath: destination.path) {
+            fileManager.createFile(atPath: destination.path, contents: nil)
+        }
         return MediaContentStorageClient.DownloadTarget(key: key, localURL: destination)
+    }
+
+    func downloadOffset(_ key: String) throws -> UInt64 {
+        let destination = downloadURL(for: key)
+        guard fileManager.fileExists(atPath: destination.path) else { return 0 }
+        let attributes = try fileManager.attributesOfItem(atPath: destination.path)
+        guard let size = attributes[.size] as? NSNumber else {
+            throw InvalidDownloadAttributes(key: key)
+        }
+        return size.uint64Value
     }
 
     func writeDownload(_ key: String, _ data: Data, _ offset: UInt64) throws {
         let destination = downloadURL(for: key)
         let handle = try FileHandle(forWritingTo: destination)
-        try handle.seek(toOffset: offset)
-        try handle.write(contentsOf: data)
+        do {
+            try handle.seek(toOffset: offset)
+            try handle.write(contentsOf: data)
+            try handle.close()
+        } catch {
+            try? handle.close()
+            throw error
+        }
     }
 
     private func importURL(for key: String) -> URL {
@@ -100,4 +118,8 @@ actor MediaContentFileStore {
             localURL: localURL
         )
     }
+}
+
+private struct InvalidDownloadAttributes: Error {
+    let key: String
 }

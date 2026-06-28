@@ -125,6 +125,39 @@ import Testing
         #expect(sink.data == body)
     }
 
+    @Test func rangedPathRejectsPersistedOffsetBeyondTotalWithoutWriting() async throws {
+        let url = try source()
+        let total = 4
+        let requests = LockedBox<[URLRequest]>([])
+        let sink = MemoryDownloadSink(initialData: Data(repeating: 0xFA, count: total + 1))
+        let transport = HTTPTransport(
+            data: { request in
+                requests.mutate { $0.append(request) }
+                return HTTPResponse(
+                    statusCode: 206,
+                    headers: [
+                        "Content-Range": "bytes 0-0/\(total)",
+                        "Accept-Ranges": "bytes",
+                    ],
+                    body: Data([0xFA])
+                )
+            },
+            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+        )
+
+        let downloader = RangedDownloader(transport: transport)
+        await #expect(throws: RangedDownloader.Failure.invalidResumeState) {
+            for try await _ in downloader.download(
+                RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
+                sink: sink.sink,
+                chunkSize: total
+            ) {}
+        }
+
+        #expect(requests.value.count == 1)
+        #expect(sink.data == Data(repeating: 0xFA, count: total + 1))
+    }
+
     @Test func fallbackIsRejectedWhenPartialBytesExist() async throws {
         let url = try source()
         let sink = MemoryDownloadSink(initialData: Data([0x01, 0x02]))

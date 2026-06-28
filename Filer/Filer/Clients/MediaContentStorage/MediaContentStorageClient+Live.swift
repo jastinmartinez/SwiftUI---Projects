@@ -27,6 +27,10 @@ extension MediaContentStorageClient: DependencyKey {
             try await fileStore.prepareDownloadTarget(key)
         }
 
+        let downloadOffset: DownloadOffset = { key in
+            try await fileStore.downloadOffset(key)
+        }
+
         let writeDownload: WriteDownload = { key, data, offset in
             try await fileStore.writeDownload(key, data, offset)
         }
@@ -37,6 +41,7 @@ extension MediaContentStorageClient: DependencyKey {
             removeImport: removeImport,
             importUploadSource: importUploadSource,
             prepareDownloadTarget: prepareDownloadTarget,
+            downloadOffset: downloadOffset,
             writeDownload: writeDownload
         )
     }

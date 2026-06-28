@@ -55,12 +55,12 @@ extension MediaRemoteStorageClient: DependencyKey {
                         let target = try await downloadStore.downloadTarget(file)
                         for try await event in RangedDownloader(transport: .live(session: .shared))
                             .download(
-                                url,
-                                headers: [:],
-                                expectedSize: file.size,
-                                write: { data, offset in
-                                    try await downloadStore.writeDownloadChunk(target, data, offset)
-                                }
+                                RangedDownloader.Request(
+                                    url: url,
+                                    headers: SupabaseStorageHeaders.download(config: config),
+                                    expectedSize: file.size
+                                ),
+                                sink: downloadStore.downloadSink(target)
                             )
                             .mapToDownloadEvent(target.localURL)
                         {

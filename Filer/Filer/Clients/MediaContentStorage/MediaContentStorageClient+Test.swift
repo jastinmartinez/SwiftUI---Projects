@@ -46,14 +46,24 @@ extension MediaContentStorageClient: TestDependencyKey {
 
         let prepareDownloadTarget: PrepareDownloadTarget = { (key: String) async throws -> DownloadTarget in
             state.withLock { state in
-                state.downloads[key] = Data()
+                if state.downloads[key] == nil {
+                    state.downloads[key] = Data()
+                }
                 return DownloadTarget(key: key, localURL: Self.downloadURL(for: key))
             }
         }
 
-        let writeDownload: WriteDownload = { (key: String, data: Data, offset: UInt64) async throws in
+        let downloadOffset: DownloadOffset = { (key: String) async throws -> UInt64 in
             state.withLock { state in
-                var stored = state.downloads[key] ?? Data()
+                UInt64(state.downloads[key]?.count ?? 0)
+            }
+        }
+
+        let writeDownload: WriteDownload = { (key: String, data: Data, offset: UInt64) async throws in
+            try state.withLock { state in
+                guard var stored = state.downloads[key] else {
+                    throw MissingContent(key: key)
+                }
                 let offset = Int(offset)
                 if stored.count < offset {
                     stored.append(Data(repeating: 0, count: offset - stored.count))
@@ -72,6 +82,7 @@ extension MediaContentStorageClient: TestDependencyKey {
             removeImport: removeImport,
             importUploadSource: importUploadSource,
             prepareDownloadTarget: prepareDownloadTarget,
+            downloadOffset: downloadOffset,
             writeDownload: writeDownload
         )
     }

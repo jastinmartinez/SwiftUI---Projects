@@ -102,7 +102,7 @@ struct RangedDownloader: Sendable {
     ) async throws {
         let chunkSize = UInt64(chunkSize)
         let totalChunks = Int((total + chunkSize - 1) / chunkSize)
-        var confirmedOffset = try await min(sink.currentOffset(), total)
+        var confirmedOffset = try await validatedOffset(sink, total: total)
         var retries = 0
 
         while confirmedOffset < total {
@@ -113,7 +113,7 @@ struct RangedDownloader: Sendable {
             do {
                 let body = try await rangeBody(download, start: start, end: end, expectedTotal: total)
                 try await sink.write(body, start)
-                confirmedOffset = try await min(sink.currentOffset(), total)
+                confirmedOffset = try await validatedOffset(sink, total: total)
                 retries = 0
 
                 continuation.yield(
@@ -133,7 +133,7 @@ struct RangedDownloader: Sendable {
                 throw failure
             } catch {
                 try recordRetry(for: error, retries: &retries)
-                confirmedOffset = try await min(sink.currentOffset(), total)
+                confirmedOffset = try await validatedOffset(sink, total: total)
             }
         }
     }
@@ -206,6 +206,14 @@ struct RangedDownloader: Sendable {
                 try recordRetry(for: error, retries: &retries)
             }
         }
+    }
+
+    private func validatedOffset(_ sink: DownloadSink, total: UInt64) async throws -> UInt64 {
+        let offset = try await sink.currentOffset()
+        guard offset <= total else {
+            throw Failure.invalidResumeState
+        }
+        return offset
     }
 
     private func completedChunks(for offset: UInt64, chunkSize: UInt64) -> Int {
@@ -298,6 +306,7 @@ extension RangedDownloader {
         case byteCountMismatch
         case partialFallbackUnsupported
         case retryLimitExceeded
+        case invalidResumeState
     }
 }
 

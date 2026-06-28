@@ -20,8 +20,20 @@ extension MediaDownloadStoreClient: DependencyKey {
             try await contentStorage.writeDownload(target.key, data, offset)
         }
 
+        let downloadSink: DownloadSink = { target in
+            RangedDownloader.DownloadSink(
+                currentOffset: {
+                    try await contentStorage.downloadOffset(target.key)
+                },
+                write: { data, offset in
+                    try await contentStorage.writeDownload(target.key, data, offset)
+                }
+            )
+        }
+
         return MediaDownloadStoreClient(
             downloadTarget: downloadTarget,
+            downloadSink: downloadSink,
             writeDownloadChunk: writeDownloadChunk
         )
     }

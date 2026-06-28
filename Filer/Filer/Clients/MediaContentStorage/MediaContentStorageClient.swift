@@ -7,6 +7,7 @@ struct MediaContentStorageClient: Sendable {
     typealias RemoveImport = @Sendable (_ key: String) async throws -> Void
     typealias ImportUploadSource = @Sendable (_ key: String) async throws -> UploadSource
     typealias PrepareDownloadTarget = @Sendable (_ key: String) async throws -> DownloadTarget
+    typealias DownloadOffset = @Sendable (_ key: String) async throws -> UInt64
     typealias WriteDownload = @Sendable (_ key: String, _ data: Data, _ offset: UInt64) async throws -> Void
 
     var storeImport: StoreImport = { _, _ in throw Unimplemented() }
@@ -14,6 +15,7 @@ struct MediaContentStorageClient: Sendable {
     var removeImport: RemoveImport = { _ in throw Unimplemented() }
     var importUploadSource: ImportUploadSource = { _ in throw Unimplemented() }
     var prepareDownloadTarget: PrepareDownloadTarget = { _ in throw Unimplemented() }
+    var downloadOffset: DownloadOffset = { _ in throw Unimplemented() }
     var writeDownload: WriteDownload = { _, _, _ in throw Unimplemented() }
 }
 

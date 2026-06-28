@@ -52,7 +52,15 @@ import Testing
         #expect(target.localURL == URL(fileURLWithPath: "/memory/downloads/movie.mov"))
     }
 
-    @Test func valuePrepareDownloadTargetClearsExistingDownloadWithoutFilesystem() async throws {
+    @Test func valueWriteDownloadFailsWhenDownloadWasNotPrepared() async throws {
+        let storage = MediaContentStorageClient.testValue
+
+        await #expect(throws: MediaContentStorageClient.MissingContent(key: "movie.mov")) {
+            try await storage.writeDownload("movie.mov", Data([1]), 0)
+        }
+    }
+
+    @Test func valuePrepareDownloadTargetPreservesExistingDownloadWithoutFilesystem() async throws {
         let storage = MediaContentStorageClient.testValue
 
         let first = try await storage.prepareDownloadTarget("movie.mov")
@@ -60,6 +68,16 @@ import Testing
         let second = try await storage.prepareDownloadTarget("movie.mov")
 
         #expect(second.localURL == URL(fileURLWithPath: "/memory/downloads/movie.mov"))
+        #expect(try await storage.downloadOffset(second.key) == 3)
+    }
+
+    @Test func valuePrepareDownloadTargetCreatesEmptyDownloadWithoutFilesystem() async throws {
+        let storage = MediaContentStorageClient.testValue
+
+        let target = try await storage.prepareDownloadTarget("clip.mov")
+
+        #expect(target.localURL == URL(fileURLWithPath: "/memory/downloads/clip.mov"))
+        #expect(try await storage.downloadOffset(target.key) == 0)
     }
 
     @Test func valueUploadSourceReturnsDeterministicMemoryURLWithoutFilesystem() async throws {

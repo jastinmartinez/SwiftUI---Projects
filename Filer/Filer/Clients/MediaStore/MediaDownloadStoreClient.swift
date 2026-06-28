@@ -3,9 +3,17 @@ import Foundation
 
 struct MediaDownloadStoreClient: Sendable {
     typealias DownloadTarget = @Sendable (_ file: FileItem) async throws -> Target
+    typealias DownloadSink = @Sendable (_ target: Target) -> RangedDownloader.DownloadSink
     typealias WriteDownloadChunk = @Sendable (_ target: Target, _ data: Data, _ offset: UInt64) async throws -> Void
 
     var downloadTarget: DownloadTarget = { _ in throw Unimplemented() }
+    var downloadSink: DownloadSink = { _ in
+        RangedDownloader.DownloadSink(
+            currentOffset: { throw Unimplemented() },
+            write: { _, _ in throw Unimplemented() }
+        )
+    }
+
     var writeDownloadChunk: WriteDownloadChunk = { _, _, _ in throw Unimplemented() }
 }
 
