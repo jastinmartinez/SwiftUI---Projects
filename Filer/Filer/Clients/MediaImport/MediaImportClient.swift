@@ -1,12 +1,19 @@
 import Dependencies
-import DependenciesMacros
 import Foundation
 import PhotosUI
 import SwiftUI
 
-@DependencyClient
-struct MediaImportClient {
-    var load: (_ items: [PhotosPickerItem]) async throws -> [MediaImportPayload] = { _ in [] }
+struct MediaImportClient: Sendable {
+    typealias Load = @Sendable (_ items: [PhotosPickerItem]) async throws -> [Payload]
+
+    var load: Load = { _ in [] }
+}
+
+extension MediaImportClient {
+    struct Payload: Equatable, Sendable {
+        let metadata: MediaMetadata
+        let data: Data
+    }
 }
 
 extension DependencyValues {

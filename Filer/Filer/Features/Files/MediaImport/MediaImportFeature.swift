@@ -17,7 +17,7 @@ struct MediaImportFeature {
     @CasePathable
     enum Action {
         case picked([PhotosPickerItem])
-        case loaded([MediaImportPayload])
+        case loaded([MediaImportClient.Payload])
         case cached([ImportedMedia])
         case failed(String)
         case delegate(Delegate)

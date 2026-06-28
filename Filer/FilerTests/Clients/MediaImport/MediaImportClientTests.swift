@@ -31,18 +31,22 @@ import Testing
     }
 
     @Test func payloadCarriesImportMetadata() {
-        let payload = MediaImportPayload(
-            id: "abc.jpeg",
-            name: "Photo",
-            data: Data([1, 2, 3]),
-            contentType: "image/jpeg",
-            kind: .image
+        let payload = MediaImportClient.Payload(
+            metadata: MediaMetadata(
+                id: "abc.jpeg",
+                name: "Photo",
+                contentType: "image/jpeg",
+                kind: .image,
+                size: nil
+            ),
+            data: Data([1, 2, 3])
         )
 
-        #expect(payload.id == "abc.jpeg")
-        #expect(payload.name == "Photo")
+        #expect(payload.metadata.id == "abc.jpeg")
+        #expect(payload.metadata.name == "Photo")
         #expect(payload.data == Data([1, 2, 3]))
-        #expect(payload.contentType == "image/jpeg")
-        #expect(payload.kind == .image)
+        #expect(payload.metadata.contentType == "image/jpeg")
+        #expect(payload.metadata.kind == .image)
+        #expect(payload.metadata.size == nil)
     }
 }

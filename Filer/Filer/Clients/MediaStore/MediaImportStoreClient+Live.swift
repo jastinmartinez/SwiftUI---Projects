@@ -10,13 +10,18 @@ extension MediaImportStoreClient: DependencyKey {
         timeToLive: TimeInterval = defaultTimeToLive
     ) -> MediaImportStoreClient {
         let store: Store = { payload in
-            let stored = try await contentStorage.storeImport(payload.id, payload.data)
+            let metadata = payload.metadata
+            let stored = try await contentStorage.storeImport(metadata.id, payload.data)
+            let kind: FileItem.Kind = switch metadata.kind {
+            case .image: .image
+            case .video: .video
+            }
             return ImportedMedia(
-                id: payload.id,
-                name: payload.name,
+                id: metadata.id,
+                name: metadata.name,
                 fileURL: stored.localURL,
-                contentType: payload.contentType,
-                kind: payload.kind,
+                contentType: metadata.contentType,
+                kind: kind,
                 size: stored.size
             )
         }

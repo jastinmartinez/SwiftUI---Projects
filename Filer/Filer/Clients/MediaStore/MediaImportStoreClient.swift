@@ -2,7 +2,7 @@ import Dependencies
 import Foundation
 
 struct MediaImportStoreClient: Sendable {
-    typealias Store = @Sendable (_ payload: MediaImportPayload) async throws -> ImportedMedia
+    typealias Store = @Sendable (_ payload: MediaImportClient.Payload) async throws -> ImportedMedia
     typealias RemoveExpired = @Sendable () async throws -> Void
 
     var store: Store = { _ in throw Unimplemented() }

@@ -22,7 +22,7 @@ struct MediaImportFeatureTests {
             $0.mediaImport = MediaImportClient()
             $0.mediaImportStore = MediaImportStoreClient(
                 store: { payload in
-                    events.mutate { $0.append("store:\(payload.id)") }
+                    events.mutate { $0.append("store:\(payload.metadata.id)") }
                     return cached
                 },
                 removeExpired: {
@@ -87,7 +87,7 @@ struct MediaImportFeatureTests {
             $0.mediaImport = MediaImportClient()
             $0.mediaImportStore = MediaImportStoreClient(
                 store: { payload in
-                    storedIDs.mutate { $0.append(payload.id) }
+                    storedIDs.mutate { $0.append(payload.metadata.id) }
                     return Self.media(from: payload)
                 },
                 removeExpired: { throw CleanupError() }
@@ -127,13 +127,16 @@ struct MediaImportFeatureTests {
 
     // MARK: - Helpers
 
-    private nonisolated static func payload(_ id: String) -> MediaImportPayload {
-        MediaImportPayload(
-            id: id,
-            name: id,
-            data: Data([1, 2, 3]),
-            contentType: "image/jpeg",
-            kind: .image
+    private nonisolated static func payload(_ id: String) -> MediaImportClient.Payload {
+        MediaImportClient.Payload(
+            metadata: MediaMetadata(
+                id: id,
+                name: id,
+                contentType: "image/jpeg",
+                kind: .image,
+                size: nil
+            ),
+            data: Data([1, 2, 3])
         )
     }
 
@@ -148,13 +151,13 @@ struct MediaImportFeatureTests {
         )
     }
 
-    private nonisolated static func media(from payload: MediaImportPayload) -> ImportedMedia {
+    private nonisolated static func media(from payload: MediaImportClient.Payload) -> ImportedMedia {
         ImportedMedia(
-            id: payload.id,
-            name: payload.name,
-            fileURL: URL(fileURLWithPath: "/tmp/\(payload.id)"),
-            contentType: payload.contentType,
-            kind: payload.kind,
+            id: payload.metadata.id,
+            name: payload.metadata.name,
+            fileURL: URL(fileURLWithPath: "/tmp/\(payload.metadata.id)"),
+            contentType: payload.metadata.contentType,
+            kind: .image,
             size: Int64(payload.data.count)
         )
     }

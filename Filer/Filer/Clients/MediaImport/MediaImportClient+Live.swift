@@ -8,23 +8,24 @@ extension MediaImportClient: DependencyKey {
         @Dependency(\.uuid) var uuid
         return MediaImportClient(
             load: { items in
-                var loaded: [MediaImportPayload] = []
+                var loaded: [MediaImportClient.Payload] = []
                 for item in items {
                     guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
                     guard let contentType = item.supportedContentTypes.first?.preferredMIMEType,
-                          let kind = FileItem.Kind(mimeType: contentType),
+                          let kind = MediaKind(mimeType: contentType),
                           let objectID = objectID(uuid(), contentType: contentType) else { continue }
 
                     let name = item.itemIdentifier ?? objectID
+                    let metadata = MediaMetadata(
+                        id: objectID,
+                        name: name,
+                        contentType: contentType,
+                        kind: kind,
+                        size: nil
+                    )
 
                     loaded.append(
-                        MediaImportPayload(
-                            id: objectID,
-                            name: name,
-                            data: data,
-                            contentType: contentType,
-                            kind: kind
-                        )
+                        MediaImportClient.Payload(metadata: metadata, data: data)
                     )
                 }
                 return loaded
