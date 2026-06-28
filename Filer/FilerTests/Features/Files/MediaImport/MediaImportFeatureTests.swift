@@ -11,8 +11,8 @@ struct MediaImportFeatureTests {
     // directly and assert the `phase` transitions + the `.delegate(.imported)` emission.
     // The `.picked → .loading` entry edge is covered by the Task 21 manual checklist.
 
-    @Test func loadedPayloadsRemoveExpiredThenStoreAndDelegateImported() async {
-        let loaded = Self.payload("a.jpeg")
+    @Test func loadedMediaRemovesExpiredThenStoresAndDelegatesImported() async {
+        let loaded = Self.loadedMedia("a.jpeg")
         let cached = Self.media(from: loaded)
         let events = LockedBox<[String]>([])
 
@@ -21,8 +21,8 @@ struct MediaImportFeatureTests {
         } withDependencies: {
             $0.mediaImport = Self.failingMediaImport()
             $0.mediaImportStore = MediaImportStoreClient(
-                store: { payload in
-                    events.mutate { $0.append("store:\(payload.metadata.id)") }
+                store: { media in
+                    events.mutate { $0.append("store:\(media.metadata.id)") }
                     return cached
                 },
                 removeExpired: {
@@ -70,7 +70,7 @@ struct MediaImportFeatureTests {
             )
         }
 
-        await store.send(.loaded([Self.payload("a.jpeg")]))
+        await store.send(.loaded([Self.loadedMedia("a.jpeg")]))
         await store.receive(\.failed) {
             $0.phase = .failed(errorDescription)
         }
@@ -86,15 +86,15 @@ struct MediaImportFeatureTests {
         } withDependencies: {
             $0.mediaImport = Self.failingMediaImport()
             $0.mediaImportStore = MediaImportStoreClient(
-                store: { payload in
-                    storedIDs.mutate { $0.append(payload.metadata.id) }
-                    return Self.media(from: payload)
+                store: { media in
+                    storedIDs.mutate { $0.append(media.metadata.id) }
+                    return Self.media(from: media)
                 },
                 removeExpired: { throw CleanupError() }
             )
         }
 
-        await store.send(.loaded([Self.payload("a.jpeg")]))
+        await store.send(.loaded([Self.loadedMedia("a.jpeg")]))
         await store.receive(\.failed) {
             $0.phase = .failed(errorDescription)
         }
@@ -127,8 +127,8 @@ struct MediaImportFeatureTests {
 
     // MARK: - Helpers
 
-    private nonisolated static func payload(_ id: String) -> MediaImportClient.Payload {
-        MediaImportClient.Payload(
+    private nonisolated static func loadedMedia(_ id: String) -> MediaImportClient.LoadedMedia {
+        MediaImportClient.LoadedMedia(
             metadata: MediaMetadata(
                 id: id,
                 name: id,
@@ -153,10 +153,10 @@ struct MediaImportFeatureTests {
         )
     }
 
-    private nonisolated static func media(from payload: MediaImportClient.Payload) -> ImportedMedia {
+    private nonisolated static func media(from loadedMedia: MediaImportClient.LoadedMedia) -> ImportedMedia {
         ImportedMedia(
-            metadata: payload.metadata.with(size: Int64(payload.data.count)),
-            fileURL: URL(fileURLWithPath: "/tmp/\(payload.metadata.id)")
+            metadata: loadedMedia.metadata.with(size: Int64(loadedMedia.data.count)),
+            fileURL: URL(fileURLWithPath: "/tmp/\(loadedMedia.metadata.id)")
         )
     }
 

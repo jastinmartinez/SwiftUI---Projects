@@ -2,27 +2,23 @@ import Dependencies
 import Foundation
 
 struct MediaDownloadStoreClient: Sendable {
-    typealias DownloadTarget = @Sendable (_ file: FileItem) async throws -> Target
-    typealias DownloadSink = @Sendable (_ target: Target) -> RangedDownloader.DownloadSink
-    typealias WriteDownloadChunk = @Sendable (_ target: Target, _ data: Data, _ offset: UInt64) async throws -> Void
+    typealias PrepareDownloadTarget = @Sendable (_ file: FileItem) async throws -> DownloadTarget
+    typealias MakeDownloadSink = @Sendable (_ target: DownloadTarget) -> RangedDownloader.DownloadSink
 
-    var downloadTarget: DownloadTarget
-    var downloadSink: DownloadSink
-    var writeDownloadChunk: WriteDownloadChunk
+    var prepareDownloadTarget: PrepareDownloadTarget
+    var makeDownloadSink: MakeDownloadSink
 
     init(
-        downloadTarget: @escaping DownloadTarget,
-        downloadSink: @escaping DownloadSink,
-        writeDownloadChunk: @escaping WriteDownloadChunk
+        prepareDownloadTarget: @escaping PrepareDownloadTarget,
+        makeDownloadSink: @escaping MakeDownloadSink
     ) {
-        self.downloadTarget = downloadTarget
-        self.downloadSink = downloadSink
-        self.writeDownloadChunk = writeDownloadChunk
+        self.prepareDownloadTarget = prepareDownloadTarget
+        self.makeDownloadSink = makeDownloadSink
     }
 }
 
 extension MediaDownloadStoreClient {
-    struct Target: Equatable, Sendable {
+    struct DownloadTarget: Equatable, Sendable {
         let file: FileItem
         let key: String
         let localURL: URL

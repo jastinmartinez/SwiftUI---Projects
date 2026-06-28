@@ -31,7 +31,7 @@ import Testing
     }
 
     @Test func payloadCarriesImportMetadata() {
-        let payload = MediaImportClient.Payload(
+        let payload = MediaImportClient.LoadedMedia(
             metadata: MediaMetadata(
                 id: "abc.jpeg",
                 name: "Photo",

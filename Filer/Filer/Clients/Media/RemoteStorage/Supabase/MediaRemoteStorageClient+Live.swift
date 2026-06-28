@@ -35,7 +35,7 @@ extension MediaRemoteStorageClient: DependencyKey {
             AsyncThrowingStream { continuation in
                 let task = Task {
                     do {
-                        let source = try await uploadStore.uploadSource(media)
+                        let source = try await uploadStore.loadUploadSource(media)
                         let req = SupabaseUpload.request(for: source.media, config: config)
                         let uploadSource = try ResumableUploader.UploadSource.file(
                             source.localURL,
@@ -68,7 +68,7 @@ extension MediaRemoteStorageClient: DependencyKey {
                 let task = Task {
                     do {
                         let url = try storage.from(config.bucket).getPublicURL(path: file.id)
-                        let target = try await downloadStore.downloadTarget(file)
+                        let target = try await downloadStore.prepareDownloadTarget(file)
                         for try await event in RangedDownloader(
                             transport: .live(session: .shared),
                             retryPolicy: .default
@@ -79,7 +79,7 @@ extension MediaRemoteStorageClient: DependencyKey {
                                 headers: SupabaseStorageHeaders.download(config: config),
                                 expectedSize: file.size
                             ),
-                            sink: downloadStore.downloadSink(target)
+                            sink: downloadStore.makeDownloadSink(target)
                         ) {
                             continuation.yield(.progress(event))
                         }

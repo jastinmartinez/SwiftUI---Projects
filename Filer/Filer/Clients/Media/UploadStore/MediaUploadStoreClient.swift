@@ -2,17 +2,17 @@ import Dependencies
 import Foundation
 
 struct MediaUploadStoreClient: Sendable {
-    typealias UploadSource = @Sendable (_ media: ImportedMedia) async throws -> Source
+    typealias LoadUploadSource = @Sendable (_ media: ImportedMedia) async throws -> UploadSource
 
-    var uploadSource: UploadSource
+    var loadUploadSource: LoadUploadSource
 
-    init(uploadSource: @escaping UploadSource) {
-        self.uploadSource = uploadSource
+    init(loadUploadSource: @escaping LoadUploadSource) {
+        self.loadUploadSource = loadUploadSource
     }
 }
 
 extension MediaUploadStoreClient {
-    struct Source: Equatable, Sendable {
+    struct UploadSource: Equatable, Sendable {
         let media: ImportedMedia
         let localURL: URL
     }

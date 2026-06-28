@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 @Suite struct MediaUploadStoreClientTests {
-    @Test func uploadSourceResolvesStoredImportForMediaID() async throws {
+    @Test func loadUploadSourceResolvesStoredImportForMediaID() async throws {
         let requestedKeys = LockedBox<[String]>([])
         let contentStorage = Self.contentStorage(
             importUploadSource: { key in
@@ -17,7 +17,7 @@ import Testing
         )
         let client = MediaUploadStoreClient.live(contentStorage: contentStorage)
 
-        let source = try await client.uploadSource(media())
+        let source = try await client.loadUploadSource(media())
 
         #expect(requestedKeys.value == ["abc.jpg"])
         #expect(source.localURL == URL(fileURLWithPath: "/memory/imports/abc.jpg"))
@@ -26,14 +26,14 @@ import Testing
         #expect(source.media.name == "Photo")
     }
 
-    @Test func uploadSourcePropagatesMissingContent() async {
+    @Test func loadUploadSourcePropagatesMissingContent() async {
         let contentStorage = Self.contentStorage(
             importUploadSource: { key in throw MediaContentStorageClient.MissingContent(key: key) }
         )
         let client = MediaUploadStoreClient.live(contentStorage: contentStorage)
 
         do {
-            _ = try await client.uploadSource(media())
+            _ = try await client.loadUploadSource(media())
             Issue.record("Expected missing content error")
         } catch {
             #expect(error as? MediaContentStorageClient.MissingContent == .init(key: "abc.jpg"))

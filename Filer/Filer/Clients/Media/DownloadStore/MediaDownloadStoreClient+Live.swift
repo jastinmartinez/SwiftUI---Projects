@@ -7,20 +7,16 @@ extension MediaDownloadStoreClient: DependencyKey {
     static func live(
         contentStorage: MediaContentStorageClient
     ) -> MediaDownloadStoreClient {
-        let downloadTarget: DownloadTarget = { file in
+        let prepareDownloadTarget: PrepareDownloadTarget = { file in
             let target = try await contentStorage.prepareDownloadTarget(file.id)
-            return Target(
+            return DownloadTarget(
                 file: file,
                 key: target.key,
                 localURL: target.localURL
             )
         }
 
-        let writeDownloadChunk: WriteDownloadChunk = { target, data, offset in
-            try await contentStorage.writeDownload(target.key, data, offset)
-        }
-
-        let downloadSink: DownloadSink = { target in
+        let makeDownloadSink: MakeDownloadSink = { target in
             RangedDownloader.DownloadSink(
                 currentOffset: {
                     try await contentStorage.downloadOffset(target.key)
@@ -32,9 +28,8 @@ extension MediaDownloadStoreClient: DependencyKey {
         }
 
         return MediaDownloadStoreClient(
-            downloadTarget: downloadTarget,
-            downloadSink: downloadSink,
-            writeDownloadChunk: writeDownloadChunk
+            prepareDownloadTarget: prepareDownloadTarget,
+            makeDownloadSink: makeDownloadSink
         )
     }
 }

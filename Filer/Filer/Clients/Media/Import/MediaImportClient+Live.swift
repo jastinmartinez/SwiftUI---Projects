@@ -8,7 +8,7 @@ extension MediaImportClient: DependencyKey {
         @Dependency(\.uuid) var uuid
         return MediaImportClient(
             load: { items in
-                var loaded: [MediaImportClient.Payload] = []
+                var loaded: [MediaImportClient.LoadedMedia] = []
                 for item in items {
                     guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
                     guard let contentType = item.supportedContentTypes.first?.preferredMIMEType,
@@ -25,7 +25,7 @@ extension MediaImportClient: DependencyKey {
                     )
 
                     loaded.append(
-                        MediaImportClient.Payload(metadata: metadata, data: data)
+                        MediaImportClient.LoadedMedia(metadata: metadata, data: data)
                     )
                 }
                 return loaded

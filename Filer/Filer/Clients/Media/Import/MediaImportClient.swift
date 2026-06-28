@@ -4,7 +4,7 @@ import PhotosUI
 import SwiftUI
 
 struct MediaImportClient: Sendable {
-    typealias Load = @Sendable (_ items: [PhotosPickerItem]) async throws -> [Payload]
+    typealias Load = @Sendable (_ items: [PhotosPickerItem]) async throws -> [LoadedMedia]
 
     var load: Load
 
@@ -14,7 +14,7 @@ struct MediaImportClient: Sendable {
 }
 
 extension MediaImportClient {
-    struct Payload: Equatable, Sendable {
+    struct LoadedMedia: Equatable, Sendable {
         let metadata: MediaMetadata
         let data: Data
     }

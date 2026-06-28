@@ -17,7 +17,7 @@ struct MediaImportFeature {
     @CasePathable
     enum Action {
         case picked([PhotosPickerItem])
-        case loaded([MediaImportClient.Payload])
+        case loaded([MediaImportClient.LoadedMedia])
         case cached([ImportedMedia])
         case failed(String)
         case delegate(Delegate)
@@ -44,12 +44,12 @@ struct MediaImportFeature {
                 }
                 .cancellable(id: CancelID.load)
 
-            case let .loaded(payloads):
+            case let .loaded(loadedMedia):
                 return .run { send in
                     try await mediaImportStore.removeExpired()
                     var cached: [ImportedMedia] = []
-                    for payload in payloads {
-                        try await cached.append(mediaImportStore.store(payload))
+                    for media in loadedMedia {
+                        try await cached.append(mediaImportStore.store(media))
                     }
                     await send(.cached(cached))
                 } catch: { e, send in

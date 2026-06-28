@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 @Suite struct MediaImportStoreClientTests {
-    @Test func storeWritesPayloadThroughContentStorageAndReturnsImportedMedia() async throws {
+    @Test func storeWritesLoadedMediaThroughContentStorageAndReturnsImportedMedia() async throws {
         let storedImports = LockedBox<[(key: String, data: Data)]>([])
         let contentStorage = Self.contentStorage(
             storeImport: { key, data in
@@ -22,7 +22,7 @@ import Testing
             timeToLive: MediaImportStoreClient.defaultTimeToLive
         )
 
-        let media = try await client.store(payload())
+        let media = try await client.store(loadedMedia())
 
         #expect(storedImports.value.map(\.key) == ["abc.jpeg"])
         #expect(storedImports.value.map(\.data) == [Data([1, 2, 3])])
@@ -52,7 +52,7 @@ import Testing
         )
 
         let media = try await client.store(
-            payload(
+            loadedMedia(
                 "clip.mov",
                 contentType: "video/quicktime",
                 kind: .video
@@ -84,7 +84,7 @@ import Testing
             timeToLive: MediaImportStoreClient.defaultTimeToLive
         )
 
-        _ = try await client.store(payload("new.jpeg"))
+        _ = try await client.store(loadedMedia("new.jpeg"))
 
         #expect(removedKeys.value.isEmpty)
     }
@@ -115,13 +115,13 @@ import Testing
 
     // MARK: - Helpers
 
-    private func payload(
+    private func loadedMedia(
         _ id: String = "abc.jpeg",
         data: Data = Data([1, 2, 3]),
         contentType: String = "image/jpeg",
         kind: MediaKind = .image
-    ) -> MediaImportClient.Payload {
-        MediaImportClient.Payload(
+    ) -> MediaImportClient.LoadedMedia {
+        MediaImportClient.LoadedMedia(
             metadata: MediaMetadata(
                 id: id,
                 name: "Photo",

@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 @Suite struct MediaDownloadStoreClientTests {
-    @Test func downloadTargetResolvesContentStorageTargetForFileID() async throws {
+    @Test func prepareDownloadTargetResolvesContentStorageTargetForFileID() async throws {
         let requestedKeys = LockedBox<[String]>([])
         let contentStorage = Self.contentStorage(
             prepareDownloadTarget: { key in
@@ -16,33 +16,14 @@ import Testing
         )
         let client = MediaDownloadStoreClient.live(contentStorage: contentStorage)
 
-        let target = try await client.downloadTarget(file())
+        let target = try await client.prepareDownloadTarget(file())
 
         #expect(requestedKeys.value == ["abc.jpg"])
         #expect(target.file == file())
         #expect(target.localURL == URL(fileURLWithPath: "/memory/downloads/abc.jpg"))
     }
 
-    @Test func writeDownloadChunkWritesToContentStorageTargetKey() async throws {
-        let writes = LockedBox<[Write]>([])
-        let contentStorage = Self.contentStorage(
-            writeDownload: { key, data, offset in
-                writes.mutate { $0.append(Write(key: key, data: data, offset: offset)) }
-            }
-        )
-        let client = MediaDownloadStoreClient.live(contentStorage: contentStorage)
-        let target = MediaDownloadStoreClient.Target(
-            file: file(),
-            key: "abc.jpg",
-            localURL: URL(fileURLWithPath: "/memory/downloads/abc.jpg")
-        )
-
-        try await client.writeDownloadChunk(target, Data([1, 2]), 6)
-
-        #expect(writes.value == [Write(key: "abc.jpg", data: Data([1, 2]), offset: 6)])
-    }
-
-    @Test func downloadSinkReportsPersistedOffsetAndWritesChunks() async throws {
+    @Test func makeDownloadSinkReportsPersistedOffsetAndWritesChunks() async throws {
         let offsets = LockedBox<[String: UInt64]>(["abc.jpg": 6])
         let writes = LockedBox<[Write]>([])
         let contentStorage = Self.contentStorage(
@@ -61,8 +42,8 @@ import Testing
             }
         )
         let client = MediaDownloadStoreClient.live(contentStorage: contentStorage)
-        let target = try await client.downloadTarget(file())
-        let sink = client.downloadSink(target)
+        let target = try await client.prepareDownloadTarget(file())
+        let sink = client.makeDownloadSink(target)
 
         #expect(try await sink.currentOffset() == 6)
         try await sink.write(Data([1, 2, 3]), 6)
@@ -92,16 +73,6 @@ import Testing
             prepareDownloadTarget: prepareDownloadTarget,
             downloadOffset: { _ in throw MediaContentStorageClient.Unimplemented() },
             writeDownload: { _, _, _ in throw MediaContentStorageClient.Unimplemented() }
-        )
-    }
-
-    private static func contentStorage(
-        writeDownload: @escaping MediaContentStorageClient.WriteDownload
-    ) -> MediaContentStorageClient {
-        contentStorage(
-            prepareDownloadTarget: { _ in throw MediaContentStorageClient.Unimplemented() },
-            downloadOffset: { _ in throw MediaContentStorageClient.Unimplemented() },
-            writeDownload: writeDownload
         )
     }
 
