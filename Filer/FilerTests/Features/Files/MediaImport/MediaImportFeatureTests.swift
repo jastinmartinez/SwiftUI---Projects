@@ -11,14 +11,21 @@ struct MediaImportFeatureTests {
     // directly and assert the `phase` transitions + the `.delegate(.imported)` emission.
     // The `.picked → .loading` entry edge is covered by the Task 21 manual checklist.
 
-    @Test func loadedPayloadsCacheThenDelegateImported() async {
+    @Test func loadedPayloadsRemoveExpiredThenStoreAndDelegateImported() async {
         let loaded = Self.payload("a.jpeg")
         let cached = Self.media(from: loaded)
+        let events = LockedBox<[String]>([])
 
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaCache.store = { _ in cached }
+            $0.mediaImportStore.removeExpired = {
+                events.mutate { $0.append("removeExpired") }
+            }
+            $0.mediaImportStore.store = { payload in
+                events.mutate { $0.append("store:\(payload.id)") }
+                return cached
+            }
         }
 
         await store.send(.loaded([loaded]))
@@ -26,6 +33,8 @@ struct MediaImportFeatureTests {
             $0.phase = .idle
         }
         await store.receive(\.delegate.imported, [cached])
+
+        #expect(events.value == ["removeExpired", "store:a.jpeg"])
     }
 
     @Test func cachedReturnsToIdleAndDelegatesImported() async {
@@ -48,13 +57,37 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaCache.store = { _ in throw CacheError() }
+            $0.mediaImportStore.removeExpired = {}
+            $0.mediaImportStore.store = { _ in throw CacheError() }
         }
 
         await store.send(.loaded([Self.payload("a.jpeg")]))
         await store.receive(\.failed) {
             $0.phase = .failed(errorDescription)
         }
+    }
+
+    @Test func cleanupFailureSetsFailedAndDoesNotStore() async {
+        struct CleanupError: Error {}
+        let errorDescription = CleanupError().localizedDescription
+        let storedIDs = LockedBox<[String]>([])
+
+        let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
+            MediaImportFeature()
+        } withDependencies: {
+            $0.mediaImportStore.removeExpired = { throw CleanupError() }
+            $0.mediaImportStore.store = { payload in
+                storedIDs.mutate { $0.append(payload.id) }
+                return Self.media(from: payload)
+            }
+        }
+
+        await store.send(.loaded([Self.payload("a.jpeg")]))
+        await store.receive(\.failed) {
+            $0.phase = .failed(errorDescription)
+        }
+
+        #expect(storedIDs.value.isEmpty)
     }
 
     @Test func failedSetsFailedPhase() async {
