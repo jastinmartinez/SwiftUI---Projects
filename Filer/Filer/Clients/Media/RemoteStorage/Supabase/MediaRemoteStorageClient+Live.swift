@@ -36,7 +36,7 @@ extension MediaRemoteStorageClient: DependencyKey {
                 let task = Task {
                     do {
                         let source = try await uploadStore.loadUploadSource(media)
-                        let req = SupabaseUpload.request(for: source.media, config: config)
+                        let uploadRequest = SupabaseUpload.request(for: source.media, config: config)
                         let uploadSource = try ResumableUploader.UploadSource.file(
                             source.localURL,
                             fileManager: .default
@@ -47,8 +47,8 @@ extension MediaRemoteStorageClient: DependencyKey {
                         )
                         .upload(
                             ResumableUploader.Request(
-                                endpoint: req.endpoint,
-                                headers: req.headers
+                                endpoint: uploadRequest.endpoint,
+                                headers: uploadRequest.headers
                             ),
                             source: uploadSource
                         ) {
@@ -67,21 +67,21 @@ extension MediaRemoteStorageClient: DependencyKey {
             AsyncThrowingStream { continuation in
                 let task = Task {
                     do {
-                        let url = try storage.from(config.bucket).getPublicURL(path: file.id)
+                        let downloadURL = try storage.from(config.bucket).getPublicURL(path: file.id)
                         let target = try await downloadStore.prepareDownloadTarget(file)
-                        for try await event in RangedDownloader(
+                        for try await progress in RangedDownloader(
                             transport: .live(session: .shared),
                             retryPolicy: .default
                         )
                         .download(
                             RangedDownloader.Request(
-                                url: url,
+                                url: downloadURL,
                                 headers: SupabaseStorageHeaders.download(config: config),
                                 expectedSize: file.size
                             ),
                             sink: downloadStore.makeDownloadSink(target)
                         ) {
-                            continuation.yield(.progress(event))
+                            continuation.yield(.progress(progress))
                         }
                         continuation.yield(.finished(target.localURL))
                         continuation.finish()

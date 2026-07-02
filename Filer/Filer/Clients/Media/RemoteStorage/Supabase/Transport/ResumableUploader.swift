@@ -41,27 +41,27 @@ struct ResumableUploader: Sendable {
             ? (length + chunkSize - 1) / chunkSize
             : 0
 
-        var uploadURL = try await create(upload, length)
+        var uploadURL = try await createUpload(upload, length)
         var offset = 0
         var resumesLeft = retryPolicy.maxResumes
         var recreatesLeft = retryPolicy.maxRecreates
 
         while offset < length {
             try Task.checkCancellation()
-            let window = min(chunkSize, length - offset)
-            let body = try await source.read(offset, window)
-            guard body.count == window else {
+            let chunkLength = min(chunkSize, length - offset)
+            let chunk = try await source.read(offset, chunkLength)
+            guard chunk.count == chunkLength else {
                 throw Failure.invalidUploadSource
             }
 
             do {
-                offset = try await patch(uploadURL, body, offset, total: length)
+                offset = try await uploadChunk(uploadURL, chunk, offset, total: length)
             } catch is CancellationError {
                 throw CancellationError()
             } catch let failure as Failure {
                 if failure == .uploadConflict, recreatesLeft > 0 {
                     recreatesLeft -= 1
-                    uploadURL = try await create(upload, length)
+                    uploadURL = try await createUpload(upload, length)
                     offset = 0
                     continue
                 }
@@ -71,7 +71,7 @@ struct ResumableUploader: Sendable {
                     throw error
                 }
                 resumesLeft -= 1
-                offset = try await head(uploadURL, total: length)
+                offset = try await fetchUploadOffset(uploadURL, total: length)
                 continue
             }
 
@@ -85,7 +85,7 @@ struct ResumableUploader: Sendable {
         }
     }
 
-    private func create(_ upload: Request, _ length: Int) async throws -> URL {
+    private func createUpload(_ upload: Request, _ length: Int) async throws -> URL {
         let response = try await transport.data(
             TUSUploadHeaders.createRequest(
                 endpoint: upload.endpoint,
@@ -102,15 +102,15 @@ struct ResumableUploader: Sendable {
         return url.absoluteURL
     }
 
-    private func patch(
+    private func uploadChunk(
         _ uploadURL: URL,
-        _ body: Data,
+        _ chunk: Data,
         _ offset: Int,
         total: Int
     ) async throws -> Int {
         let response = try await transport.upload(
             TUSUploadHeaders.patchRequest(uploadURL: uploadURL, offset: offset),
-            body
+            chunk
         )
         switch response.statusCode {
         case 204, 200:
@@ -128,7 +128,7 @@ struct ResumableUploader: Sendable {
         }
     }
 
-    private func head(_ uploadURL: URL, total: Int) async throws -> Int {
+    private func fetchUploadOffset(_ uploadURL: URL, total: Int) async throws -> Int {
         let response = try await transport.data(TUSUploadHeaders.headRequest(uploadURL: uploadURL))
         guard response.statusCode == 200,
               let offset = response.value(forHeader: "Upload-Offset").flatMap(Int.init),

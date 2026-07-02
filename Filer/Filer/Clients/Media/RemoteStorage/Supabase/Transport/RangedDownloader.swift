@@ -44,18 +44,18 @@ struct RangedDownloader: Sendable {
         let total = probe.totalLength ?? download.expectedSize ?? 0
 
         if probe.supportsRanges, total > 0 {
-            try await rangedLoop(download, sink, UInt64(total), max(chunkSize, 1), continuation)
+            try await downloadRanges(download, sink, UInt64(total), max(chunkSize, 1), continuation)
         } else {
-            try await fallbackWholeBody(probe, expectedSize: download.expectedSize, sink, continuation)
+            try await downloadWholeResponse(probe, expectedSize: download.expectedSize, sink, continuation)
         }
     }
 
-    private func probe(_ download: Request) async throws -> ProbeResult {
+    private func probe(_ downloadRequest: Request) async throws -> ProbeResult {
         var retries = 0
 
         while true {
             try Task.checkCancellation()
-            var probeRequest = request(url: download.url, headers: download.headers)
+            var probeRequest = request(url: downloadRequest.url, headers: downloadRequest.headers)
             probeRequest.httpMethod = "GET"
             probeRequest.setValue("bytes=0-0", forHTTPHeaderField: "Range")
 
@@ -65,13 +65,13 @@ struct RangedDownloader: Sendable {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                try recordRetry(for: error, retries: &retries)
+                retries = try nextRetryCount(for: error, retries: retries)
             }
         }
     }
 
-    private func rangedLoop(
-        _ download: Request,
+    private func downloadRanges(
+        _ downloadRequest: Request,
         _ sink: DownloadSink,
         _ total: UInt64,
         _ chunkSize: Int,
@@ -88,7 +88,7 @@ struct RangedDownloader: Sendable {
             let end = min(start + chunkSize, total) - 1
 
             do {
-                let body = try await rangeBody(download, start: start, end: end, expectedTotal: total)
+                let body = try await downloadRangeBody(downloadRequest, start: start, end: end, expectedTotal: total)
                 try await sink.write(body, start)
                 confirmedOffset = try await validatedOffset(sink, total: total)
                 retries = 0
@@ -109,14 +109,14 @@ struct RangedDownloader: Sendable {
             } catch let failure as Failure {
                 throw failure
             } catch {
-                try recordRetry(for: error, retries: &retries)
+                retries = try nextRetryCount(for: error, retries: retries)
                 confirmedOffset = try await validatedOffset(sink, total: total)
             }
         }
     }
 
-    private func rangeBody(_ download: Request, start: UInt64, end: UInt64, expectedTotal: UInt64) async throws -> Data {
-        var rangeRequest = request(url: download.url, headers: download.headers)
+    private func downloadRangeBody(_ downloadRequest: Request, start: UInt64, end: UInt64, expectedTotal: UInt64) async throws -> Data {
+        var rangeRequest = request(url: downloadRequest.url, headers: downloadRequest.headers)
         rangeRequest.httpMethod = "GET"
         rangeRequest.setValue("bytes=\(start)-\(end)", forHTTPHeaderField: "Range")
 
@@ -141,7 +141,7 @@ struct RangedDownloader: Sendable {
         return response.body
     }
 
-    private func fallbackWholeBody(
+    private func downloadWholeResponse(
         _ probe: ProbeResult,
         expectedSize: Int64?,
         _ sink: DownloadSink,
@@ -180,7 +180,7 @@ struct RangedDownloader: Sendable {
             } catch let failure as Failure {
                 throw failure
             } catch {
-                try recordRetry(for: error, retries: &retries)
+                retries = try nextRetryCount(for: error, retries: retries)
             }
         }
     }
@@ -206,14 +206,14 @@ struct RangedDownloader: Sendable {
         return request
     }
 
-    private func recordRetry(for error: Error, retries: inout Int) throws {
+    private func nextRetryCount(for error: Error, retries: Int) throws -> Int {
         guard retryPolicy.shouldRetry(error) else {
             throw error
         }
         guard retries < retryPolicy.maxRetries else {
             throw Failure.retryLimitExceeded
         }
-        retries += 1
+        return retries + 1
     }
 }
 
