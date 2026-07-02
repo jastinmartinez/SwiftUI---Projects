@@ -23,8 +23,12 @@ struct SupabaseConfig: Equatable {
 extension SupabaseConfig {
     /// Framework → domain factory. Fails loud on missing keys (build-config error).
     static func loadFromBundle(_ bundle: Bundle = .main) -> SupabaseConfig {
-        SupabaseConfig(
-            projectURL: URL(string: bundle.requiredString("SUPABASE_URL"))!,
+        guard let projectURL = URL(string: bundle.requiredString("SUPABASE_URL")) else {
+            fatalError("Invalid URL for Info.plist key 'SUPABASE_URL' — check Secrets.xcconfig wiring.")
+        }
+
+        return SupabaseConfig(
+            projectURL: projectURL,
             anonKey: bundle.requiredString("SUPABASE_ANON_KEY"),
             bucket: bundle.requiredString("SUPABASE_BUCKET")
         )
