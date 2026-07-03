@@ -35,10 +35,10 @@ extension MediaRemoteStorageClient: DependencyKey {
             AsyncThrowingStream { continuation in
                 let task = Task {
                     do {
-                        let source = try await uploadStore.loadUploadSource(media)
-                        let uploadRequest = SupabaseUpload.request(for: source.media, config: config)
-                        let uploadSource = try ResumableUploader.UploadSource.file(
-                            source.localURL,
+                        let storedUploadSource = try await uploadStore.loadUploadSource(media)
+                        let uploadRequest = SupabaseUpload.request(for: storedUploadSource.media, config: config)
+                        let resumableUploadSource = try ResumableUploader.UploadSource.file(
+                            storedUploadSource.localURL,
                             fileManager: .default
                         )
                         for try await progress in ResumableUploader(
@@ -50,11 +50,11 @@ extension MediaRemoteStorageClient: DependencyKey {
                                 endpoint: uploadRequest.endpoint,
                                 headers: uploadRequest.headers
                             ),
-                            source: uploadSource
+                            source: resumableUploadSource
                         ) {
                             continuation.yield(.progress(progress))
                         }
-                        continuation.yield(.finished(FileItem(uploaded: source.media)))
+                        continuation.yield(.finished(FileItem(uploaded: storedUploadSource.media)))
                         continuation.finish()
                     } catch {
                         continuation.finish(throwing: error)
@@ -68,7 +68,7 @@ extension MediaRemoteStorageClient: DependencyKey {
                 let task = Task {
                     do {
                         let downloadURL = try storage.from(config.bucket).getPublicURL(path: file.id)
-                        let target = try await downloadStore.prepareDownloadTarget(file)
+                        let downloadTarget = try await downloadStore.prepareDownloadTarget(file)
                         for try await progress in RangedDownloader(
                             transport: .live(session: .shared),
                             retryPolicy: .default
@@ -79,11 +79,11 @@ extension MediaRemoteStorageClient: DependencyKey {
                                 headers: SupabaseStorageHeaders.download(config: config),
                                 expectedSize: file.size
                             ),
-                            sink: downloadStore.makeDownloadSink(target)
+                            sink: downloadStore.makeDownloadSink(downloadTarget)
                         ) {
                             continuation.yield(.progress(progress))
                         }
-                        continuation.yield(.finished(target.localURL))
+                        continuation.yield(.finished(downloadTarget.localURL))
                         continuation.finish()
                     } catch {
                         continuation.finish(throwing: error)

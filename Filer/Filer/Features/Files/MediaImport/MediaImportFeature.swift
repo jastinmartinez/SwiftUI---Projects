@@ -34,35 +34,35 @@ struct MediaImportFeature {
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
-            case let .picked(items):
-                guard !items.isEmpty else { return .none }
+            case let .picked(selectedItems):
+                guard !selectedItems.isEmpty else { return .none }
                 state.phase = .loading
                 return .run { send in
-                    try await send(.loaded(mediaImport.load(items)))
-                } catch: { e, send in
-                    await send(.failed(e.localizedDescription))
+                    try await send(.loaded(mediaImport.load(selectedItems)))
+                } catch: { error, send in
+                    await send(.failed(error.localizedDescription))
                 }
                 .cancellable(id: CancelID.load)
 
-            case let .loaded(loadedMedia):
+            case let .loaded(loadedMediaItems):
                 return .run { send in
                     try await mediaImportStore.removeExpired()
-                    var cached: [ImportedMedia] = []
-                    for media in loadedMedia {
-                        try await cached.append(mediaImportStore.store(media))
+                    var importedMediaItems: [ImportedMedia] = []
+                    for loadedMedia in loadedMediaItems {
+                        try await importedMediaItems.append(mediaImportStore.store(loadedMedia))
                     }
-                    await send(.cached(cached))
-                } catch: { e, send in
-                    await send(.failed(e.localizedDescription))
+                    await send(.cached(importedMediaItems))
+                } catch: { error, send in
+                    await send(.failed(error.localizedDescription))
                 }
                 .cancellable(id: CancelID.load)
 
-            case let .cached(medias):
+            case let .cached(importedMediaItems):
                 state.phase = .idle
-                return .send(.delegate(.imported(medias)))
+                return .send(.delegate(.imported(importedMediaItems)))
 
-            case let .failed(m):
-                state.phase = .failed(m)
+            case let .failed(message):
+                state.phase = .failed(message)
                 return .none
 
             case .delegate:

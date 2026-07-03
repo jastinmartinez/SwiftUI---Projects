@@ -23,8 +23,6 @@ extension MediaDownloadStoreClient {
         let key: String
         let localURL: URL
     }
-
-    struct Unimplemented: Error {}
 }
 
 extension DependencyValues {

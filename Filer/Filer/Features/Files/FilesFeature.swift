@@ -27,8 +27,8 @@ struct FilesFeature {
             case .onAppear:
                 return .run { send in
                     try await send(.filesLoaded(mediaRemoteStorage.list()))
-                } catch: { e, send in
-                    await send(.loadFailed(e.localizedDescription))
+                } catch: { error, send in
+                    await send(.loadFailed(error.localizedDescription))
                 }
 
             case let .filesLoaded(files):
@@ -39,14 +39,14 @@ struct FilesFeature {
                 state.loadPhase = .ready
                 return .none
 
-            case let .loadFailed(m):
-                state.loadPhase = .failed(m)
+            case let .loadFailed(message):
+                state.loadPhase = .failed(message)
                 return .none
 
-            case let .importer(.delegate(.imported(medias))):
-                return .merge(medias.map { m in
-                    state.files.insert(FileFeature.State(item: FileItem(importing: m)), at: 0)
-                    return .send(.rows(.element(id: m.id, action: .startUpload(m))))
+            case let .importer(.delegate(.imported(importedMediaItems))):
+                return .merge(importedMediaItems.map { importedMedia in
+                    state.files.insert(FileFeature.State(item: FileItem(importing: importedMedia)), at: 0)
+                    return .send(.rows(.element(id: importedMedia.id, action: .startUpload(importedMedia))))
                 })
 
             case .importer:

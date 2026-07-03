@@ -6,7 +6,7 @@ struct FileFeature {
     @ObservableState
     struct State: Equatable {
         var item: FileItem
-        var source: ImportedMedia?
+        var pendingUpload: ImportedMedia?
     }
 
     enum Action {
@@ -35,7 +35,7 @@ struct FileFeature {
         Reduce { state, action in
             switch action {
             case let .startUpload(media):
-                state.source = media
+                state.pendingUpload = media
                 state.item = state.item.with(status: .uploading(.pending(total: media.size)))
                 return .send(.upload(media))
 
@@ -54,8 +54,8 @@ struct FileFeature {
                 return .run { send in
                     for try await event in mediaRemoteStorage.upload(media) {
                         switch event {
-                        case let .progress(p): await send(.progress(p))
-                        case let .finished(f): await send(.uploadFinished(f))
+                        case let .progress(progress): await send(.progress(progress))
+                        case let .finished(uploadedFile): await send(.uploadFinished(uploadedFile))
                         }
                     }
                 } catch: { error, send in
@@ -67,8 +67,8 @@ struct FileFeature {
                 return .run { send in
                     for try await event in mediaRemoteStorage.download(file) {
                         switch event {
-                        case let .progress(p): await send(.progress(p))
-                        case let .finished(url): await send(.downloadFinished(url))
+                        case let .progress(progress): await send(.progress(progress))
+                        case let .finished(localURL): await send(.downloadFinished(localURL))
                         }
                     }
                 } catch: { error, send in
@@ -76,12 +76,12 @@ struct FileFeature {
                 }
                 .cancellable(id: CancelID.transfer)
 
-            case let .progress(p):
+            case let .progress(progress):
                 switch state.item.status {
                 case .uploading:
-                    state.item = state.item.with(status: .uploading(p))
+                    state.item = state.item.with(status: .uploading(progress))
                 case .downloading:
-                    state.item = state.item.with(status: .downloading(p))
+                    state.item = state.item.with(status: .downloading(progress))
                 default:
                     break
                 }
@@ -89,15 +89,15 @@ struct FileFeature {
 
             case let .uploadFinished(file):
                 state.item = file
-                state.source = nil
+                state.pendingUpload = nil
                 return .none
 
-            case let .downloadFinished(url):
-                state.item = state.item.with(status: .local(url))
+            case let .downloadFinished(localURL):
+                state.item = state.item.with(status: .local(localURL))
                 return .none
 
-            case let .failed(e):
-                state.item = state.item.with(status: .failed(e))
+            case let .failed(transferError):
+                state.item = state.item.with(status: .failed(transferError))
                 return .none
 
             case .cancelTapped:
@@ -115,12 +115,12 @@ struct FileFeature {
                 }
 
             case .retryTapped:
-                guard case let .failed(e) = state.item.status else { return .none }
-                switch e.operation {
+                guard case let .failed(transferError) = state.item.status else { return .none }
+                switch transferError.operation {
                 case .upload:
-                    guard let m = state.source else { return .none }
-                    state.item = state.item.with(status: .uploading(.pending(total: m.size)))
-                    return .send(.upload(m))
+                    guard let pendingUpload = state.pendingUpload else { return .none }
+                    state.item = state.item.with(status: .uploading(.pending(total: pendingUpload.size)))
+                    return .send(.upload(pendingUpload))
                 case .download:
                     state.item = state.item.with(status: .downloading(.pending(total: state.item.size)))
                     return .send(.download(state.item))

@@ -12,7 +12,7 @@ struct FileFeatureTests {
         let finished = FileItem(uploaded: media)
 
         let store = TestStore(
-            initialState: FileFeature.State(item: FileItem(importing: media), source: nil)
+            initialState: FileFeature.State(item: FileItem(importing: media), pendingUpload: nil)
         ) {
             FileFeature()
         } withDependencies: {
@@ -29,7 +29,7 @@ struct FileFeatureTests {
         }
 
         await store.send(.startUpload(media)) {
-            $0.source = media
+            $0.pendingUpload = media
             $0.item = $0.item.with(status: .uploading(.pending(total: media.size)))
         }
         await store.receive(\.upload)
@@ -41,7 +41,7 @@ struct FileFeatureTests {
         }
         await store.receive(\.uploadFinished) {
             $0.item = finished
-            $0.source = nil
+            $0.pendingUpload = nil
         }
     }
 
@@ -50,7 +50,7 @@ struct FileFeatureTests {
         let dest = URL(fileURLWithPath: "/tmp/remote.jpg")
 
         let store = TestStore(
-            initialState: FileFeature.State(item: item, source: nil)
+            initialState: FileFeature.State(item: item, pendingUpload: nil)
         ) {
             FileFeature()
         } withDependencies: {
@@ -78,7 +78,7 @@ struct FileFeatureTests {
         let item = remoteItem(id: "local.jpg", size: 100).with(status: .local(url))
 
         let store = TestStore(
-            initialState: FileFeature.State(item: item, source: nil)
+            initialState: FileFeature.State(item: item, pendingUpload: nil)
         ) {
             FileFeature()
         } withDependencies: {
@@ -94,7 +94,7 @@ struct FileFeatureTests {
         let store = TestStore(
             initialState: FileFeature.State(
                 item: FileItem(importing: media),
-                source: media
+                pendingUpload: media
             )
         ) {
             FileFeature()
@@ -104,7 +104,7 @@ struct FileFeatureTests {
         store.exhaustivity = .off
 
         await store.send(.startUpload(media)) {
-            $0.source = media
+            $0.pendingUpload = media
             $0.item = $0.item.with(status: .uploading(.pending(total: media.size)))
         }
         await store.receive(\.upload)
@@ -115,7 +115,7 @@ struct FileFeatureTests {
     @Test func cancelTappedWhileDownloadingReturnsToRemote() async {
         let item = remoteItem()
         let store = TestStore(
-            initialState: FileFeature.State(item: item, source: nil)
+            initialState: FileFeature.State(item: item, pendingUpload: nil)
         ) {
             FileFeature()
         } withDependencies: {
@@ -139,7 +139,7 @@ struct FileFeatureTests {
             .with(status: .failed(TransferError(operation: .upload, message: "boom")))
 
         let store = TestStore(
-            initialState: FileFeature.State(item: failed, source: media)
+            initialState: FileFeature.State(item: failed, pendingUpload: media)
         ) {
             FileFeature()
         } withDependencies: {
@@ -159,7 +159,7 @@ struct FileFeatureTests {
         await store.receive(\.upload)
         await store.receive(\.uploadFinished) {
             $0.item = finished
-            $0.source = nil
+            $0.pendingUpload = nil
         }
     }
 
@@ -168,7 +168,7 @@ struct FileFeatureTests {
         let item = remoteItem()
             .with(status: .failed(TransferError(operation: .download, message: "boom")))
         let store = TestStore(
-            initialState: FileFeature.State(item: item, source: nil)
+            initialState: FileFeature.State(item: item, pendingUpload: nil)
         ) {
             FileFeature()
         } withDependencies: {
@@ -196,7 +196,7 @@ struct FileFeatureTests {
         let store = TestStore(
             initialState: FileFeature.State(
                 item: item.with(status: .downloading(.pending(total: item.size))),
-                source: nil
+                pendingUpload: nil
             )
         ) {
             FileFeature()

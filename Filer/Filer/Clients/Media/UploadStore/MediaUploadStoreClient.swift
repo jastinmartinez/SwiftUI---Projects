@@ -16,8 +16,6 @@ extension MediaUploadStoreClient {
         let media: ImportedMedia
         let localURL: URL
     }
-
-    struct Unimplemented: Error {}
 }
 
 extension DependencyValues {
