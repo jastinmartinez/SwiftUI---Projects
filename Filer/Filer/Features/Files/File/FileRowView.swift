@@ -32,7 +32,8 @@ struct FileRowView: View {
             if let operation = model.trailingOperation {
                 switch operation.kind {
                 case .cancel:
-                    Button("Cancel", role: .destructive) { operation.perform() }
+                    Button("Cancel") { operation.perform() }
+                        .tint(.red)
                 case .retry:
                     Button("Retry") { operation.perform() }
                 }

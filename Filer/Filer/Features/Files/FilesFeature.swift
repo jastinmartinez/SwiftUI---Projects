@@ -44,10 +44,18 @@ struct FilesFeature {
                 return .none
 
             case let .importer(.delegate(.imported(importedMediaItems))):
-                return .merge(importedMediaItems.map { importedMedia in
+                // Insert all new rows as a single atomic mutation so SwiftUI's List
+                // sees one consistent insert transaction, then kick off uploads on a
+                // later tick rather than re-mutating the freshly-inserted rows in the
+                // same reduction.
+                for importedMedia in importedMediaItems {
                     state.files.insert(FileFeature.State(item: FileItem(importing: importedMedia)), at: 0)
-                    return .send(.rows(.element(id: importedMedia.id, action: .startUpload(importedMedia))))
-                })
+                }
+                return .run { send in
+                    for importedMedia in importedMediaItems {
+                        await send(.rows(.element(id: importedMedia.id, action: .startUpload(importedMedia))))
+                    }
+                }
 
             case .importer:
                 return .none
