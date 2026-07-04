@@ -4,7 +4,7 @@ struct FileRowView: View {
     let model: Model
 
     var body: some View {
-        Button { model.send(.tapped) } label: {
+        Button { model.onTap() } label: {
             HStack(spacing: 13) {
                 FileRowAccessoryView(model: model.accessory)
                     .frame(width: 28)
@@ -29,8 +29,14 @@ struct FileRowView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button("Cancel", role: .destructive) { model.send(.cancelTapped) }
-            Button("Retry") { model.send(.retryTapped) }
+            if let operation = model.trailingOperation {
+                switch operation.kind {
+                case .cancel:
+                    Button("Cancel", role: .destructive) { operation.perform() }
+                case .retry:
+                    Button("Retry") { operation.perform() }
+                }
+            }
         }
     }
 }
@@ -39,19 +45,19 @@ struct FileRowView: View {
     List {
         FileRowView(model: .init(
             name: "Sunset", subtitle: "2.4 MB · Photo",
-            accessory: .remote, send: { _ in }
+            accessory: .remote, onTap: {}
         ))
         FileRowView(model: .init(
             name: "Clip", subtitle: "Uploading 3 MB / 12 MB",
-            accessory: .progress(fraction: 0.25, label: "1/4"), send: { _ in }
+            accessory: .progress(fraction: 0.25, label: "1/4"), onTap: {}
         ))
         FileRowView(model: .init(
             name: "Saved", subtitle: "8 MB · Video",
-            accessory: .local, send: { _ in }
+            accessory: .local, onTap: {}
         ))
         FileRowView(model: .init(
             name: "Broken", subtitle: "Failed · Tap to retry",
-            accessory: .failed, send: { _ in }
+            accessory: .failed, onTap: {}
         ))
     }
     .listStyle(.insetGrouped)

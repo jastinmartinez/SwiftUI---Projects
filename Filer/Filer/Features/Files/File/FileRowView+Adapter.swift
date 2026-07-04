@@ -21,17 +21,21 @@ extension FileRowView.Model {
             "Failed · Tap to retry"
         }
 
+        let trailingOperation: TrailingOperation? = switch item.status {
+        case .uploading, .downloading:
+            TrailingOperation(kind: .cancel) { store.send(.cancelTapped) }
+        case .failed:
+            TrailingOperation(kind: .retry) { store.send(.retryTapped) }
+        case .remote, .local:
+            nil
+        }
+
         self.init(
             name: item.name,
             subtitle: subtitle,
             accessory: FileRowAccessoryView.Model(status: item.status),
-            send: { action in
-                switch action {
-                case .tapped: store.send(.tapped)
-                case .cancelTapped: store.send(.cancelTapped)
-                case .retryTapped: store.send(.retryTapped)
-                }
-            }
+            trailingOperation: trailingOperation,
+            onTap: { store.send(.tapped) }
         )
     }
 }
