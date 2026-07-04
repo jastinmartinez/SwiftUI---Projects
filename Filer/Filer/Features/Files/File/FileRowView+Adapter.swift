@@ -15,6 +15,8 @@ extension FileRowView.Model {
             [sizeText, kindName].compactMap(\.self).joined(separator: " · ")
         case let .uploading(progress):
             "Uploading \(progress.bytesTransferred.formatted(.byteCount(style: .file))) / \(progress.totalBytes.formatted(.byteCount(style: .file)))"
+        case .cancellingUpload:
+            "Cancelling upload..."
         case let .downloading(progress):
             "Downloading \(progress.bytesTransferred.formatted(.byteCount(style: .file))) / \(progress.totalBytes.formatted(.byteCount(style: .file)))"
         case .failed:
@@ -26,7 +28,7 @@ extension FileRowView.Model {
             TrailingOperation(kind: .cancel) { store.send(.cancelTapped) }
         case .failed:
             TrailingOperation(kind: .retry) { store.send(.retryTapped) }
-        case .remote, .local:
+        case .remote, .cancellingUpload, .local:
             nil
         }
 

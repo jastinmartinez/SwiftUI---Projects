@@ -22,6 +22,10 @@ struct FileRowAccessoryView: View {
                     .foregroundStyle(Color.filerGray)
             }
             .frame(width: 26, height: 26)
+        case .activity:
+            ProgressView()
+                .controlSize(.small)
+                .frame(width: 26, height: 26)
         case .local:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 18))
@@ -38,6 +42,7 @@ struct FileRowAccessoryView: View {
     List {
         FileRowAccessoryView(model: .remote)
         FileRowAccessoryView(model: .progress(fraction: 0.25, label: "1/4"))
+        FileRowAccessoryView(model: .activity)
         FileRowAccessoryView(model: .local)
         FileRowAccessoryView(model: .failed)
     }

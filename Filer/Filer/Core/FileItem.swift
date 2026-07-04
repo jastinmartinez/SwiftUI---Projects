@@ -24,6 +24,7 @@ extension FileItem {
     enum Status: Equatable {
         case remote
         case uploading(TransferProgress)
+        case cancellingUpload
         case downloading(TransferProgress)
         case local(URL)
         case failed(TransferError)

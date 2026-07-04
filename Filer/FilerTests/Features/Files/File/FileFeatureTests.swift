@@ -89,7 +89,7 @@ struct FileFeatureTests {
         await store.receive(\.delegate.preview)
     }
 
-    @Test func cancelTappedWhileUploadingCancelsAndDelegatesCancelled() async {
+    @Test func cancelTappedWhileUploadingShowsCancellingBeforeDelegatingCancelled() async {
         let media = sampleMedia
         let store = TestStore(
             initialState: FileFeature.State(
@@ -108,7 +108,10 @@ struct FileFeatureTests {
             $0.item = $0.item.with(status: .uploading(.pending(total: media.size)))
         }
         await store.receive(\.upload)
-        await store.send(.cancelTapped)
+        await store.send(.cancelTapped) {
+            $0.item = $0.item.with(status: .cancellingUpload)
+        }
+        await store.receive(\.cancellationFinished)
         await store.receive(\.delegate.cancelled)
     }
 
@@ -130,6 +133,40 @@ struct FileFeatureTests {
         await store.send(.cancelTapped) {
             $0.item = $0.item.with(status: .remote)
         }
+    }
+
+    @Test func cancellingUploadIgnoresLateUploadFinished() async {
+        let media = sampleMedia
+        let finished = FileItem(uploaded: media)
+        let store = TestStore(
+            initialState: FileFeature.State(
+                item: FileItem(importing: media).with(status: .cancellingUpload),
+                pendingUpload: media
+            )
+        ) {
+            FileFeature()
+        } withDependencies: {
+            $0.mediaRemoteStorage = Self.failingRemoteStorage()
+        }
+
+        await store.send(.uploadFinished(finished))
+    }
+
+    @Test func cancellingUploadIgnoresLateUploadFailure() async {
+        let media = sampleMedia
+        let error = TransferError(operation: .upload, message: "cancelled")
+        let store = TestStore(
+            initialState: FileFeature.State(
+                item: FileItem(importing: media).with(status: .cancellingUpload),
+                pendingUpload: media
+            )
+        ) {
+            FileFeature()
+        } withDependencies: {
+            $0.mediaRemoteStorage = Self.failingRemoteStorage()
+        }
+
+        await store.send(.failed(error))
     }
 
     @Test func retryTappedAfterUploadFailureRestartsUpload() async {

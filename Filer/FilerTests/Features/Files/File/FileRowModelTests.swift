@@ -38,6 +38,11 @@ struct FileRowModelTests {
         #expect(m.subtitle == "Failed · Tap to retry")
     }
 
+    @Test func cancellingUploadSubtitleShowsCancellationInProgress() {
+        let m = model(file(name: "Sunset", size: 12_000_000, status: .cancellingUpload))
+        #expect(m.subtitle == "Cancelling upload...")
+    }
+
     @Test func accessoryIsBuiltFromStatus() {
         let m = model(file(name: "Sunset", size: 1))
         #expect(m.accessory == .remote)
@@ -66,6 +71,11 @@ struct FileRowModelTests {
         let local = model(file(name: "Sunset", size: 12_000_000, status: .local(URL(filePath: "/tmp/a.jpg"))))
         #expect(remote.trailingOperation == nil)
         #expect(local.trailingOperation == nil)
+    }
+
+    @Test func cancellingUploadExposesNoTrailingAction() {
+        let m = model(file(name: "Sunset", size: 12_000_000, status: .cancellingUpload))
+        #expect(m.trailingOperation == nil)
     }
 
     @Test func onTapReachesTheReducer() {

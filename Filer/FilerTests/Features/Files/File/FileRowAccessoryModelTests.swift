@@ -23,6 +23,12 @@ struct FileRowAccessoryModelTests {
         }
     }
 
+    @Test func cancellingUploadMapsToActivity() {
+        guard case .activity = FileRowAccessoryView.Model(status: .cancellingUpload) else {
+            Issue.record("expected .activity"); return
+        }
+    }
+
     @Test func uploadingMapsToProgressWithFractionAndChunkLabel() {
         let p = TransferProgress(bytesTransferred: 3_000_000, totalBytes: 12_000_000, completedChunks: 1, totalChunks: 4)
         guard case let .progress(fraction, label) = FileRowAccessoryView.Model(status: .uploading(p)) else {

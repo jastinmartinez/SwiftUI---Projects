@@ -18,6 +18,7 @@ struct FileFeature {
         case uploadFinished(FileItem)
         case downloadFinished(URL)
         case failed(TransferError)
+        case cancellationFinished
         case delegate(Delegate)
 
         @CasePathable
@@ -88,6 +89,7 @@ struct FileFeature {
                 return .none
 
             case let .uploadFinished(file):
+                guard case .uploading = state.item.status else { return .none }
                 state.item = file
                 state.pendingUpload = nil
                 return .none
@@ -97,15 +99,22 @@ struct FileFeature {
                 return .none
 
             case let .failed(transferError):
+                if state.item.status == .cancellingUpload {
+                    return .none
+                }
                 state.item = state.item.with(status: .failed(transferError))
                 return .none
 
             case .cancelTapped:
                 switch state.item.status {
                 case .uploading:
+                    state.item = state.item.with(status: .cancellingUpload)
                     return .concatenate(
                         .cancel(id: CancelID.transfer),
-                        .send(.delegate(.cancelled))
+                        .run { send in
+                            await Task.yield()
+                            await send(.cancellationFinished)
+                        }
                     )
                 case .downloading:
                     state.item = state.item.with(status: .remote)
@@ -125,6 +134,9 @@ struct FileFeature {
                     state.item = state.item.with(status: .downloading(.pending(total: state.item.size)))
                     return .send(.download(state.item))
                 }
+
+            case .cancellationFinished:
+                return .send(.delegate(.cancelled))
 
             case .delegate:
                 return .none
