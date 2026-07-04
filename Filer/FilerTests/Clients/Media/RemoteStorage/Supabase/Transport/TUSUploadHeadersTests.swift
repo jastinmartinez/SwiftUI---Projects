@@ -18,7 +18,7 @@ struct TUSUploadHeadersTests {
     }
 
     @Test func patchRequestIncludesOffsetAndContentType() throws {
-        let request = try TUSUploadHeaders.patchRequest(uploadURL: uploadURL(), offset: 6)
+        let request = try TUSUploadHeaders.patchRequest(uploadURL: uploadURL(), offset: 6, headers: [:])
 
         #expect(try request.url == uploadURL())
         #expect(request.httpMethod == "PATCH")
@@ -27,11 +27,35 @@ struct TUSUploadHeadersTests {
         #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/offset+octet-stream")
     }
 
+    @Test func patchRequestCarriesProviderHeaders() throws {
+        let request = try TUSUploadHeaders.patchRequest(
+            uploadURL: uploadURL(),
+            offset: 6,
+            headers: ["apikey": "anon-key", "Authorization": "Bearer anon-key"]
+        )
+
+        #expect(request.value(forHTTPHeaderField: "apikey") == "anon-key")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer anon-key")
+        // Protocol headers still win over any collision from the provider set.
+        #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/offset+octet-stream")
+    }
+
     @Test func headRequestIncludesProtocolVersion() throws {
-        let request = try TUSUploadHeaders.headRequest(uploadURL: uploadURL())
+        let request = try TUSUploadHeaders.headRequest(uploadURL: uploadURL(), headers: [:])
 
         #expect(try request.url == uploadURL())
         #expect(request.httpMethod == "HEAD")
+        #expect(request.value(forHTTPHeaderField: "Tus-Resumable") == "1.0.0")
+    }
+
+    @Test func headRequestCarriesProviderHeaders() throws {
+        let request = try TUSUploadHeaders.headRequest(
+            uploadURL: uploadURL(),
+            headers: ["apikey": "anon-key", "Authorization": "Bearer anon-key"]
+        )
+
+        #expect(request.value(forHTTPHeaderField: "apikey") == "anon-key")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer anon-key")
         #expect(request.value(forHTTPHeaderField: "Tus-Resumable") == "1.0.0")
     }
 

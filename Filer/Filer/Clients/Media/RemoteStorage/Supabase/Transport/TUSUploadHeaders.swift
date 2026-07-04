@@ -20,23 +20,33 @@ enum TUSUploadHeaders {
         )
     }
 
-    static func patchRequest(uploadURL: URL, offset: Int) -> URLRequest {
+    static func patchRequest(
+        uploadURL: URL,
+        offset: Int,
+        headers: [String: String]
+    ) -> URLRequest {
         request(
             url: uploadURL,
             method: "PATCH",
-            headers: [
-                "Tus-Resumable": "1.0.0",
-                "Upload-Offset": "\(offset)",
-                "Content-Type": "application/offset+octet-stream",
-            ]
+            headers: headers.merging(
+                [
+                    "Tus-Resumable": "1.0.0",
+                    "Upload-Offset": "\(offset)",
+                    "Content-Type": "application/offset+octet-stream",
+                ],
+                uniquingKeysWith: { _, protocolValue in protocolValue }
+            )
         )
     }
 
-    static func headRequest(uploadURL: URL) -> URLRequest {
+    static func headRequest(uploadURL: URL, headers: [String: String]) -> URLRequest {
         request(
             url: uploadURL,
             method: "HEAD",
-            headers: ["Tus-Resumable": "1.0.0"]
+            headers: headers.merging(
+                ["Tus-Resumable": "1.0.0"],
+                uniquingKeysWith: { _, protocolValue in protocolValue }
+            )
         )
     }
 

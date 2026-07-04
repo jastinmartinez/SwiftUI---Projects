@@ -48,7 +48,8 @@ extension MediaRemoteStorageClient: DependencyKey {
                         .upload(
                             ResumableUploader.Request(
                                 endpoint: uploadRequest.endpoint,
-                                headers: uploadRequest.headers
+                                commonHeaders: uploadRequest.commonHeaders,
+                                createHeaders: uploadRequest.createHeaders
                             ),
                             source: resumableUploadSource
                         ) {

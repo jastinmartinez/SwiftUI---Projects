@@ -12,21 +12,20 @@ enum SupabaseStorageHeaders {
         ]
     }
 
-    static func upload(media: ImportedMedia, config: SupabaseConfig) -> [String: String] {
-        auth(config: config).merging(
-            [
-                "Upload-Metadata": uploadMetadata(media, bucket: config.bucket),
-                "x-upsert": "true",
-            ],
-            uniquingKeysWith: { _, new in new }
-        )
+    /// Headers unique to the resumable create (POST): object metadata and upsert.
+    /// Auth is not included — it rides on every request via `auth(config:)`.
+    static func create(media: ImportedMedia, config: SupabaseConfig) -> [String: String] {
+        [
+            "Upload-Metadata": encodedMetadata(media, bucket: config.bucket),
+            "x-upsert": "true",
+        ]
     }
 
     static func download(config: SupabaseConfig) -> [String: String] {
         auth(config: config)
     }
 
-    private static func uploadMetadata(_ media: ImportedMedia, bucket: String) -> String {
+    private static func encodedMetadata(_ media: ImportedMedia, bucket: String) -> String {
         [
             ("bucketName", bucket),
             ("objectName", media.metadata.id),

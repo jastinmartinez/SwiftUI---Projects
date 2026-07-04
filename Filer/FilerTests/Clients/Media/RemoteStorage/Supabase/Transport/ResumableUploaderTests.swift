@@ -29,7 +29,8 @@ import Testing
         for try await _ in try uploader.upload(
             ResumableUploader.Request(
                 endpoint: endpoint(),
-                headers: ["Upload-Metadata": "name dGVzdA=="]
+                commonHeaders: [:],
+                createHeaders: ["Upload-Metadata": "name dGVzdA=="]
             ),
             source: source(bytes: size)
         ) {}
@@ -38,6 +39,48 @@ import Testing
         #expect(post.value(forHTTPHeaderField: "Tus-Resumable") == "1.0.0")
         #expect(post.value(forHTTPHeaderField: "Upload-Length") == "\(size)")
         #expect(post.value(forHTTPHeaderField: "Upload-Metadata") == "name dGVzdA==")
+    }
+
+    @Test func patchCarriesProviderHeaders() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let captured = LockedBox<[URLRequest]>([])
+        let transport = HTTPTransport(
+            data: { request in
+                captured.mutate { $0.append(request) }
+                return try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { request, _ in
+                captured.mutate { $0.append(request) }
+                return HTTPResponse(
+                    statusCode: 204,
+                    headers: ["Upload-Offset": "\(size)"],
+                    body: Data()
+                )
+            }
+        )
+        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
+
+        for try await _ in try uploader.upload(
+            ResumableUploader.Request(
+                endpoint: endpoint(),
+                commonHeaders: ["apikey": "anon-key", "Authorization": "Bearer anon-key"],
+                createHeaders: ["x-upsert": "true"]
+            ),
+            source: source(bytes: size)
+        ) {}
+
+        let post = try #require(captured.value.first { $0.httpMethod == "POST" })
+        let patch = try #require(captured.value.first { $0.httpMethod == "PATCH" })
+        // Common headers ride every request...
+        #expect(patch.value(forHTTPHeaderField: "apikey") == "anon-key")
+        #expect(patch.value(forHTTPHeaderField: "Authorization") == "Bearer anon-key")
+        // ...but create-only headers stay on the POST.
+        #expect(post.value(forHTTPHeaderField: "x-upsert") == "true")
+        #expect(patch.value(forHTTPHeaderField: "x-upsert") == nil)
     }
 
     @Test func patchOffsetSequenceAcrossChunkBoundaries() async throws {
@@ -67,7 +110,7 @@ import Testing
         var last: TransferProgress?
 
         for try await progress in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
             source: source(bytes: size)
         ) {
             last = progress
@@ -122,7 +165,7 @@ import Testing
         var progresses: [TransferProgress] = []
 
         for try await progress in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
             source: source(bytes: size)
         ) {
             progresses.append(progress)
@@ -168,7 +211,7 @@ import Testing
         var last: TransferProgress?
 
         for try await progress in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
             source: source(bytes: size)
         ) {
             last = progress
@@ -204,7 +247,7 @@ import Testing
 
         await #expect(throws: ResumableUploader.Failure.invalidPatchResponse) {
             for try await _ in try uploader.upload(
-                ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+                ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
                 source: source(bytes: size)
             ) {}
         }
@@ -234,7 +277,7 @@ import Testing
 
         await #expect(throws: ResumableUploader.Failure.invalidUploadSource) {
             for try await _ in try uploader.upload(
-                ResumableUploader.Request(endpoint: endpoint(), headers: [:]),
+                ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
                 source: shortSource
             ) {}
         }

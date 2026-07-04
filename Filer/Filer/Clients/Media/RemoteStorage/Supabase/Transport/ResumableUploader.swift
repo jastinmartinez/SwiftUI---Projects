@@ -55,7 +55,7 @@ struct ResumableUploader: Sendable {
             }
 
             do {
-                offset = try await uploadChunk(uploadURL, chunk, offset, total: length)
+                offset = try await uploadChunk(uploadURL, chunk, offset, total: length, headers: upload.commonHeaders)
             } catch is CancellationError {
                 throw CancellationError()
             } catch let failure as Failure {
@@ -71,7 +71,7 @@ struct ResumableUploader: Sendable {
                     throw error
                 }
                 resumesLeft -= 1
-                offset = try await fetchUploadOffset(uploadURL, total: length)
+                offset = try await fetchUploadOffset(uploadURL, total: length, headers: upload.commonHeaders)
                 continue
             }
 
@@ -90,7 +90,10 @@ struct ResumableUploader: Sendable {
             TUSUploadHeaders.createRequest(
                 endpoint: upload.endpoint,
                 uploadLength: length,
-                headers: upload.headers
+                headers: upload.commonHeaders.merging(
+                    upload.createHeaders,
+                    uniquingKeysWith: { _, createValue in createValue }
+                )
             )
         )
         guard response.statusCode == 201,
@@ -106,10 +109,11 @@ struct ResumableUploader: Sendable {
         _ uploadURL: URL,
         _ chunk: Data,
         _ offset: Int,
-        total: Int
+        total: Int,
+        headers: [String: String]
     ) async throws -> Int {
         let response = try await transport.upload(
-            TUSUploadHeaders.patchRequest(uploadURL: uploadURL, offset: offset),
+            TUSUploadHeaders.patchRequest(uploadURL: uploadURL, offset: offset, headers: headers),
             chunk
         )
         switch response.statusCode {
@@ -128,8 +132,8 @@ struct ResumableUploader: Sendable {
         }
     }
 
-    private func fetchUploadOffset(_ uploadURL: URL, total: Int) async throws -> Int {
-        let response = try await transport.data(TUSUploadHeaders.headRequest(uploadURL: uploadURL))
+    private func fetchUploadOffset(_ uploadURL: URL, total: Int, headers: [String: String]) async throws -> Int {
+        let response = try await transport.data(TUSUploadHeaders.headRequest(uploadURL: uploadURL, headers: headers))
         guard response.statusCode == 200,
               let offset = response.value(forHeader: "Upload-Offset").flatMap(Int.init),
               offset <= total
@@ -143,7 +147,10 @@ struct ResumableUploader: Sendable {
 extension ResumableUploader {
     struct Request: Equatable, Sendable {
         let endpoint: URL
-        let headers: [String: String]
+        /// Sent with every request in the upload (e.g. authentication).
+        let commonHeaders: [String: String]
+        /// Sent only with the create (POST) request.
+        let createHeaders: [String: String]
     }
 
     struct UploadSource: Sendable {

@@ -8,12 +8,13 @@ struct SupabaseUploadTests {
         #expect(upload.endpoint.absoluteString == "https://xyz.supabase.co/storage/v1/upload/resumable")
     }
 
-    @Test func headersUseSupabaseStorageUploadHeaders() throws {
+    @Test func commonHeadersAreAuthAndCreateHeadersAreMetadata() throws {
         let media = makeMedia()
         let config = try makeConfig()
         let upload = SupabaseUpload.request(for: media, config: config)
 
-        #expect(upload.headers == SupabaseStorageHeaders.upload(media: media, config: config))
+        #expect(upload.commonHeaders == SupabaseStorageHeaders.auth(config: config))
+        #expect(upload.createHeaders == SupabaseStorageHeaders.create(media: media, config: config))
     }
 
     // MARK: - Helpers

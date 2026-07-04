@@ -11,14 +11,15 @@ struct SupabaseStorageHeadersTests {
         #expect(headers["apikey"] == "anon")
     }
 
-    @Test func uploadHeadersIncludeAuthMetadataAndUpsert() throws {
+    @Test func createHeadersCarryMetadataAndUpsertWithoutAuth() throws {
         let config = try #require(makeConfig())
-        let headers = SupabaseStorageHeaders.upload(media: media, config: config)
+        let headers = SupabaseStorageHeaders.create(media: media, config: config)
         let metadata = try decodeUploadMetadata(headers)
 
-        #expect(headers["Authorization"] == "Bearer anon")
-        #expect(headers["apikey"] == "anon")
         #expect(headers["x-upsert"] == "true")
+        // Auth is a common header, not a create header — it must not be bundled here.
+        #expect(headers["Authorization"] == nil)
+        #expect(headers["apikey"] == nil)
         #expect(metadata["bucketName"] == "media")
         #expect(metadata["objectName"] == "abc.jpg")
         #expect(metadata["contentType"] == "image/jpeg")
