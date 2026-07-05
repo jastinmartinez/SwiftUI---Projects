@@ -15,7 +15,12 @@ extension FileRowAccessoryView.Model {
         switch status {
         case .remote:
             self = .remote
-        case let .uploading(progress), let .downloading(progress):
+        case let .uploading(progress, _):
+            self = .progress(
+                fraction: progress.totalBytes > 0 ? Double(progress.bytesTransferred) / Double(progress.totalBytes) : 0,
+                label: "\(progress.completedChunks)/\(progress.totalChunks)"
+            )
+        case let .downloading(progress):
             self = .progress(
                 fraction: progress.totalBytes > 0 ? Double(progress.bytesTransferred) / Double(progress.totalBytes) : 0,
                 label: "\(progress.completedChunks)/\(progress.totalChunks)"

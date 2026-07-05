@@ -30,14 +30,14 @@ struct FileFeatureTests {
 
         await store.send(.startUpload(media)) {
             $0.pendingUpload = media
-            $0.item = $0.item.with(status: .uploading(.pending(total: media.size)))
+            $0.item = $0.item.with(status: .uploading(.pending(total: media.size), isReconnecting: false))
         }
         await store.receive(\.upload)
         await store.receive(\.progress) {
-            $0.item = $0.item.with(status: .uploading(p1))
+            $0.item = $0.item.with(status: .uploading(p1, isReconnecting: false))
         }
         await store.receive(\.progress) {
-            $0.item = $0.item.with(status: .uploading(p2))
+            $0.item = $0.item.with(status: .uploading(p2, isReconnecting: false))
         }
         await store.receive(\.uploadFinished) {
             $0.item = finished
@@ -105,7 +105,7 @@ struct FileFeatureTests {
 
         await store.send(.startUpload(media)) {
             $0.pendingUpload = media
-            $0.item = $0.item.with(status: .uploading(.pending(total: media.size)))
+            $0.item = $0.item.with(status: .uploading(.pending(total: media.size), isReconnecting: false))
         }
         await store.receive(\.upload)
         await store.send(.cancelTapped) {
@@ -191,7 +191,7 @@ struct FileFeatureTests {
         }
 
         await store.send(.retryTapped) {
-            $0.item = $0.item.with(status: .uploading(.pending(total: media.size)))
+            $0.item = $0.item.with(status: .uploading(.pending(total: media.size), isReconnecting: false))
         }
         await store.receive(\.upload)
         await store.receive(\.uploadFinished) {

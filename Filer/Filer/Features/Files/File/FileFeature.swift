@@ -37,7 +37,7 @@ struct FileFeature {
             switch action {
             case let .startUpload(media):
                 state.pendingUpload = media
-                state.item = state.item.with(status: .uploading(.pending(total: media.size)))
+                state.item = state.item.with(status: .uploading(.pending(total: media.size), isReconnecting: false))
                 return .send(.upload(media))
 
             case .tapped:
@@ -80,7 +80,7 @@ struct FileFeature {
             case let .progress(progress):
                 switch state.item.status {
                 case .uploading:
-                    state.item = state.item.with(status: .uploading(progress))
+                    state.item = state.item.with(status: .uploading(progress, isReconnecting: false))
                 case .downloading:
                     state.item = state.item.with(status: .downloading(progress))
                 default:
@@ -128,7 +128,7 @@ struct FileFeature {
                 switch transferError.operation {
                 case .upload:
                     guard let pendingUpload = state.pendingUpload else { return .none }
-                    state.item = state.item.with(status: .uploading(.pending(total: pendingUpload.size)))
+                    state.item = state.item.with(status: .uploading(.pending(total: pendingUpload.size), isReconnecting: false))
                     return .send(.upload(pendingUpload))
                 case .download:
                     state.item = state.item.with(status: .downloading(.pending(total: state.item.size)))

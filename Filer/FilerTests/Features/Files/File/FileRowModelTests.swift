@@ -22,7 +22,7 @@ struct FileRowModelTests {
 
     @Test func uploadingSubtitleShowsTransferredOverTotal() {
         let p = TransferProgress(bytesTransferred: 3_000_000, totalBytes: 12_000_000, completedChunks: 1, totalChunks: 4)
-        let m = model(file(name: "Sunset", size: 12_000_000, status: .uploading(p)))
+        let m = model(file(name: "Sunset", size: 12_000_000, status: .uploading(p, isReconnecting: false)))
         #expect(m.subtitle == "Uploading 3 MB / 12 MB")
     }
 
@@ -50,7 +50,7 @@ struct FileRowModelTests {
 
     @Test func uploadingExposesCancelTrailingAction() {
         let p = TransferProgress(bytesTransferred: 3_000_000, totalBytes: 12_000_000, completedChunks: 1, totalChunks: 4)
-        let m = model(file(name: "Sunset", size: 12_000_000, status: .uploading(p)))
+        let m = model(file(name: "Sunset", size: 12_000_000, status: .uploading(p, isReconnecting: false)))
         #expect(m.trailingOperation?.kind == .cancel)
     }
 

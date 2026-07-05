@@ -23,7 +23,7 @@ extension FileItem {
 extension FileItem {
     enum Status: Equatable {
         case remote
-        case uploading(TransferProgress)
+        case uploading(TransferProgress, isReconnecting: Bool)
         case cancellingUpload
         case downloading(TransferProgress)
         case local(URL)
@@ -44,7 +44,7 @@ extension FileItem {
 
 extension FileItem {
     init(importing media: ImportedMedia) {
-        self.init(metadata: media.metadata, status: .uploading(.pending(total: media.metadata.size)))
+        self.init(metadata: media.metadata, status: .uploading(.pending(total: media.metadata.size), isReconnecting: false))
     }
 
     init(uploaded media: ImportedMedia) {
