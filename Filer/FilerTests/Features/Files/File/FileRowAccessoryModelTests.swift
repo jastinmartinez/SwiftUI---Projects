@@ -31,7 +31,7 @@ struct FileRowAccessoryModelTests {
 
     @Test func uploadingMapsToProgressWithFractionAndChunkLabel() {
         let p = TransferProgress(bytesTransferred: 3_000_000, totalBytes: 12_000_000, completedChunks: 1, totalChunks: 4)
-        guard case let .progress(fraction, label) = FileRowAccessoryView.Model(status: .uploading(p, isReconnecting: false)) else {
+        guard case let .progress(fraction, label, _) = FileRowAccessoryView.Model(status: .uploading(p, isReconnecting: false)) else {
             Issue.record("expected .progress"); return
         }
         #expect(fraction == 0.25)
@@ -40,16 +40,24 @@ struct FileRowAccessoryModelTests {
 
     @Test func downloadingMapsToProgress() {
         let p = TransferProgress(bytesTransferred: 6_000_000, totalBytes: 12_000_000, completedChunks: 2, totalChunks: 4)
-        guard case let .progress(fraction, label) = FileRowAccessoryView.Model(status: .downloading(p)) else {
+        guard case let .progress(fraction, label, _) = FileRowAccessoryView.Model(status: .downloading(p)) else {
             Issue.record("expected .progress"); return
         }
         #expect(fraction == 0.5)
         #expect(label == "2/4")
     }
 
+    @Test func reconnectingUploadingSetsReconnectingFlag() {
+        let p = TransferProgress(bytesTransferred: 3_000_000, totalBytes: 12_000_000, completedChunks: 1, totalChunks: 4)
+        guard case let .progress(_, _, reconnecting) = FileRowAccessoryView.Model(status: .uploading(p, isReconnecting: true)) else {
+            Issue.record("expected .progress"); return
+        }
+        #expect(reconnecting)
+    }
+
     @Test func zeroTotalBytesGivesZeroFraction() {
         let p = TransferProgress(bytesTransferred: 0, totalBytes: 0, completedChunks: 0, totalChunks: 0)
-        guard case let .progress(fraction, _) = FileRowAccessoryView.Model(status: .uploading(p, isReconnecting: false)) else {
+        guard case let .progress(fraction, _, _) = FileRowAccessoryView.Model(status: .uploading(p, isReconnecting: false)) else {
             Issue.record("expected .progress"); return
         }
         #expect(fraction == 0)

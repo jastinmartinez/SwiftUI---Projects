@@ -107,6 +107,18 @@ struct FileRowModelTests {
         #expect(store.item.status == .remote)
     }
 
+    @Test func reconnectingSubtitleShowsReconnecting() {
+        let p = TransferProgress(bytesTransferred: 3_000_000, totalBytes: 12_000_000, completedChunks: 1, totalChunks: 4)
+        let m = model(file(name: "Sunset", size: 12_000_000, status: .uploading(p, isReconnecting: true)))
+        #expect(m.subtitle == "Reconnecting…")
+    }
+
+    @Test func reconnectingStillExposesCancel() {
+        let p = TransferProgress(bytesTransferred: 3_000_000, totalBytes: 12_000_000, completedChunks: 1, totalChunks: 4)
+        let m = model(file(name: "Sunset", size: 12_000_000, status: .uploading(p, isReconnecting: true)))
+        #expect(m.trailingOperation?.kind == .cancel)
+    }
+
     // MARK: - Helpers
 
     private func makeSUT(_ item: FileItem) -> FileRowView.Model {

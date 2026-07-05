@@ -50,7 +50,7 @@ struct FileRowView: View {
         ))
         FileRowView(model: .init(
             name: "Clip", subtitle: "Uploading 3 MB / 12 MB",
-            accessory: .progress(fraction: 0.25, label: "1/4"), onTap: {}
+            accessory: .progress(fraction: 0.25, label: "1/4", reconnecting: false), onTap: {}
         ))
         FileRowView(model: .init(
             name: "Saved", subtitle: "8 MB · Video",

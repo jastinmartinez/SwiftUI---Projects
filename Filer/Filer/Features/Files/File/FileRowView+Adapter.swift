@@ -13,8 +13,10 @@ extension FileRowView.Model {
         let subtitle: String = switch item.status {
         case .remote, .local:
             [sizeText, kindName].compactMap(\.self).joined(separator: " · ")
-        case let .uploading(progress, _):
-            "Uploading \(progress.bytesTransferred.formatted(.byteCount(style: .file))) / \(progress.totalBytes.formatted(.byteCount(style: .file)))"
+        case let .uploading(progress, isReconnecting):
+            isReconnecting
+                ? "Reconnecting…"
+                : "Uploading \(progress.bytesTransferred.formatted(.byteCount(style: .file))) / \(progress.totalBytes.formatted(.byteCount(style: .file)))"
         case .cancellingUpload:
             "Cancelling upload..."
         case let .downloading(progress):
