@@ -4,13 +4,19 @@ import Foundation
 struct ResumableUploader: Sendable {
     private let transport: HTTPTransport
     private let retryPolicy: MediaRemoteTransferPolicy
+    private let connectivity: ConnectivityMonitor
+    private let sleeper: Sleeper
 
     init(
         transport: HTTPTransport,
-        retryPolicy: MediaRemoteTransferPolicy
+        retryPolicy: MediaRemoteTransferPolicy,
+        connectivity: ConnectivityMonitor,
+        sleeper: Sleeper
     ) {
         self.transport = transport
         self.retryPolicy = retryPolicy
+        self.connectivity = connectivity
+        self.sleeper = sleeper
     }
 
     func upload(

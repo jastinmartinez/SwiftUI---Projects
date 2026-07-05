@@ -24,7 +24,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
+        let uploader = makeUploader(transport: transport)
 
         for try await _ in try uploader.upload(
             ResumableUploader.Request(
@@ -62,7 +62,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
+        let uploader = makeUploader(transport: transport)
 
         for try await _ in try uploader.upload(
             ResumableUploader.Request(
@@ -106,7 +106,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
+        let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
         for try await progress in try uploader.upload(
@@ -161,7 +161,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
+        let uploader = makeUploader(transport: transport)
         var progresses: [TransferProgress] = []
 
         for try await progress in try uploader.upload(
@@ -207,7 +207,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
+        let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
         for try await progress in try uploader.upload(
@@ -243,7 +243,7 @@ import Testing
                 )
             }
         )
-        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
+        let uploader = makeUploader(transport: transport)
 
         await #expect(throws: ResumableUploader.Failure.invalidPatchResponse) {
             for try await _ in try uploader.upload(
@@ -269,7 +269,7 @@ import Testing
                 return HTTPResponse(statusCode: 204, headers: [:], body: Data())
             }
         )
-        let uploader = ResumableUploader(transport: transport, retryPolicy: .default)
+        let uploader = makeUploader(transport: transport)
         let shortSource = ResumableUploader.UploadSource(
             size: 4,
             read: { _, _ in Data([1, 2]) }
@@ -285,6 +285,15 @@ import Testing
     }
 
     // MARK: - Helpers
+
+    private func makeUploader(transport: HTTPTransport) -> ResumableUploader {
+        ResumableUploader(
+            transport: transport,
+            retryPolicy: .default,
+            connectivity: .alwaysOnline,
+            sleeper: .immediate
+        )
+    }
 
     private func endpoint() throws -> URL {
         try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable"))
