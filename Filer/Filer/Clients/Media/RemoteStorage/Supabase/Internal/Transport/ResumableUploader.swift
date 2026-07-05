@@ -89,14 +89,14 @@ struct ResumableUploader: Sendable {
 
     private func createUpload(_ upload: Request, _ length: Int) async throws -> URL {
         let response = try await transport.data(
-            TUSUploadHeaders.createRequest(
+            timed(TUSUploadHeaders.createRequest(
                 endpoint: upload.endpoint,
                 uploadLength: length,
                 headers: upload.commonHeaders.merging(
                     upload.createHeaders,
                     uniquingKeysWith: { _, createValue in createValue }
                 )
-            )
+            ))
         )
         guard response.statusCode == 201,
               let location = response.value(forHeader: "Location"),
@@ -115,7 +115,7 @@ struct ResumableUploader: Sendable {
         headers: [String: String]
     ) async throws -> Int {
         let response = try await transport.upload(
-            TUSUploadHeaders.patchRequest(uploadURL: uploadURL, offset: offset, headers: headers),
+            timed(TUSUploadHeaders.patchRequest(uploadURL: uploadURL, offset: offset, headers: headers)),
             chunk
         )
         switch response.statusCode {
@@ -135,7 +135,7 @@ struct ResumableUploader: Sendable {
     }
 
     private func fetchUploadOffset(_ uploadURL: URL, total: Int, headers: [String: String]) async throws -> Int {
-        let response = try await transport.data(TUSUploadHeaders.headRequest(uploadURL: uploadURL, headers: headers))
+        let response = try await transport.data(timed(TUSUploadHeaders.headRequest(uploadURL: uploadURL, headers: headers)))
         guard response.statusCode == 200,
               let offset = response.value(forHeader: "Upload-Offset").flatMap(Int.init),
               offset <= total
@@ -190,6 +190,14 @@ struct ResumableUploader: Sendable {
             _ = try await group.next()
             group.cancelAll()
         }
+    }
+
+    /// Applies the policy's per-request timeout so a mid-flight drop is noticed
+    /// quickly rather than after URLSession's 60s default.
+    private func timed(_ request: URLRequest) -> URLRequest {
+        var request = request
+        request.timeoutInterval = retryPolicy.requestTimeout
+        return request
     }
 }
 

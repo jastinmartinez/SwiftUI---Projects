@@ -83,6 +83,36 @@ import Testing
         #expect(patch.value(forHTTPHeaderField: "x-upsert") == nil)
     }
 
+    @Test func requestsCarryPolicyTimeout() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let captured = LockedBox<[URLRequest]>([])
+        let transport = HTTPTransport(
+            data: { request in
+                captured.mutate { $0.append(request) }
+                return try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { request, _ in
+                captured.mutate { $0.append(request) }
+                return HTTPResponse(statusCode: 204, headers: ["Upload-Offset": "\(size)"], body: Data())
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+
+        for try await _ in try uploader.upload(
+            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source: source(bytes: size)
+        ) {}
+
+        let expected = MediaRemoteTransferPolicy.default.requestTimeout
+        #expect(captured.value.allSatisfy { $0.timeoutInterval == expected })
+        #expect(captured.value.contains { $0.httpMethod == "POST" })
+        #expect(captured.value.contains { $0.httpMethod == "PATCH" })
+    }
+
     @Test func transientDropResumesFromServerOffsetWithoutRestart() async throws {
         let chunk = MediaRemoteTransferPolicy.default.chunkSize
         let size = 2 * chunk
