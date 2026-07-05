@@ -41,7 +41,7 @@ extension MediaRemoteStorageClient: DependencyKey {
                             storedUploadSource.localURL,
                             fileManager: .default
                         )
-                        for try await progress in ResumableUploader(
+                        for try await event in ResumableUploader(
                             transport: .live(session: .shared),
                             retryPolicy: .default,
                             connectivity: .live,
@@ -55,7 +55,12 @@ extension MediaRemoteStorageClient: DependencyKey {
                             ),
                             source: resumableUploadSource
                         ) {
-                            continuation.yield(.progress(progress))
+                            switch event {
+                            case let .progress(progress):
+                                continuation.yield(.progress(progress))
+                            case .waitingForConnectivity:
+                                break // forwarded as .reconnecting in a later step
+                            }
                         }
                         continuation.yield(.finished(FileItem(uploaded: storedUploadSource.media)))
                         continuation.finish()

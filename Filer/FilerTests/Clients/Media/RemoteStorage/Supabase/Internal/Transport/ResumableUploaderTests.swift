@@ -113,6 +113,61 @@ import Testing
         #expect(captured.value.contains { $0.httpMethod == "PATCH" })
     }
 
+    @Test func emitsWaitingForConnectivityOncePerStall() async throws {
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
+        let size = 2 * chunk
+        let patchAttempts = LockedBox<Int>(0)
+        let waits = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { request in
+                if request.httpMethod == "HEAD" {
+                    return HTTPResponse(statusCode: 200, headers: ["Upload-Offset": "\(chunk)"], body: Data())
+                }
+                return try HTTPResponse(statusCode: 201, headers: ["Location": uploadURL().absoluteString], body: Data())
+            },
+            upload: { request, _ in
+                let attempt = patchAttempts.value
+                patchAttempts.mutate { $0 += 1 }
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                if attempt == 0 { throw URLError(.networkConnectionLost) }
+                return HTTPResponse(statusCode: 204, headers: ["Upload-Offset": "\(offset + min(chunk, size - offset))"], body: Data())
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+
+        for try await event in try uploader.upload(
+            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source: source(bytes: size)
+        ) {
+            if case .waitingForConnectivity = event { waits.mutate { $0 += 1 } }
+        }
+
+        #expect(waits.value == 1)
+    }
+
+    @Test func emitsNoWaitingForConnectivityOnCleanUpload() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let transport = HTTPTransport(
+            data: { _ in
+                try HTTPResponse(statusCode: 201, headers: ["Location": uploadURL().absoluteString], body: Data())
+            },
+            upload: { _, _ in
+                HTTPResponse(statusCode: 204, headers: ["Upload-Offset": "\(size)"], body: Data())
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        var waits = 0
+
+        for try await event in try uploader.upload(
+            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source: source(bytes: size)
+        ) {
+            if case .waitingForConnectivity = event { waits += 1 }
+        }
+
+        #expect(waits == 0)
+    }
+
     @Test func transientDropResumesFromServerOffsetWithoutRestart() async throws {
         let chunk = MediaRemoteTransferPolicy.default.chunkSize
         let size = 2 * chunk
@@ -150,10 +205,11 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
-        for try await progress in try uploader.upload(
+        for try await event in try uploader.upload(
             ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
             source: source(bytes: size)
         ) {
+            guard case let .progress(progress) = event else { continue }
             last = progress
         }
 
@@ -194,10 +250,11 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
-        for try await progress in try uploader.upload(
+        for try await event in try uploader.upload(
             ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
             source: source(bytes: size)
         ) {
+            guard case let .progress(progress) = event else { continue }
             last = progress
         }
 
@@ -304,10 +361,11 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
-        for try await progress in try uploader.upload(
+        for try await event in try uploader.upload(
             ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
             source: source(bytes: size)
         ) {
+            guard case let .progress(progress) = event else { continue }
             last = progress
         }
 
@@ -359,10 +417,11 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var progresses: [TransferProgress] = []
 
-        for try await progress in try uploader.upload(
+        for try await event in try uploader.upload(
             ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
             source: source(bytes: size)
         ) {
+            guard case let .progress(progress) = event else { continue }
             progresses.append(progress)
         }
 
@@ -405,10 +464,11 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
-        for try await progress in try uploader.upload(
+        for try await event in try uploader.upload(
             ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
             source: source(bytes: size)
         ) {
+            guard case let .progress(progress) = event else { continue }
             last = progress
         }
 

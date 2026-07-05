@@ -22,7 +22,7 @@ struct ResumableUploader: Sendable {
     func upload(
         _ request: Request,
         source: UploadSource
-    ) -> AsyncThrowingStream<TransferProgress, Error> {
+    ) -> AsyncThrowingStream<Event, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
@@ -39,7 +39,7 @@ struct ResumableUploader: Sendable {
     private func run(
         _ upload: Request,
         _ source: UploadSource,
-        _ continuation: AsyncThrowingStream<TransferProgress, Error>.Continuation
+        _ continuation: AsyncThrowingStream<Event, Error>.Continuation
     ) async throws {
         let chunkSize = max(retryPolicy.chunkSize, 1)
         let length = source.size
@@ -73,17 +73,18 @@ struct ResumableUploader: Sendable {
                 throw failure
             } catch {
                 guard retryPolicy.shouldRetry(error) else { throw error }
+                continuation.yield(.waitingForConnectivity)
                 offset = try await recoverOffset(uploadURL, total: length, headers: upload.commonHeaders)
                 continue
             }
 
             let completed = (offset + chunkSize - 1) / chunkSize
-            continuation.yield(TransferProgress(
+            continuation.yield(.progress(TransferProgress(
                 bytesTransferred: Int64(offset),
                 totalBytes: Int64(length),
                 completedChunks: min(completed, totalChunks),
                 totalChunks: totalChunks
-            ))
+            )))
         }
     }
 
@@ -202,6 +203,11 @@ struct ResumableUploader: Sendable {
 }
 
 extension ResumableUploader {
+    enum Event: Equatable {
+        case progress(TransferProgress)
+        case waitingForConnectivity
+    }
+
     struct Request: Equatable, Sendable {
         let endpoint: URL
         /// Sent with every request in the upload (e.g. authentication).
