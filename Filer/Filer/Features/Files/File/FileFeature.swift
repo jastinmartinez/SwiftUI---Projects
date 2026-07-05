@@ -15,6 +15,7 @@ struct FileFeature {
         case upload(ImportedMedia)
         case download(FileItem)
         case progress(TransferProgress)
+        case reconnecting
         case uploadFinished(FileItem)
         case downloadFinished(URL)
         case failed(TransferError)
@@ -56,6 +57,7 @@ struct FileFeature {
                     for try await event in mediaRemoteStorage.upload(media) {
                         switch event {
                         case let .progress(progress): await send(.progress(progress))
+                        case .reconnecting: await send(.reconnecting)
                         case let .finished(uploadedFile): await send(.uploadFinished(uploadedFile))
                         }
                     }
@@ -86,6 +88,11 @@ struct FileFeature {
                 default:
                     break
                 }
+                return .none
+
+            case .reconnecting:
+                guard case let .uploading(progress, _) = state.item.status else { return .none }
+                state.item = state.item.with(status: .uploading(progress, isReconnecting: true))
                 return .none
 
             case let .uploadFinished(file):

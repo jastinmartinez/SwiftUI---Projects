@@ -22,7 +22,7 @@ struct MediaRemoteStorageClient: Sendable {
 }
 
 extension MediaRemoteStorageClient {
-    enum UploadEvent: Equatable { case progress(TransferProgress), finished(FileItem) }
+    enum UploadEvent: Equatable { case progress(TransferProgress), reconnecting, finished(FileItem) }
     enum DownloadEvent: Equatable { case progress(TransferProgress), finished(URL) }
 
     struct Unimplemented: Error {

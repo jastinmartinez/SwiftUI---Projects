@@ -45,6 +45,50 @@ struct FileFeatureTests {
         }
     }
 
+    @Test func reconnectingSetsFlagAndNextProgressClearsIt() async {
+        let media = sampleMedia
+        let p0 = TransferProgress(bytesTransferred: 6_000_000, totalBytes: 12_000_000, completedChunks: 1, totalChunks: 2)
+        let p1 = TransferProgress(bytesTransferred: 12_000_000, totalBytes: 12_000_000, completedChunks: 2, totalChunks: 2)
+        let finished = FileItem(uploaded: media)
+
+        let store = TestStore(
+            initialState: FileFeature.State(item: FileItem(importing: media), pendingUpload: nil)
+        ) {
+            FileFeature()
+        } withDependencies: {
+            $0.mediaRemoteStorage = Self.remoteStorage(
+                upload: { _ in
+                    AsyncThrowingStream { cont in
+                        cont.yield(.progress(p0))
+                        cont.yield(.reconnecting)
+                        cont.yield(.progress(p1))
+                        cont.yield(.finished(finished))
+                        cont.finish()
+                    }
+                }
+            )
+        }
+
+        await store.send(.startUpload(media)) {
+            $0.pendingUpload = media
+            $0.item = $0.item.with(status: .uploading(.pending(total: media.size), isReconnecting: false))
+        }
+        await store.receive(\.upload)
+        await store.receive(\.progress) {
+            $0.item = $0.item.with(status: .uploading(p0, isReconnecting: false))
+        }
+        await store.receive(\.reconnecting) {
+            $0.item = $0.item.with(status: .uploading(p0, isReconnecting: true))
+        }
+        await store.receive(\.progress) {
+            $0.item = $0.item.with(status: .uploading(p1, isReconnecting: false))
+        }
+        await store.receive(\.uploadFinished) {
+            $0.item = finished
+            $0.pendingUpload = nil
+        }
+    }
+
     @Test func tappedRemoteStartsDownload() async {
         let item = remoteItem()
         let dest = URL(fileURLWithPath: "/tmp/remote.jpg")

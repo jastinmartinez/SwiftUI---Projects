@@ -59,7 +59,7 @@ extension MediaRemoteStorageClient: DependencyKey {
                             case let .progress(progress):
                                 continuation.yield(.progress(progress))
                             case .waitingForConnectivity:
-                                break // forwarded as .reconnecting in a later step
+                                continuation.yield(.reconnecting)
                             }
                         }
                         continuation.yield(.finished(FileItem(uploaded: storedUploadSource.media)))
