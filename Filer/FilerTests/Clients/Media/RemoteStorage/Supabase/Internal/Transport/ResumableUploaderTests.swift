@@ -83,6 +83,171 @@ import Testing
         #expect(patch.value(forHTTPHeaderField: "x-upsert") == nil)
     }
 
+    @Test func transientDropResumesFromServerOffsetWithoutRestart() async throws {
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
+        let size = 2 * chunk
+        let patchOffsets = LockedBox<[Int]>([])
+        let patchAttempts = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { request in
+                switch request.httpMethod {
+                case "HEAD":
+                    // Server actually received the first chunk; the ack was lost.
+                    HTTPResponse(statusCode: 200, headers: ["Upload-Offset": "\(chunk)"], body: Data())
+                default: // POST create
+                    try HTTPResponse(
+                        statusCode: 201,
+                        headers: ["Location": uploadURL().absoluteString],
+                        body: Data()
+                    )
+                }
+            },
+            upload: { request, _ in
+                let attempt = patchAttempts.value
+                patchAttempts.mutate { $0 += 1 }
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                if attempt == 0 {
+                    throw URLError(.networkConnectionLost) // connectivity dropped mid-PATCH
+                }
+                patchOffsets.mutate { $0.append(offset) }
+                return HTTPResponse(
+                    statusCode: 204,
+                    headers: ["Upload-Offset": "\(offset + min(chunk, size - offset))"],
+                    body: Data()
+                )
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        var last: TransferProgress?
+
+        for try await progress in try uploader.upload(
+            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source: source(bytes: size)
+        ) {
+            last = progress
+        }
+
+        // Resumed from the server's offset — the successful PATCH started at `chunk`, not 0.
+        #expect(patchOffsets.value == [chunk])
+        #expect(last?.bytesTransferred == Int64(size))
+    }
+
+    @Test func multipleSeparatedDropsResetTheBudget() async throws {
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
+        // Four chunks => four separate drops, exceeding maxResumes (3). A global
+        // budget would fail the fourth; a per-stall budget recovers all four.
+        let size = 4 * chunk
+        let serverOffset = LockedBox<Int>(0)
+        let droppedOffsets = LockedBox<Set<Int>>([])
+        let transport = HTTPTransport(
+            data: { request in
+                if request.httpMethod == "HEAD" {
+                    return HTTPResponse(statusCode: 200, headers: ["Upload-Offset": "\(serverOffset.value)"], body: Data())
+                }
+                return try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { request, _ in
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                if !droppedOffsets.value.contains(offset) {
+                    droppedOffsets.mutate { $0.insert(offset) } // drop each chunk once
+                    throw URLError(.networkConnectionLost)
+                }
+                let next = offset + min(chunk, size - offset)
+                serverOffset.mutate { $0 = next }
+                return HTTPResponse(statusCode: 204, headers: ["Upload-Offset": "\(next)"], body: Data())
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        var last: TransferProgress?
+
+        for try await progress in try uploader.upload(
+            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source: source(bytes: size)
+        ) {
+            last = progress
+        }
+
+        #expect(droppedOffsets.value.count == 4) // every chunk dropped once and recovered
+        #expect(last?.bytesTransferred == Int64(size))
+    }
+
+    @Test func sustainedOutageFailsAfterBudget() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let heads = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { request in
+                if request.httpMethod == "HEAD" {
+                    heads.mutate { $0 += 1 }
+                    throw URLError(.notConnectedToInternet) // still offline
+                }
+                return try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { _, _ in
+                throw URLError(.networkConnectionLost)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+
+        await #expect(throws: (any Error).self) {
+            for try await _ in try uploader.upload(
+                ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                source: source(bytes: size)
+            ) {}
+        }
+        // Reconnect budget is bounded (maxResumes attempts).
+        #expect(heads.value == MediaRemoteTransferPolicy.default.maxResumes)
+    }
+
+    @Test func cancellationStopsAPendingReconnect() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let transport = HTTPTransport(
+            data: { _ in
+                try HTTPResponse(
+                    statusCode: 201,
+                    headers: ["Location": uploadURL().absoluteString],
+                    body: Data()
+                )
+            },
+            upload: { _, _ in
+                throw URLError(.networkConnectionLost) // force entry into the reconnect wait
+            }
+        )
+        // Offline forever + a blocking sleeper => the uploader parks in waitForConnectivity.
+        let uploader = ResumableUploader(
+            transport: transport,
+            retryPolicy: .default,
+            connectivity: .offlineForever,
+            sleeper: .blocking
+        )
+        let task = Task { () -> Bool in
+            do {
+                for try await _ in try uploader.upload(
+                    ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                    source: source(bytes: size)
+                ) {}
+                return Task.isCancelled
+            } catch is CancellationError {
+                return true
+            } catch {
+                return Task.isCancelled
+            }
+        }
+
+        task.cancel()
+        // The upload can only finish here via cancellation (PATCH always fails and
+        // connectivity never returns), so returning at all proves the parked
+        // reconnect was unblocked promptly rather than hanging on the blocking sleeper.
+        #expect(await task.value)
+    }
+
     @Test func patchOffsetSequenceAcrossChunkBoundaries() async throws {
         let size = 14 * 1024 * 1024
         let chunk = MediaRemoteTransferPolicy.default.chunkSize

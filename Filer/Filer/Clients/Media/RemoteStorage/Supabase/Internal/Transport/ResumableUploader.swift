@@ -49,7 +49,6 @@ struct ResumableUploader: Sendable {
 
         var uploadURL = try await createUpload(upload, length)
         var offset = 0
-        var resumesLeft = retryPolicy.maxResumes
         var recreatesLeft = retryPolicy.maxRecreates
 
         while offset < length {
@@ -73,11 +72,8 @@ struct ResumableUploader: Sendable {
                 }
                 throw failure
             } catch {
-                guard retryPolicy.shouldRetry(error), resumesLeft > 0 else {
-                    throw error
-                }
-                resumesLeft -= 1
-                offset = try await fetchUploadOffset(uploadURL, total: length, headers: upload.commonHeaders)
+                guard retryPolicy.shouldRetry(error) else { throw error }
+                offset = try await recoverOffset(uploadURL, total: length, headers: upload.commonHeaders)
                 continue
             }
 
@@ -147,6 +143,53 @@ struct ResumableUploader: Sendable {
             throw Failure.invalidResumeResponse
         }
         return offset
+    }
+
+    /// Waits for connectivity to return, then re-reads the server offset,
+    /// retrying within the reconnect budget. Each stall gets a full budget, so
+    /// forward progress effectively refills it. Protocol-level resume failures
+    /// (bad HEAD response) are not retried.
+    private func recoverOffset(
+        _ uploadURL: URL,
+        total: Int,
+        headers: [String: String]
+    ) async throws -> Int {
+        var lastError: Error?
+        for attempt in 1 ... max(retryPolicy.maxResumes, 1) {
+            try Task.checkCancellation()
+            try await waitForConnectivity(timeout: retryPolicy.connectivityWaitTimeout)
+            do {
+                return try await fetchUploadOffset(uploadURL, total: total, headers: headers)
+            } catch let failure as Failure {
+                throw failure
+            } catch {
+                guard retryPolicy.shouldRetry(error) else { throw error }
+                lastError = error
+                try await sleeper.sleep(retryPolicy.resumeBackoff(attempt))
+            }
+        }
+        throw lastError ?? Failure.invalidResumeResponse
+    }
+
+    /// Suspends until connectivity is reported online, bounded by `timeout`.
+    /// Woken by the connectivity signal or the timeout, whichever comes first.
+    private func waitForConnectivity(timeout: TimeInterval) async throws {
+        let connectivity = connectivity
+        let sleeper = sleeper
+        try await withThrowingTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                for await online in connectivity.stream() where online {
+                    return true
+                }
+                return false
+            }
+            group.addTask {
+                try await sleeper.sleep(timeout)
+                return false
+            }
+            _ = try await group.next()
+            group.cancelAll()
+        }
     }
 }
 
