@@ -48,7 +48,7 @@ extension MediaCacheClient: TestDependencyKey {
                 }
             },
             store: { payload in
-                try state.withLock { state in
+                state.withLock { state in
                     let stored = StoredContent(key: payload.metadata.id, size: Int64(payload.data.count), modifiedAt: nil, localURL: Self.importURL(for: payload.metadata.id))
                     state.imports[payload.metadata.id] = ImportRecord(stored: stored, data: payload.data)
                     return ImportedMedia(metadata: payload.metadata.with(size: stored.size), fileURL: stored.localURL)
