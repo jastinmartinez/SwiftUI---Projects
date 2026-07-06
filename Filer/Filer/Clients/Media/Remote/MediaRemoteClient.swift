@@ -3,7 +3,7 @@ import Foundation
 
 /// The Supabase communication boundary: listing remote objects and building the
 /// provider-specific upload/download requests. Transfer orchestration and caching
-/// live in `MediaRemoteStorageClient` (for now); this client owns only the remote
+/// live in `MediaTransferClient`; this client owns only the remote
 /// protocol details. The production implementation lives in `MediaRemoteClient+Live.swift`.
 struct MediaRemoteClient: Sendable {
     typealias List = @Sendable () async throws -> [FileItem]

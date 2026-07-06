@@ -18,7 +18,7 @@ struct FilesFeature {
         case importer(MediaImportFeature.Action)
     }
 
-    @Dependency(\.mediaRemoteStorage) var mediaRemoteStorage
+    @Dependency(\.mediaTransfer) var mediaTransfer
 
     var body: some Reducer<State, Action> {
         Scope(state: \.importer, action: \.importer) { MediaImportFeature() }
@@ -26,7 +26,7 @@ struct FilesFeature {
             switch action {
             case .onAppear:
                 return .run { send in
-                    try await send(.filesLoaded(mediaRemoteStorage.list()))
+                    try await send(.filesLoaded(mediaTransfer.list()))
                 } catch: { error, send in
                     await send(.loadFailed(error.localizedDescription))
                 }

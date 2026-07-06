@@ -31,7 +31,7 @@ struct FileFeature {
 
     enum CancelID: String, Sendable { case transfer }
 
-    @Dependency(\.mediaRemoteStorage) var mediaRemoteStorage
+    @Dependency(\.mediaTransfer) var mediaTransfer
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
@@ -54,7 +54,7 @@ struct FileFeature {
 
             case let .upload(media):
                 return .run { send in
-                    for try await event in mediaRemoteStorage.upload(media) {
+                    for try await event in mediaTransfer.upload(media) {
                         switch event {
                         case let .progress(progress): await send(.progress(progress))
                         case .reconnecting: await send(.reconnecting)
@@ -68,7 +68,7 @@ struct FileFeature {
 
             case let .download(file):
                 return .run { send in
-                    for try await event in mediaRemoteStorage.download(file) {
+                    for try await event in mediaTransfer.download(file) {
                         switch event {
                         case let .progress(progress): await send(.progress(progress))
                         case let .finished(localURL): await send(.downloadFinished(localURL))

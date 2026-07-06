@@ -1,7 +1,7 @@
 import Dependencies
 import Foundation
 
-struct MediaRemoteStorageClient: Sendable {
+struct MediaTransferClient: Sendable {
     typealias List = @Sendable () async throws -> [FileItem]
     typealias Upload = @Sendable (_ media: ImportedMedia) -> AsyncThrowingStream<UploadEvent, Error>
     typealias Download = @Sendable (_ file: FileItem) -> AsyncThrowingStream<DownloadEvent, Error>
@@ -21,7 +21,7 @@ struct MediaRemoteStorageClient: Sendable {
     }
 }
 
-extension MediaRemoteStorageClient {
+extension MediaTransferClient {
     enum UploadEvent: Equatable { case progress(TransferProgress), reconnecting, finished(FileItem) }
     enum DownloadEvent: Equatable { case progress(TransferProgress), finished(URL) }
 
@@ -32,8 +32,8 @@ extension MediaRemoteStorageClient {
 }
 
 extension DependencyValues {
-    var mediaRemoteStorage: MediaRemoteStorageClient {
-        get { self[MediaRemoteStorageClient.self] }
-        set { self[MediaRemoteStorageClient.self] = newValue }
+    var mediaTransfer: MediaTransferClient {
+        get { self[MediaTransferClient.self] }
+        set { self[MediaTransferClient.self] = newValue }
     }
 }

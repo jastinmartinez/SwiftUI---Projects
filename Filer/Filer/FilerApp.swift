@@ -16,7 +16,7 @@ struct FilerApp: App {
         } withDependencies: {
             #if DEBUG
                 if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
-                    $0.mediaRemoteStorage = MediaRemoteStorageClient(
+                    $0.mediaTransfer = MediaTransferClient(
                         list: { [] },
                         upload: { _ in AsyncThrowingStream { $0.finish() } },
                         download: { _ in AsyncThrowingStream { $0.finish() } }

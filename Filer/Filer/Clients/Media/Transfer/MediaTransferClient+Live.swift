@@ -1,8 +1,8 @@
 import Dependencies
 import Foundation
 
-extension MediaRemoteStorageClient: DependencyKey {
-    static var liveValue: MediaRemoteStorageClient {
+extension MediaTransferClient: DependencyKey {
+    static var liveValue: MediaTransferClient {
         live(cacheClient: .liveValue, uploadClient: .liveValue, downloadClient: .liveValue, remoteClient: .liveValue)
     }
 
@@ -11,7 +11,7 @@ extension MediaRemoteStorageClient: DependencyKey {
         uploadClient: MediaUploadClient,
         downloadClient: MediaDownloadClient,
         remoteClient: MediaRemoteClient
-    ) -> MediaRemoteStorageClient {
+    ) -> MediaTransferClient {
         let list: List = {
             try await remoteClient.list()
         }
@@ -85,7 +85,7 @@ extension MediaRemoteStorageClient: DependencyKey {
             }
         }
 
-        return MediaRemoteStorageClient(
+        return MediaTransferClient(
             list: list,
             upload: upload,
             download: download
