@@ -1,7 +1,7 @@
 import Foundation
 
 struct MediaCachePolicy: Sendable {
-    var timeToLive: TimeInterval
+    let timeToLive: TimeInterval
 
     /// Keys whose backing file is older than `timeToLive` relative to `now`.
     func expiredKeys(in imports: [MediaCacheClient.StoredContent], now: Date) -> [String] {

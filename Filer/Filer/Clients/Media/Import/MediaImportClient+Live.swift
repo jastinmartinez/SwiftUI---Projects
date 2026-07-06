@@ -10,10 +10,13 @@ extension MediaImportClient: DependencyKey {
             load: { items in
                 var loaded: [MediaImportClient.LoadedMedia] = []
                 for item in items {
-                    guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
+                    guard let data = try? await item.loadTransferable(type: Data.self) else {
+                        continue
+                    }
                     guard let contentType = item.supportedContentTypes.first?.preferredMIMEType,
                           let kind = MediaKind(mimeType: contentType),
-                          let objectID = objectID(uuid(), contentType: contentType) else { continue }
+                          let objectID = objectID(uuid(), contentType: contentType)
+                    else { continue }
 
                     let name = item.itemIdentifier ?? objectID
                     let metadata = MediaMetadata(

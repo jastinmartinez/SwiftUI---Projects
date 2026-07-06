@@ -22,12 +22,7 @@ extension MediaRemoteClient: DependencyKey {
             try await storage.from(config.bucket).list().compactMap(FileItem.init)
         }
         let uploadRequest: UploadRequestFor = { media in
-            let request = SupabaseUpload.request(for: media, config: config)
-            return UploadRequest(
-                endpoint: request.endpoint,
-                commonHeaders: request.commonHeaders,
-                createHeaders: request.createHeaders
-            )
+            SupabaseUpload.request(for: media, config: config)
         }
         let downloadRequest: DownloadRequestFor = { file in
             let url = try storage.from(config.bucket).getPublicURL(path: file.id)
@@ -37,6 +32,10 @@ extension MediaRemoteClient: DependencyKey {
             )
         }
 
-        return MediaRemoteClient(list: list, uploadRequest: uploadRequest, downloadRequest: downloadRequest)
+        return MediaRemoteClient(
+            list: list,
+            uploadRequest: uploadRequest,
+            downloadRequest: downloadRequest
+        )
     }
 }

@@ -27,9 +27,6 @@ extension MediaUploadClient {
         typealias Read = @Sendable (_ offset: Int, _ length: Int) async throws -> Data
 
         let size: Int
-        // `read` is a stored field, not a `run` parameter: a streaming upload needs it to
-        // outlive `run` (the async task reads chunks later), and only struct-stored closures
-        // are escaping in Swift — a bare closure parameter can't be captured by the task.
         let read: Read
     }
 
