@@ -1,47 +1,34 @@
 import Dependencies
 import Foundation
-import Storage
 
 extension MediaRemoteStorageClient: DependencyKey {
     static var liveValue: MediaRemoteStorageClient {
-        make(config: .loadFromBundle(), cache: .liveValue, uploadClient: .liveValue, downloadClient: .liveValue)
+        live(cacheClient: .liveValue, uploadClient: .liveValue, downloadClient: .liveValue, remoteClient: .liveValue)
     }
 
-    static func make(
-        config: SupabaseConfig,
-        cache: MediaCacheClient,
+    static func live(
+        cacheClient: MediaCacheClient,
         uploadClient: MediaUploadClient,
-        downloadClient: MediaDownloadClient
+        downloadClient: MediaDownloadClient,
+        remoteClient: MediaRemoteClient
     ) -> MediaRemoteStorageClient {
-        let storageURL = config.projectURL.appending(path: "storage/v1")
-        let headers: [String: String] = [
-            "Authorization": "Bearer \(config.anonKey)",
-            "apikey": config.anonKey,
-        ]
-        let storage = SupabaseStorageClient(
-            configuration: StorageClientConfiguration(
-                url: storageURL,
-                headers: headers,
-                logger: nil
-            )
-        )
         let list: List = {
-            try await storage.from(config.bucket).list().compactMap(FileItem.init)
+            try await remoteClient.list()
         }
         let upload: Upload = { media in
             AsyncThrowingStream { continuation in
                 let task = Task {
                     do {
-                        let source = try await cache.uploadSource(media.id)
+                        let source = try await cacheClient.uploadSource(media.id)
                         let uploadMedia = ImportedMedia(
                             metadata: media.metadata.with(size: source.size),
                             fileURL: source.localURL
                         )
-                        let uploadRequest = SupabaseUpload.request(for: uploadMedia, config: config)
+                        let uploadRequest = remoteClient.uploadRequest(uploadMedia)
                         let uploadSource = MediaUploadClient.UploadSource(
                             size: Int(source.size),
                             read: { offset, length in
-                                try await cache.readUpload(source.key, offset, length)
+                                try await cacheClient.readUpload(source.key, offset, length)
                             }
                         )
                         for try await event in uploadClient.run(
@@ -72,16 +59,16 @@ extension MediaRemoteStorageClient: DependencyKey {
             AsyncThrowingStream { continuation in
                 let task = Task {
                     do {
-                        let downloadURL = try storage.from(config.bucket).getPublicURL(path: file.id)
-                        let target = try await cache.prepareDownload(file.id)
+                        let downloadRequest = try remoteClient.downloadRequest(file)
+                        let target = try await cacheClient.prepareDownload(file.id)
                         let sink = MediaDownloadClient.DownloadSink(
-                            currentOffset: { try await cache.downloadOffset(target.key) },
-                            write: { data, offset in try await cache.writeDownload(target.key, data, offset) }
+                            currentOffset: { try await cacheClient.downloadOffset(target.key) },
+                            write: { data, offset in try await cacheClient.writeDownload(target.key, data, offset) }
                         )
                         for try await progress in downloadClient.run(
                             MediaDownloadClient.Request(
-                                url: downloadURL,
-                                headers: SupabaseStorageHeaders.download(config: config),
+                                url: downloadRequest.url,
+                                headers: downloadRequest.headers,
                                 expectedSize: file.size
                             ),
                             sink

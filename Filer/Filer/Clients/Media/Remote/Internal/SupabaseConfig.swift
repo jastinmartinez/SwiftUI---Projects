@@ -13,7 +13,7 @@ extension Bundle {
 }
 
 /// Pure data: the Supabase project coordinates. Not a dependency — an explicit input
-/// to MediaRemoteStorageClient.make(config:); only liveValue loads it.
+/// to MediaRemoteClient.live(config:); only liveValue loads it from the bundle.
 struct SupabaseConfig: Equatable {
     let projectURL: URL
     let anonKey: String

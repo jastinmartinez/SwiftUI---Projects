@@ -3,7 +3,7 @@ import Foundation
 import Storage
 import Testing
 
-@Suite struct MediaRemoteStorageClientAdapterTests {
+@Suite struct MediaRemoteClientAdapterTests {
     // MARK: FileItem(_ FileObject)
 
     @Test func fileObjectWithImageMetadataMapsToRemoteFileItem() throws {
