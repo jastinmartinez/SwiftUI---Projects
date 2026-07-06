@@ -1,7 +1,7 @@
 import Foundation
 
-/// Tuning limits shared by the two media transfer engines: `ResumableUploader`
-/// (TUS resumable upload) and `RangedDownloader` (HTTP range download).
+/// Tuning limits shared by the two media transfer engines: `MediaUploadClient`
+/// (TUS resumable upload) and `MediaDownloadClient` (HTTP range download).
 ///
 /// It captures two concerns:
 /// - **Chunking** — how large each transferred slice is (`chunkSize`).
@@ -10,11 +10,11 @@ import Foundation
 ///
 /// Not every field applies to both engines; each property documents where it is
 /// used. A single shared `default` keeps upload and download consistent; tests
-/// build focused variants (e.g. `RangedDownloaderTests.policy(chunkSize:)`).
+/// build focused variants (e.g. `MediaDownloadClientTests.policy(chunkSize:)`).
 ///
 /// Example:
 /// ```swift
-/// let uploader = ResumableUploader(
+/// let uploader = MediaUploadClient(
 ///     transport: .live(session: .shared),
 ///     retryPolicy: .default,        // this type
 ///     connectivity: .live,
@@ -28,20 +28,20 @@ struct MediaRemoteTransferPolicy: Equatable, Sendable {
     let chunkSize: Int
 
     /// Max retries for a single failed ranged GET before the download fails.
-    /// Used by **download** only (`RangedDownloader`).
+    /// Used by **download** only (`MediaDownloadClient`).
     let maxRetries: Int
 
     /// Max reconnect attempts per stall when an upload chunk hits a retryable
     /// (connectivity) error. Each attempt waits for connectivity, then re-reads
     /// the server offset via a TUS HEAD. The budget is *per stall* — forward
     /// progress effectively refills it — so a long upload survives repeated brief
-    /// drops. Used by **upload** only (`ResumableUploader`).
+    /// drops. Used by **upload** only (`MediaUploadClient`).
     let maxResumes: Int
 
     /// Max times an upload may recreate its TUS session (a fresh POST) after a
     /// conflict/gone response (409/410/404) before failing. Unlike a connectivity
     /// resume, recreating restarts the upload from offset 0. Used by **upload**
-    /// only (`ResumableUploader`).
+    /// only (`MediaUploadClient`).
     let maxRecreates: Int
 
     /// Base delay (seconds) before the first HEAD retry within a reconnect

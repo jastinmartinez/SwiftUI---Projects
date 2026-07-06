@@ -2,7 +2,7 @@
 import Foundation
 import Testing
 
-@Suite(.serialized) struct ResumableUploaderTests {
+@Suite(.serialized) struct MediaUploadClientTests {
     @Test func postCreationSendsTusHeaders() async throws {
         let size = 2 * 1024 * 1024
         let captured = LockedBox<[URLRequest]>([])
@@ -26,13 +26,13 @@ import Testing
         )
         let uploader = makeUploader(transport: transport)
 
-        for try await _ in try uploader.upload(
-            ResumableUploader.Request(
+        for try await _ in try uploader.run(
+            MediaUploadClient.Request(
                 endpoint: endpoint(),
                 commonHeaders: [:],
                 createHeaders: ["Upload-Metadata": "name dGVzdA=="]
             ),
-            source: source(bytes: size)
+            source(bytes: size)
         ) {}
 
         let post = try #require(captured.value.first { $0.httpMethod == "POST" })
@@ -64,13 +64,13 @@ import Testing
         )
         let uploader = makeUploader(transport: transport)
 
-        for try await _ in try uploader.upload(
-            ResumableUploader.Request(
+        for try await _ in try uploader.run(
+            MediaUploadClient.Request(
                 endpoint: endpoint(),
                 commonHeaders: ["apikey": "anon-key", "Authorization": "Bearer anon-key"],
                 createHeaders: ["x-upsert": "true"]
             ),
-            source: source(bytes: size)
+            source(bytes: size)
         ) {}
 
         let post = try #require(captured.value.first { $0.httpMethod == "POST" })
@@ -102,9 +102,9 @@ import Testing
         )
         let uploader = makeUploader(transport: transport)
 
-        for try await _ in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-            source: source(bytes: size)
+        for try await _ in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
         ) {}
 
         let expected = MediaRemoteTransferPolicy.default.requestTimeout
@@ -135,9 +135,9 @@ import Testing
         )
         let uploader = makeUploader(transport: transport)
 
-        for try await event in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-            source: source(bytes: size)
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
         ) {
             if case .waitingForConnectivity = event { waits.mutate { $0 += 1 } }
         }
@@ -158,9 +158,9 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var waits = 0
 
-        for try await event in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-            source: source(bytes: size)
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
         ) {
             if case .waitingForConnectivity = event { waits += 1 }
         }
@@ -205,9 +205,9 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
-        for try await event in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-            source: source(bytes: size)
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
         ) {
             guard case let .progress(progress) = event else { continue }
             last = progress
@@ -250,9 +250,9 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
-        for try await event in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-            source: source(bytes: size)
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
         ) {
             guard case let .progress(progress) = event else { continue }
             last = progress
@@ -284,9 +284,9 @@ import Testing
         let uploader = makeUploader(transport: transport)
 
         await #expect(throws: (any Error).self) {
-            for try await _ in try uploader.upload(
-                ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-                source: source(bytes: size)
+            for try await _ in try uploader.run(
+                MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                source(bytes: size)
             ) {}
         }
         // Reconnect budget is bounded (maxResumes attempts).
@@ -308,7 +308,7 @@ import Testing
             }
         )
         // Offline forever + a blocking sleeper => the uploader parks in waitForConnectivity.
-        let uploader = ResumableUploader(
+        let uploader = MediaUploadClient.live(
             transport: transport,
             retryPolicy: .default,
             connectivity: .offlineForever,
@@ -316,9 +316,9 @@ import Testing
         )
         let task = Task { () -> Bool in
             do {
-                for try await _ in try uploader.upload(
-                    ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-                    source: source(bytes: size)
+                for try await _ in try uploader.run(
+                    MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                    source(bytes: size)
                 ) {}
                 return Task.isCancelled
             } catch is CancellationError {
@@ -361,9 +361,9 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
-        for try await event in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-            source: source(bytes: size)
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
         ) {
             guard case let .progress(progress) = event else { continue }
             last = progress
@@ -417,9 +417,9 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var progresses: [TransferProgress] = []
 
-        for try await event in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-            source: source(bytes: size)
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
         ) {
             guard case let .progress(progress) = event else { continue }
             progresses.append(progress)
@@ -464,9 +464,9 @@ import Testing
         let uploader = makeUploader(transport: transport)
         var last: TransferProgress?
 
-        for try await event in try uploader.upload(
-            ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-            source: source(bytes: size)
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
         ) {
             guard case let .progress(progress) = event else { continue }
             last = progress
@@ -500,10 +500,10 @@ import Testing
         )
         let uploader = makeUploader(transport: transport)
 
-        await #expect(throws: ResumableUploader.Failure.invalidPatchResponse) {
-            for try await _ in try uploader.upload(
-                ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-                source: source(bytes: size)
+        await #expect(throws: MediaUploadClient.Failure.invalidPatchResponse) {
+            for try await _ in try uploader.run(
+                MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                source(bytes: size)
             ) {}
         }
         #expect(heads.value == 0)
@@ -525,15 +525,15 @@ import Testing
             }
         )
         let uploader = makeUploader(transport: transport)
-        let shortSource = ResumableUploader.UploadSource(
+        let shortSource = MediaUploadClient.UploadSource(
             size: 4,
             read: { _, _ in Data([1, 2]) }
         )
 
-        await #expect(throws: ResumableUploader.Failure.invalidUploadSource) {
-            for try await _ in try uploader.upload(
-                ResumableUploader.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
-                source: shortSource
+        await #expect(throws: MediaUploadClient.Failure.invalidUploadSource) {
+            for try await _ in try uploader.run(
+                MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                shortSource
             ) {}
         }
         #expect(uploads.value == 0)
@@ -541,8 +541,8 @@ import Testing
 
     // MARK: - Helpers
 
-    private func makeUploader(transport: HTTPTransport) -> ResumableUploader {
-        ResumableUploader(
+    private func makeUploader(transport: HTTPTransport) -> MediaUploadClient {
+        MediaUploadClient.live(
             transport: transport,
             retryPolicy: .default,
             connectivity: .alwaysOnline,
@@ -558,8 +558,8 @@ import Testing
         try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1"))
     }
 
-    private func source(bytes size: Int) -> ResumableUploader.UploadSource {
-        ResumableUploader.UploadSource(
+    private func source(bytes size: Int) -> MediaUploadClient.UploadSource {
+        MediaUploadClient.UploadSource(
             size: size,
             read: { offset, length in
                 Data(repeating: UInt8(offset % 255), count: length)

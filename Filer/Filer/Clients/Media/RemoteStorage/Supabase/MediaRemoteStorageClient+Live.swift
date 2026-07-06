@@ -4,12 +4,14 @@ import Storage
 
 extension MediaRemoteStorageClient: DependencyKey {
     static var liveValue: MediaRemoteStorageClient {
-        make(config: .loadFromBundle(), cache: .liveValue)
+        make(config: .loadFromBundle(), cache: .liveValue, uploadClient: .liveValue, downloadClient: .liveValue)
     }
 
     static func make(
         config: SupabaseConfig,
-        cache: MediaCacheClient
+        cache: MediaCacheClient,
+        uploadClient: MediaUploadClient,
+        downloadClient: MediaDownloadClient
     ) -> MediaRemoteStorageClient {
         let storageURL = config.projectURL.appending(path: "storage/v1")
         let headers: [String: String] = [
@@ -36,25 +38,19 @@ extension MediaRemoteStorageClient: DependencyKey {
                             fileURL: source.localURL
                         )
                         let uploadRequest = SupabaseUpload.request(for: uploadMedia, config: config)
-                        let resumableUploadSource = ResumableUploader.UploadSource(
+                        let uploadSource = MediaUploadClient.UploadSource(
                             size: Int(source.size),
                             read: { offset, length in
                                 try await cache.readUpload(source.key, offset, length)
                             }
                         )
-                        for try await event in ResumableUploader(
-                            transport: .live(session: .shared),
-                            retryPolicy: .default,
-                            connectivity: .live,
-                            sleeper: .live
-                        )
-                        .upload(
-                            ResumableUploader.Request(
+                        for try await event in uploadClient.run(
+                            MediaUploadClient.Request(
                                 endpoint: uploadRequest.endpoint,
                                 commonHeaders: uploadRequest.commonHeaders,
                                 createHeaders: uploadRequest.createHeaders
                             ),
-                            source: resumableUploadSource
+                            uploadSource
                         ) {
                             switch event {
                             case let .progress(progress):
@@ -78,21 +74,17 @@ extension MediaRemoteStorageClient: DependencyKey {
                     do {
                         let downloadURL = try storage.from(config.bucket).getPublicURL(path: file.id)
                         let target = try await cache.prepareDownload(file.id)
-                        let sink = RangedDownloader.DownloadSink(
+                        let sink = MediaDownloadClient.DownloadSink(
                             currentOffset: { try await cache.downloadOffset(target.key) },
                             write: { data, offset in try await cache.writeDownload(target.key, data, offset) }
                         )
-                        for try await progress in RangedDownloader(
-                            transport: .live(session: .shared),
-                            retryPolicy: .default
-                        )
-                        .download(
-                            RangedDownloader.Request(
+                        for try await progress in downloadClient.run(
+                            MediaDownloadClient.Request(
                                 url: downloadURL,
                                 headers: SupabaseStorageHeaders.download(config: config),
                                 expectedSize: file.size
                             ),
-                            sink: sink
+                            sink
                         ) {
                             continuation.yield(.progress(progress))
                         }

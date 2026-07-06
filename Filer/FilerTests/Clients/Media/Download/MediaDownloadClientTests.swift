@@ -2,7 +2,7 @@
 import Foundation
 import Testing
 
-@Suite(.serialized) struct RangedDownloaderTests {
+@Suite(.serialized) struct MediaDownloadClientTests {
     @Test func rangedPathProbesAndWritesContiguously() async throws {
         let url = try source()
         let total = 14 * 1024 * 1024
@@ -37,15 +37,15 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
         var progress: [TransferProgress] = []
-        for try await update in downloader.download(
-            RangedDownloader.Request(
+        for try await update in downloader.run(
+            MediaDownloadClient.Request(
                 url: url,
                 headers: ["Authorization": "Bearer token"],
                 expectedSize: nil
             ),
-            sink: sink.sink
+            sink.sink
         ) {
             progress.append(update)
         }
@@ -107,10 +107,10 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
-        for try await _ in downloader.download(
-            RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-            sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
+        for try await _ in downloader.run(
+            MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
+            sink.sink
         ) {}
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
@@ -143,11 +143,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: Self.policy(chunkSize: total))
-        await #expect(throws: RangedDownloader.Failure.invalidResumeState) {
-            for try await _ in downloader.download(
-                RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: Self.policy(chunkSize: total))
+        await #expect(throws: MediaDownloadClient.Failure.invalidResumeState) {
+            for try await _ in downloader.run(
+                MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
+                sink.sink
             ) {}
         }
 
@@ -169,11 +169,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
-        await #expect(throws: RangedDownloader.Failure.partialFallbackUnsupported) {
-            for try await _ in downloader.download(
-                RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
+        await #expect(throws: MediaDownloadClient.Failure.partialFallbackUnsupported) {
+            for try await _ in downloader.run(
+                MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
+                sink.sink
             ) {}
         }
     }
@@ -194,11 +194,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
-        await #expect(throws: RangedDownloader.Failure.invalidFallbackResponse) {
-            for try await _ in downloader.download(
-                RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
+        await #expect(throws: MediaDownloadClient.Failure.invalidFallbackResponse) {
+            for try await _ in downloader.run(
+                MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
+                sink.sink
             ) {}
         }
 
@@ -222,11 +222,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
-        await #expect(throws: RangedDownloader.Failure.byteCountMismatch) {
-            for try await _ in downloader.download(
-                RangedDownloader.Request(url: url, headers: [:], expectedSize: 4),
-                sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
+        await #expect(throws: MediaDownloadClient.Failure.byteCountMismatch) {
+            for try await _ in downloader.run(
+                MediaDownloadClient.Request(url: url, headers: [:], expectedSize: 4),
+                sink.sink
             ) {}
         }
 
@@ -250,11 +250,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
-        await #expect(throws: RangedDownloader.Failure.byteCountMismatch) {
-            for try await _ in downloader.download(
-                RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
+        await #expect(throws: MediaDownloadClient.Failure.byteCountMismatch) {
+            for try await _ in downloader.run(
+                MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
+                sink.sink
             ) {}
         }
 
@@ -291,11 +291,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
-        await #expect(throws: RangedDownloader.Failure.byteCountMismatch) {
-            for try await _ in downloader.download(
-                RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
+        await #expect(throws: MediaDownloadClient.Failure.byteCountMismatch) {
+            for try await _ in downloader.run(
+                MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
+                sink.sink
             ) {}
         }
 
@@ -338,10 +338,10 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: Self.policy(chunkSize: total))
-        for try await _ in downloader.download(
-            RangedDownloader.Request(url: url, headers: [:], expectedSize: Int64(total)),
-            sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: Self.policy(chunkSize: total))
+        for try await _ in downloader.run(
+            MediaDownloadClient.Request(url: url, headers: [:], expectedSize: Int64(total)),
+            sink.sink
         ) {}
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
@@ -382,11 +382,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: .default)
-        await #expect(throws: RangedDownloader.Failure.invalidRangeResponse) {
-            for try await _ in downloader.download(
-                RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
+        await #expect(throws: MediaDownloadClient.Failure.invalidRangeResponse) {
+            for try await _ in downloader.run(
+                MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
+                sink.sink
             ) {}
         }
 
@@ -427,11 +427,11 @@ import Testing
             upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
         )
 
-        let downloader = RangedDownloader(transport: transport, retryPolicy: Self.policy(chunkSize: total))
-        await #expect(throws: RangedDownloader.Failure.invalidRangeResponse) {
-            for try await _ in downloader.download(
-                RangedDownloader.Request(url: url, headers: [:], expectedSize: nil),
-                sink: sink.sink
+        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: Self.policy(chunkSize: total))
+        await #expect(throws: MediaDownloadClient.Failure.invalidRangeResponse) {
+            for try await _ in downloader.run(
+                MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
+                sink.sink
             ) {}
         }
 
@@ -488,8 +488,8 @@ private final class MemoryDownloadSink: @unchecked Sendable {
 
     var data: Data { box.value }
 
-    var sink: RangedDownloader.DownloadSink {
-        RangedDownloader.DownloadSink(
+    var sink: MediaDownloadClient.DownloadSink {
+        MediaDownloadClient.DownloadSink(
             currentOffset: { UInt64(self.box.value.count) },
             write: { data, offset in
                 self.box.mutate { stored in

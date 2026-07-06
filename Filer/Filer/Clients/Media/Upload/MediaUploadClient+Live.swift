@@ -1,51 +1,66 @@
+import Dependencies
 import Foundation
 
-/// TUS-resumable upload engine. Generic HTTP machinery: no Supabase, no TCA.
-struct ResumableUploader: Sendable {
-    private let transport: HTTPTransport
-    private let retryPolicy: MediaRemoteTransferPolicy
-    private let connectivity: ConnectivityMonitor
-    private let sleeper: Sleeper
+extension MediaUploadClient: DependencyKey {
+    static let liveValue = live()
 
-    init(
-        transport: HTTPTransport,
-        retryPolicy: MediaRemoteTransferPolicy,
-        connectivity: ConnectivityMonitor,
-        sleeper: Sleeper
-    ) {
-        self.transport = transport
-        self.retryPolicy = retryPolicy
-        self.connectivity = connectivity
-        self.sleeper = sleeper
+    static func live(
+        transport: HTTPTransport = .live(session: .shared),
+        retryPolicy: MediaRemoteTransferPolicy = .default,
+        connectivity: ConnectivityMonitor = .live,
+        sleeper: Sleeper = .live
+    ) -> MediaUploadClient {
+        let engine = Engine(
+            transport: transport,
+            retryPolicy: retryPolicy,
+            connectivity: connectivity,
+            sleeper: sleeper
+        )
+        return MediaUploadClient(run: { engine.run($0, $1) })
     }
+}
 
-    func upload(
-        _ request: Request,
-        source: UploadSource
-    ) -> AsyncThrowingStream<Event, Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task {
-                do {
-                    try await run(request, source, continuation)
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
+private extension MediaUploadClient {
+    /// TUS-resumable upload engine. Owns the deps and the chunk/retry protocol logic.
+    struct Engine: Sendable {
+        typealias Request = MediaUploadClient.Request
+        typealias UploadSource = MediaUploadClient.UploadSource
+        typealias Event = MediaUploadClient.Event
+        typealias Failure = MediaUploadClient.Failure
+
+        let transport: HTTPTransport
+        let retryPolicy: MediaRemoteTransferPolicy
+        let connectivity: ConnectivityMonitor
+        let sleeper: Sleeper
+
+        func run(_ request: Request, _ source: UploadSource) -> AsyncThrowingStream<Event, Error> {
+            AsyncThrowingStream { continuation in
+                let task = Task {
+                    do {
+                        try await perform(request, source, continuation)
+                        continuation.finish()
+                    } catch {
+                        continuation.finish(throwing: error)
+                    }
                 }
+                continuation.onTermination = { _ in task.cancel() }
             }
-            continuation.onTermination = { _ in task.cancel() }
         }
     }
+}
 
-    private func run(
+private extension MediaUploadClient.Engine {
+    func perform(
         _ upload: Request,
         _ source: UploadSource,
         _ continuation: AsyncThrowingStream<Event, Error>.Continuation
     ) async throws {
         let chunkSize = max(retryPolicy.chunkSize, 1)
         let length = source.size
-        let totalChunks = length > 0
-            ? (length + chunkSize - 1) / chunkSize
-            : 0
+        let totalChunks =
+            length > 0
+                ? (length + chunkSize - 1) / chunkSize
+                : 0
 
         var uploadURL = try await createUpload(upload, length)
         var offset = 0
@@ -60,7 +75,13 @@ struct ResumableUploader: Sendable {
             }
 
             do {
-                offset = try await uploadChunk(uploadURL, chunk, offset, total: length, headers: upload.commonHeaders)
+                offset = try await uploadChunk(
+                    uploadURL,
+                    chunk,
+                    offset,
+                    total: length,
+                    headers: upload.commonHeaders
+                )
             } catch is CancellationError {
                 throw CancellationError()
             } catch let failure as Failure {
@@ -74,30 +95,40 @@ struct ResumableUploader: Sendable {
             } catch {
                 guard retryPolicy.shouldRetry(error) else { throw error }
                 continuation.yield(.waitingForConnectivity)
-                offset = try await recoverOffset(uploadURL, total: length, headers: upload.commonHeaders)
+                offset = try await recoverOffset(
+                    uploadURL,
+                    total: length,
+                    headers: upload.commonHeaders
+                )
                 continue
             }
 
             let completed = (offset + chunkSize - 1) / chunkSize
-            continuation.yield(.progress(TransferProgress(
-                bytesTransferred: Int64(offset),
-                totalBytes: Int64(length),
-                completedChunks: min(completed, totalChunks),
-                totalChunks: totalChunks
-            )))
+            continuation.yield(
+                .progress(
+                    TransferProgress(
+                        bytesTransferred: Int64(offset),
+                        totalBytes: Int64(length),
+                        completedChunks: min(completed, totalChunks),
+                        totalChunks: totalChunks
+                    )
+                )
+            )
         }
     }
 
-    private func createUpload(_ upload: Request, _ length: Int) async throws -> URL {
+    func createUpload(_ upload: Request, _ length: Int) async throws -> URL {
         let response = try await transport.data(
-            timed(TUSUploadHeaders.createRequest(
-                endpoint: upload.endpoint,
-                uploadLength: length,
-                headers: upload.commonHeaders.merging(
-                    upload.createHeaders,
-                    uniquingKeysWith: { _, createValue in createValue }
+            timed(
+                TUSUploadHeaders.createRequest(
+                    endpoint: upload.endpoint,
+                    uploadLength: length,
+                    headers: upload.commonHeaders.merging(
+                        upload.createHeaders,
+                        uniquingKeysWith: { _, createValue in createValue }
+                    )
                 )
-            ))
+            )
         )
         guard response.statusCode == 201,
               let location = response.value(forHeader: "Location"),
@@ -108,7 +139,7 @@ struct ResumableUploader: Sendable {
         return url.absoluteURL
     }
 
-    private func uploadChunk(
+    func uploadChunk(
         _ uploadURL: URL,
         _ chunk: Data,
         _ offset: Int,
@@ -116,7 +147,13 @@ struct ResumableUploader: Sendable {
         headers: [String: String]
     ) async throws -> Int {
         let response = try await transport.upload(
-            timed(TUSUploadHeaders.patchRequest(uploadURL: uploadURL, offset: offset, headers: headers)),
+            timed(
+                TUSUploadHeaders.patchRequest(
+                    uploadURL: uploadURL,
+                    offset: offset,
+                    headers: headers
+                )
+            ),
             chunk
         )
         switch response.statusCode {
@@ -135,8 +172,12 @@ struct ResumableUploader: Sendable {
         }
     }
 
-    private func fetchUploadOffset(_ uploadURL: URL, total: Int, headers: [String: String]) async throws -> Int {
-        let response = try await transport.data(timed(TUSUploadHeaders.headRequest(uploadURL: uploadURL, headers: headers)))
+    func fetchUploadOffset(_ uploadURL: URL, total: Int, headers: [String: String])
+        async throws -> Int
+    {
+        let response = try await transport.data(
+            timed(TUSUploadHeaders.headRequest(uploadURL: uploadURL, headers: headers))
+        )
         guard response.statusCode == 200,
               let offset = response.value(forHeader: "Upload-Offset").flatMap(Int.init),
               offset <= total
@@ -150,7 +191,7 @@ struct ResumableUploader: Sendable {
     /// retrying within the reconnect budget. Each stall gets a full budget, so
     /// forward progress effectively refills it. Protocol-level resume failures
     /// (bad HEAD response) are not retried.
-    private func recoverOffset(
+    func recoverOffset(
         _ uploadURL: URL,
         total: Int,
         headers: [String: String]
@@ -174,9 +215,7 @@ struct ResumableUploader: Sendable {
 
     /// Suspends until connectivity is reported online, bounded by `timeout`.
     /// Woken by the connectivity signal or the timeout, whichever comes first.
-    private func waitForConnectivity(timeout: TimeInterval) async throws {
-        let connectivity = connectivity
-        let sleeper = sleeper
+    func waitForConnectivity(timeout: TimeInterval) async throws {
         try await withThrowingTaskGroup(of: Bool.self) { group in
             group.addTask {
                 for await online in connectivity.stream() where online {
@@ -195,39 +234,9 @@ struct ResumableUploader: Sendable {
 
     /// Applies the policy's per-request timeout so a mid-flight drop is noticed
     /// quickly rather than after URLSession's 60s default.
-    private func timed(_ request: URLRequest) -> URLRequest {
+    func timed(_ request: URLRequest) -> URLRequest {
         var request = request
         request.timeoutInterval = retryPolicy.requestTimeout
         return request
-    }
-}
-
-extension ResumableUploader {
-    enum Event: Equatable {
-        case progress(TransferProgress)
-        case waitingForConnectivity
-    }
-
-    struct Request: Equatable, Sendable {
-        let endpoint: URL
-        /// Sent with every request in the upload (e.g. authentication).
-        let commonHeaders: [String: String]
-        /// Sent only with the create (POST) request.
-        let createHeaders: [String: String]
-    }
-
-    struct UploadSource: Sendable {
-        typealias Read = @Sendable (_ offset: Int, _ length: Int) async throws -> Data
-
-        let size: Int
-        let read: Read
-    }
-
-    enum Failure: Error, Equatable {
-        case invalidUploadSource
-        case invalidCreateResponse
-        case invalidPatchResponse
-        case invalidResumeResponse
-        case uploadConflict
     }
 }

@@ -1,56 +1,77 @@
+import Dependencies
 import Foundation
 
-/// Downloads a remote object using HTTP range requests when supported.
-///
-/// The downloader owns range probing, fallback choice, retry policy, response
-/// validation, and progress emission. Persisted byte truth belongs to the sink.
-struct RangedDownloader: Sendable {
-    private let transport: HTTPTransport
-    private let retryPolicy: MediaRemoteTransferPolicy
+extension MediaDownloadClient: DependencyKey {
+    static let liveValue = live()
 
-    init(
-        transport: HTTPTransport,
-        retryPolicy: MediaRemoteTransferPolicy
-    ) {
-        self.transport = transport
-        self.retryPolicy = retryPolicy
+    static func live(
+        transport: HTTPTransport = .live(session: .shared),
+        retryPolicy: MediaRemoteTransferPolicy = .default
+    ) -> MediaDownloadClient {
+        let engine = Engine(transport: transport, retryPolicy: retryPolicy)
+        return MediaDownloadClient(run: { engine.run($0, $1) })
     }
+}
 
-    func download(
-        _ request: Request,
-        sink: DownloadSink
-    ) -> AsyncThrowingStream<TransferProgress, Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task {
-                do {
-                    try await run(request, sink, retryPolicy.chunkSize, continuation)
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
+private extension MediaDownloadClient {
+    /// HTTP range-download engine. Owns the deps, range probing, fallback choice,
+    /// retry policy, response validation, and progress emission.
+    struct Engine: Sendable {
+        typealias Request = MediaDownloadClient.Request
+        typealias DownloadSink = MediaDownloadClient.DownloadSink
+        typealias ProbeResult = MediaDownloadClient.ProbeResult
+        typealias Failure = MediaDownloadClient.Failure
+
+        let transport: HTTPTransport
+        let retryPolicy: MediaRemoteTransferPolicy
+
+        func run(_ request: Request, _ sink: DownloadSink) -> AsyncThrowingStream<
+            TransferProgress, Error
+        > {
+            AsyncThrowingStream { continuation in
+                let task = Task {
+                    do {
+                        try await perform(request, sink, continuation)
+                        continuation.finish()
+                    } catch {
+                        continuation.finish(throwing: error)
+                    }
                 }
+                continuation.onTermination = { _ in task.cancel() }
             }
-            continuation.onTermination = { _ in task.cancel() }
         }
     }
+}
 
-    private func run(
+private extension MediaDownloadClient.Engine {
+    func perform(
         _ download: Request,
         _ sink: DownloadSink,
-        _ chunkSize: Int,
         _ continuation: AsyncThrowingStream<TransferProgress, Error>.Continuation
     ) async throws {
         try Task.checkCancellation()
-        let probe = try await probe(download)
-        let total = probe.totalLength ?? download.expectedSize ?? 0
+        let probeResult = try await probe(download)
+        let total = probeResult.totalLength ?? download.expectedSize ?? 0
 
-        if probe.supportsRanges, total > 0 {
-            try await downloadRanges(download, sink, UInt64(total), max(chunkSize, 1), continuation)
+        if probeResult.supportsRanges, total > 0 {
+            try await downloadRanges(
+                download,
+                sink,
+                UInt64(total),
+                max(retryPolicy.chunkSize, 1),
+                continuation
+            )
         } else {
-            try await downloadWholeResponse(probe, expectedSize: download.expectedSize, sink, continuation)
+            try await downloadWholeResponse(
+                probeResult,
+                expectedSize: download.expectedSize,
+                sink,
+                continuation
+            )
         }
     }
 
-    private func probe(_ downloadRequest: Request) async throws -> ProbeResult {
+    func probe(_ downloadRequest: Request) async throws -> ProbeResult {
         var retries = 0
 
         while true {
@@ -70,7 +91,7 @@ struct RangedDownloader: Sendable {
         }
     }
 
-    private func downloadRanges(
+    func downloadRanges(
         _ downloadRequest: Request,
         _ sink: DownloadSink,
         _ total: UInt64,
@@ -88,7 +109,12 @@ struct RangedDownloader: Sendable {
             let end = min(start + chunkSize, total) - 1
 
             do {
-                let body = try await downloadRangeBody(downloadRequest, start: start, end: end, expectedTotal: total)
+                let body = try await downloadRangeBody(
+                    downloadRequest,
+                    start: start,
+                    end: end,
+                    expectedTotal: total
+                )
                 try await sink.write(body, start)
                 confirmedOffset = try await validatedOffset(sink, total: total)
                 retries = 0
@@ -98,7 +124,8 @@ struct RangedDownloader: Sendable {
                         bytesTransferred: Int64(confirmedOffset),
                         totalBytes: Int64(total),
                         completedChunks: min(
-                            completedChunks(for: confirmedOffset, chunkSize: chunkSize),
+                            confirmedOffset > 0
+                                ? Int((confirmedOffset + chunkSize - 1) / chunkSize) : 0,
                             totalChunks
                         ),
                         totalChunks: totalChunks
@@ -115,7 +142,12 @@ struct RangedDownloader: Sendable {
         }
     }
 
-    private func downloadRangeBody(_ downloadRequest: Request, start: UInt64, end: UInt64, expectedTotal: UInt64) async throws -> Data {
+    func downloadRangeBody(
+        _ downloadRequest: Request,
+        start: UInt64,
+        end: UInt64,
+        expectedTotal: UInt64
+    ) async throws -> Data {
         var rangeRequest = request(url: downloadRequest.url, headers: downloadRequest.headers)
         rangeRequest.httpMethod = "GET"
         rangeRequest.setValue("bytes=\(start)-\(end)", forHTTPHeaderField: "Range")
@@ -141,7 +173,7 @@ struct RangedDownloader: Sendable {
         return response.body
     }
 
-    private func downloadWholeResponse(
+    func downloadWholeResponse(
         _ probe: ProbeResult,
         expectedSize: Int64?,
         _ sink: DownloadSink,
@@ -185,7 +217,7 @@ struct RangedDownloader: Sendable {
         }
     }
 
-    private func validatedOffset(_ sink: DownloadSink, total: UInt64) async throws -> UInt64 {
+    func validatedOffset(_ sink: DownloadSink, total: UInt64) async throws -> UInt64 {
         let offset = try await sink.currentOffset()
         guard offset <= total else {
             throw Failure.invalidResumeState
@@ -193,12 +225,7 @@ struct RangedDownloader: Sendable {
         return offset
     }
 
-    private func completedChunks(for offset: UInt64, chunkSize: UInt64) -> Int {
-        guard offset > 0 else { return 0 }
-        return Int((offset + chunkSize - 1) / chunkSize)
-    }
-
-    private func request(url: URL, headers: [String: String]) -> URLRequest {
+    func request(url: URL, headers: [String: String]) -> URLRequest {
         var request = URLRequest(url: url)
         for (key, value) in headers {
             request.setValue(value, forHTTPHeaderField: key)
@@ -206,7 +233,7 @@ struct RangedDownloader: Sendable {
         return request
     }
 
-    private func nextRetryCount(for error: Error, retries: Int) throws -> Int {
+    func nextRetryCount(for error: Error, retries: Int) throws -> Int {
         guard retryPolicy.shouldRetry(error) else {
             throw error
         }
@@ -227,10 +254,18 @@ private struct ContentRange: Equatable, Sendable {
 
         let fields = value.split(whereSeparator: \.isWhitespace)
         guard fields.count == 2, fields.first == "bytes" else { return nil }
-        let rangeAndTotal = fields[1].split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
+        let rangeAndTotal = fields[1].split(
+            separator: "/",
+            maxSplits: 1,
+            omittingEmptySubsequences: false
+        )
         guard rangeAndTotal.count == 2 else { return nil }
 
-        let bounds = rangeAndTotal[0].split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+        let bounds = rangeAndTotal[0].split(
+            separator: "-",
+            maxSplits: 1,
+            omittingEmptySubsequences: false
+        )
         guard
             bounds.count == 2,
             let startText = bounds.first,
@@ -251,43 +286,7 @@ private struct ContentRange: Equatable, Sendable {
     }
 }
 
-extension RangedDownloader {
-    struct Request: Equatable, Sendable {
-        let url: URL
-        let headers: [String: String]
-        let expectedSize: Int64?
-    }
-
-    /// Writes downloaded bytes and reports the confirmed persisted offset.
-    ///
-    /// The sink is the source of truth for resume. The downloader must not
-    /// assume bytes are durable until the sink accepts them.
-    struct DownloadSink: Sendable {
-        typealias CurrentOffset = @Sendable () async throws -> UInt64
-        typealias Write = @Sendable (_ data: Data, _ offset: UInt64) async throws -> Void
-
-        var currentOffset: CurrentOffset
-        var write: Write
-    }
-
-    struct ProbeResult: Equatable, Sendable {
-        let statusCode: Int
-        let supportsRanges: Bool
-        let totalLength: Int64?
-        let body: Data
-    }
-
-    enum Failure: Error, Equatable {
-        case invalidRangeResponse
-        case invalidFallbackResponse
-        case byteCountMismatch
-        case partialFallbackUnsupported
-        case retryLimitExceeded
-        case invalidResumeState
-    }
-}
-
-extension RangedDownloader.ProbeResult {
+extension MediaDownloadClient.ProbeResult {
     init(response: HTTPResponse) {
         statusCode = response.statusCode
         supportsRanges =
