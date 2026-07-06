@@ -76,6 +76,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		5215E9982FFAFD960024D4FF /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				5244A8E92FF023C9005A1F01 /* Filer/Secrets.xcconfig */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		524E8B532FDF0F14003C2415 = {
 			isa = PBXGroup;
 			children = (
@@ -83,6 +91,7 @@
 				524E8B5E2FDF0F14003C2415 /* Filer */,
 				524E8B6C2FDF0F15003C2415 /* FilerTests */,
 				524E8B5D2FDF0F14003C2415 /* Products */,
+				5215E9982FFAFD960024D4FF /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};

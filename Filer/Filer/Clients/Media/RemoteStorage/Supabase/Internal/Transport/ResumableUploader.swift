@@ -231,27 +231,3 @@ extension ResumableUploader {
         case uploadConflict
     }
 }
-
-extension ResumableUploader.UploadSource {
-    static func file(
-        _ file: URL,
-        fileManager: FileManager
-    ) throws -> ResumableUploader.UploadSource {
-        let attributes = try fileManager.attributesOfItem(atPath: file.path)
-        let size = (attributes[.size] as? NSNumber)?.intValue ?? 0
-        let read: Read = { offset, length in
-            let handle = try FileHandle(forReadingFrom: file)
-            do {
-                try handle.seek(toOffset: UInt64(offset))
-                let data = handle.readData(ofLength: length)
-                try handle.close()
-                return data
-            } catch {
-                try? handle.close()
-                throw error
-            }
-        }
-
-        return ResumableUploader.UploadSource(size: size, read: read)
-    }
-}

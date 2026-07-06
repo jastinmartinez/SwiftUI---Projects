@@ -2,6 +2,8 @@ import ComposableArchitecture
 @testable import Filer
 import Testing
 
+private struct Unimplemented: Error {}
+
 @MainActor
 struct PhotoLibraryPickerModelTests {
     @Test func idlePhaseIsNotLoading() {
@@ -21,7 +23,7 @@ struct PhotoLibraryPickerModelTests {
     private func makeSUT(_ phase: MediaImportFeature.State.Phase) -> PhotoLibraryPickerView.Model {
         let store = withDependencies {
             $0.mediaImport = Self.failingMediaImport()
-            $0.mediaImportStore = Self.failingImportStore()
+            $0.mediaCache = Self.failingCache()
         } operation: {
             Store(initialState: MediaImportFeature.State(phase: phase)) {
                 MediaImportFeature()
@@ -34,10 +36,10 @@ struct PhotoLibraryPickerModelTests {
         MediaImportClient(load: { _ in throw MediaImportClient.Unimplemented() })
     }
 
-    private nonisolated static func failingImportStore() -> MediaImportStoreClient {
-        MediaImportStoreClient(
-            store: { _ in throw MediaImportStoreClient.Unimplemented() },
-            removeExpired: { throw MediaImportStoreClient.Unimplemented() }
-        )
+    private nonisolated static func failingCache() -> MediaCacheClient {
+        var cache = MediaCacheClient.testValue
+        cache.store = { _ in throw Unimplemented() }
+        cache.removeExpired = { throw Unimplemented() }
+        return cache
     }
 }

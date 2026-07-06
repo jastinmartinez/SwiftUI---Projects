@@ -4,17 +4,12 @@ import Storage
 
 extension MediaRemoteStorageClient: DependencyKey {
     static var liveValue: MediaRemoteStorageClient {
-        make(
-            config: .loadFromBundle(),
-            uploadStore: .liveValue,
-            downloadStore: .liveValue
-        )
+        make(config: .loadFromBundle(), cache: .liveValue)
     }
 
     static func make(
         config: SupabaseConfig,
-        uploadStore: MediaUploadStoreClient,
-        downloadStore: MediaDownloadStoreClient
+        cache: MediaCacheClient
     ) -> MediaRemoteStorageClient {
         let storageURL = config.projectURL.appending(path: "storage/v1")
         let headers: [String: String] = [
@@ -35,11 +30,17 @@ extension MediaRemoteStorageClient: DependencyKey {
             AsyncThrowingStream { continuation in
                 let task = Task {
                     do {
-                        let storedUploadSource = try await uploadStore.loadUploadSource(media)
-                        let uploadRequest = SupabaseUpload.request(for: storedUploadSource.media, config: config)
-                        let resumableUploadSource = try ResumableUploader.UploadSource.file(
-                            storedUploadSource.localURL,
-                            fileManager: .default
+                        let source = try await cache.uploadSource(media.id)
+                        let uploadMedia = ImportedMedia(
+                            metadata: media.metadata.with(size: source.size),
+                            fileURL: source.localURL
+                        )
+                        let uploadRequest = SupabaseUpload.request(for: uploadMedia, config: config)
+                        let resumableUploadSource = ResumableUploader.UploadSource(
+                            size: Int(source.size),
+                            read: { offset, length in
+                                try await cache.readUpload(source.key, offset, length)
+                            }
                         )
                         for try await event in ResumableUploader(
                             transport: .live(session: .shared),
@@ -62,7 +63,7 @@ extension MediaRemoteStorageClient: DependencyKey {
                                 continuation.yield(.reconnecting)
                             }
                         }
-                        continuation.yield(.finished(FileItem(uploaded: storedUploadSource.media)))
+                        continuation.yield(.finished(FileItem(uploaded: uploadMedia)))
                         continuation.finish()
                     } catch {
                         continuation.finish(throwing: error)
@@ -76,7 +77,11 @@ extension MediaRemoteStorageClient: DependencyKey {
                 let task = Task {
                     do {
                         let downloadURL = try storage.from(config.bucket).getPublicURL(path: file.id)
-                        let downloadTarget = try await downloadStore.prepareDownloadTarget(file)
+                        let target = try await cache.prepareDownload(file.id)
+                        let sink = RangedDownloader.DownloadSink(
+                            currentOffset: { try await cache.downloadOffset(target.key) },
+                            write: { data, offset in try await cache.writeDownload(target.key, data, offset) }
+                        )
                         for try await progress in RangedDownloader(
                             transport: .live(session: .shared),
                             retryPolicy: .default
@@ -87,11 +92,11 @@ extension MediaRemoteStorageClient: DependencyKey {
                                 headers: SupabaseStorageHeaders.download(config: config),
                                 expectedSize: file.size
                             ),
-                            sink: downloadStore.makeDownloadSink(downloadTarget)
+                            sink: sink
                         ) {
                             continuation.yield(.progress(progress))
                         }
-                        continuation.yield(.finished(downloadTarget.localURL))
+                        continuation.yield(.finished(target.localURL))
                         continuation.finish()
                     } catch {
                         continuation.finish(throwing: error)

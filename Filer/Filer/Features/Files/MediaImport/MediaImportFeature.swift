@@ -29,7 +29,7 @@ struct MediaImportFeature {
     enum CancelID: String, Sendable { case load }
 
     @Dependency(\.mediaImport) var mediaImport
-    @Dependency(\.mediaImportStore) var mediaImportStore
+    @Dependency(\.mediaCache) var mediaCache
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
@@ -46,10 +46,10 @@ struct MediaImportFeature {
 
             case let .loaded(loadedMediaItems):
                 return .run { send in
-                    try await mediaImportStore.removeExpired()
+                    try await mediaCache.removeExpired()
                     var importedMediaItems: [ImportedMedia] = []
                     for loadedMedia in loadedMediaItems {
-                        try await importedMediaItems.append(mediaImportStore.store(loadedMedia))
+                        try await importedMediaItems.append(mediaCache.store(loadedMedia))
                     }
                     await send(.cached(importedMediaItems))
                 } catch: { error, send in

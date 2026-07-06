@@ -3,6 +3,8 @@ import ComposableArchitecture
 import PhotosUI
 import Testing
 
+private struct Unimplemented: Error {}
+
 @MainActor
 @Suite(.serialized)
 struct MediaImportFeatureTests {
@@ -20,7 +22,7 @@ struct MediaImportFeatureTests {
             MediaImportFeature()
         } withDependencies: {
             $0.mediaImport = Self.failingMediaImport()
-            $0.mediaImportStore = MediaImportStoreClient(
+            $0.mediaCache = Self.cache(
                 store: { media in
                     events.mutate { $0.append("store:\(media.metadata.id)") }
                     return cached
@@ -47,7 +49,7 @@ struct MediaImportFeatureTests {
             MediaImportFeature()
         } withDependencies: {
             $0.mediaImport = Self.failingMediaImport()
-            $0.mediaImportStore = Self.failingImportStore()
+            $0.mediaCache = Self.failingCache()
         }
 
         await store.send(.cached(loaded)) {
@@ -64,7 +66,7 @@ struct MediaImportFeatureTests {
             MediaImportFeature()
         } withDependencies: {
             $0.mediaImport = Self.failingMediaImport()
-            $0.mediaImportStore = MediaImportStoreClient(
+            $0.mediaCache = Self.cache(
                 store: { _ in throw CacheError() },
                 removeExpired: {}
             )
@@ -85,7 +87,7 @@ struct MediaImportFeatureTests {
             MediaImportFeature()
         } withDependencies: {
             $0.mediaImport = Self.failingMediaImport()
-            $0.mediaImportStore = MediaImportStoreClient(
+            $0.mediaCache = Self.cache(
                 store: { media in
                     storedIDs.mutate { $0.append(media.metadata.id) }
                     return Self.media(from: media)
@@ -107,7 +109,7 @@ struct MediaImportFeatureTests {
             MediaImportFeature()
         } withDependencies: {
             $0.mediaImport = Self.failingMediaImport()
-            $0.mediaImportStore = Self.failingImportStore()
+            $0.mediaCache = Self.failingCache()
         }
 
         await store.send(.failed("boom")) {
@@ -120,7 +122,7 @@ struct MediaImportFeatureTests {
             MediaImportFeature()
         } withDependencies: {
             $0.mediaImport = Self.failingMediaImport()
-            $0.mediaImportStore = Self.failingImportStore()
+            $0.mediaCache = Self.failingCache()
         }
         await store.send(.picked([]))
     }
@@ -164,10 +166,20 @@ struct MediaImportFeatureTests {
         MediaImportClient(load: { _ in throw MediaImportClient.Unimplemented() })
     }
 
-    private nonisolated static func failingImportStore() -> MediaImportStoreClient {
-        MediaImportStoreClient(
-            store: { _ in throw MediaImportStoreClient.Unimplemented() },
-            removeExpired: { throw MediaImportStoreClient.Unimplemented() }
+    private nonisolated static func cache(
+        store: @escaping MediaCacheClient.Store,
+        removeExpired: @escaping MediaCacheClient.RemoveExpired
+    ) -> MediaCacheClient {
+        var cache = MediaCacheClient.testValue
+        cache.store = store
+        cache.removeExpired = removeExpired
+        return cache
+    }
+
+    private nonisolated static func failingCache() -> MediaCacheClient {
+        cache(
+            store: { _ in throw Unimplemented() },
+            removeExpired: { throw Unimplemented() }
         )
     }
 }
