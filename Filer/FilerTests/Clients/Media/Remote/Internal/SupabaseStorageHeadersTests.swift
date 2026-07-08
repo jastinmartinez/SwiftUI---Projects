@@ -4,7 +4,7 @@ import Testing
 
 struct SupabaseStorageHeadersTests {
     @Test func authHeadersIncludeBearerAndApiKey() throws {
-        let config = try #require(makeConfig())
+        let config = makeConfig()
         let headers = SupabaseStorageHeaders.auth(config: config)
 
         #expect(headers["Authorization"] == "Bearer anon")
@@ -12,7 +12,7 @@ struct SupabaseStorageHeadersTests {
     }
 
     @Test func createHeadersCarryMetadataAndUpsertWithoutAuth() throws {
-        let config = try #require(makeConfig())
+        let config = makeConfig()
         let headers = SupabaseStorageHeaders.create(media: media, config: config)
         let metadata = try decodeUploadMetadata(headers)
 
@@ -28,7 +28,7 @@ struct SupabaseStorageHeadersTests {
     }
 
     @Test func downloadHeadersIncludeAuthOnly() throws {
-        let config = try #require(makeConfig())
+        let config = makeConfig()
         let headers = SupabaseStorageHeaders.download(config: config)
 
         #expect(headers == [
@@ -37,30 +37,11 @@ struct SupabaseStorageHeadersTests {
         ])
     }
 
-    private func makeConfig() -> SupabaseConfig? {
-        guard let projectURL = URL(string: "https://example.supabase.co") else {
-            return nil
-        }
-
-        return SupabaseConfig(
-            projectURL: projectURL,
-            anonKey: "anon",
-            bucket: "media"
-        )
+    private func makeConfig() -> SupabaseConfig {
+        .sample(projectURL: URL(string: "https://example.supabase.co")!, anonKey: "anon")
     }
 
-    private var media: ImportedMedia {
-        ImportedMedia(
-            metadata: MediaMetadata(
-                id: "abc.jpg",
-                name: "Photo",
-                contentType: "image/jpeg",
-                kind: .image,
-                size: 12
-            ),
-            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg")
-        )
-    }
+    private var media: ImportedMedia { .sample(name: "Photo", size: 12) }
 
     private func decodeUploadMetadata(_ headers: [String: String]) throws -> [String: String] {
         let rawMetadata = try #require(headers["Upload-Metadata"])

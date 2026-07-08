@@ -85,7 +85,7 @@ struct FileRowModelTests {
         let store = Store(initialState: FileFeature.State(item: item)) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(download: { _ in AsyncThrowingStream { $0.finish() } })
+            $0.mediaTransfer = .failing(download: { _ in AsyncThrowingStream { $0.finish() } })
         }
         let m = FileRowView.Model(store)
         m.onTap()
@@ -100,7 +100,7 @@ struct FileRowModelTests {
         let store = Store(initialState: FileFeature.State(item: item)) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.failingTransfer()
+            $0.mediaTransfer = .failing
         }
         let m = FileRowView.Model(store)
         m.trailingOperation?.perform()
@@ -123,7 +123,7 @@ struct FileRowModelTests {
 
     private func makeSUT(_ item: FileItem) -> FileRowView.Model {
         let store = withDependencies {
-            $0.mediaTransfer = Self.failingTransfer()
+            $0.mediaTransfer = .failing
         } operation: {
             Store(initialState: FileFeature.State(item: item)) {
                 FileFeature()
@@ -142,33 +142,6 @@ struct FileRowModelTests {
         size: Int64?,
         status: FileItem.Status = .remote
     ) -> FileItem {
-        FileItem(
-            metadata: MediaMetadata(
-                id: id,
-                name: name,
-                contentType: contentType,
-                kind: kind,
-                size: size
-            ),
-            status: status
-        )
-    }
-
-    private static func transfer(
-        download: @escaping MediaTransferClient.Download
-    ) -> MediaTransferClient {
-        MediaTransferClient(
-            list: { throw MediaTransferClient.Unimplemented("mediaTransfer.list") },
-            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.upload")) } },
-            download: download
-        )
-    }
-
-    private static func failingTransfer() -> MediaTransferClient {
-        MediaTransferClient(
-            list: { throw MediaTransferClient.Unimplemented("mediaTransfer.list") },
-            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.upload")) } },
-            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.download")) } }
-        )
+        .sample(id: id, name: name, contentType: contentType, kind: kind, size: size, status: status)
     }
 }

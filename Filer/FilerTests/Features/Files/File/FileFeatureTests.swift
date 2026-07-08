@@ -16,7 +16,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(
+            $0.mediaTransfer = .failing(
                 upload: { _ in
                     AsyncThrowingStream { cont in
                         cont.yield(.progress(p1))
@@ -56,7 +56,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(
+            $0.mediaTransfer = .failing(
                 upload: { _ in
                     AsyncThrowingStream { cont in
                         cont.yield(.progress(p0))
@@ -98,7 +98,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(
+            $0.mediaTransfer = .failing(
                 download: { _ in
                     AsyncThrowingStream { cont in
                         cont.yield(.finished(dest))
@@ -126,7 +126,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.failingTransfer()
+            $0.mediaTransfer = .failing
         }
 
         await store.send(.tapped)
@@ -143,7 +143,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(upload: { _ in AsyncThrowingStream { _ in } })
+            $0.mediaTransfer = .failing(upload: { _ in AsyncThrowingStream { _ in } })
         }
         store.exhaustivity = .off
 
@@ -166,7 +166,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(download: { _ in AsyncThrowingStream { _ in } })
+            $0.mediaTransfer = .failing(download: { _ in AsyncThrowingStream { _ in } })
         }
         store.exhaustivity = .off
 
@@ -190,7 +190,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.failingTransfer()
+            $0.mediaTransfer = .failing
         }
 
         await store.send(.uploadFinished(finished))
@@ -207,7 +207,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.failingTransfer()
+            $0.mediaTransfer = .failing
         }
 
         await store.send(.failed(error))
@@ -224,7 +224,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(
+            $0.mediaTransfer = .failing(
                 upload: { _ in
                     AsyncThrowingStream { cont in
                         cont.yield(.finished(finished))
@@ -253,7 +253,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(
+            $0.mediaTransfer = .failing(
                 download: { _ in
                     AsyncThrowingStream { cont in
                         cont.yield(.finished(dest))
@@ -282,7 +282,7 @@ struct FileFeatureTests {
         ) {
             FileFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.failingTransfer()
+            $0.mediaTransfer = .failing
         }
         let error = TransferError(operation: .download, message: "404")
         await store.send(.failed(error)) {
@@ -293,56 +293,10 @@ struct FileFeatureTests {
     // MARK: - Helpers
 
     private var sampleMedia: ImportedMedia {
-        ImportedMedia(
-            metadata: MediaMetadata(
-                id: "abc.jpg",
-                name: "photo.jpg",
-                contentType: "image/jpeg",
-                kind: .image,
-                size: 12_000_000
-            ),
-            fileURL: URL(fileURLWithPath: "/tmp/abc.jpg")
-        )
+        .sample(name: "photo.jpg", size: 12_000_000)
     }
 
     private func remoteItem(id: String = "remote.jpg", size: Int64? = 6_000_000) -> FileItem {
-        FileItem(
-            metadata: MediaMetadata(
-                id: id,
-                name: "remote.jpg",
-                contentType: "image/jpeg",
-                kind: .image,
-                size: size
-            ),
-            status: .remote
-        )
-    }
-
-    private static func transfer(
-        upload: @escaping MediaTransferClient.Upload
-    ) -> MediaTransferClient {
-        MediaTransferClient(
-            list: { throw MediaTransferClient.Unimplemented("mediaTransfer.list") },
-            upload: upload,
-            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.download")) } }
-        )
-    }
-
-    private static func transfer(
-        download: @escaping MediaTransferClient.Download
-    ) -> MediaTransferClient {
-        MediaTransferClient(
-            list: { throw MediaTransferClient.Unimplemented("mediaTransfer.list") },
-            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.upload")) } },
-            download: download
-        )
-    }
-
-    private static func failingTransfer() -> MediaTransferClient {
-        MediaTransferClient(
-            list: { throw MediaTransferClient.Unimplemented("mediaTransfer.list") },
-            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.upload")) } },
-            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.download")) } }
-        )
+        .sample(id: id, name: "remote.jpg", size: size)
     }
 }

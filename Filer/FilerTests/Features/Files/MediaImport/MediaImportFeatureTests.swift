@@ -3,8 +3,6 @@ import ComposableArchitecture
 import PhotosUI
 import Testing
 
-private struct Unimplemented: Error {}
-
 @MainActor
 @Suite(.serialized)
 struct MediaImportFeatureTests {
@@ -21,7 +19,7 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = Self.failingMediaImport()
+            $0.mediaImport = .failing
             $0.mediaCache = Self.cache(
                 store: { media in
                     events.mutate { $0.append("store:\(media.metadata.id)") }
@@ -48,8 +46,8 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = Self.failingMediaImport()
-            $0.mediaCache = Self.failingCache()
+            $0.mediaImport = .failing
+            $0.mediaCache = .failing
         }
 
         await store.send(.cached(loaded)) {
@@ -65,7 +63,7 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = Self.failingMediaImport()
+            $0.mediaImport = .failing
             $0.mediaCache = Self.cache(
                 store: { _ in throw CacheError() },
                 removeExpired: {}
@@ -86,7 +84,7 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = Self.failingMediaImport()
+            $0.mediaImport = .failing
             $0.mediaCache = Self.cache(
                 store: { media in
                     storedIDs.mutate { $0.append(media.metadata.id) }
@@ -108,8 +106,8 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State(phase: .loading)) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = Self.failingMediaImport()
-            $0.mediaCache = Self.failingCache()
+            $0.mediaImport = .failing
+            $0.mediaCache = .failing
         }
 
         await store.send(.failed("boom")) {
@@ -121,8 +119,8 @@ struct MediaImportFeatureTests {
         let store = TestStore(initialState: MediaImportFeature.State()) {
             MediaImportFeature()
         } withDependencies: {
-            $0.mediaImport = Self.failingMediaImport()
-            $0.mediaCache = Self.failingCache()
+            $0.mediaImport = .failing
+            $0.mediaCache = .failing
         }
         await store.send(.picked([]))
     }
@@ -130,29 +128,11 @@ struct MediaImportFeatureTests {
     // MARK: - Helpers
 
     private nonisolated static func loadedMedia(_ id: String) -> MediaImportClient.LoadedMedia {
-        MediaImportClient.LoadedMedia(
-            metadata: MediaMetadata(
-                id: id,
-                name: id,
-                contentType: "image/jpeg",
-                kind: .image,
-                size: nil
-            ),
-            data: Data([1, 2, 3])
-        )
+        MediaImportClient.LoadedMedia(metadata: .sample(id: id, name: id, size: nil), data: Data([1, 2, 3]))
     }
 
     private nonisolated static func media(_ id: String) -> ImportedMedia {
-        ImportedMedia(
-            metadata: MediaMetadata(
-                id: id,
-                name: id,
-                contentType: "image/jpeg",
-                kind: .image,
-                size: 1000
-            ),
-            fileURL: URL(fileURLWithPath: "/tmp/\(id)")
-        )
+        .sample(id: id, name: id, size: 1000)
     }
 
     private nonisolated static func media(from loadedMedia: MediaImportClient.LoadedMedia) -> ImportedMedia {
@@ -160,10 +140,6 @@ struct MediaImportFeatureTests {
             metadata: loadedMedia.metadata.with(size: Int64(loadedMedia.data.count)),
             fileURL: URL(fileURLWithPath: "/tmp/\(loadedMedia.metadata.id)")
         )
-    }
-
-    private nonisolated static func failingMediaImport() -> MediaImportClient {
-        MediaImportClient(load: { _ in throw MediaImportClient.Unimplemented() })
     }
 
     private nonisolated static func cache(
@@ -174,12 +150,5 @@ struct MediaImportFeatureTests {
         cache.store = store
         cache.removeExpired = removeExpired
         return cache
-    }
-
-    private nonisolated static func failingCache() -> MediaCacheClient {
-        cache(
-            store: { _ in throw Unimplemented() },
-            removeExpired: { throw Unimplemented() }
-        )
     }
 }

@@ -4,13 +4,7 @@ import Testing
 
 struct FileItemTests {
     @Test func withStatusReplacesOnlyStatus() {
-        let metadata = MediaMetadata(
-            id: "a.jpg",
-            name: "A",
-            contentType: "image/jpeg",
-            kind: .image,
-            size: 100
-        )
+        let metadata = MediaMetadata.sample(id: "a.jpg", name: "A", size: 100)
         let item = FileItem(remote: metadata)
         let next = item.with(status: .local(URL(fileURLWithPath: "/tmp/a.jpg")))
 
@@ -33,16 +27,7 @@ struct FileItemTests {
     }
 
     @Test func importingInitStartsUploading() {
-        let media = ImportedMedia(
-            metadata: MediaMetadata(
-                id: "u.mp4",
-                name: "Clip",
-                contentType: "video/mp4",
-                kind: .video,
-                size: 12_000_000
-            ),
-            fileURL: URL(fileURLWithPath: "/tmp/u.mp4")
-        )
+        let media = ImportedMedia.sample(id: "u.mp4", name: "Clip", contentType: "video/mp4", kind: .video, size: 12_000_000)
         let item = FileItem(importing: media)
 
         #expect(item.id == "u.mp4")
@@ -54,16 +39,7 @@ struct FileItemTests {
 
     @Test func uploadedInitLandsLocal() {
         let url = URL(fileURLWithPath: "/tmp/u.mp4")
-        let media = ImportedMedia(
-            metadata: MediaMetadata(
-                id: "u.mp4",
-                name: "Clip",
-                contentType: "video/mp4",
-                kind: .video,
-                size: 12_000_000
-            ),
-            fileURL: url
-        )
+        let media = ImportedMedia.sample(id: "u.mp4", name: "Clip", contentType: "video/mp4", kind: .video, size: 12_000_000, fileURL: url)
         let item = FileItem(uploaded: media)
 
         #expect(item.status == .local(url))
@@ -71,13 +47,7 @@ struct FileItemTests {
     }
 
     @Test func remoteInitStartsRemote() {
-        let metadata = MediaMetadata(
-            id: "remote.jpg",
-            name: "Remote",
-            contentType: "image/jpeg",
-            kind: .image,
-            size: nil
-        )
+        let metadata = MediaMetadata.sample(id: "remote.jpg", name: "Remote", size: nil)
         let item = FileItem(remote: metadata)
 
         #expect(item.metadata == metadata)

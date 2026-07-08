@@ -10,7 +10,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: FilesFeature.State()) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(list: { files })
+            $0.mediaTransfer = .failing(list: { files })
         }
 
         await store.send(.onAppear)
@@ -28,7 +28,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: FilesFeature.State()) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.transfer(list: { throw ListError() })
+            $0.mediaTransfer = .failing(list: { throw ListError() })
         }
 
         await store.send(.onAppear)
@@ -43,7 +43,7 @@ struct FilesFeatureTests {
             FilesFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.mediaTransfer = Self.transfer(upload: { _ in AsyncThrowingStream { $0.finish() } })
+            $0.mediaTransfer = .failing(upload: { _ in AsyncThrowingStream { $0.finish() } })
         }
         store.exhaustivity = .off
 
@@ -61,7 +61,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: state) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.failingTransfer()
+            $0.mediaTransfer = .failing
         }
         store.exhaustivity = .off
 
@@ -82,7 +82,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: state) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.failingTransfer()
+            $0.mediaTransfer = .failing
         }
         store.exhaustivity = .off
 
@@ -98,7 +98,7 @@ struct FilesFeatureTests {
         let store = TestStore(initialState: state) {
             FilesFeature()
         } withDependencies: {
-            $0.mediaTransfer = Self.failingTransfer()
+            $0.mediaTransfer = .failing
         }
 
         await store.send(.previewDismissed) {
@@ -109,56 +109,10 @@ struct FilesFeatureTests {
     // MARK: - Helpers
 
     private func remoteFile(_ id: String) -> FileItem {
-        FileItem(
-            metadata: MediaMetadata(
-                id: id,
-                name: id,
-                contentType: "image/jpeg",
-                kind: .image,
-                size: 100
-            ),
-            status: .remote
-        )
+        .sample(id: id, name: id, size: 100)
     }
 
     private func media(_ id: String) -> ImportedMedia {
-        ImportedMedia(
-            metadata: MediaMetadata(
-                id: id,
-                name: id,
-                contentType: "image/jpeg",
-                kind: .image,
-                size: 1000
-            ),
-            fileURL: URL(fileURLWithPath: "/tmp/\(id)")
-        )
-    }
-
-    private static func transfer(
-        list: @escaping MediaTransferClient.List
-    ) -> MediaTransferClient {
-        MediaTransferClient(
-            list: list,
-            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.upload")) } },
-            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.download")) } }
-        )
-    }
-
-    private static func transfer(
-        upload: @escaping MediaTransferClient.Upload
-    ) -> MediaTransferClient {
-        MediaTransferClient(
-            list: { throw MediaTransferClient.Unimplemented("mediaTransfer.list") },
-            upload: upload,
-            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.download")) } }
-        )
-    }
-
-    private static func failingTransfer() -> MediaTransferClient {
-        MediaTransferClient(
-            list: { throw MediaTransferClient.Unimplemented("mediaTransfer.list") },
-            upload: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.upload")) } },
-            download: { _ in AsyncThrowingStream { $0.finish(throwing: MediaTransferClient.Unimplemented("mediaTransfer.download")) } }
-        )
+        .sample(id: id, name: id, size: 1000)
     }
 }
