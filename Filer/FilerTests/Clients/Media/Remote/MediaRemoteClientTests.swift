@@ -7,8 +7,8 @@ struct MediaRemoteClientTests {
     // uploadRequest is a pure mapping over SupabaseUpload.request; assert it carries
     // the same endpoint and header split. list/downloadRequest hit the Supabase SDK
     // and are intentionally not unit-tested here.
-    @Test func uploadRequestMirrorsSupabaseUploadRequest() {
-        let config = makeConfig()
+    @Test func uploadRequestMirrorsSupabaseUploadRequest() throws {
+        let config = try makeConfig()
         let media = makeMedia()
         let client = MediaRemoteClient.live(config: config)
 
@@ -20,8 +20,8 @@ struct MediaRemoteClientTests {
         #expect(request.createHeaders == expected.createHeaders)
     }
 
-    @Test func uploadRequestEndpointIsResumableUploadPath() {
-        let client = MediaRemoteClient.live(config: makeConfig())
+    @Test func uploadRequestEndpointIsResumableUploadPath() throws {
+        let client = try MediaRemoteClient.live(config: makeConfig())
         let request = client.uploadRequest(makeMedia())
         #expect(request.endpoint.absoluteString == "https://xyz.supabase.co/storage/v1/upload/resumable")
     }
@@ -29,7 +29,7 @@ struct MediaRemoteClientTests {
     // downloadRequest's URL comes from the SDK's offline getPublicURL, and its headers
     // are the pure SupabaseStorageHeaders.download(config:) — both assertable without network.
     @Test func downloadRequestCarriesDownloadHeadersAndPublicURL() throws {
-        let config = makeConfig()
+        let config = try makeConfig()
         let client = MediaRemoteClient.live(config: config)
 
         let request = try client.downloadRequest(makeFile())
@@ -40,7 +40,7 @@ struct MediaRemoteClientTests {
 
     // MARK: - Helpers
 
-    private func makeConfig() -> SupabaseConfig { .sample() }
+    private func makeConfig() throws -> SupabaseConfig { try .sample() }
     private func makeMedia() -> ImportedMedia { .sample() }
     private func makeFile() -> FileItem { .sample() }
 }

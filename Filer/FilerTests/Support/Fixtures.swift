@@ -1,5 +1,6 @@
 @testable import Filer
 import Foundation
+import Testing
 
 // Shared test-data builders. Each factory ships ready-to-use defaults so a test
 // arranges only the field it actually asserts on — everything else stays out of
@@ -60,10 +61,10 @@ extension FileItem {
 
 extension SupabaseConfig {
     static func sample(
-        projectURL: URL = URL(string: "https://xyz.supabase.co")!,
+        projectURL: String = "https://xyz.supabase.co",
         anonKey: String = "anon-123",
         bucket: String = "media"
-    ) -> SupabaseConfig {
-        SupabaseConfig(projectURL: projectURL, anonKey: anonKey, bucket: bucket)
+    ) throws -> SupabaseConfig {
+        try SupabaseConfig(projectURL: #require(URL(string: projectURL)), anonKey: anonKey, bucket: bucket)
     }
 }

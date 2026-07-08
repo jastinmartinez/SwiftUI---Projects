@@ -19,14 +19,14 @@ import Testing
         #expect(MediaImportClient.fileExtension(forContentType: "application/x-nonsense") == nil)
     }
 
-    @Test func objectID_combinesUUIDAndExtension() {
-        let id = UUID(uuidString: "00000000-0000-0000-0000-0000000000AB")!
+    @Test func objectID_combinesUUIDAndExtension() throws {
+        let id = try #require(UUID(uuidString: "00000000-0000-0000-0000-0000000000AB"))
         let object = MediaImportClient.objectID(id, contentType: "image/jpeg")
         #expect(object == "00000000-0000-0000-0000-0000000000AB.jpeg")
     }
 
-    @Test func objectID_unknownTypeReturnsNil() {
-        let id = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+    @Test func objectID_unknownTypeReturnsNil() throws {
+        let id = try #require(UUID(uuidString: "11111111-1111-1111-1111-111111111111"))
         #expect(MediaImportClient.objectID(id, contentType: "application/x-nonsense") == nil)
     }
 }

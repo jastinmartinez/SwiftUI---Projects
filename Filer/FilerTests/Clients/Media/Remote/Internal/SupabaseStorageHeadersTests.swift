@@ -4,7 +4,7 @@ import Testing
 
 struct SupabaseStorageHeadersTests {
     @Test func authHeadersIncludeBearerAndApiKey() throws {
-        let config = makeConfig()
+        let config = try makeConfig()
         let headers = SupabaseStorageHeaders.auth(config: config)
 
         #expect(headers["Authorization"] == "Bearer anon")
@@ -12,7 +12,7 @@ struct SupabaseStorageHeadersTests {
     }
 
     @Test func createHeadersCarryMetadataAndUpsertWithoutAuth() throws {
-        let config = makeConfig()
+        let config = try makeConfig()
         let headers = SupabaseStorageHeaders.create(media: media, config: config)
         let metadata = try decodeUploadMetadata(headers)
 
@@ -28,7 +28,7 @@ struct SupabaseStorageHeadersTests {
     }
 
     @Test func downloadHeadersIncludeAuthOnly() throws {
-        let config = makeConfig()
+        let config = try makeConfig()
         let headers = SupabaseStorageHeaders.download(config: config)
 
         #expect(headers == [
@@ -37,8 +37,8 @@ struct SupabaseStorageHeadersTests {
         ])
     }
 
-    private func makeConfig() -> SupabaseConfig {
-        .sample(projectURL: URL(string: "https://example.supabase.co")!, anonKey: "anon")
+    private func makeConfig() throws -> SupabaseConfig {
+        try .sample(projectURL: "https://example.supabase.co", anonKey: "anon")
     }
 
     private var media: ImportedMedia { .sample(name: "Photo", size: 12) }

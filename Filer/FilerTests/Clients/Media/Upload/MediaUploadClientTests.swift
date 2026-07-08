@@ -9,7 +9,7 @@ import Testing
         let transport = HTTPTransport(
             data: { request in
                 captured.mutate { $0.append(request) }
-                return .created(location: uploadURL().absoluteString)
+                return try .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 captured.mutate { $0.append(request) }
@@ -39,7 +39,7 @@ import Testing
         let transport = HTTPTransport(
             data: { request in
                 captured.mutate { $0.append(request) }
-                return .created(location: uploadURL().absoluteString)
+                return try .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 captured.mutate { $0.append(request) }
@@ -73,7 +73,7 @@ import Testing
         let transport = HTTPTransport(
             data: { request in
                 captured.mutate { $0.append(request) }
-                return .created(location: uploadURL().absoluteString)
+                return try .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 captured.mutate { $0.append(request) }
@@ -103,7 +103,7 @@ import Testing
                 if request.httpMethod == "HEAD" {
                     return .head(uploadOffset: chunk)
                 }
-                return .created(location: uploadURL().absoluteString)
+                return try .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 let attempt = patchAttempts.value
@@ -129,7 +129,7 @@ import Testing
         let size = MediaRemoteTransferPolicy.default.chunkSize
         let transport = HTTPTransport(
             data: { _ in
-                .created(location: uploadURL().absoluteString)
+                try .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
                 .accepted(uploadOffset: size)
@@ -160,7 +160,7 @@ import Testing
                     // Server actually received the first chunk; the ack was lost.
                     .head(uploadOffset: chunk)
                 default: // POST create
-                    .created(location: uploadURL().absoluteString)
+                    try .created(location: uploadURL().absoluteString)
                 }
             },
             upload: { request, _ in
@@ -202,7 +202,7 @@ import Testing
                 if request.httpMethod == "HEAD" {
                     return .head(uploadOffset: serverOffset.value)
                 }
-                return .created(location: uploadURL().absoluteString)
+                return try .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
@@ -239,7 +239,7 @@ import Testing
                     heads.mutate { $0 += 1 }
                     throw URLError(.notConnectedToInternet) // still offline
                 }
-                return .created(location: uploadURL().absoluteString)
+                return try .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
                 throw URLError(.networkConnectionLost)
@@ -261,7 +261,7 @@ import Testing
         let size = MediaRemoteTransferPolicy.default.chunkSize
         let transport = HTTPTransport(
             data: { _ in
-                .created(location: uploadURL().absoluteString)
+                try .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
                 throw URLError(.networkConnectionLost) // force entry into the reconnect wait
@@ -301,7 +301,7 @@ import Testing
         let offsets = LockedBox<[String]>([])
         let transport = HTTPTransport(
             data: { _ in
-                .created(location: uploadURL().absoluteString)
+                try .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
@@ -337,7 +337,7 @@ import Testing
             data: { request in
                 switch request.httpMethod {
                 case "POST":
-                    return .created(location: uploadURL().absoluteString)
+                    return try .created(location: uploadURL().absoluteString)
                 case "HEAD":
                     heads.mutate { $0 += 1 }
                     return .head(uploadOffset: chunk)
@@ -382,7 +382,7 @@ import Testing
         let transport = HTTPTransport(
             data: { _ in
                 posts.mutate { $0 += 1 }
-                return .created(location: uploadURL().absoluteString)
+                return try .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 if conflicted.value == false {
@@ -416,7 +416,7 @@ import Testing
                 if request.httpMethod == "HEAD" {
                     heads.mutate { $0 += 1 }
                 }
-                return .created(location: uploadURL().absoluteString)
+                return try .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
                 .accepted(uploadOffset: size + 1)
@@ -437,7 +437,7 @@ import Testing
         let uploads = LockedBox<Int>(0)
         let transport = HTTPTransport(
             data: { _ in
-                .created(location: uploadURL().absoluteString)
+                try .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
                 uploads.mutate { $0 += 1 }
@@ -470,12 +470,12 @@ import Testing
         )
     }
 
-    private func endpoint() -> URL {
-        URL(string: "https://example.supabase.co/storage/v1/upload/resumable")!
+    private func endpoint() throws -> URL {
+        try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable"))
     }
 
-    private func uploadURL() -> URL {
-        URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1")!
+    private func uploadURL() throws -> URL {
+        try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1"))
     }
 
     private func source(bytes size: Int) -> MediaUploadClient.UploadSource {
