@@ -9,19 +9,11 @@ import Testing
         let transport = HTTPTransport(
             data: { request in
                 captured.mutate { $0.append(request) }
-                return try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                return .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 captured.mutate { $0.append(request) }
-                return HTTPResponse(
-                    statusCode: 204,
-                    headers: ["Upload-Offset": "\(size)"],
-                    body: Data()
-                )
+                return .accepted(uploadOffset: size)
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -47,19 +39,11 @@ import Testing
         let transport = HTTPTransport(
             data: { request in
                 captured.mutate { $0.append(request) }
-                return try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                return .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 captured.mutate { $0.append(request) }
-                return HTTPResponse(
-                    statusCode: 204,
-                    headers: ["Upload-Offset": "\(size)"],
-                    body: Data()
-                )
+                return .accepted(uploadOffset: size)
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -89,15 +73,11 @@ import Testing
         let transport = HTTPTransport(
             data: { request in
                 captured.mutate { $0.append(request) }
-                return try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                return .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 captured.mutate { $0.append(request) }
-                return HTTPResponse(statusCode: 204, headers: ["Upload-Offset": "\(size)"], body: Data())
+                return .accepted(uploadOffset: size)
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -121,16 +101,16 @@ import Testing
         let transport = HTTPTransport(
             data: { request in
                 if request.httpMethod == "HEAD" {
-                    return HTTPResponse(statusCode: 200, headers: ["Upload-Offset": "\(chunk)"], body: Data())
+                    return .head(uploadOffset: chunk)
                 }
-                return try HTTPResponse(statusCode: 201, headers: ["Location": uploadURL().absoluteString], body: Data())
+                return .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 let attempt = patchAttempts.value
                 patchAttempts.mutate { $0 += 1 }
                 let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
                 if attempt == 0 { throw URLError(.networkConnectionLost) }
-                return HTTPResponse(statusCode: 204, headers: ["Upload-Offset": "\(offset + min(chunk, size - offset))"], body: Data())
+                return .accepted(uploadOffset: offset + min(chunk, size - offset))
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -149,10 +129,10 @@ import Testing
         let size = MediaRemoteTransferPolicy.default.chunkSize
         let transport = HTTPTransport(
             data: { _ in
-                try HTTPResponse(statusCode: 201, headers: ["Location": uploadURL().absoluteString], body: Data())
+                .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
-                HTTPResponse(statusCode: 204, headers: ["Upload-Offset": "\(size)"], body: Data())
+                .accepted(uploadOffset: size)
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -178,13 +158,9 @@ import Testing
                 switch request.httpMethod {
                 case "HEAD":
                     // Server actually received the first chunk; the ack was lost.
-                    HTTPResponse(statusCode: 200, headers: ["Upload-Offset": "\(chunk)"], body: Data())
+                    .head(uploadOffset: chunk)
                 default: // POST create
-                    try HTTPResponse(
-                        statusCode: 201,
-                        headers: ["Location": uploadURL().absoluteString],
-                        body: Data()
-                    )
+                    .created(location: uploadURL().absoluteString)
                 }
             },
             upload: { request, _ in
@@ -195,11 +171,7 @@ import Testing
                     throw URLError(.networkConnectionLost) // connectivity dropped mid-PATCH
                 }
                 patchOffsets.mutate { $0.append(offset) }
-                return HTTPResponse(
-                    statusCode: 204,
-                    headers: ["Upload-Offset": "\(offset + min(chunk, size - offset))"],
-                    body: Data()
-                )
+                return .accepted(uploadOffset: offset + min(chunk, size - offset))
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -228,13 +200,9 @@ import Testing
         let transport = HTTPTransport(
             data: { request in
                 if request.httpMethod == "HEAD" {
-                    return HTTPResponse(statusCode: 200, headers: ["Upload-Offset": "\(serverOffset.value)"], body: Data())
+                    return .head(uploadOffset: serverOffset.value)
                 }
-                return try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                return .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
@@ -244,7 +212,7 @@ import Testing
                 }
                 let next = offset + min(chunk, size - offset)
                 serverOffset.mutate { $0 = next }
-                return HTTPResponse(statusCode: 204, headers: ["Upload-Offset": "\(next)"], body: Data())
+                return .accepted(uploadOffset: next)
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -271,11 +239,7 @@ import Testing
                     heads.mutate { $0 += 1 }
                     throw URLError(.notConnectedToInternet) // still offline
                 }
-                return try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                return .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
                 throw URLError(.networkConnectionLost)
@@ -297,11 +261,7 @@ import Testing
         let size = MediaRemoteTransferPolicy.default.chunkSize
         let transport = HTTPTransport(
             data: { _ in
-                try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
                 throw URLError(.networkConnectionLost) // force entry into the reconnect wait
@@ -341,21 +301,13 @@ import Testing
         let offsets = LockedBox<[String]>([])
         let transport = HTTPTransport(
             data: { _ in
-                try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
                 offsets.mutate { $0.append("\(offset)") }
                 let sent = offset + min(chunk, size - offset)
-                return HTTPResponse(
-                    statusCode: 204,
-                    headers: ["Upload-Offset": "\(sent)"],
-                    body: Data()
-                )
+                return .accepted(uploadOffset: sent)
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -385,18 +337,10 @@ import Testing
             data: { request in
                 switch request.httpMethod {
                 case "POST":
-                    return try HTTPResponse(
-                        statusCode: 201,
-                        headers: ["Location": uploadURL().absoluteString],
-                        body: Data()
-                    )
+                    return .created(location: uploadURL().absoluteString)
                 case "HEAD":
                     heads.mutate { $0 += 1 }
-                    return HTTPResponse(
-                        statusCode: 200,
-                        headers: ["Upload-Offset": "\(chunk)"],
-                        body: Data()
-                    )
+                    return .head(uploadOffset: chunk)
                 default:
                     throw URLError(.badServerResponse)
                 }
@@ -407,11 +351,7 @@ import Testing
                     didFail.mutate { $0 = true }
                     throw URLError(.networkConnectionLost)
                 }
-                return HTTPResponse(
-                    statusCode: 204,
-                    headers: ["Upload-Offset": "\(offset + min(chunk, size - offset))"],
-                    body: Data()
-                )
+                return .accepted(uploadOffset: offset + min(chunk, size - offset))
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -442,11 +382,7 @@ import Testing
         let transport = HTTPTransport(
             data: { _ in
                 posts.mutate { $0 += 1 }
-                return try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                return .created(location: uploadURL().absoluteString)
             },
             upload: { request, _ in
                 if conflicted.value == false {
@@ -454,11 +390,7 @@ import Testing
                     return HTTPResponse(statusCode: 409, headers: [:], body: Data())
                 }
                 let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
-                return HTTPResponse(
-                    statusCode: 204,
-                    headers: ["Upload-Offset": "\(offset + size)"],
-                    body: Data()
-                )
+                return .accepted(uploadOffset: offset + size)
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -484,18 +416,10 @@ import Testing
                 if request.httpMethod == "HEAD" {
                     heads.mutate { $0 += 1 }
                 }
-                return try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                return .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
-                HTTPResponse(
-                    statusCode: 204,
-                    headers: ["Upload-Offset": "\(size + 1)"],
-                    body: Data()
-                )
+                .accepted(uploadOffset: size + 1)
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -513,15 +437,11 @@ import Testing
         let uploads = LockedBox<Int>(0)
         let transport = HTTPTransport(
             data: { _ in
-                try HTTPResponse(
-                    statusCode: 201,
-                    headers: ["Location": uploadURL().absoluteString],
-                    body: Data()
-                )
+                .created(location: uploadURL().absoluteString)
             },
             upload: { _, _ in
                 uploads.mutate { $0 += 1 }
-                return HTTPResponse(statusCode: 204, headers: [:], body: Data())
+                return .noContent
             }
         )
         let uploader = makeUploader(transport: transport)
@@ -550,12 +470,12 @@ import Testing
         )
     }
 
-    private func endpoint() throws -> URL {
-        try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable"))
+    private func endpoint() -> URL {
+        URL(string: "https://example.supabase.co/storage/v1/upload/resumable")!
     }
 
-    private func uploadURL() throws -> URL {
-        try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1"))
+    private func uploadURL() -> URL {
+        URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1")!
     }
 
     private func source(bytes size: Int) -> MediaUploadClient.UploadSource {

@@ -1,6 +1,7 @@
-@testable import Filer
 import Foundation
 import Testing
+
+@testable import Filer
 
 @Suite(.serialized) struct MediaDownloadClientTests {
     @Test func rangedPathProbesAndWritesContiguously() async throws {
@@ -34,7 +35,7 @@ import Testing
                     body: Self.slice(body, start: bounds.start, count: count)
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
         let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
@@ -51,13 +52,19 @@ import Testing
         }
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
-        #expect(ranges == [
-            "bytes=0-0",
-            "bytes=0-\(chunk - 1)",
-            "bytes=\(chunk)-\(2 * chunk - 1)",
-            "bytes=\(2 * chunk)-\(total - 1)",
-        ])
-        #expect(requests.value.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer token" })
+        #expect(
+            ranges == [
+                "bytes=0-0",
+                "bytes=0-\(chunk - 1)",
+                "bytes=\(chunk)-\(2 * chunk - 1)",
+                "bytes=\(2 * chunk)-\(total - 1)",
+            ]
+        )
+        #expect(
+            requests.value.allSatisfy {
+                $0.value(forHTTPHeaderField: "Authorization") == "Bearer token"
+            }
+        )
         #expect(sink.data == body)
 
         let last = try #require(progress.last)
@@ -104,7 +111,7 @@ import Testing
                     body: Self.slice(body, start: bounds.start, count: count)
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
         let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
@@ -114,12 +121,14 @@ import Testing
         ) {}
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
-        #expect(ranges == [
-            "bytes=0-0",
-            "bytes=0-\(chunk - 1)",
-            "bytes=\(chunk)-\(2 * chunk - 1)",
-            "bytes=\(chunk)-\(2 * chunk - 1)",
-        ])
+        #expect(
+            ranges == [
+                "bytes=0-0",
+                "bytes=0-\(chunk - 1)",
+                "bytes=\(chunk)-\(2 * chunk - 1)",
+                "bytes=\(chunk)-\(2 * chunk - 1)",
+            ]
+        )
         #expect(sink.data == body)
     }
 
@@ -140,10 +149,13 @@ import Testing
                     body: Data([0xFA])
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
-        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: Self.policy(chunkSize: total))
+        let downloader = MediaDownloadClient.live(
+            transport: transport,
+            retryPolicy: Self.policy(chunkSize: total)
+        )
         await #expect(throws: MediaDownloadClient.Failure.invalidResumeState) {
             for try await _ in downloader.run(
                 MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
@@ -166,7 +178,7 @@ import Testing
                     body: Data([0x01, 0x02, 0x03])
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
         let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
@@ -191,7 +203,7 @@ import Testing
                     body: Data("not found".utf8)
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
         let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
@@ -219,7 +231,7 @@ import Testing
                     body: Data([0x01, 0x02, 0x03])
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
         let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
@@ -247,7 +259,7 @@ import Testing
                     body: Data([0x01, 0x02, 0x03])
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
         let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
@@ -288,7 +300,7 @@ import Testing
                     body: Data(repeating: 0xEF, count: total - 1)
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
         let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
@@ -300,10 +312,12 @@ import Testing
         }
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
-        #expect(ranges == [
-            "bytes=0-0",
-            "bytes=0-\(total - 1)",
-        ])
+        #expect(
+            ranges == [
+                "bytes=0-0",
+                "bytes=0-\(total - 1)",
+            ]
+        )
     }
 
     @Test func unknownProbeTotalUsesExpectedSizeInsteadOfProbeBodyLength() async throws {
@@ -335,20 +349,25 @@ import Testing
                     body: Self.slice(body, start: bounds.start, count: count)
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
-        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: Self.policy(chunkSize: total))
+        let downloader = MediaDownloadClient.live(
+            transport: transport,
+            retryPolicy: Self.policy(chunkSize: total)
+        )
         for try await _ in downloader.run(
             MediaDownloadClient.Request(url: url, headers: [:], expectedSize: Int64(total)),
             sink.sink
         ) {}
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
-        #expect(ranges == [
-            "bytes=0-0",
-            "bytes=0-\(total - 1)",
-        ])
+        #expect(
+            ranges == [
+                "bytes=0-0",
+                "bytes=0-\(total - 1)",
+            ]
+        )
         #expect(sink.data.count == total)
         #expect(sink.data == body)
     }
@@ -379,7 +398,7 @@ import Testing
                     body: Data(repeating: 0xF0, count: total)
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
         let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: .default)
@@ -391,10 +410,12 @@ import Testing
         }
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
-        #expect(ranges == [
-            "bytes=0-0",
-            "bytes=0-\(total - 1)",
-        ])
+        #expect(
+            ranges == [
+                "bytes=0-0",
+                "bytes=0-\(total - 1)",
+            ]
+        )
         #expect(sink.data.isEmpty)
     }
 
@@ -424,10 +445,13 @@ import Testing
                     body: Data(repeating: 0xF1, count: total)
                 )
             },
-            upload: { _, _ in HTTPResponse(statusCode: 204, headers: [:], body: Data()) }
+            upload: { _, _ in .noContent }
         )
 
-        let downloader = MediaDownloadClient.live(transport: transport, retryPolicy: Self.policy(chunkSize: total))
+        let downloader = MediaDownloadClient.live(
+            transport: transport,
+            retryPolicy: Self.policy(chunkSize: total)
+        )
         await #expect(throws: MediaDownloadClient.Failure.invalidRangeResponse) {
             for try await _ in downloader.run(
                 MediaDownloadClient.Request(url: url, headers: [:], expectedSize: nil),
@@ -436,10 +460,12 @@ import Testing
         }
 
         let ranges = requests.value.map { $0.value(forHTTPHeaderField: "Range") }
-        #expect(ranges == [
-            "bytes=0-0",
-            "bytes=0-\(total - 1)",
-        ])
+        #expect(
+            ranges == [
+                "bytes=0-0",
+                "bytes=0-\(total - 1)",
+            ]
+        )
         #expect(sink.data.isEmpty)
     }
 
@@ -464,7 +490,9 @@ import Testing
     // MARK: - Helpers
 
     private func source() throws -> URL {
-        try #require(URL(string: "https://example.supabase.co/object/authenticated/bucket/file.bin"))
+        try #require(
+            URL(string: "https://example.supabase.co/object/authenticated/bucket/file.bin")
+        )
     }
 
     private static func policy(chunkSize: Int) -> MediaRemoteTransferPolicy {
