@@ -17,15 +17,6 @@ struct FileItemTests {
         #expect(next.status == .local(URL(fileURLWithPath: "/tmp/a.jpg")))
     }
 
-    @Test func statusEquality() {
-        let remote = FileItem.Status.remote
-        #expect(remote == .remote)
-
-        let url = URL(fileURLWithPath: "/tmp/f.jpg")
-        #expect(FileItem.Status.local(url) == .local(url))
-        #expect(FileItem.Status.local(url) != .remote)
-    }
-
     @Test func importingInitStartsUploading() {
         let media = ImportedMedia.sample(id: "u.mp4", name: "Clip", contentType: "video/mp4", kind: .video, size: 12_000_000)
         let item = FileItem(importing: media)

@@ -36,6 +36,4 @@ import Testing
         let object = FileObject(name: "mystery.bin", metadata: ["size": .double(10)])
         #expect(FileItem(object) == nil)
     }
-
-    // MARK: - Helpers
 }

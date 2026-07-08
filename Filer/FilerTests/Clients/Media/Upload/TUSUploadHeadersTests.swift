@@ -27,16 +27,16 @@ struct TUSUploadHeadersTests {
         #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/offset+octet-stream")
     }
 
-    @Test func patchRequestCarriesProviderHeaders() throws {
+    @Test func patchRequestCarriesProviderHeadersAndProtocolWinsCollisions() throws {
         let request = try TUSUploadHeaders.patchRequest(
             uploadURL: uploadURL(),
             offset: 6,
-            headers: ["apikey": "anon-key", "Authorization": "Bearer anon-key"]
+            headers: ["apikey": "anon-key", "Content-Type": "text/plain"]
         )
 
+        // Provider headers pass through untouched...
         #expect(request.value(forHTTPHeaderField: "apikey") == "anon-key")
-        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer anon-key")
-        // Protocol headers still win over any collision from the provider set.
+        // ...but a provider value that collides with a protocol header loses to the protocol.
         #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/offset+octet-stream")
     }
 

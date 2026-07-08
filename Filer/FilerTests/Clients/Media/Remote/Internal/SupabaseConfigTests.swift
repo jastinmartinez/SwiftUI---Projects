@@ -4,19 +4,6 @@ import Testing
 
 @Suite("SupabaseConfig")
 struct SupabaseConfigTests {
-    // A Bundle stub backed by a plain dictionary, so the test never touches the real Info.plist.
-    final class StubBundle: Bundle, @unchecked Sendable {
-        let values: [String: Any]
-        init(values: [String: Any]) {
-            self.values = values
-            super.init()
-        }
-
-        @available(*, unavailable)
-        required init?(coder _: NSCoder) { fatalError("unused") }
-        override func object(forInfoDictionaryKey key: String) -> Any? { values[key] }
-    }
-
     @Test("requiredString returns the value when present")
     func requiredStringReadsValue() {
         let bundle = StubBundle(values: ["SUPABASE_BUCKET": "media"])
@@ -38,5 +25,20 @@ struct SupabaseConfigTests {
             anonKey: "anon-123",
             bucket: "media"
         ))
+    }
+
+    // MARK: - Helpers
+
+    /// A Bundle stub backed by a plain dictionary, so the test never touches the real Info.plist.
+    final class StubBundle: Bundle, @unchecked Sendable {
+        let values: [String: Any]
+        init(values: [String: Any]) {
+            self.values = values
+            super.init()
+        }
+
+        @available(*, unavailable)
+        required init?(coder _: NSCoder) { fatalError("unused") }
+        override func object(forInfoDictionaryKey key: String) -> Any? { values[key] }
     }
 }

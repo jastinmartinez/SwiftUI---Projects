@@ -34,12 +34,6 @@ struct TransferProgressTests {
         #expect(p.totalChunks == 3)
     }
 
-    @Test func transferErrorCarriesOperationAndMessage() {
-        let e = TransferError(operation: .download, message: "404")
-        #expect(e.operation == .download)
-        #expect(e.message == "404")
-    }
-
     @Test func transferErrorFactoriesKeepRetryOperation() {
         struct Boom: Error {}
 

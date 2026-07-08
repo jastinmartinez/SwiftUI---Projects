@@ -3,15 +3,6 @@ import Foundation
 import Testing
 
 @Suite struct MediaCachePolicyTests {
-    private func stored(_ key: String, modifiedAt: Date?) -> MediaCacheClient.StoredContent {
-        MediaCacheClient.StoredContent(
-            key: key,
-            size: 0,
-            modifiedAt: modifiedAt,
-            localURL: URL(fileURLWithPath: "/imports/\(key)")
-        )
-    }
-
     @Test func expiredKeysReturnsItemsOlderThanTimeToLive() {
         let now = Date(timeIntervalSince1970: 1_000_000)
         let policy = MediaCachePolicy(timeToLive: 100)
@@ -28,5 +19,16 @@ import Testing
         let policy = MediaCachePolicy(timeToLive: 0)
 
         #expect(policy.expiredKeys(in: [stored("unknown.jpeg", modifiedAt: nil)], now: now).isEmpty)
+    }
+
+    // MARK: - Helpers
+
+    private func stored(_ key: String, modifiedAt: Date?) -> MediaCacheClient.StoredContent {
+        MediaCacheClient.StoredContent(
+            key: key,
+            size: 0,
+            modifiedAt: modifiedAt,
+            localURL: URL(fileURLWithPath: "/imports/\(key)")
+        )
     }
 }

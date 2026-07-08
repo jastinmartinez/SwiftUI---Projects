@@ -3,12 +3,6 @@ import Foundation
 import Testing
 
 @Suite struct MediaCacheStoreTests {
-    private func makeStore() -> (MediaCacheStore, URL) {
-        let root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appending(path: "MediaCacheStoreTests-\(UUID().uuidString)")
-        return (MediaCacheStore(), root)
-    }
-
     @Test func readReturnsBytesAtOffset() async throws {
         let (store, root) = makeStore()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -36,15 +30,17 @@ import Testing
         #expect(await store.size(at: root.appending(path: "nope.jpeg")) == nil)
     }
 
-    @Test func rangedWriteUpdatesFileLength() async throws {
+    @Test func rangedWriteLandsBytesAtOffsetAndGrowsFile() async throws {
         let (store, root) = makeStore()
         defer { try? FileManager.default.removeItem(at: root) }
         let url = root.appending(path: "clip.mov")
         try await store.makeFileIfNeeded(at: url)
 
         try await store.write(Data([1, 2, 3, 4]), to: url, at: 0)
+        try await store.write(Data([5, 6]), to: url, at: 4)
 
-        #expect(await store.size(at: url) == 4)
+        #expect(await store.size(at: url) == 6)
+        #expect(try await store.read(at: url, offset: 4, length: 2) == Data([5, 6]))
     }
 
     @Test func contentsListsWrittenFiles() async throws {
@@ -57,5 +53,13 @@ import Testing
         let names = try await store.contents(of: dir).map(\.lastPathComponent).sorted()
 
         #expect(names == ["a.jpeg", "b.jpeg"])
+    }
+
+    // MARK: - Helpers
+
+    private func makeStore() -> (MediaCacheStore, URL) {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appending(path: "MediaCacheStoreTests-\(UUID().uuidString)")
+        return (MediaCacheStore(), root)
     }
 }

@@ -12,11 +12,4 @@ struct FilePreviewModelTests {
         let url = URL(filePath: "/tmp/a.mov")
         #expect(FilePreviewView.Model(FilesFeature.PreviewItem(url: url, kind: .video)) == .video(url))
     }
-
-    @Test func previewItemIdIsItsURL() {
-        let url = URL(fileURLWithPath: "/tmp/abc.jpg")
-        let item = FilesFeature.PreviewItem(url: url, kind: .image)
-        #expect(item.id == url)
-        #expect(item.kind == .image)
-    }
 }

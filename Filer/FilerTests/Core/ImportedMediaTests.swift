@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 struct ImportedMediaTests {
-    @Test func importedMediaIsIdentifiedByObjectPath() {
+    @Test func accessorsReadFromMetadata() {
         let media = ImportedMedia(
             metadata: MediaMetadata(
                 id: "abc.jpg",
