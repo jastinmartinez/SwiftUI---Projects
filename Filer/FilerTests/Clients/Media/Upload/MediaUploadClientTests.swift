@@ -1,0 +1,489 @@
+@testable import Filer
+import Foundation
+import Testing
+
+@Suite(.serialized) struct MediaUploadClientTests {
+    @Test func postCreationSendsTusHeaders() async throws {
+        let size = 2 * 1024 * 1024
+        let captured = LockedBox<[URLRequest]>([])
+        let transport = HTTPTransport(
+            data: { request in
+                captured.mutate { $0.append(request) }
+                return try .created(location: uploadURL().absoluteString)
+            },
+            upload: { request, _ in
+                captured.mutate { $0.append(request) }
+                return .accepted(uploadOffset: size)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+
+        for try await _ in try uploader.run(
+            MediaUploadClient.Request(
+                endpoint: endpoint(),
+                commonHeaders: [:],
+                createHeaders: ["Upload-Metadata": "name dGVzdA=="]
+            ),
+            source(bytes: size)
+        ) {}
+
+        let post = try #require(captured.value.first { $0.httpMethod == "POST" })
+        #expect(post.value(forHTTPHeaderField: "Tus-Resumable") == "1.0.0")
+        #expect(post.value(forHTTPHeaderField: "Upload-Length") == "\(size)")
+        #expect(post.value(forHTTPHeaderField: "Upload-Metadata") == "name dGVzdA==")
+    }
+
+    @Test func patchCarriesProviderHeaders() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let captured = LockedBox<[URLRequest]>([])
+        let transport = HTTPTransport(
+            data: { request in
+                captured.mutate { $0.append(request) }
+                return try .created(location: uploadURL().absoluteString)
+            },
+            upload: { request, _ in
+                captured.mutate { $0.append(request) }
+                return .accepted(uploadOffset: size)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+
+        for try await _ in try uploader.run(
+            MediaUploadClient.Request(
+                endpoint: endpoint(),
+                commonHeaders: ["apikey": "anon-key", "Authorization": "Bearer anon-key"],
+                createHeaders: ["x-upsert": "true"]
+            ),
+            source(bytes: size)
+        ) {}
+
+        let post = try #require(captured.value.first { $0.httpMethod == "POST" })
+        let patch = try #require(captured.value.first { $0.httpMethod == "PATCH" })
+        // Common headers ride every request...
+        #expect(patch.value(forHTTPHeaderField: "apikey") == "anon-key")
+        #expect(patch.value(forHTTPHeaderField: "Authorization") == "Bearer anon-key")
+        // ...but create-only headers stay on the POST.
+        #expect(post.value(forHTTPHeaderField: "x-upsert") == "true")
+        #expect(patch.value(forHTTPHeaderField: "x-upsert") == nil)
+    }
+
+    @Test func requestsCarryPolicyTimeout() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let captured = LockedBox<[URLRequest]>([])
+        let transport = HTTPTransport(
+            data: { request in
+                captured.mutate { $0.append(request) }
+                return try .created(location: uploadURL().absoluteString)
+            },
+            upload: { request, _ in
+                captured.mutate { $0.append(request) }
+                return .accepted(uploadOffset: size)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+
+        for try await _ in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
+        ) {}
+
+        let expected = MediaRemoteTransferPolicy.default.requestTimeout
+        #expect(captured.value.allSatisfy { $0.timeoutInterval == expected })
+        #expect(captured.value.contains { $0.httpMethod == "POST" })
+        #expect(captured.value.contains { $0.httpMethod == "PATCH" })
+    }
+
+    @Test func emitsWaitingForConnectivityOncePerStall() async throws {
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
+        let size = 2 * chunk
+        let patchAttempts = LockedBox<Int>(0)
+        let waits = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { request in
+                if request.httpMethod == "HEAD" {
+                    return .head(uploadOffset: chunk)
+                }
+                return try .created(location: uploadURL().absoluteString)
+            },
+            upload: { request, _ in
+                let attempt = patchAttempts.value
+                patchAttempts.mutate { $0 += 1 }
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                if attempt == 0 { throw URLError(.networkConnectionLost) }
+                return .accepted(uploadOffset: offset + min(chunk, size - offset))
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
+        ) {
+            if case .waitingForConnectivity = event { waits.mutate { $0 += 1 } }
+        }
+
+        #expect(waits.value == 1)
+    }
+
+    @Test func emitsNoWaitingForConnectivityOnCleanUpload() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let transport = HTTPTransport(
+            data: { _ in
+                try .created(location: uploadURL().absoluteString)
+            },
+            upload: { _, _ in
+                .accepted(uploadOffset: size)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        var waits = 0
+
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
+        ) {
+            if case .waitingForConnectivity = event { waits += 1 }
+        }
+
+        #expect(waits == 0)
+    }
+
+    @Test func transientDropResumesFromServerOffsetWithoutRestart() async throws {
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
+        let size = 2 * chunk
+        let patchOffsets = LockedBox<[Int]>([])
+        let patchAttempts = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { request in
+                switch request.httpMethod {
+                case "HEAD":
+                    // Server actually received the first chunk; the ack was lost.
+                    .head(uploadOffset: chunk)
+                default: // POST create
+                    try .created(location: uploadURL().absoluteString)
+                }
+            },
+            upload: { request, _ in
+                let attempt = patchAttempts.value
+                patchAttempts.mutate { $0 += 1 }
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                if attempt == 0 {
+                    throw URLError(.networkConnectionLost) // connectivity dropped mid-PATCH
+                }
+                patchOffsets.mutate { $0.append(offset) }
+                return .accepted(uploadOffset: offset + min(chunk, size - offset))
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        var last: TransferProgress?
+
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
+        ) {
+            guard case let .progress(progress) = event else { continue }
+            last = progress
+        }
+
+        // Resumed from the server's offset — the successful PATCH started at `chunk`, not 0.
+        #expect(patchOffsets.value == [chunk])
+        #expect(last?.bytesTransferred == Int64(size))
+    }
+
+    @Test func multipleSeparatedDropsResetTheBudget() async throws {
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
+        // Four chunks => four separate drops, exceeding maxResumes (3). A global
+        // budget would fail the fourth; a per-stall budget recovers all four.
+        let size = 4 * chunk
+        let serverOffset = LockedBox<Int>(0)
+        let droppedOffsets = LockedBox<Set<Int>>([])
+        let transport = HTTPTransport(
+            data: { request in
+                if request.httpMethod == "HEAD" {
+                    return .head(uploadOffset: serverOffset.value)
+                }
+                return try .created(location: uploadURL().absoluteString)
+            },
+            upload: { request, _ in
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                if !droppedOffsets.value.contains(offset) {
+                    droppedOffsets.mutate { $0.insert(offset) } // drop each chunk once
+                    throw URLError(.networkConnectionLost)
+                }
+                let next = offset + min(chunk, size - offset)
+                serverOffset.mutate { $0 = next }
+                return .accepted(uploadOffset: next)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        var last: TransferProgress?
+
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
+        ) {
+            guard case let .progress(progress) = event else { continue }
+            last = progress
+        }
+
+        #expect(droppedOffsets.value.count == 4) // every chunk dropped once and recovered
+        #expect(last?.bytesTransferred == Int64(size))
+    }
+
+    @Test func sustainedOutageFailsAfterBudget() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let heads = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { request in
+                if request.httpMethod == "HEAD" {
+                    heads.mutate { $0 += 1 }
+                    throw URLError(.notConnectedToInternet) // still offline
+                }
+                return try .created(location: uploadURL().absoluteString)
+            },
+            upload: { _, _ in
+                throw URLError(.networkConnectionLost)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+
+        await #expect(throws: (any Error).self) {
+            for try await _ in try uploader.run(
+                MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                source(bytes: size)
+            ) {}
+        }
+        // Reconnect budget is bounded (maxResumes attempts).
+        #expect(heads.value == MediaRemoteTransferPolicy.default.maxResumes)
+    }
+
+    @Test func cancellationStopsAPendingReconnect() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let transport = HTTPTransport(
+            data: { _ in
+                try .created(location: uploadURL().absoluteString)
+            },
+            upload: { _, _ in
+                throw URLError(.networkConnectionLost) // force entry into the reconnect wait
+            }
+        )
+        // Offline forever + a blocking sleeper => the uploader parks in waitForConnectivity.
+        let uploader = MediaUploadClient.live(
+            transport: transport,
+            retryPolicy: .default,
+            connectivity: .offlineForever,
+            sleeper: .blocking
+        )
+        let task = Task { () -> Bool in
+            do {
+                for try await _ in try uploader.run(
+                    MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                    source(bytes: size)
+                ) {}
+                return Task.isCancelled
+            } catch is CancellationError {
+                return true
+            } catch {
+                return Task.isCancelled
+            }
+        }
+
+        task.cancel()
+        // The upload can only finish here via cancellation (PATCH always fails and
+        // connectivity never returns), so returning at all proves the parked
+        // reconnect was unblocked promptly rather than hanging on the blocking sleeper.
+        #expect(await task.value)
+    }
+
+    @Test func patchOffsetSequenceAcrossChunkBoundaries() async throws {
+        let size = 14 * 1024 * 1024
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
+        let offsets = LockedBox<[String]>([])
+        let transport = HTTPTransport(
+            data: { _ in
+                try .created(location: uploadURL().absoluteString)
+            },
+            upload: { request, _ in
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                offsets.mutate { $0.append("\(offset)") }
+                let sent = offset + min(chunk, size - offset)
+                return .accepted(uploadOffset: sent)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        var last: TransferProgress?
+
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
+        ) {
+            guard case let .progress(progress) = event else { continue }
+            last = progress
+        }
+
+        #expect(offsets.value == ["0", "\(chunk)", "\(2 * chunk)"])
+        #expect(last?.bytesTransferred == Int64(size))
+        #expect(last?.totalBytes == Int64(size))
+        #expect(last?.completedChunks == 3)
+        #expect(last?.totalChunks == 3)
+    }
+
+    @Test func resumesAfterInjectedFailureViaHead() async throws {
+        let size = 12 * 1024 * 1024
+        let chunk = MediaRemoteTransferPolicy.default.chunkSize
+        let didFail = LockedBox<Bool>(false)
+        let heads = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { request in
+                switch request.httpMethod {
+                case "POST":
+                    return try .created(location: uploadURL().absoluteString)
+                case "HEAD":
+                    heads.mutate { $0 += 1 }
+                    return .head(uploadOffset: chunk)
+                default:
+                    throw URLError(.badServerResponse)
+                }
+            },
+            upload: { request, _ in
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                if offset == chunk, didFail.value == false {
+                    didFail.mutate { $0 = true }
+                    throw URLError(.networkConnectionLost)
+                }
+                return .accepted(uploadOffset: offset + min(chunk, size - offset))
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        var progresses: [TransferProgress] = []
+
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
+        ) {
+            guard case let .progress(progress) = event else { continue }
+            progresses.append(progress)
+        }
+
+        #expect(heads.value == 1)
+        for (previous, next) in zip(progresses, progresses.dropFirst()) {
+            #expect(next.bytesTransferred >= previous.bytesTransferred)
+            #expect(next.completedChunks >= previous.completedChunks)
+        }
+        let last = try #require(progresses.last)
+        #expect(last.completedChunks == last.totalChunks)
+        #expect(last.bytesTransferred == Int64(size))
+    }
+
+    @Test func recreatesUploadOn409() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let posts = LockedBox<Int>(0)
+        let conflicted = LockedBox<Bool>(false)
+        let transport = HTTPTransport(
+            data: { _ in
+                posts.mutate { $0 += 1 }
+                return try .created(location: uploadURL().absoluteString)
+            },
+            upload: { request, _ in
+                if conflicted.value == false {
+                    conflicted.mutate { $0 = true }
+                    return HTTPResponse(statusCode: 409, headers: [:], body: Data())
+                }
+                let offset = try #require(request.value(forHTTPHeaderField: "Upload-Offset").flatMap(Int.init))
+                return .accepted(uploadOffset: offset + size)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        var last: TransferProgress?
+
+        for try await event in try uploader.run(
+            MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+            source(bytes: size)
+        ) {
+            guard case let .progress(progress) = event else { continue }
+            last = progress
+        }
+
+        #expect(posts.value == 2)
+        #expect(last?.bytesTransferred == Int64(size))
+    }
+
+    @Test func invalidPatchOffsetFailsWithoutRetrying() async throws {
+        let size = MediaRemoteTransferPolicy.default.chunkSize
+        let heads = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { request in
+                if request.httpMethod == "HEAD" {
+                    heads.mutate { $0 += 1 }
+                }
+                return try .created(location: uploadURL().absoluteString)
+            },
+            upload: { _, _ in
+                .accepted(uploadOffset: size + 1)
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+
+        await #expect(throws: MediaUploadClient.Failure.invalidPatchResponse) {
+            for try await _ in try uploader.run(
+                MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                source(bytes: size)
+            ) {}
+        }
+        #expect(heads.value == 0)
+    }
+
+    @Test func shortReadFailsBeforeUploadingChunk() async throws {
+        let uploads = LockedBox<Int>(0)
+        let transport = HTTPTransport(
+            data: { _ in
+                try .created(location: uploadURL().absoluteString)
+            },
+            upload: { _, _ in
+                uploads.mutate { $0 += 1 }
+                return .noContent
+            }
+        )
+        let uploader = makeUploader(transport: transport)
+        let shortSource = MediaUploadClient.UploadSource(
+            size: 4,
+            read: { _, _ in Data([1, 2]) }
+        )
+
+        await #expect(throws: MediaUploadClient.Failure.invalidUploadSource) {
+            for try await _ in try uploader.run(
+                MediaUploadClient.Request(endpoint: endpoint(), commonHeaders: [:], createHeaders: [:]),
+                shortSource
+            ) {}
+        }
+        #expect(uploads.value == 0)
+    }
+
+    // MARK: - Helpers
+
+    private func makeUploader(transport: HTTPTransport) -> MediaUploadClient {
+        MediaUploadClient.live(
+            transport: transport,
+            retryPolicy: .default,
+            connectivity: .alwaysOnline,
+            sleeper: .immediate
+        )
+    }
+
+    private func endpoint() throws -> URL {
+        try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable"))
+    }
+
+    private func uploadURL() throws -> URL {
+        try #require(URL(string: "https://example.supabase.co/storage/v1/upload/resumable/upload-1"))
+    }
+
+    private func source(bytes size: Int) -> MediaUploadClient.UploadSource {
+        MediaUploadClient.UploadSource(
+            size: size,
+            read: { offset, length in
+                Data(repeating: UInt8(offset % 255), count: length)
+            }
+        )
+    }
+}

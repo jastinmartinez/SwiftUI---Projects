@@ -1,0 +1,45 @@
+# Swift / Xcode
+*.o
+*.a
+*.dylib
+*.dSYM/
+*.xccheckout
+*.moved-aside
+*.gcno
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+xcuserdata/
+.DS_Store
+DerivedData/
+build/
+*.ipa
+*.xcarchive
+Pods/
+.build/
+Package.resolved
+*.resolved
+
+# Xcode project user settings
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcworkspace/contents.xcworkspacedata
+timeline.xctimeline
+
+# SwiftPM
+.swiftpm/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Claude / AI tooling
+.claude/
+CLAUDE.md
+.superpowers/
+
+# Superpowers design docs stay local
+docs/superpowers/
