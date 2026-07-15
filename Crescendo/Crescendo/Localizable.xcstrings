@@ -10,6 +10,86 @@
           }
         }
       }
+    },
+    "common.retry" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
+    },
+    "music_access.availability_unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Music playback availability could not be determined."
+          }
+        }
+      }
+    },
+    "music_access.subscription_required" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Music playback requires an eligible subscription."
+          }
+        }
+      }
+    },
+    "search.empty_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search for songs"
+          }
+        }
+      }
+    },
+    "search.prompt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search Apple Music"
+          }
+        }
+      }
+    },
+    "search.searching" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching"
+          }
+        }
+      }
+    },
+    "search.unavailable_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Music unavailable"
+          }
+        }
+      }
+    },
+    "search.video_still_available" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can still open the Video Player."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

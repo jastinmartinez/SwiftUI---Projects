@@ -6,7 +6,7 @@ struct AppView: View {
     let store: StoreOf<AppFeature>
 
     var body: some View {
-        Text(Locs.App.title)
+        SearchView(store: store.scope(state: \.search, action: \.search))
             .task { await store.send(.task).finish() }
     }
 }
