@@ -10,10 +10,10 @@ struct AppleMusicAccessStateTests {
         (.notDetermined, .notDetermined),
     ])
     func initializesAuthorizationState(
-        input: AppleMusicAuthorizationState,
+        appleMusicAuthorizationState: AppleMusicAuthorizationState,
         expected: MusicAuthorizationState
     ) {
-        #expect(MusicAuthorizationState(input) == expected)
+        #expect(MusicAuthorizationState(appleMusicAuthorizationState) == expected)
     }
 
     @Test(arguments: [
