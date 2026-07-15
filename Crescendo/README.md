@@ -14,6 +14,7 @@ Crescendo is an iOS 18 application that keeps music-provider details behind app-
 
 - Give every top-level production type its own file named after that type.
 - Keep nested ownership types, such as a feature's `State`, `Action`, and `Delegate`, with their owner.
+- Put static factory values in same-file extensions so stored type declarations remain focused.
 - Document top-level production types and non-obvious invariants with DocC comments.
 - Keep provider SDK types inside their provider adapter.
 - Route every user-facing string through `Locs` and `Localizable.xcstrings`.

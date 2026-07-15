@@ -6,7 +6,9 @@ struct MusicPlaybackSnapshot: Equatable, Sendable {
     var status: MusicTransportStatus
     var currentTime: TimeInterval
     var error: MusicProviderError?
+}
 
+extension MusicPlaybackSnapshot {
     /// A snapshot with no selected item, elapsed time, or failure.
     static let idle = Self(
         currentItem: nil,
