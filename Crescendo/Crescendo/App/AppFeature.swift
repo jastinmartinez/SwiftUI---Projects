@@ -7,6 +7,7 @@ struct AppFeature {
     struct State: Equatable {
         let registeredProviders: [MusicProviderDescriptor]
         var activeProviderID: MusicProviderID?
+        var search: SearchFeature.State
 
         var requiresProviderSelection: Bool {
             registeredProviders.count > 1 && activeProviderID == nil
@@ -14,19 +15,25 @@ struct AppFeature {
 
         init(
             registeredProviders: [MusicProviderDescriptor],
-            activeProviderID: MusicProviderID?
+            activeProviderID: MusicProviderID?,
+            search: SearchFeature.State
         ) {
             self.registeredProviders = registeredProviders
             self.activeProviderID = activeProviderID
+            self.search = search
         }
     }
 
     enum Action: Equatable {
         case task
         case providerSelected(MusicProviderID)
+        case search(SearchFeature.Action)
     }
 
     var body: some ReducerOf<Self> {
+        Scope(state: \.search, action: \.search) {
+            SearchFeature()
+        }
         Reduce { state, action in
             switch action {
             case .task:
@@ -44,6 +51,9 @@ struct AppFeature {
                     return .none
                 }
                 state.activeProviderID = providerID
+                return .none
+
+            case .search:
                 return .none
             }
         }

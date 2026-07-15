@@ -57,7 +57,8 @@ struct AppFeatureTests {
         TestStore(
             initialState: AppFeature.State(
                 registeredProviders: registeredProviders,
-                activeProviderID: activeProviderID
+                activeProviderID: activeProviderID,
+                search: makeSearchState()
             )
         ) {
             AppFeature()
@@ -73,6 +74,14 @@ struct AppFeatureTests {
                 supportsSeeking: true,
                 supportsQueueReplacement: true
             )
+        )
+    }
+
+    private func makeSearchState() -> SearchFeature.State {
+        SearchFeature.State(
+            query: "",
+            status: .idle,
+            playbackEligibility: .unknown
         )
     }
 }

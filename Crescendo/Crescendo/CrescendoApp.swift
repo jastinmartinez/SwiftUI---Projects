@@ -7,7 +7,12 @@ struct CrescendoApp: App {
     let store = Store(
         initialState: AppFeature.State(
             registeredProviders: [.appleMusic],
-            activeProviderID: nil
+            activeProviderID: nil,
+            search: SearchFeature.State(
+                query: "",
+                status: .idle,
+                playbackEligibility: .unknown
+            )
         )
     ) {
         AppFeature()
