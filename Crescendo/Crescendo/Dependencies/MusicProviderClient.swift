@@ -21,7 +21,7 @@ struct MusicProviderClient: Sendable {
 }
 
 extension MusicProviderClient: DependencyKey {
-    static let liveValue = MusicProviderClient()
+    static let liveValue = MusicProviderClient.appleMusic
     static let testValue = MusicProviderClient()
 }
 
@@ -30,4 +30,34 @@ extension DependencyValues {
         get { self[MusicProviderClient.self] }
         set { self[MusicProviderClient.self] = newValue }
     }
+}
+
+extension MusicProviderClient {
+    /// Connects provider-neutral operations to one session-scoped Apple Music provider.
+    static let appleMusic: MusicProviderClient = {
+        let appleMusicProvider = AppleMusicProvider()
+
+        return MusicProviderClient(
+            currentAccess: {
+                await appleMusicProvider.currentAccess()
+            },
+            requestAccess: {
+                await appleMusicProvider.requestAccess()
+            },
+            search: { query, limit in
+                try await appleMusicProvider.search(query, limit: limit)
+            },
+            play: { _ in
+                throw MusicProviderError.unavailable
+            },
+            pause: {},
+            stop: {},
+            seek: { _ in },
+            playbackSnapshots: {
+                AsyncStream { continuation in
+                    continuation.finish()
+                }
+            }
+        )
+    }()
 }
