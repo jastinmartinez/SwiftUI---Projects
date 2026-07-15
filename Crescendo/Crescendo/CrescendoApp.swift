@@ -20,7 +20,7 @@ struct CrescendoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppView(store: store)
+            AppFeatureView(store: store)
         }
     }
 }

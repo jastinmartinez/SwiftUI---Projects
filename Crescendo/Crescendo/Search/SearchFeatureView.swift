@@ -2,7 +2,7 @@ import ComposableArchitecture
 import SwiftUI
 
 /// Connects the search feature store to stateless search components.
-struct SearchView: View {
+struct SearchFeatureView: View {
     let store: StoreOf<SearchFeature>
 
     var body: some View {
