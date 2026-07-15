@@ -10,17 +10,6 @@ Crescendo is an iOS 18 application that keeps music-provider details behind app-
 - `Crescendo/Providers/` contains provider implementations and SDK mapping.
 - `CrescendoTests/` mirrors production responsibilities with focused tests.
 
-## Conventions
-
-- Give every top-level production type its own file named after that type.
-- Keep nested ownership types, such as a feature's `State`, `Action`, and `Delegate`, with their owner.
-- Put static factory values in same-file extensions so stored type declarations remain focused.
-- Document top-level production types and non-obvious invariants with DocC comments.
-- Keep provider SDK types inside their provider adapter.
-- Route every user-facing string through `Locs` and `Localizable.xcstrings`.
-- Format Swift with four spaces using the checked-in `.swift-format` configuration.
-- Prefer small store-connected containers composed from reusable stateless views.
-
 ## Project generation
 
 The checked-in Xcode project is generated from `project.yml` with XcodeGen 2.45.4 or newer:
