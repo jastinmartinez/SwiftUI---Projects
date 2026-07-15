@@ -21,12 +21,21 @@ targets:
     platform: iOS
     sources:
       - path: Crescendo
+    entitlements:
+      path: Crescendo/Crescendo.entitlements
+      properties:
+        com.apple.developer.music-user-token: true
+    attributes:
+      SystemCapabilities:
+        com.apple.Music:
+          enabled: 1
     dependencies:
       - package: ComposableArchitecture
         product: ComposableArchitecture
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSAppleMusicUsageDescription: Crescendo uses Apple Music access to search and play catalog songs in this learning demo.
         PRODUCT_BUNDLE_IDENTIFIER: com.jastin.Crescendo
 
   CrescendoTests:
