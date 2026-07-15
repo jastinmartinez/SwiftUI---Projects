@@ -2,32 +2,28 @@ import SwiftUI
 
 /// Renders mutually exclusive search results and recovery states.
 struct SearchResultsView: View {
-    let status: SearchFeature.SearchStatus
-    let query: String
-    let onRetry: () -> Void
+    let model: Model
 
     var body: some View {
-        switch status {
+        switch model.content {
         case .idle:
             ContentUnavailableView(Locs.Search.emptyTitle, systemImage: "music.note")
         case .loading:
             ProgressView(Locs.Search.searching)
-        case let .loaded(songs):
-            if songs.isEmpty {
-                ContentUnavailableView.search(text: query)
-            } else {
-                ForEach(songs) { song in
-                    SongRow(song: song)
-                }
+        case let .empty(query):
+            ContentUnavailableView.search(text: query)
+        case let .results(rows):
+            ForEach(rows) { row in
+                SongRowView(model: row)
             }
-        case .denied, .restricted:
+        case .unavailable:
             ContentUnavailableView(
                 Locs.Search.unavailableTitle,
                 systemImage: "music.note.slash",
                 description: Text(Locs.Search.videoStillAvailable)
             )
         case .failed:
-            Button(Locs.Common.retry, action: onRetry)
+            Button(Locs.Common.retry, action: model.onRetry)
         }
     }
 }

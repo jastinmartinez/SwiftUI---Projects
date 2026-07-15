@@ -6,6 +6,9 @@ struct SearchView: View {
     let store: StoreOf<SearchFeature>
 
     var body: some View {
+        let resultsModel = SearchResultsView.Model(store)
+        let eligibilityModel = PlaybackEligibilityNoticeView.Model(store)
+
         NavigationStack {
             List {
                 TextField(
@@ -18,24 +21,10 @@ struct SearchView: View {
                 .submitLabel(.search)
                 .onSubmit { store.send(.submitButtonTapped) }
 
-                SearchResultsView(
-                    status: store.status,
-                    query: store.query,
-                    onRetry: { store.send(.retryButtonTapped) }
-                )
-                PlaybackEligibilityNotice(
-                    eligibility: store.playbackEligibility,
-                    showsUnknown: store.status.hasResults
-                )
+                SearchResultsView(model: resultsModel)
+                PlaybackEligibilityNoticeView(model: eligibilityModel)
             }
             .navigationTitle(Locs.App.title)
         }
-    }
-}
-
-private extension SearchFeature.SearchStatus {
-    var hasResults: Bool {
-        guard case let .loaded(songs) = self else { return false }
-        return !songs.isEmpty
     }
 }
