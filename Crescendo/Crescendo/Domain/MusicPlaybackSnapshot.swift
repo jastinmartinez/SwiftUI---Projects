@@ -1,20 +1,13 @@
 import Foundation
 
-enum MusicTransportStatus: Equatable, Sendable {
-    case idle
-    case loading
-    case playing
-    case paused
-    case stopped
-    case failed
-}
-
+/// Captures provider-neutral playback state observed by application features.
 struct MusicPlaybackSnapshot: Equatable, Sendable {
     var currentItem: SongSummary?
     var status: MusicTransportStatus
     var currentTime: TimeInterval
     var error: MusicProviderError?
 
+    /// A snapshot with no selected item, elapsed time, or failure.
     static let idle = Self(
         currentItem: nil,
         status: .idle,

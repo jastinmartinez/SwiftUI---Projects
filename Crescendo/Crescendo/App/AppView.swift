@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 
+/// The root store-connected view of Crescendo.
 struct AppView: View {
     let store: StoreOf<AppFeature>
 

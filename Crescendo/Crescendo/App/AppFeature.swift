@@ -1,5 +1,6 @@
 import ComposableArchitecture
 
+/// The root reducer responsible for application-wide state and coordination.
 @Reducer
 struct AppFeature {
     @ObservableState
