@@ -13,7 +13,9 @@ struct AppleMusicAccessStateTests {
         appleMusicAuthorizationState: AppleMusicAuthorizationState,
         expected: MusicAuthorizationState
     ) {
-        #expect(MusicAuthorizationState(appleMusicAuthorizationState) == expected)
+        let authorizationState = MusicAuthorizationState(appleMusicAuthorizationState)
+
+        #expect(authorizationState == expected)
     }
 
     @Test(arguments: [
@@ -24,10 +26,10 @@ struct AppleMusicAccessStateTests {
         canPlayCatalogContent: Bool,
         expected: CatalogPlaybackEligibility
     ) {
-        #expect(
-            CatalogPlaybackEligibility(
-                canPlayCatalogContent: canPlayCatalogContent
-            ) == expected
+        let playbackEligibility = CatalogPlaybackEligibility(
+            canPlayCatalogContent: canPlayCatalogContent
         )
+
+        #expect(playbackEligibility == expected)
     }
 }

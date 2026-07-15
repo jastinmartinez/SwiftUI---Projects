@@ -43,11 +43,10 @@ struct AppFeature {
                 return .none
 
             case .providerSelected(let providerID):
-                guard
-                    state.registeredProviders.contains(
-                        where: { $0.id == providerID }
-                    )
-                else {
+                let isRegisteredProvider = state.registeredProviders.contains(
+                    where: { $0.id == providerID }
+                )
+                guard isRegisteredProvider else {
                     return .none
                 }
                 state.activeProviderID = providerID
