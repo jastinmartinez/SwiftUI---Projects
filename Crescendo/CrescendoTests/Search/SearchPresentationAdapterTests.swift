@@ -74,7 +74,7 @@ struct SearchPresentationAdapterTests {
 
     private func makeStore(
         query: String,
-        status: SearchFeature.SearchStatus,
+        status: SearchFeature.Status,
         playbackEligibility: CatalogPlaybackEligibility
     ) -> StoreOf<SearchFeature> {
         Store(

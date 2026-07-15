@@ -10,7 +10,7 @@ struct SearchFeature {
         case searching
     }
 
-    enum SearchStatus: Equatable {
+    enum Status: Equatable {
         case idle
         case loading(requestID: UUID, stage: LoadingStage)
         case loaded([SongSummary])
@@ -22,7 +22,7 @@ struct SearchFeature {
     @ObservableState
     struct State: Equatable {
         var query: String
-        var status: SearchStatus
+        var status: Status
         var playbackEligibility: CatalogPlaybackEligibility
     }
 
@@ -64,7 +64,7 @@ struct SearchFeature {
                 .cancellable(id: CancelID.search, cancelInFlight: true)
 
             case .currentAccessResponse(let requestID, let access):
-                let expectedStatus: SearchStatus = .loading(
+                let expectedStatus: Status = .loading(
                     requestID: requestID,
                     stage: .checkingAccess
                 )
@@ -80,7 +80,7 @@ struct SearchFeature {
                 .cancellable(id: CancelID.search)
 
             case .requestAccessResponse(let requestID, let access):
-                let expectedStatus: SearchStatus = .loading(
+                let expectedStatus: Status = .loading(
                     requestID: requestID,
                     stage: .requestingAccess
                 )
@@ -118,7 +118,7 @@ struct SearchFeature {
                 return .none
 
             case .searchResponse(let requestID, .success(let songs)):
-                let expectedStatus: SearchStatus = .loading(
+                let expectedStatus: Status = .loading(
                     requestID: requestID,
                     stage: .searching
                 )
@@ -127,7 +127,7 @@ struct SearchFeature {
                 return .none
 
             case .searchResponse(let requestID, .failure):
-                let expectedStatus: SearchStatus = .loading(
+                let expectedStatus: Status = .loading(
                     requestID: requestID,
                     stage: .searching
                 )

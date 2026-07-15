@@ -182,7 +182,7 @@ struct SearchFeatureTests {
 
     private func makeState(
         query: String,
-        status: SearchFeature.SearchStatus,
+        status: SearchFeature.Status,
         playbackEligibility: CatalogPlaybackEligibility
     ) -> SearchFeature.State {
         SearchFeature.State(
