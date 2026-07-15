@@ -1,3 +1,4 @@
+import Foundation
 import MusicKit
 
 /// Owns Apple Music authorization, catalog access, mapping, and session caches.
@@ -27,12 +28,12 @@ actor AppleMusicProvider {
 
         return response.songs.map { appleMusicSong in
             let nativeID = appleMusicSong.id.rawValue
-            let songSummary = AppleMusicSongMetadata(
-                nativeID: nativeID,
+            let songSummary = SongSummary(
+                appleMusicNativeID: nativeID,
                 title: appleMusicSong.title,
                 artistName: appleMusicSong.artistName,
                 artworkURL: appleMusicSong.artwork?.url(width: 300, height: 300)
-            ).songSummary
+            )
             songsByNativeID[nativeID] = appleMusicSong
             summariesByNativeID[nativeID] = songSummary
             return songSummary
@@ -66,6 +67,26 @@ actor AppleMusicProvider {
                 playbackEligibility: .unknown
             )
         }
+    }
+}
+
+extension SongSummary {
+    /// Creates app-owned song metadata with an Apple Music-namespaced identity.
+    init(
+        appleMusicNativeID: String,
+        title: String,
+        artistName: String,
+        artworkURL: URL?
+    ) {
+        self.init(
+            id: .init(
+                providerID: AppleMusicProvider.providerID,
+                nativeID: appleMusicNativeID
+            ),
+            title: title,
+            artistName: artistName,
+            artworkURL: artworkURL
+        )
     }
 }
 

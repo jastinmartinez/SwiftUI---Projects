@@ -5,16 +5,16 @@ import Testing
 
 struct AppleMusicCatalogMappingTests {
     @Test
-    func mapsSharedMetadataAndNamespacesIdentity() {
-        let appleMusicSongMetadata = AppleMusicSongMetadata(
-            nativeID: "42",
+    func initializesSongSummaryAndNamespacesIdentity() {
+        let songSummary = SongSummary(
+            appleMusicNativeID: "42",
             title: "Song",
             artistName: "Artist",
             artworkURL: URL(string: "https://example.com/art.jpg")
         )
 
         #expect(
-            appleMusicSongMetadata.songSummary
+            songSummary
                 == SongSummary(
                     id: .init(
                         providerID: "apple-music",
