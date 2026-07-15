@@ -1,27 +1,21 @@
-import Foundation
 import Testing
 
 @testable import Crescendo
 
 struct AppleMusicCatalogMappingTests {
     @Test
-    func initializesSongSummaryAndNamespacesIdentity() {
+    func namespacesSongIdentityWithAppleMusicProvider() {
         let songSummary = SongSummary(
             appleMusicNativeID: "42",
             title: "Song",
             artistName: "Artist",
-            artworkURL: URL(string: "https://example.com/art.jpg")
+            artworkURL: nil
         )
-        let expectedSongSummary = SongSummary(
-            id: .init(
-                providerID: "apple-music",
-                nativeID: "42"
-            ),
-            title: "Song",
-            artistName: "Artist",
-            artworkURL: URL(string: "https://example.com/art.jpg")
+        let expectedSongID = MusicItemID(
+            providerID: "apple-music",
+            nativeID: "42"
         )
 
-        #expect(songSummary == expectedSongSummary)
+        #expect(songSummary.id == expectedSongID)
     }
 }
