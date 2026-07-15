@@ -64,13 +64,11 @@ struct SearchFeature {
                 .cancellable(id: CancelID.search, cancelInFlight: true)
 
             case .currentAccessResponse(let requestID, let access):
-                guard
-                    state.status
-                        == .loading(
-                            requestID: requestID,
-                            stage: .checkingAccess
-                        )
-                else { return .none }
+                let expectedStatus: SearchStatus = .loading(
+                    requestID: requestID,
+                    stage: .checkingAccess
+                )
+                guard state.status == expectedStatus else { return .none }
                 guard access.authorization == .notDetermined else {
                     return .send(.accessResolved(requestID, access))
                 }
@@ -82,13 +80,11 @@ struct SearchFeature {
                 .cancellable(id: CancelID.search)
 
             case .requestAccessResponse(let requestID, let access):
-                guard
-                    state.status
-                        == .loading(
-                            requestID: requestID,
-                            stage: .requestingAccess
-                        )
-                else { return .none }
+                let expectedStatus: SearchStatus = .loading(
+                    requestID: requestID,
+                    stage: .requestingAccess
+                )
+                guard state.status == expectedStatus else { return .none }
                 return .send(.accessResolved(requestID, access))
 
             case .accessResolved(let requestID, let access):
@@ -122,24 +118,20 @@ struct SearchFeature {
                 return .none
 
             case .searchResponse(let requestID, .success(let songs)):
-                guard
-                    state.status
-                        == .loading(
-                            requestID: requestID,
-                            stage: .searching
-                        )
-                else { return .none }
+                let expectedStatus: SearchStatus = .loading(
+                    requestID: requestID,
+                    stage: .searching
+                )
+                guard state.status == expectedStatus else { return .none }
                 state.status = .loaded(songs)
                 return .none
 
             case .searchResponse(let requestID, .failure):
-                guard
-                    state.status
-                        == .loading(
-                            requestID: requestID,
-                            stage: .searching
-                        )
-                else { return .none }
+                let expectedStatus: SearchStatus = .loading(
+                    requestID: requestID,
+                    stage: .searching
+                )
+                guard state.status == expectedStatus else { return .none }
                 state.status = .failed
                 return .none
             }
