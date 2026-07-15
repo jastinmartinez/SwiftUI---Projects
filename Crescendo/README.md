@@ -20,6 +20,7 @@ Crescendo is an iOS 18 application that keeps music-provider details behind app-
 - Route every user-facing string through `Locs` and `Localizable.xcstrings`.
 - Format Swift with four spaces using the checked-in `.swift-format` configuration.
 - Prefer small store-connected containers composed from reusable stateless views.
+- Keep test helpers at the bottom under `// MARK: - Helpers`, and extract repeated setup into private factories.
 
 ## Project generation
 

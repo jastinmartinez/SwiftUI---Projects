@@ -5,23 +5,12 @@ import Testing
 
 @MainActor
 struct AppFeatureTests {
-    private let capabilities = MusicProviderCapabilities(
-        supportsCatalogSearch: true,
-        supportsEmbeddedPlayback: true,
-        supportsSeeking: true,
-        supportsQueueReplacement: true
-    )
-
     @Test
     func appStartsAndAutoSelectsSoleProvider() async {
-        let store = TestStore(
-            initialState: AppFeature.State(
-                registeredProviders: [.appleMusic],
-                activeProviderID: nil
-            )
-        ) {
-            AppFeature()
-        }
+        let store = makeStore(
+            registeredProviders: [.appleMusic],
+            activeProviderID: nil
+        )
 
         await store.send(.task) {
             $0.activeProviderID = "apple-music"
@@ -31,17 +20,13 @@ struct AppFeatureTests {
 
     @Test
     func multipleProvidersRequireSelection() async {
-        let store = TestStore(
-            initialState: AppFeature.State(
-                registeredProviders: [
-                    .appleMusic,
-                    .init(id: "future", capabilities: capabilities),
-                ],
-                activeProviderID: nil
-            )
-        ) {
-            AppFeature()
-        }
+        let store = makeStore(
+            registeredProviders: [
+                .appleMusic,
+                makeProvider(id: "future"),
+            ],
+            activeProviderID: nil
+        )
 
         await store.send(.task)
         #expect(store.state.requiresProviderSelection)
@@ -54,16 +39,40 @@ struct AppFeatureTests {
 
     @Test
     func unavailableProviderCannotBeSelected() async {
-        let store = TestStore(
+        let store = makeStore(
+            registeredProviders: [],
+            activeProviderID: nil
+        )
+
+        await store.send(.providerSelected("missing"))
+        #expect(store.state.activeProviderID == nil)
+    }
+
+    // MARK: - Helpers
+
+    private func makeStore(
+        registeredProviders: [MusicProviderDescriptor],
+        activeProviderID: MusicProviderID?
+    ) -> TestStoreOf<AppFeature> {
+        TestStore(
             initialState: AppFeature.State(
-                registeredProviders: [],
-                activeProviderID: nil
+                registeredProviders: registeredProviders,
+                activeProviderID: activeProviderID
             )
         ) {
             AppFeature()
         }
+    }
 
-        await store.send(.providerSelected("missing"))
-        #expect(store.state.activeProviderID == nil)
+    private func makeProvider(id: MusicProviderID) -> MusicProviderDescriptor {
+        MusicProviderDescriptor(
+            id: id,
+            capabilities: .init(
+                supportsCatalogSearch: true,
+                supportsEmbeddedPlayback: true,
+                supportsSeeking: true,
+                supportsQueueReplacement: true
+            )
+        )
     }
 }
