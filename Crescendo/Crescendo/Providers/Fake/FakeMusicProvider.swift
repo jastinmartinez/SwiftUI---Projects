@@ -14,15 +14,15 @@ actor FakeMusicProvider {
     func client() -> MusicProviderClient {
         MusicProviderClient(
             currentAccess: { [weak self] in
-                await self?.configuredAccess
+                self?.configuredAccess
                     ?? .init(authorization: .denied, playbackEligibility: .unknown)
             },
             requestAccess: { [weak self] in
-                await self?.configuredAccess
+                self?.configuredAccess
                     ?? .init(authorization: .denied, playbackEligibility: .unknown)
             },
             search: { [weak self] _, limit in
-                Array((await self?.configuredResults ?? []).prefix(limit))
+                Array((self?.configuredResults ?? []).prefix(limit))
             },
             play: { [weak self] itemID in
                 guard let self else { throw MusicProviderError.unavailable }
