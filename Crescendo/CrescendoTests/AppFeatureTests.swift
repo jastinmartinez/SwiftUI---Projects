@@ -62,7 +62,8 @@ struct AppFeatureTests {
                 musicPlayback: makeMusicPlaybackState(),
                 isPlayerPresented: false,
                 video: nil,
-                videoCloseRequestID: nil
+                videoCloseRequestID: nil,
+                playbackTransition: nil
             )
         ) {
             AppFeature()

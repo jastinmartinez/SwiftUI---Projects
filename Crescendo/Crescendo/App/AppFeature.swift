@@ -13,6 +13,7 @@ struct AppFeature {
         var isPlayerPresented: Bool
         var video: VideoPlaybackFeature.State?
         var videoCloseRequestID: UUID?
+        var playbackTransition: PlaybackTransition?
 
         var requiresProviderSelection: Bool {
             registeredProviders.count > 1 && activeProviderID == nil
@@ -25,7 +26,8 @@ struct AppFeature {
             musicPlayback: MusicPlaybackFeature.State,
             isPlayerPresented: Bool,
             video: VideoPlaybackFeature.State?,
-            videoCloseRequestID: UUID?
+            videoCloseRequestID: UUID?,
+            playbackTransition: PlaybackTransition?
         ) {
             self.registeredProviders = registeredProviders
             self.activeProviderID = activeProviderID
@@ -34,6 +36,7 @@ struct AppFeature {
             self.isPlayerPresented = isPlayerPresented
             self.video = video
             self.videoCloseRequestID = videoCloseRequestID
+            self.playbackTransition = playbackTransition
         }
     }
 
@@ -42,14 +45,19 @@ struct AppFeature {
         case providerSelected(MusicProviderID)
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
+        case musicStartSucceeded
+        case musicStartFailed(MusicProviderError)
         case setPlayerPresented(Bool)
         case openVideoButtonTapped
+        case openVideoSucceeded
+        case openVideoFailed
         case closeVideoRequested
         case closeVideoFinished(UUID)
         case video(VideoPlaybackFeature.Action)
     }
 
     @Dependency(\.uuid) var uuid
+    @Dependency(\.musicProvider) var musicProvider
     @Dependency(\.videoPlayback) var videoPlayback
 
     var body: some ReducerOf<Self> {
@@ -86,23 +94,79 @@ struct AppFeature {
             case .search:
                 return .none
 
+            case .musicPlayback(.delegate(.playRequested(let itemID))):
+                guard state.playbackTransition == nil else {
+                    return .none
+                }
+                state.playbackTransition = .startingMusic(itemID)
+                return .concatenate(
+                    .send(.musicPlayback(.playbackStartAccepted)),
+                    .run { send in
+                        await videoPlayback.pause()
+                        do {
+                            try await musicProvider.play(itemID)
+                            await send(.musicStartSucceeded)
+                        } catch let error as MusicProviderError {
+                            await send(.musicStartFailed(error))
+                        } catch {
+                            await send(.musicStartFailed(.playbackFailed))
+                        }
+                    }
+                )
+
             case .musicPlayback:
                 return .none
+
+            case .musicStartSucceeded:
+                guard case .startingMusic = state.playbackTransition else {
+                    return .none
+                }
+                state.playbackTransition = nil
+                return .send(.musicPlayback(.transportFinished))
+
+            case .musicStartFailed(let error):
+                guard case .startingMusic = state.playbackTransition else {
+                    return .none
+                }
+                state.playbackTransition = nil
+                return .send(.musicPlayback(.transportFailed(error)))
 
             case .setPlayerPresented(let isPresented):
                 state.isPlayerPresented = isPresented
                 return .none
 
             case .openVideoButtonTapped:
-                guard state.video == nil, state.videoCloseRequestID == nil else {
+                guard state.video == nil, state.playbackTransition == nil else {
                     return .none
                 }
+                state.playbackTransition = .openingVideo
+                return .run { send in
+                    do {
+                        try await musicProvider.pause()
+                        await send(.openVideoSucceeded)
+                    } catch {
+                        await send(.openVideoFailed)
+                    }
+                }
+
+            case .openVideoSucceeded:
+                guard state.playbackTransition == .openingVideo else {
+                    return .none
+                }
+                state.playbackTransition = nil
                 state.video = VideoPlaybackFeature.State(
                     urlText: "",
                     loadedVideoURL: nil,
                     phase: .observing(.idle),
                     observationID: nil
                 )
+                return .none
+
+            case .openVideoFailed:
+                guard state.playbackTransition == .openingVideo else {
+                    return .none
+                }
+                state.playbackTransition = nil
                 return .none
 
             case .video(.delegate(.closeRequested)):

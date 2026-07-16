@@ -90,7 +90,8 @@ struct SearchPresentationAdapterTests {
                 ),
                 isPlayerPresented: false,
                 video: nil,
-                videoCloseRequestID: nil
+                videoCloseRequestID: nil,
+                playbackTransition: nil
             )
         ) {
             AppFeature()

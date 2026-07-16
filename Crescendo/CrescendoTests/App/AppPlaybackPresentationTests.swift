@@ -35,7 +35,8 @@ struct AppPlaybackPresentationTests {
             musicPlayback: musicPlayback,
             isPlayerPresented: true,
             video: nil,
-            videoCloseRequestID: nil
+            videoCloseRequestID: nil,
+            playbackTransition: nil
         )
         let store = TestStore(initialState: state) { AppFeature() }
 

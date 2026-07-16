@@ -10,9 +10,15 @@ struct AppVideoRouteTests {
     func openingVideoCreatesEmptyRoute() async {
         let store = TestStore(initialState: makeState()) {
             AppFeature()
+        } withDependencies: {
+            $0.musicProvider.pause = {}
         }
 
         await store.send(.openVideoButtonTapped) {
+            $0.playbackTransition = .openingVideo
+        }
+        await store.receive(\.openVideoSucceeded) {
+            $0.playbackTransition = nil
             $0.video = makeVideoState()
         }
     }
@@ -208,7 +214,8 @@ struct AppVideoRouteTests {
             ),
             isPlayerPresented: false,
             video: video,
-            videoCloseRequestID: videoCloseRequestID
+            videoCloseRequestID: videoCloseRequestID,
+            playbackTransition: nil
         )
     }
 
