@@ -7,6 +7,13 @@ struct MusicPlaybackView: View {
 
     var body: some View {
         VStack(spacing: 20) {
+            SongArtworkView(
+                model: .init(
+                    artworkURL: model.artworkURL,
+                    size: 240,
+                    cornerRadius: 16
+                )
+            )
             Text(model.title)
                 .font(.title2)
             if let artistName = model.artistName {
@@ -36,6 +43,7 @@ extension MusicPlaybackView {
     struct Model {
         let title: String
         let artistName: String?
+        let artworkURL: URL?
         let statusText: String
         let elapsedTimeText: String
         let controls: MusicPlaybackControlsView.Model

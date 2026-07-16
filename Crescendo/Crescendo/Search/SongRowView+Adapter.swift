@@ -4,7 +4,8 @@ extension SongRowView.Model {
         self.init(
             songID: song.id,
             title: song.title,
-            artistName: song.artistName
+            artistName: song.artistName,
+            artworkURL: song.artworkURL
         )
     }
 }

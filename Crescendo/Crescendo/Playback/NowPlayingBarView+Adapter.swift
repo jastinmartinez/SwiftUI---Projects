@@ -7,6 +7,7 @@ extension NowPlayingBarView.Model {
         self.init(
             title: song.title,
             artistName: song.artistName,
+            artworkURL: song.artworkURL,
             isPlaying: store.musicPlayback.phase.snapshot.status == .playing,
             onOpenPlayer: { store.send(.setPlayerPresented(true)) }
         )

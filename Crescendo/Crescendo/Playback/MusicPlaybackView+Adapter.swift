@@ -38,6 +38,7 @@ extension MusicPlaybackView.Model {
         self.init(
             title: store.selectedSong?.title ?? Locs.MusicPlayback.noSelection,
             artistName: store.selectedSong?.artistName,
+            artworkURL: store.selectedSong?.artworkURL,
             statusText: statusText,
             elapsedTimeText: snapshot.currentTime.formatted(
                 .number.precision(.fractionLength(0))

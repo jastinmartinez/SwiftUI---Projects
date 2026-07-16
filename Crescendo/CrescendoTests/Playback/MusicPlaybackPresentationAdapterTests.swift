@@ -58,6 +58,7 @@ struct MusicPlaybackPresentationAdapterTests {
 
         #expect(model.title == song.title)
         #expect(model.artistName == song.artistName)
+        #expect(model.artworkURL == song.artworkURL)
         #expect(model.elapsedTimeText == "42")
         #expect(!model.controls.canPlay)
         #expect(model.eligibility.presentation == .subscriptionRequired)
@@ -191,6 +192,7 @@ struct MusicPlaybackPresentationAdapterTests {
 
         #expect(model.title == song.title)
         #expect(model.artistName == song.artistName)
+        #expect(model.artworkURL == song.artworkURL)
         #expect(model.isPlaying)
 
         model.onOpenPlayer()
@@ -275,7 +277,7 @@ struct MusicPlaybackPresentationAdapterTests {
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
             artistName: "Artist",
-            artworkURL: nil
+            artworkURL: URL(string: "https://example.com/artwork.jpg")
         )
     }
 }

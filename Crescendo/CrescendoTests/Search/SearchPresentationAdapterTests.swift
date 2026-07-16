@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Foundation
 import Testing
 
 @testable import Crescendo
@@ -18,7 +19,8 @@ struct SearchPresentationAdapterTests {
             SongRowView.Model(
                 songID: song.id,
                 title: "Result",
-                artistName: "Artist"
+                artistName: "Artist",
+                artworkURL: song.artworkURL
             )
         ]
 
@@ -130,7 +132,7 @@ struct SearchPresentationAdapterTests {
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Result",
             artistName: "Artist",
-            artworkURL: nil
+            artworkURL: URL(string: "https://example.com/artwork.jpg")
         )
     }
 }
