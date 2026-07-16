@@ -99,5 +99,9 @@ Secrets.xcconfig
 # Superpowers design docs stay local
 docs/superpowers/
 
+# Crescendo verification artifacts stay local
+Crescendo/docs/verification/phase-1-checklist.md
+Crescendo/scripts/verify-phase1-boundaries.sh
+
 # Graphify generated artifacts
 graphify-out/

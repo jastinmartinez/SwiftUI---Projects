@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct Phase1IntegrationTests {
+struct AppProviderSwitchingTests {
     @Test
     func reselectingActiveProviderWithoutPendingSwitchIsNoOp() async {
         let events = LockIsolated<[String]>([])

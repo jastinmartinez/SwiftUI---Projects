@@ -11,7 +11,7 @@ struct MusicProviderCapabilities: Equatable, Sendable {
 }
 
 extension MusicProviderCapabilities {
-    /// Enables every provider-neutral capability supported by the Phase 1 provider.
+    /// Enables every provider-neutral capability.
     static let allEnabled = Self(
         supportsCatalogSearch: true,
         supportsEmbeddedPlayback: true,
