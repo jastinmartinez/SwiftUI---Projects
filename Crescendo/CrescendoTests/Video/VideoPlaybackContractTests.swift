@@ -57,7 +57,7 @@ struct VideoPlaybackContractTests {
                 }
             }
         )
-        var snapshots = videoPlayback.playbackSnapshots().makeAsyncIterator()
+        var snapshots = await videoPlayback.playbackSnapshots().makeAsyncIterator()
 
         let receivedSnapshot = await snapshots.next()
 

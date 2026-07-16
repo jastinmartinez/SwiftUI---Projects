@@ -8,7 +8,7 @@ struct VideoPlaybackClient: Sendable {
     var pause: @Sendable () async -> Void
     var clear: @Sendable () async -> Void
     var seek: @Sendable (TimeInterval) async -> Void
-    var playbackSnapshots: @Sendable () -> AsyncStream<VideoPlaybackSnapshot> = {
+    var playbackSnapshots: @Sendable () async -> AsyncStream<VideoPlaybackSnapshot> = {
         AsyncStream { $0.finish() }
     }
 }
