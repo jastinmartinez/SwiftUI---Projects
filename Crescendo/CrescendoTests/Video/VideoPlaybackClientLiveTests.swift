@@ -11,7 +11,7 @@ struct VideoPlaybackClientLiveTests {
         let url = try VideoTestFixtures.url("video.mp4")
         let item = AVPlayerItem(url: url)
         let player = AVPlayer()
-        let controller = AVPlayerController(player: player)
+        let session = AVPlayerSession(player: player)
         var preparedURLs: [URL] = []
         let itemLoader = VideoPlayableItemLoader(
             load: { submittedURL in
@@ -20,7 +20,7 @@ struct VideoPlaybackClientLiveTests {
             }
         )
         let videoPlayback = VideoPlaybackClient.live(
-            controller: controller,
+            session: session,
             itemLoader: itemLoader
         )
 
@@ -37,12 +37,12 @@ struct VideoPlaybackClientLiveTests {
         )
         let newURL = try VideoTestFixtures.url("new.mp4")
         let player = AVPlayer(playerItem: oldItem)
-        let controller = AVPlayerController(player: player)
+        let session = AVPlayerSession(player: player)
         let itemLoader = VideoPlayableItemLoader(
             load: { _ in throw VideoPlaybackError.notPlayable }
         )
         let videoPlayback = VideoPlaybackClient.live(
-            controller: controller,
+            session: session,
             itemLoader: itemLoader
         )
 
@@ -61,7 +61,7 @@ struct VideoPlaybackClientLiveTests {
         let newURL = try VideoTestFixtures.url("new.mp4")
         let newItem = AVPlayerItem(url: newURL)
         let player = AVPlayer(playerItem: oldItem)
-        let controller = AVPlayerController(player: player)
+        let session = AVPlayerSession(player: player)
         let (started, startedContinuation) = AsyncStream<Void>.makeStream()
         let (resume, resumeContinuation) = AsyncStream<Void>.makeStream()
         let itemLoader = VideoPlayableItemLoader(
@@ -72,7 +72,7 @@ struct VideoPlaybackClientLiveTests {
             }
         )
         let videoPlayback = VideoPlaybackClient.live(
-            controller: controller,
+            session: session,
             itemLoader: itemLoader
         )
         let loadTask = Task {

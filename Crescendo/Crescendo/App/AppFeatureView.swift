@@ -1,11 +1,10 @@
-import AVFoundation
 import ComposableArchitecture
 import SwiftUI
 
 /// The root store-connected view of Crescendo.
 struct AppFeatureView: View {
     let store: StoreOf<AppFeature>
-    let videoPlayer: AVPlayer
+    let videoPlayerSession: AVPlayerSession
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,7 +39,7 @@ struct AppFeatureView: View {
             if let videoStore = store.scope(state: \.video, action: \.video) {
                 VideoPlaybackFeatureView(
                     store: videoStore,
-                    player: videoPlayer
+                    playerSession: videoPlayerSession
                 )
             }
         }

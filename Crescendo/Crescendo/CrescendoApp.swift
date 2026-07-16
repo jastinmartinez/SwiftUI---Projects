@@ -1,4 +1,3 @@
-import AVFoundation
 import ComposableArchitecture
 import SwiftUI
 
@@ -6,17 +5,16 @@ import SwiftUI
 @main
 struct CrescendoApp: App {
     let store: StoreOf<AppFeature>
-    let videoPlayer: AVPlayer
+    let videoPlayerSession: AVPlayerSession
 
     init() {
-        let videoPlayer = AVPlayer()
-        let avPlayerController = AVPlayerController(player: videoPlayer)
+        let videoPlayerSession = AVPlayerSession.live()
         let videoPlayback = VideoPlaybackClient.live(
-            controller: avPlayerController,
+            session: videoPlayerSession,
             itemLoader: .live
         )
 
-        self.videoPlayer = videoPlayer
+        self.videoPlayerSession = videoPlayerSession
         self.store = Store(
             initialState: AppFeature.State(
                 registeredProviders: [.appleMusic],
@@ -47,7 +45,7 @@ struct CrescendoApp: App {
         WindowGroup {
             AppFeatureView(
                 store: store,
-                videoPlayer: videoPlayer
+                videoPlayerSession: videoPlayerSession
             )
         }
     }

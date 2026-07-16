@@ -18,20 +18,20 @@ struct VideoPlaybackFeature {
     }
 
     enum Phase: Equatable, Sendable {
-        /// Accepts controller observations as the current playback snapshot.
+        /// Accepts session observations as the current playback snapshot.
         case observing(VideoPlaybackSnapshot)
         /// Retains the latest observation while a URL load is in flight.
         case loading(
             requestID: UUID,
             lastSnapshot: VideoPlaybackSnapshot
         )
-        /// Retains both the load failure and the latest controller observation.
+        /// Retains both the load failure and the latest session observation.
         case failed(
             VideoPlaybackError,
             lastSnapshot: VideoPlaybackSnapshot
         )
 
-        /// Returns the latest valid controller observation in every phase.
+        /// Returns the latest valid session observation in every phase.
         var snapshot: VideoPlaybackSnapshot {
             switch self {
             case .observing(let snapshot):

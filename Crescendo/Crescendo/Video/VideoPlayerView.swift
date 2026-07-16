@@ -1,18 +1,17 @@
-import AVFoundation
 import AVKit
 import SwiftUI
 
-/// Bridges an explicitly injected AVPlayer into AVKit presentation.
+/// Bridges an explicitly injected playback session into AVKit presentation.
 struct VideoPlayerView: UIViewControllerRepresentable {
-    private let player: AVPlayer
+    private let session: AVPlayerSession
 
-    init(player: AVPlayer) {
-        self.player = player
+    fileprivate init(session: AVPlayerSession) {
+        self.session = session
     }
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
-        controller.player = player
+        session.attach(to: controller)
         controller.entersFullScreenWhenPlaybackBegins = false
         controller.exitsFullScreenWhenPlaybackEnds = true
         return controller
@@ -22,6 +21,13 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         _ controller: AVPlayerViewController,
         context: Context
     ) {
-        controller.player = player
+        session.attach(to: controller)
+    }
+}
+
+extension AVPlayerSession {
+    /// Creates a player view without exposing the session's privately owned player.
+    func makeVideoPlayerView() -> VideoPlayerView {
+        VideoPlayerView(session: self)
     }
 }

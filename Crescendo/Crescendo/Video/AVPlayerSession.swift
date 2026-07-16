@@ -1,9 +1,10 @@
 import AVFoundation
+import AVKit
 import Foundation
 
-/// Controls an explicitly injected AVPlayer for URL-backed media.
+/// Owns the AVPlayer that coordinates URL-backed playback and presentation.
 @MainActor
-final class AVPlayerController {
+final class AVPlayerSession {
     private let player: AVPlayer
 
     init(player: AVPlayer) {
@@ -70,6 +71,18 @@ final class AVPlayerController {
             ),
             currentTime: currentTime
         )
+    }
+}
+
+extension AVPlayerSession {
+    /// Returns a fresh, non-singleton session without exposing its privately owned player.
+    static func live() -> AVPlayerSession {
+        AVPlayerSession(player: AVPlayer())
+    }
+
+    /// Attaches the privately owned player without exposing it to the presentation layer.
+    func attach(to playerViewController: AVPlayerViewController) {
+        playerViewController.player = player
     }
 }
 

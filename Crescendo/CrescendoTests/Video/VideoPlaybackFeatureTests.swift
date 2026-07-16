@@ -183,7 +183,7 @@ struct VideoPlaybackFeatureTests {
     }
 
     @Test
-    func taskPublishesControllerSnapshots() async {
+    func taskPublishesSessionSnapshots() async {
         let snapshot = VideoPlaybackSnapshot(
             status: .ready,
             currentTime: 0

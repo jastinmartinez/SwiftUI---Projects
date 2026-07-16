@@ -1,10 +1,10 @@
 import Foundation
 
 extension VideoPlaybackClient {
-    /// Coordinates an explicitly constructed item loader and playback controller.
+    /// Coordinates an explicitly constructed item loader and playback session.
     @MainActor
     static func live(
-        controller: AVPlayerController,
+        session: AVPlayerSession,
         itemLoader: VideoPlayableItemLoader
     ) -> Self {
         Self(
@@ -12,14 +12,14 @@ extension VideoPlaybackClient {
                 try await loadAndReplaceCurrentItem(
                     url,
                     itemLoader: itemLoader,
-                    controller: controller
+                    session: session
                 )
             },
-            pause: { await controller.pause() },
-            clear: { await controller.clear() },
-            seek: { await controller.seek(to: $0) },
+            pause: { await session.pause() },
+            clear: { await session.clear() },
+            seek: { await session.seek(to: $0) },
             playbackSnapshots: {
-                await controller.playbackSnapshots()
+                await session.playbackSnapshots()
             }
         )
     }
@@ -29,10 +29,10 @@ extension VideoPlaybackClient {
     private static func loadAndReplaceCurrentItem(
         _ url: URL,
         itemLoader: VideoPlayableItemLoader,
-        controller: AVPlayerController
+        session: AVPlayerSession
     ) async throws {
         let item = try await itemLoader.load(url)
         try Task.checkCancellation()
-        controller.replaceCurrentItem(with: item)
+        session.replaceCurrentItem(with: item)
     }
 }

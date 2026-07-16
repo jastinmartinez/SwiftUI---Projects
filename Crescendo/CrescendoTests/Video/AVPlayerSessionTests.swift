@@ -1,4 +1,5 @@
 import AVFoundation
+import AVKit
 import ComposableArchitecture
 import Foundation
 import Testing
@@ -6,16 +7,16 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct AVPlayerControllerTests {
+struct AVPlayerSessionTests {
     @Test
     func preparedItemReplacesInjectedPlayerWithoutAutoplay() throws {
         let player = AVPlayer()
         let item = AVPlayerItem(
             url: try VideoTestFixtures.url("video.mp4")
         )
-        let controller = AVPlayerController(player: player)
+        let session = AVPlayerSession(player: player)
 
-        controller.replaceCurrentItem(with: item)
+        session.replaceCurrentItem(with: item)
 
         #expect(player.currentItem === item)
         #expect(player.rate == 0)
@@ -28,19 +29,19 @@ struct AVPlayerControllerTests {
                 url: try VideoTestFixtures.url("video.mp4")
             )
         )
-        let controller = AVPlayerController(player: player)
+        let session = AVPlayerSession(player: player)
 
-        controller.clear()
+        session.clear()
 
         #expect(player.currentItem == nil)
     }
 
     @Test
     func playbackObservationStartsWithCurrentSnapshot() async throws {
-        let controller = AVPlayerController(player: AVPlayer())
+        let session = AVPlayerSession(player: AVPlayer())
         let receivedSnapshot = LockIsolated<VideoPlaybackSnapshot?>(nil)
         let observationTask = Task { @MainActor in
-            var iterator = controller.playbackSnapshots().makeAsyncIterator()
+            var iterator = session.playbackSnapshots().makeAsyncIterator()
             let snapshot = await iterator.next()
             receivedSnapshot.setValue(snapshot)
         }
@@ -49,6 +50,22 @@ struct AVPlayerControllerTests {
         observationTask.cancel()
 
         #expect(receivedSnapshot.value == .idle)
+    }
+
+    @Test
+    func attachingViewControllerUsesOwnedPlayer() {
+        let player = AVPlayer()
+        let session = AVPlayerSession(player: player)
+        let playerViewController = AVPlayerViewController()
+
+        session.attach(to: playerViewController)
+
+        #expect(playerViewController.player === player)
+    }
+
+    @Test
+    func liveFactoryCreatesIndependentSessions() {
+        #expect(AVPlayerSession.live() !== AVPlayerSession.live())
     }
 
     @Test

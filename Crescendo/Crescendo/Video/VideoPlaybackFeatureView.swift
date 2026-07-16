@@ -1,11 +1,10 @@
-import AVFoundation
 import ComposableArchitecture
 import SwiftUI
 
 /// Connects Video feature state to the URL input and AVKit bridge.
 struct VideoPlaybackFeatureView: View {
     let store: StoreOf<VideoPlaybackFeature>
-    let player: AVPlayer
+    let playerSession: AVPlayerSession
 
     var body: some View {
         NavigationStack {
@@ -13,7 +12,7 @@ struct VideoPlaybackFeatureView: View {
                 VideoURLInputView(model: .init(store))
 
                 if store.loadedVideoURL != nil {
-                    VideoPlayerView(player: player)
+                    playerSession.makeVideoPlayerView()
                         .aspectRatio(16 / 9, contentMode: .fit)
                 }
 
