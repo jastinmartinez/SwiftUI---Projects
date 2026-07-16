@@ -45,4 +45,29 @@ extension Locs {
             static let failed = String(localized: "music_playback.status.failed")
         }
     }
+
+    enum Video {
+        static let title = String(localized: "video.title")
+        static let openAction = String(localized: "video.open_action")
+        static let urlPrompt = String(localized: "video.url_prompt")
+        static let urlGuidance = String(localized: "video.url_guidance")
+        static let loadAction = String(localized: "video.load_action")
+        static let loading = String(localized: "video.loading")
+        static let retry = String(localized: "video.retry")
+        static let close = String(localized: "video.close")
+
+        enum Error {
+            static let emptyURL = String(localized: "video.error.empty_url")
+            static let invalidURL = String(localized: "video.error.invalid_url")
+            static let unsupportedScheme = String(
+                localized: "video.error.unsupported_scheme"
+            )
+            static let notPlayable = String(
+                localized: "video.error.not_playable"
+            )
+            static let loadFailed = String(
+                localized: "video.error.load_failed"
+            )
+        }
+    }
 }
