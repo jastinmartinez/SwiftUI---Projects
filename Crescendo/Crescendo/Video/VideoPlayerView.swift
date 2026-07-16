@@ -5,7 +5,7 @@ import SwiftUI
 struct VideoPlayerView: UIViewControllerRepresentable {
     private let session: AVPlayerSession
 
-    fileprivate init(session: AVPlayerSession) {
+    init(session: AVPlayerSession) {
         self.session = session
     }
 
@@ -22,12 +22,5 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         context: Context
     ) {
         session.attach(to: controller)
-    }
-}
-
-extension AVPlayerSession {
-    /// Creates a player view without exposing the session's privately owned player.
-    func makeVideoPlayerView() -> VideoPlayerView {
-        VideoPlayerView(session: self)
     }
 }

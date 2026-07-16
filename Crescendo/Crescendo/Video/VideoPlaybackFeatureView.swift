@@ -12,7 +12,7 @@ struct VideoPlaybackFeatureView: View {
                 VideoURLInputView(model: .init(store))
 
                 if store.loadedVideoURL != nil {
-                    playerSession.makeVideoPlayerView()
+                    VideoPlayerView(session: playerSession)
                         .aspectRatio(16 / 9, contentMode: .fit)
                 }
 
