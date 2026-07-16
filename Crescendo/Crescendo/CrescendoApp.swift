@@ -15,7 +15,7 @@ struct CrescendoApp: App {
             ),
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: nil,
-                snapshot: .idle,
+                status: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: .allEnabled
             )

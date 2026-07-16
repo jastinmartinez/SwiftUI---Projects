@@ -6,7 +6,7 @@ enum AppleMusicPlaybackStatus: Equatable, Sendable {
     case interrupted
 }
 
-extension MusicTransportStatus {
+extension MusicPlaybackStatus {
     /// Converts the app-owned Apple Music boundary status into normalized transport state.
     init(_ appleMusicStatus: AppleMusicPlaybackStatus) {
         switch appleMusicStatus {

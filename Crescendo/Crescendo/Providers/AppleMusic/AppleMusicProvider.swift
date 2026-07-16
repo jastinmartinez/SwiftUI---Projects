@@ -9,7 +9,14 @@ actor AppleMusicProvider {
     private let player = ApplicationMusicPlayer.shared
     private var songsByNativeID: [String: Song] = [:]
     private var summariesByNativeID: [String: SongSummary] = [:]
-    private var selectedSongSummary: SongSummary?
+
+    /// Resolves the player's current queue entry back to provider-neutral metadata.
+    private var currentSongSummary: SongSummary? {
+        guard let nativeID = player.queue.currentEntry?.item?.id.rawValue else {
+            return nil
+        }
+        return summariesByNativeID[nativeID]
+    }
 
     /// Returns the current authorization and catalog-playback access snapshot.
     func currentAccess() async -> MusicProviderAccess {
@@ -50,11 +57,7 @@ actor AppleMusicProvider {
         guard let song = songsByNativeID[itemID.nativeID] else {
             throw MusicProviderError.unavailable
         }
-        guard let songSummary = summariesByNativeID[itemID.nativeID] else {
-            throw MusicProviderError.unavailable
-        }
 
-        selectedSongSummary = songSummary
         player.queue = [song]
         try await player.prepareToPlay()
         try await player.play()
@@ -153,10 +156,9 @@ actor AppleMusicProvider {
             currentTime = max(0, player.playbackTime)
         }
         return MusicPlaybackSnapshot(
-            currentItem: selectedSongSummary,
-            status: MusicTransportStatus(appleMusicStatus),
-            currentTime: currentTime,
-            error: nil
+            currentItem: currentSongSummary,
+            status: MusicPlaybackStatus(appleMusicStatus),
+            currentTime: currentTime
         )
     }
 }

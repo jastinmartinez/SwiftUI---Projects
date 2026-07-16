@@ -89,7 +89,7 @@ struct AppFeatureTests {
     private func makeMusicPlaybackState() -> MusicPlaybackFeature.State {
         MusicPlaybackFeature.State(
             selectedSong: nil,
-            snapshot: .idle,
+            status: .observing(.idle),
             playbackEligibility: .unknown,
             capabilities: .allEnabled
         )

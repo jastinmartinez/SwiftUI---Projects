@@ -1,13 +1,13 @@
 import ComposableArchitecture
 import Foundation
 
-/// Owns persistent music selection, transport state, and provider-neutral commands.
+/// Owns persistent music selection, playback state, and provider-neutral commands.
 @Reducer
 struct MusicPlaybackFeature {
     @ObservableState
     struct State: Equatable {
         var selectedSong: SongSummary?
-        var snapshot: MusicPlaybackSnapshot
+        var status: Status
         var playbackEligibility: CatalogPlaybackEligibility
         var capabilities: MusicProviderCapabilities
 
@@ -16,6 +16,28 @@ struct MusicPlaybackFeature {
                 && playbackEligibility == .eligible
                 && capabilities.supportsEmbeddedPlayback
                 && capabilities.supportsQueueReplacement
+        }
+    }
+
+    enum Status: Equatable {
+        /// Accepts provider observations as the current playback snapshot.
+        case observing(MusicPlaybackSnapshot)
+        /// Retains the latest observation while a Play command is in flight.
+        case loading(MusicPlaybackSnapshot)
+        /// Retains both the command failure and the latest provider observation.
+        case failed(
+            MusicProviderError,
+            lastSnapshot: MusicPlaybackSnapshot
+        )
+
+        /// Returns the most recent provider observation without discarding the active case.
+        var snapshot: MusicPlaybackSnapshot {
+            switch self {
+            case .observing(let snapshot), .loading(let snapshot):
+                snapshot
+            case .failed(_, let lastSnapshot):
+                lastSnapshot
+            }
         }
     }
 
@@ -54,43 +76,56 @@ struct MusicPlaybackFeature {
             case .playTapped:
                 guard state.canPlaySelectedSong else { return .none }
                 guard let itemID = state.selectedSong?.id else { return .none }
-                state.snapshot.status = .loading
-                state.snapshot.error = nil
+                state.status = .loading(state.status.snapshot)
                 return transportEffect {
                     try await musicProvider.play(itemID)
                 }
 
             case .pauseTapped:
-                state.snapshot.error = nil
+                state.status = .observing(state.status.snapshot)
                 return transportEffect {
                     try await musicProvider.pause()
                 }
 
             case .stopTapped:
-                state.snapshot.error = nil
+                state.status = .observing(state.status.snapshot)
                 return transportEffect {
                     try await musicProvider.stop()
                 }
 
             case .seekRequested(let time):
                 guard state.capabilities.supportsSeeking else { return .none }
-                state.snapshot.error = nil
+                state.status = .observing(state.status.snapshot)
                 return transportEffect {
                     try await musicProvider.seek(time)
                 }
 
             case .transportFinished:
+                guard case .loading(let snapshot) = state.status else {
+                    return .none
+                }
+                state.status = .observing(snapshot)
                 return .none
 
             case .transportFailed(let error):
-                state.snapshot.status = .failed
-                state.snapshot.error = error
+                state.status = .failed(
+                    error,
+                    lastSnapshot: state.status.snapshot
+                )
                 return .none
 
             case .snapshotReceived(let snapshot):
-                // Keep command failures visible until the user starts another transport command.
-                guard state.snapshot.error == nil else { return .none }
-                state.snapshot = snapshot
+                switch state.status {
+                case .observing:
+                    state.status = .observing(snapshot)
+                case .loading:
+                    state.status = .loading(snapshot)
+                case .failed(let error, _):
+                    state.status = .failed(
+                        error,
+                        lastSnapshot: snapshot
+                    )
+                }
                 return .none
             }
         }

@@ -45,7 +45,7 @@ actor FakeMusicProvider {
         playbackSnapshot.status = .playing
     }
 
-    private func setStatus(_ status: MusicTransportStatus) {
+    private func setStatus(_ status: MusicPlaybackStatus) {
         playbackSnapshot.status = status
     }
 

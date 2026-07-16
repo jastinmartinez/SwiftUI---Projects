@@ -4,17 +4,17 @@ import Testing
 
 struct AppleMusicPlaybackStatusTests {
     @Test(arguments: [
-        (AppleMusicPlaybackStatus.playing, MusicTransportStatus.playing),
+        (AppleMusicPlaybackStatus.playing, MusicPlaybackStatus.playing),
         (.paused, .paused),
         (.stopped, .stopped),
         (.interrupted, .paused),
     ])
-    func initializesTransportStatus(
+    func initializesPlaybackStatus(
         appleMusicStatus: AppleMusicPlaybackStatus,
-        expected: MusicTransportStatus
+        expected: MusicPlaybackStatus
     ) {
-        let transportStatus = MusicTransportStatus(appleMusicStatus)
+        let playbackStatus = MusicPlaybackStatus(appleMusicStatus)
 
-        #expect(transportStatus == expected)
+        #expect(playbackStatus == expected)
     }
 }
