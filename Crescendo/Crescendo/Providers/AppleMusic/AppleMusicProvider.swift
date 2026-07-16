@@ -1,13 +1,15 @@
 import Foundation
-import MusicKit
+@preconcurrency import MusicKit
 
-/// Owns Apple Music authorization, catalog access, mapping, and session caches.
+/// Owns Apple Music authorization, catalog access, playback, mapping, and session caches.
 actor AppleMusicProvider {
     /// The stable application-owned identifier for Apple Music.
     static let providerID: MusicProviderID = "apple-music"
 
+    private let player = ApplicationMusicPlayer.shared
     private var songsByNativeID: [String: Song] = [:]
     private var summariesByNativeID: [String: SongSummary] = [:]
+    private var selectedSongSummary: SongSummary?
 
     /// Returns the current authorization and catalog-playback access snapshot.
     func currentAccess() async -> MusicProviderAccess {
@@ -40,6 +42,65 @@ actor AppleMusicProvider {
         }
     }
 
+    /// Replaces the application queue with one cached song, prepares it, and begins playback.
+    func play(_ itemID: MusicItemID) async throws {
+        guard itemID.providerID == Self.providerID else {
+            throw MusicProviderError.unavailable
+        }
+        guard let song = songsByNativeID[itemID.nativeID] else {
+            throw MusicProviderError.unavailable
+        }
+        guard let songSummary = summariesByNativeID[itemID.nativeID] else {
+            throw MusicProviderError.unavailable
+        }
+
+        selectedSongSummary = songSummary
+        player.queue = [song]
+        try await player.prepareToPlay()
+        try await player.play()
+    }
+
+    /// Pauses playback while preserving the current position.
+    func pause() {
+        player.pause()
+    }
+
+    /// Stops playback and resets the transport position.
+    func stop() {
+        player.stop()
+        player.playbackTime = 0
+    }
+
+    /// Moves playback to a nonnegative position.
+    func seek(to time: TimeInterval) {
+        player.playbackTime = max(0, time)
+    }
+
+    /// Polls the application player and yields provider-neutral playback snapshots.
+    func playbackSnapshots() -> AsyncStream<MusicPlaybackSnapshot> {
+        AsyncStream { continuation in
+            let observationTask = Task { [weak self] in
+                guard let self else {
+                    continuation.finish()
+                    return
+                }
+
+                while !Task.isCancelled {
+                    continuation.yield(await self.playbackSnapshot())
+                    do {
+                        try await Task.sleep(for: .milliseconds(500))
+                    } catch {
+                        break
+                    }
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in
+                observationTask.cancel()
+            }
+        }
+    }
+
     /// Preserves authorized status with unknown playback eligibility when subscription lookup fails.
     private func accessSnapshot(
         for authorizationStatus: MusicAuthorization.Status
@@ -67,6 +128,36 @@ actor AppleMusicProvider {
                 playbackEligibility: .unknown
             )
         }
+    }
+
+    /// Reads the player as the transport source of truth and normalizes its state.
+    private func playbackSnapshot() -> MusicPlaybackSnapshot {
+        let appleMusicStatus: AppleMusicPlaybackStatus
+        switch player.state.playbackStatus {
+        case .playing, .seekingForward, .seekingBackward:
+            appleMusicStatus = .playing
+        case .paused:
+            appleMusicStatus = .paused
+        case .stopped:
+            appleMusicStatus = .stopped
+        case .interrupted:
+            appleMusicStatus = .interrupted
+        @unknown default:
+            appleMusicStatus = .interrupted
+        }
+
+        let currentTime: TimeInterval
+        if appleMusicStatus == .stopped {
+            currentTime = 0
+        } else {
+            currentTime = max(0, player.playbackTime)
+        }
+        return MusicPlaybackSnapshot(
+            currentItem: selectedSongSummary,
+            status: MusicTransportStatus(appleMusicStatus),
+            currentTime: currentTime,
+            error: nil
+        )
     }
 }
 

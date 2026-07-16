@@ -7,6 +7,30 @@ import Testing
 @MainActor
 struct MusicPlaybackFeatureTests {
     @Test
+    func taskConsumesPlaybackSnapshots() async {
+        let song = makeSong()
+        let snapshot = MusicPlaybackSnapshot(
+            currentItem: song,
+            status: .playing,
+            currentTime: 12,
+            error: nil
+        )
+        let store = makeStore(song: song) {
+            $0.musicProvider.playbackSnapshots = {
+                AsyncStream { continuation in
+                    continuation.yield(snapshot)
+                    continuation.finish()
+                }
+            }
+        }
+
+        await store.send(.task)
+        await store.receive(.snapshotReceived(snapshot)) {
+            $0.snapshot = snapshot
+        }
+    }
+
+    @Test
     func playForwardsTheSelectedItemID() async {
         let receivedItemID = LockIsolated<MusicItemID?>(nil)
         let song = makeSong()

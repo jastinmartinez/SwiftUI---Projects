@@ -47,16 +47,20 @@ extension MusicProviderClient {
             search: { query, limit in
                 try await appleMusicProvider.search(query, limit: limit)
             },
-            play: { _ in
-                throw MusicProviderError.unavailable
+            play: { itemID in
+                try await appleMusicProvider.play(itemID)
             },
-            pause: {},
-            stop: {},
-            seek: { _ in },
+            pause: {
+                await appleMusicProvider.pause()
+            },
+            stop: {
+                await appleMusicProvider.stop()
+            },
+            seek: { time in
+                await appleMusicProvider.seek(to: time)
+            },
             playbackSnapshots: {
-                AsyncStream { continuation in
-                    continuation.finish()
-                }
+                await appleMusicProvider.playbackSnapshots()
             }
         )
     }()

@@ -20,6 +20,7 @@ struct MusicPlaybackFeature {
     }
 
     enum Action: Equatable {
+        case task
         case playTapped
         case pauseTapped
         case stopTapped
@@ -29,11 +30,27 @@ struct MusicPlaybackFeature {
         case snapshotReceived(MusicPlaybackSnapshot)
     }
 
+    enum CancelID {
+        case playbackObservation
+    }
+
     @Dependency(\.musicProvider) var musicProvider
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
+            case .task:
+                return .run { send in
+                    let snapshots = await musicProvider.playbackSnapshots()
+                    for await snapshot in snapshots {
+                        await send(.snapshotReceived(snapshot))
+                    }
+                }
+                .cancellable(
+                    id: CancelID.playbackObservation,
+                    cancelInFlight: true
+                )
+
             case .playTapped:
                 guard state.canPlaySelectedSong else { return .none }
                 guard let itemID = state.selectedSong?.id else { return .none }
