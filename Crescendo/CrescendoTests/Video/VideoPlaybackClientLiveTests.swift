@@ -8,7 +8,7 @@ import Testing
 struct VideoPlaybackClientLiveTests {
     @Test
     func loadCoordinatesItemPreparationAndReplacement() async throws {
-        let url = makeURL("video.mp4")
+        let url = try VideoTestFixtures.url("video.mp4")
         let item = AVPlayerItem(url: url)
         let player = AVPlayer()
         let controller = AVPlayerController(player: player)
@@ -31,8 +31,11 @@ struct VideoPlaybackClientLiveTests {
     }
 
     @Test
-    func preparationFailurePreservesCurrentItem() async {
-        let oldItem = AVPlayerItem(url: makeURL("old.mp4"))
+    func preparationFailurePreservesCurrentItem() async throws {
+        let oldItem = AVPlayerItem(
+            url: try VideoTestFixtures.url("old.mp4")
+        )
+        let newURL = try VideoTestFixtures.url("new.mp4")
         let player = AVPlayer(playerItem: oldItem)
         let controller = AVPlayerController(player: player)
         let itemLoader = VideoPlayableItemLoader(
@@ -44,16 +47,19 @@ struct VideoPlaybackClientLiveTests {
         )
 
         await #expect(throws: VideoPlaybackError.notPlayable) {
-            try await videoPlayback.load(makeURL("new.mp4"))
+            try await videoPlayback.load(newURL)
         }
 
         #expect(player.currentItem === oldItem)
     }
 
     @Test
-    func cancellationDuringPreparationPreservesCurrentItem() async {
-        let oldItem = AVPlayerItem(url: makeURL("old.mp4"))
-        let newItem = AVPlayerItem(url: makeURL("new.mp4"))
+    func cancellationDuringPreparationPreservesCurrentItem() async throws {
+        let oldItem = AVPlayerItem(
+            url: try VideoTestFixtures.url("old.mp4")
+        )
+        let newURL = try VideoTestFixtures.url("new.mp4")
+        let newItem = AVPlayerItem(url: newURL)
         let player = AVPlayer(playerItem: oldItem)
         let controller = AVPlayerController(player: player)
         let (started, startedContinuation) = AsyncStream<Void>.makeStream()
@@ -70,7 +76,7 @@ struct VideoPlaybackClientLiveTests {
             itemLoader: itemLoader
         )
         let loadTask = Task {
-            try await videoPlayback.load(makeURL("new.mp4"))
+            try await videoPlayback.load(newURL)
         }
         var startedIterator = started.makeAsyncIterator()
         _ = await startedIterator.next()
@@ -84,11 +90,5 @@ struct VideoPlaybackClientLiveTests {
         }
         #expect(player.currentItem === oldItem)
         startedContinuation.finish()
-    }
-
-    // MARK: - Helpers
-
-    private func makeURL(_ path: String) -> URL {
-        URL(string: "https://example.com/\(path)")!
     }
 }

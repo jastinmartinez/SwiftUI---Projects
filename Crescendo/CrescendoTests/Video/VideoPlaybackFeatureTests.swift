@@ -47,8 +47,8 @@ struct VideoPlaybackFeatureTests {
     }
 
     @Test
-    func successfulLoadTrimsURLAndPreservesPlaybackSnapshot() async {
-        let url = makeURL("video.mp4")
+    func successfulLoadTrimsURLAndPreservesPlaybackSnapshot() async throws {
+        let url = try VideoTestFixtures.url("video.mp4")
         let snapshot = VideoPlaybackSnapshot(
             status: .paused,
             currentTime: 42
@@ -81,14 +81,14 @@ struct VideoPlaybackFeatureTests {
     }
 
     @Test
-    func failedLoadPreservesCurrentSourceAndPlaybackSnapshot() async {
-        let oldURL = makeURL("old.m3u8")
+    func failedLoadPreservesCurrentSourceAndPlaybackSnapshot() async throws {
+        let oldURL = try VideoTestFixtures.url("old.m3u8")
         let snapshot = VideoPlaybackSnapshot(
             status: .playing,
             currentTime: 12
         )
         let store = makeStore(
-            urlText: makeURL("new.mp4").absoluteString,
+            urlText: try VideoTestFixtures.url("new.mp4").absoluteString,
             loadedVideoURL: oldURL,
             phase: .observing(snapshot)
         ) {
@@ -117,10 +117,10 @@ struct VideoPlaybackFeatureTests {
     }
 
     @Test
-    func secondSubmissionIsIgnoredWhileLoading() async {
+    func secondSubmissionIsIgnoredWhileLoading() async throws {
         let loadCalls = LockIsolated(0)
         let store = makeStore(
-            urlText: makeURL("video.mp4").absoluteString,
+            urlText: try VideoTestFixtures.url("video.mp4").absoluteString,
             phase: .loading(
                 requestID: UUID(1),
                 lastSnapshot: .idle
@@ -137,9 +137,9 @@ struct VideoPlaybackFeatureTests {
     }
 
     @Test
-    func staleLoadCompletionIsIgnored() async {
+    func staleLoadCompletionIsIgnored() async throws {
         let store = makeStore(
-            urlText: makeURL("video.mp4").absoluteString,
+            urlText: try VideoTestFixtures.url("video.mp4").absoluteString,
             phase: .loading(
                 requestID: UUID(2),
                 lastSnapshot: .idle
@@ -149,19 +149,19 @@ struct VideoPlaybackFeatureTests {
         await store.send(
             .loadSucceeded(
                 requestID: UUID(1),
-                url: makeURL("stale.mp4")
+                url: try VideoTestFixtures.url("stale.mp4")
             )
         )
     }
 
     @Test
-    func observationUpdatesSnapshotWithoutReplacingLoadRequest() async {
+    func observationUpdatesSnapshotWithoutReplacingLoadRequest() async throws {
         let snapshot = VideoPlaybackSnapshot(
             status: .loading,
             currentTime: 8
         )
         let store = makeStore(
-            urlText: makeURL("video.mp4").absoluteString,
+            urlText: try VideoTestFixtures.url("video.mp4").absoluteString,
             phase: .loading(
                 requestID: UUID(1),
                 lastSnapshot: .idle
@@ -230,10 +230,11 @@ struct VideoPlaybackFeatureTests {
     }
 
     @Test
-    func routeExitCancelsLoadWithoutReportingFailure() async {
+    func routeExitCancelsLoadWithoutReportingFailure() async throws {
+        let url = try VideoTestFixtures.url("video.mp4")
         let (started, startedContinuation) = AsyncStream<Void>.makeStream()
         let store = makeStore(
-            urlText: makeURL("video.mp4").absoluteString
+            urlText: url.absoluteString
         ) {
             $0.uuid = .incrementing
             $0.videoPlayback.load = { _ in
@@ -257,7 +258,7 @@ struct VideoPlaybackFeatureTests {
         await store.send(
             .loadSucceeded(
                 requestID: UUID(0),
-                url: makeURL("video.mp4")
+                url: url
             )
         )
         await store.finish()
@@ -285,9 +286,5 @@ struct VideoPlaybackFeatureTests {
         } withDependencies: {
             configureDependencies(&$0)
         }
-    }
-
-    private func makeURL(_ path: String) -> URL {
-        URL(string: "https://example.com/\(path)")!
     }
 }

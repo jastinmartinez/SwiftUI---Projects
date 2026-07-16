@@ -8,9 +8,11 @@ import Testing
 @MainActor
 struct AVPlayerControllerTests {
     @Test
-    func preparedItemReplacesInjectedPlayerWithoutAutoplay() {
+    func preparedItemReplacesInjectedPlayerWithoutAutoplay() throws {
         let player = AVPlayer()
-        let item = AVPlayerItem(url: makeURL("video.mp4"))
+        let item = AVPlayerItem(
+            url: try VideoTestFixtures.url("video.mp4")
+        )
         let controller = AVPlayerController(player: player)
 
         controller.replaceCurrentItem(with: item)
@@ -20,9 +22,11 @@ struct AVPlayerControllerTests {
     }
 
     @Test
-    func clearRemovesCurrentItem() {
+    func clearRemovesCurrentItem() throws {
         let player = AVPlayer(
-            playerItem: AVPlayerItem(url: makeURL("video.mp4"))
+            playerItem: AVPlayerItem(
+                url: try VideoTestFixtures.url("video.mp4")
+            )
         )
         let controller = AVPlayerController(player: player)
 
@@ -57,11 +61,5 @@ struct AVPlayerControllerTests {
         )
 
         #expect(status == .ended)
-    }
-
-    // MARK: - Helpers
-
-    private func makeURL(_ path: String) -> URL {
-        URL(string: "https://example.com/\(path)")!
     }
 }
