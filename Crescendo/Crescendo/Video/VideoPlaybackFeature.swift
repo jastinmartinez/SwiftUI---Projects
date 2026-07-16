@@ -55,7 +55,14 @@ struct VideoPlaybackFeature {
         }
     }
 
+    /// Events emitted to the parent after validating child-owned interactions.
+    enum Delegate: Equatable {
+        case closeRequested
+    }
+
     enum Action: Equatable {
+        case closeButtonTapped
+        case delegate(Delegate)
         case task
         case urlChanged(String)
         case loadSubmitted
@@ -87,6 +94,12 @@ struct VideoPlaybackFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
+            case .closeButtonTapped:
+                return .send(.delegate(.closeRequested))
+
+            case .delegate:
+                return .none
+
             case .task:
                 let observationID = uuid()
                 state.observationID = observationID

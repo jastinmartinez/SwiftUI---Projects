@@ -1,11 +1,11 @@
+import AVFoundation
 import ComposableArchitecture
 import SwiftUI
 
 /// Connects Video feature state to the URL input and AVKit bridge.
 struct VideoPlaybackFeatureView: View {
     let store: StoreOf<VideoPlaybackFeature>
-    let videoPlayerView: VideoPlayerView
-    let onClose: () -> Void
+    let player: AVPlayer
 
     var body: some View {
         NavigationStack {
@@ -13,7 +13,7 @@ struct VideoPlaybackFeatureView: View {
                 VideoURLInputView(model: .init(store))
 
                 if store.loadedVideoURL != nil {
-                    videoPlayerView
+                    VideoPlayerView(player: player)
                         .aspectRatio(16 / 9, contentMode: .fit)
                 }
 
@@ -22,10 +22,9 @@ struct VideoPlaybackFeatureView: View {
             .padding()
             .navigationTitle(Locs.Video.title)
             .toolbar {
-                Button(
-                    Locs.Video.close,
-                    action: onClose
-                )
+                Button(Locs.Video.close) {
+                    store.send(.closeButtonTapped)
+                }
             }
             .task { await store.send(.task).finish() }
             .onDisappear { store.send(.routeExited) }

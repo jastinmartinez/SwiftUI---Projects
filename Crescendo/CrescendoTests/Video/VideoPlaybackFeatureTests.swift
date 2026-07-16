@@ -212,6 +212,14 @@ struct VideoPlaybackFeatureTests {
     }
 
     @Test
+    func closeButtonTapRequestsParentDismissal() async {
+        let store = makeStore(urlText: "")
+
+        await store.send(.closeButtonTapped)
+        await store.receive(.delegate(.closeRequested))
+    }
+
+    @Test
     func routeExitCancelsObservation() async {
         let (snapshots, continuation) = AsyncStream<VideoPlaybackSnapshot>.makeStream()
         let store = makeStore(urlText: "") {
