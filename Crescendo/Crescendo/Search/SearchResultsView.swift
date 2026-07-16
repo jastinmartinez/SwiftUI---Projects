@@ -10,11 +10,16 @@ struct SearchResultsView: View {
             ContentUnavailableView(Locs.Search.emptyTitle, systemImage: "music.note")
         case .loading:
             ProgressView(Locs.Search.searching)
-        case let .empty(query):
+        case .empty(let query):
             ContentUnavailableView.search(text: query)
-        case let .results(rows):
+        case .results(let rows):
             ForEach(rows) { row in
-                SongRowView(model: row)
+                Button {
+                    model.onSongTapped(row.songID)
+                } label: {
+                    SongRowView(model: row)
+                }
+                .buttonStyle(.plain)
             }
         case .unavailable:
             ContentUnavailableView(

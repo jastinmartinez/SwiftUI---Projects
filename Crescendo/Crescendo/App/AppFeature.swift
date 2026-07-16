@@ -9,6 +9,7 @@ struct AppFeature {
         var activeProviderID: MusicProviderID?
         var search: SearchFeature.State
         var musicPlayback: MusicPlaybackFeature.State
+        var isPlayerPresented: Bool
 
         var requiresProviderSelection: Bool {
             registeredProviders.count > 1 && activeProviderID == nil
@@ -18,12 +19,14 @@ struct AppFeature {
             registeredProviders: [MusicProviderDescriptor],
             activeProviderID: MusicProviderID?,
             search: SearchFeature.State,
-            musicPlayback: MusicPlaybackFeature.State
+            musicPlayback: MusicPlaybackFeature.State,
+            isPlayerPresented: Bool
         ) {
             self.registeredProviders = registeredProviders
             self.activeProviderID = activeProviderID
             self.search = search
             self.musicPlayback = musicPlayback
+            self.isPlayerPresented = isPlayerPresented
         }
     }
 
@@ -32,6 +35,7 @@ struct AppFeature {
         case providerSelected(MusicProviderID)
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
+        case setPlayerPresented(Bool)
     }
 
     var body: some ReducerOf<Self> {
@@ -59,10 +63,20 @@ struct AppFeature {
                 state.activeProviderID = providerID
                 return .none
 
+            case .search(.resultTapped(let song)):
+                state.musicPlayback.selectedSong = song
+                state.musicPlayback.playbackEligibility = state.search.playbackEligibility
+                state.isPlayerPresented = true
+                return .none
+
             case .search:
                 return .none
 
             case .musicPlayback:
+                return .none
+
+            case .setPlayerPresented(let isPresented):
+                state.isPlayerPresented = isPresented
                 return .none
             }
         }

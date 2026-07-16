@@ -70,6 +70,38 @@ struct SearchPresentationAdapterTests {
         #expect(store.status == .idle)
     }
 
+    @Test
+    func songTapForwardsSelectedSummaryToTheAppReducer() {
+        let song = makeSong()
+        let appStore = Store(
+            initialState: AppFeature.State(
+                registeredProviders: [.appleMusic],
+                activeProviderID: "apple-music",
+                search: SearchFeature.State(
+                    query: "result",
+                    status: .loaded([song]),
+                    playbackEligibility: .eligible
+                ),
+                musicPlayback: MusicPlaybackFeature.State(
+                    selectedSong: nil,
+                    status: .observing(.idle),
+                    playbackEligibility: .unknown,
+                    capabilities: .allEnabled
+                ),
+                isPlayerPresented: false
+            )
+        ) {
+            AppFeature()
+        }
+        let searchStore = appStore.scope(state: \.search, action: \.search)
+        let model = SearchResultsView.Model(searchStore)
+
+        model.onSongTapped(song.id)
+
+        #expect(appStore.musicPlayback.selectedSong == song)
+        #expect(appStore.isPlayerPresented)
+    }
+
     // MARK: - Helpers
 
     private func makeStore(

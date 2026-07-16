@@ -59,7 +59,8 @@ struct AppFeatureTests {
                 registeredProviders: registeredProviders,
                 activeProviderID: activeProviderID,
                 search: makeSearchState(),
-                musicPlayback: makeMusicPlaybackState()
+                musicPlayback: makeMusicPlaybackState(),
+                isPlayerPresented: false
             )
         ) {
             AppFeature()

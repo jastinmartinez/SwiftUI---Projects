@@ -18,7 +18,8 @@ struct CrescendoApp: App {
                 status: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: .allEnabled
-            )
+            ),
+            isPlayerPresented: false
         )
     ) {
         AppFeature()

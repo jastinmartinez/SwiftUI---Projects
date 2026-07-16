@@ -30,6 +30,7 @@ struct SearchFeature {
         case queryChanged(String)
         case submitButtonTapped
         case retryButtonTapped
+        case resultTapped(SongSummary)
         case currentAccessResponse(UUID, MusicProviderAccess)
         case requestAccessResponse(UUID, MusicProviderAccess)
         case accessResolved(UUID, MusicProviderAccess)
@@ -62,6 +63,9 @@ struct SearchFeature {
                     await send(.currentAccessResponse(requestID, access))
                 }
                 .cancellable(id: CancelID.search, cancelInFlight: true)
+
+            case .resultTapped:
+                return .none
 
             case .currentAccessResponse(let requestID, let access):
                 let expectedStatus: Status = .loading(
