@@ -13,7 +13,7 @@ struct SearchFeatureTests {
         let store = TestStore(
             initialState: makeState(
                 query: "result",
-                status: .idle,
+                phase: .idle,
                 playbackEligibility: .unknown
             )
         ) {
@@ -32,15 +32,15 @@ struct SearchFeatureTests {
         }
 
         await store.send(.submitButtonTapped) {
-            $0.status = .loading(requestID: UUID(0), stage: .checkingAccess)
+            $0.phase = .loading(requestID: UUID(0), stage: .checkingAccess)
         }
         await store.receive(\.currentAccessResponse)
         await store.receive(\.accessResolved) {
             $0.playbackEligibility = .eligible
-            $0.status = .loading(requestID: UUID(0), stage: .searching)
+            $0.phase = .loading(requestID: UUID(0), stage: .searching)
         }
         await store.receive(\.searchResponse) {
-            $0.status = .loaded([song])
+            $0.phase = .loaded([song])
         }
         #expect(accessCalls.value == ["current"])
     }
@@ -51,7 +51,7 @@ struct SearchFeatureTests {
         let store = TestStore(
             initialState: makeState(
                 query: "result",
-                status: .idle,
+                phase: .idle,
                 playbackEligibility: .unknown
             )
         ) {
@@ -65,15 +65,15 @@ struct SearchFeatureTests {
         }
 
         await store.send(.submitButtonTapped) {
-            $0.status = .loading(requestID: UUID(0), stage: .checkingAccess)
+            $0.phase = .loading(requestID: UUID(0), stage: .checkingAccess)
         }
         await store.receive(\.currentAccessResponse)
         await store.receive(\.accessResolved) {
             $0.playbackEligibility = .ineligible
-            $0.status = .loading(requestID: UUID(0), stage: .searching)
+            $0.phase = .loading(requestID: UUID(0), stage: .searching)
         }
         await store.receive(\.searchResponse) {
-            $0.status = .loaded([song])
+            $0.phase = .loaded([song])
         }
     }
 
@@ -84,7 +84,7 @@ struct SearchFeatureTests {
         let store = TestStore(
             initialState: makeState(
                 query: "result",
-                status: .idle,
+                phase: .idle,
                 playbackEligibility: .unknown
             )
         ) {
@@ -103,18 +103,18 @@ struct SearchFeatureTests {
         }
 
         await store.send(.submitButtonTapped) {
-            $0.status = .loading(requestID: UUID(0), stage: .checkingAccess)
+            $0.phase = .loading(requestID: UUID(0), stage: .checkingAccess)
         }
         await store.receive(\.currentAccessResponse) {
-            $0.status = .loading(requestID: UUID(0), stage: .requestingAccess)
+            $0.phase = .loading(requestID: UUID(0), stage: .requestingAccess)
         }
         await store.receive(\.requestAccessResponse)
         await store.receive(\.accessResolved) {
             $0.playbackEligibility = .eligible
-            $0.status = .loading(requestID: UUID(0), stage: .searching)
+            $0.phase = .loading(requestID: UUID(0), stage: .searching)
         }
         await store.receive(\.searchResponse) {
-            $0.status = .loaded([song])
+            $0.phase = .loaded([song])
         }
         #expect(accessCalls.value == ["current", "request"])
     }
@@ -123,7 +123,7 @@ struct SearchFeatureTests {
     func staleResponseIsIgnored() async {
         let state = makeState(
             query: "new",
-            status: .loading(requestID: UUID(2), stage: .searching),
+            phase: .loading(requestID: UUID(2), stage: .searching),
             playbackEligibility: .unknown
         )
         let store = TestStore(initialState: state) { SearchFeature() }
@@ -135,14 +135,14 @@ struct SearchFeatureTests {
     func changingQueryInvalidatesLoadingSearch() async {
         let state = makeState(
             query: "old",
-            status: .loading(requestID: UUID(0), stage: .checkingAccess),
+            phase: .loading(requestID: UUID(0), stage: .checkingAccess),
             playbackEligibility: .unknown
         )
         let store = TestStore(initialState: state) { SearchFeature() }
 
         await store.send(.queryChanged("new")) {
             $0.query = "new"
-            $0.status = .idle
+            $0.phase = .idle
         }
         await store.send(
             .currentAccessResponse(
@@ -157,7 +157,7 @@ struct SearchFeatureTests {
         let store = TestStore(
             initialState: makeState(
                 query: "term",
-                status: .idle,
+                phase: .idle,
                 playbackEligibility: .unknown
             )
         ) {
@@ -170,11 +170,11 @@ struct SearchFeatureTests {
         }
 
         await store.send(.submitButtonTapped) {
-            $0.status = .loading(requestID: UUID(0), stage: .checkingAccess)
+            $0.phase = .loading(requestID: UUID(0), stage: .checkingAccess)
         }
         await store.receive(\.currentAccessResponse)
         await store.receive(\.accessResolved) {
-            $0.status = .denied
+            $0.phase = .denied
         }
     }
 
@@ -184,7 +184,7 @@ struct SearchFeatureTests {
         let store = TestStore(
             initialState: makeState(
                 query: "result",
-                status: .loaded([song]),
+                phase: .loaded([song]),
                 playbackEligibility: .eligible
             )
         ) {
@@ -199,12 +199,12 @@ struct SearchFeatureTests {
 
     private func makeState(
         query: String,
-        status: SearchFeature.Status,
+        phase: SearchFeature.Phase,
         playbackEligibility: CatalogPlaybackEligibility
     ) -> SearchFeature.State {
         SearchFeature.State(
             query: query,
-            status: status,
+            phase: phase,
             playbackEligibility: playbackEligibility
         )
     }

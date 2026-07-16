@@ -2,20 +2,20 @@ import Testing
 
 @testable import Crescendo
 
-struct AppleMusicAccessStateTests {
+struct AppleMusicAccessTests {
     @Test(arguments: [
-        (AppleMusicAuthorizationState.authorized, MusicAuthorizationState.authorized),
+        (AppleMusicAuthorizationStatus.authorized, MusicAuthorizationStatus.authorized),
         (.denied, .denied),
         (.restricted, .restricted),
         (.notDetermined, .notDetermined),
     ])
-    func initializesAuthorizationState(
-        appleMusicAuthorizationState: AppleMusicAuthorizationState,
-        expected: MusicAuthorizationState
+    func initializesAuthorizationStatus(
+        appleMusicAuthorizationStatus: AppleMusicAuthorizationStatus,
+        expected: MusicAuthorizationStatus
     ) {
-        let authorizationState = MusicAuthorizationState(appleMusicAuthorizationState)
+        let authorizationStatus = MusicAuthorizationStatus(appleMusicAuthorizationStatus)
 
-        #expect(authorizationState == expected)
+        #expect(authorizationStatus == expected)
     }
 
     @Test(arguments: [

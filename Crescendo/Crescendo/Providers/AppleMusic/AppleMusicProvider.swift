@@ -106,14 +106,14 @@ actor AppleMusicProvider {
 
     /// Preserves authorized status with unknown playback eligibility when subscription lookup fails.
     private func accessSnapshot(
-        for authorizationStatus: MusicAuthorization.Status
+        for appleMusicAuthorizationStatus: MusicAuthorization.Status
     ) async -> MusicProviderAccess {
-        let authorization = MusicAuthorizationState(
-            authorizationStatus.appleMusicState
+        let authorizationStatus = MusicAuthorizationStatus(
+            appleMusicAuthorizationStatus.appleMusicStatus
         )
-        guard authorization == .authorized else {
+        guard authorizationStatus == .authorized else {
             return .init(
-                authorization: authorization,
+                authorization: authorizationStatus,
                 playbackEligibility: .unknown
             )
         }
@@ -185,7 +185,7 @@ extension SongSummary {
 
 extension MusicAuthorization.Status {
     /// Maps unknown future MusicKit authorization statuses conservatively to restricted.
-    fileprivate var appleMusicState: AppleMusicAuthorizationState {
+    fileprivate var appleMusicStatus: AppleMusicAuthorizationStatus {
         switch self {
         case .authorized:
             .authorized

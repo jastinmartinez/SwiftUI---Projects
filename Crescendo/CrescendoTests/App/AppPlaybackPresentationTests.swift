@@ -18,12 +18,12 @@ struct AppPlaybackPresentationTests {
             activeProviderID: "apple-music",
             search: SearchFeature.State(
                 query: "",
-                status: .loaded([song]),
+                phase: .loaded([song]),
                 playbackEligibility: .eligible
             ),
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: nil,
-                status: .observing(.idle),
+                phase: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: .allEnabled
             ),
@@ -41,6 +41,6 @@ struct AppPlaybackPresentationTests {
             $0.isPlayerPresented = false
         }
         #expect(store.state.musicPlayback.selectedSong == song)
-        #expect(store.state.musicPlayback.status == .observing(.idle))
+        #expect(store.state.musicPlayback.phase == .observing(.idle))
     }
 }

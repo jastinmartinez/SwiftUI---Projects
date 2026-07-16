@@ -82,7 +82,7 @@ struct AppFeatureTests {
     private func makeSearchState() -> SearchFeature.State {
         SearchFeature.State(
             query: "",
-            status: .idle,
+            phase: .idle,
             playbackEligibility: .unknown
         )
     }
@@ -90,7 +90,7 @@ struct AppFeatureTests {
     private func makeMusicPlaybackState() -> MusicPlaybackFeature.State {
         MusicPlaybackFeature.State(
             selectedSong: nil,
-            status: .observing(.idle),
+            phase: .observing(.idle),
             playbackEligibility: .unknown,
             capabilities: .allEnabled
         )

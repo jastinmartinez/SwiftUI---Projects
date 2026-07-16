@@ -25,7 +25,7 @@ struct MusicPlaybackFeatureTests {
 
         await store.send(.task)
         await store.receive(.snapshotReceived(snapshot)) {
-            $0.status = .observing(snapshot)
+            $0.phase = .observing(snapshot)
         }
     }
 
@@ -39,11 +39,11 @@ struct MusicPlaybackFeatureTests {
         )
         let store = makeStore(
             song: song,
-            status: .loading(.idle)
+            phase: .loading(.idle)
         )
 
         await store.send(.snapshotReceived(snapshot)) {
-            $0.status = .loading(snapshot)
+            $0.phase = .loading(snapshot)
         }
     }
 
@@ -67,10 +67,10 @@ struct MusicPlaybackFeatureTests {
 
         await store.send(.task)
         await store.send(.playTapped) {
-            $0.status = .loading(.idle)
+            $0.phase = .loading(.idle)
         }
         await store.receive(.transportFailed(.playbackFailed)) {
-            $0.status = .failed(
+            $0.phase = .failed(
                 .playbackFailed,
                 lastSnapshot: .idle
             )
@@ -83,17 +83,17 @@ struct MusicPlaybackFeatureTests {
         )
         continuation.yield(latestSnapshot)
         await store.receive(.snapshotReceived(latestSnapshot)) {
-            $0.status = .failed(
+            $0.phase = .failed(
                 .playbackFailed,
                 lastSnapshot: latestSnapshot
             )
         }
 
         await store.send(.playTapped) {
-            $0.status = .loading(latestSnapshot)
+            $0.phase = .loading(latestSnapshot)
         }
         await store.receive(.transportFinished) {
-            $0.status = .observing(latestSnapshot)
+            $0.phase = .observing(latestSnapshot)
         }
 
         let playingSnapshot = MusicPlaybackSnapshot(
@@ -104,7 +104,7 @@ struct MusicPlaybackFeatureTests {
         continuation.yield(playingSnapshot)
         continuation.finish()
         await store.receive(.snapshotReceived(playingSnapshot)) {
-            $0.status = .observing(playingSnapshot)
+            $0.phase = .observing(playingSnapshot)
         }
     }
 
@@ -119,10 +119,10 @@ struct MusicPlaybackFeatureTests {
         }
 
         await store.send(.playTapped) {
-            $0.status = .loading(.idle)
+            $0.phase = .loading(.idle)
         }
         await store.receive(.transportFinished) {
-            $0.status = .observing(.idle)
+            $0.phase = .observing(.idle)
         }
 
         #expect(receivedItemID.value == song.id)
@@ -139,7 +139,7 @@ struct MusicPlaybackFeatureTests {
         let store = makeStore(song: song)
 
         await store.send(.snapshotReceived(snapshot)) {
-            $0.status = .observing(snapshot)
+            $0.phase = .observing(snapshot)
         }
     }
 
@@ -234,10 +234,10 @@ struct MusicPlaybackFeatureTests {
         }
 
         await store.send(.playTapped) {
-            $0.status = .loading(.idle)
+            $0.phase = .loading(.idle)
         }
         await store.receive(.transportFailed(.playbackFailed)) {
-            $0.status = .failed(
+            $0.phase = .failed(
                 .playbackFailed,
                 lastSnapshot: .idle
             )
@@ -250,7 +250,7 @@ struct MusicPlaybackFeatureTests {
 
     private func makeStore(
         song: SongSummary,
-        status: MusicPlaybackFeature.Status = .observing(.idle),
+        phase: MusicPlaybackFeature.Phase = .observing(.idle),
         playbackEligibility: CatalogPlaybackEligibility = .eligible,
         capabilities: MusicProviderCapabilities = .allEnabled,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
@@ -258,7 +258,7 @@ struct MusicPlaybackFeatureTests {
         TestStore(
             initialState: MusicPlaybackFeature.State(
                 selectedSong: song,
-                status: status,
+                phase: phase,
                 playbackEligibility: playbackEligibility,
                 capabilities: capabilities
             )

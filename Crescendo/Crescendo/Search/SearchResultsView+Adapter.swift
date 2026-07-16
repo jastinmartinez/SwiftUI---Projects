@@ -5,7 +5,7 @@ extension SearchResultsView.Model {
     @MainActor
     init(_ store: StoreOf<SearchFeature>) {
         let content: Content =
-            switch store.status {
+            switch store.phase {
             case .idle:
                 .idle
             case .loading:

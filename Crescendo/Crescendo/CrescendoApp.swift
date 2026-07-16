@@ -10,12 +10,12 @@ struct CrescendoApp: App {
             activeProviderID: nil,
             search: SearchFeature.State(
                 query: "",
-                status: .idle,
+                phase: .idle,
                 playbackEligibility: .unknown
             ),
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: nil,
-                status: .observing(.idle),
+                phase: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: .allEnabled
             ),

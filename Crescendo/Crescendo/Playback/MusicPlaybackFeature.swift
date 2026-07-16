@@ -7,7 +7,7 @@ struct MusicPlaybackFeature {
     @ObservableState
     struct State: Equatable {
         var selectedSong: SongSummary?
-        var status: Status
+        var phase: Phase
         var playbackEligibility: CatalogPlaybackEligibility
         var capabilities: MusicProviderCapabilities
 
@@ -19,7 +19,7 @@ struct MusicPlaybackFeature {
         }
     }
 
-    enum Status: Equatable {
+    enum Phase: Equatable {
         /// Accepts provider observations as the current playback snapshot.
         case observing(MusicPlaybackSnapshot)
         /// Retains the latest observation while a Play command is in flight.
@@ -76,52 +76,52 @@ struct MusicPlaybackFeature {
             case .playTapped:
                 guard state.canPlaySelectedSong else { return .none }
                 guard let itemID = state.selectedSong?.id else { return .none }
-                state.status = .loading(state.status.snapshot)
+                state.phase = .loading(state.phase.snapshot)
                 return transportEffect {
                     try await musicProvider.play(itemID)
                 }
 
             case .pauseTapped:
-                state.status = .observing(state.status.snapshot)
+                state.phase = .observing(state.phase.snapshot)
                 return transportEffect {
                     try await musicProvider.pause()
                 }
 
             case .stopTapped:
-                state.status = .observing(state.status.snapshot)
+                state.phase = .observing(state.phase.snapshot)
                 return transportEffect {
                     try await musicProvider.stop()
                 }
 
             case .seekRequested(let time):
                 guard state.capabilities.supportsSeeking else { return .none }
-                state.status = .observing(state.status.snapshot)
+                state.phase = .observing(state.phase.snapshot)
                 return transportEffect {
                     try await musicProvider.seek(time)
                 }
 
             case .transportFinished:
-                guard case .loading(let snapshot) = state.status else {
+                guard case .loading(let snapshot) = state.phase else {
                     return .none
                 }
-                state.status = .observing(snapshot)
+                state.phase = .observing(snapshot)
                 return .none
 
             case .transportFailed(let error):
-                state.status = .failed(
+                state.phase = .failed(
                     error,
-                    lastSnapshot: state.status.snapshot
+                    lastSnapshot: state.phase.snapshot
                 )
                 return .none
 
             case .snapshotReceived(let snapshot):
-                switch state.status {
+                switch state.phase {
                 case .observing:
-                    state.status = .observing(snapshot)
+                    state.phase = .observing(snapshot)
                 case .loading:
-                    state.status = .loading(snapshot)
+                    state.phase = .loading(snapshot)
                 case .failed(let error, _):
-                    state.status = .failed(
+                    state.phase = .failed(
                         error,
                         lastSnapshot: snapshot
                     )

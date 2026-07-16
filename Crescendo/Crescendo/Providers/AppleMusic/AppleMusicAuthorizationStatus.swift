@@ -1,15 +1,15 @@
 /// Mirrors Apple Music authorization without exposing MusicKit to feature code.
-enum AppleMusicAuthorizationState: Equatable {
+enum AppleMusicAuthorizationStatus: Equatable {
     case authorized
     case denied
     case restricted
     case notDetermined
 }
 
-extension MusicAuthorizationState {
-    /// Creates provider-neutral authorization from an Apple Music authorization state.
-    init(_ appleMusicState: AppleMusicAuthorizationState) {
-        switch appleMusicState {
+extension MusicAuthorizationStatus {
+    /// Creates provider-neutral authorization from an Apple Music authorization status.
+    init(_ appleMusicStatus: AppleMusicAuthorizationStatus) {
+        switch appleMusicStatus {
         case .authorized:
             self = .authorized
         case .denied:
@@ -23,7 +23,7 @@ extension MusicAuthorizationState {
 }
 
 extension CatalogPlaybackEligibility {
-    /// Creates provider-neutral playback eligibility from Apple Music subscription access.
+    /// Creates provider-neutral eligibility from MusicKit's catalog-playback flag.
     init(canPlayCatalogContent: Bool) {
         self = canPlayCatalogContent ? .eligible : .ineligible
     }

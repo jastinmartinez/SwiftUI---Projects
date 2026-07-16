@@ -1,5 +1,5 @@
 /// Combines the independent authorization and catalog-playback eligibility dimensions.
 struct MusicProviderAccess: Equatable, Sendable {
-    let authorization: MusicAuthorizationState
+    let authorization: MusicAuthorizationStatus
     let playbackEligibility: CatalogPlaybackEligibility
 }

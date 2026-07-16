@@ -5,7 +5,7 @@ extension PlaybackEligibilityNoticeView.Model {
     @MainActor
     init(_ store: StoreOf<SearchFeature>) {
         let hasResults: Bool
-        switch store.status {
+        switch store.phase {
         case .loaded(let songs):
             hasResults = !songs.isEmpty
         case .idle, .loading, .denied, .restricted, .failed:

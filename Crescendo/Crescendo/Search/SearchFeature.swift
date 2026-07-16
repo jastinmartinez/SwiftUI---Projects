@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import Foundation
 
-/// Owns catalog-search input, mutually exclusive presentation state, and access checks.
+/// Owns catalog-search input, its phase, and access checks.
 @Reducer
 struct SearchFeature {
     enum LoadingStage: Equatable {
@@ -10,7 +10,7 @@ struct SearchFeature {
         case searching
     }
 
-    enum Status: Equatable {
+    enum Phase: Equatable {
         case idle
         case loading(requestID: UUID, stage: LoadingStage)
         case loaded([SongSummary])
@@ -22,7 +22,7 @@ struct SearchFeature {
     @ObservableState
     struct State: Equatable {
         var query: String
-        var status: Status
+        var phase: Phase
         var playbackEligibility: CatalogPlaybackEligibility
     }
 
@@ -53,17 +53,17 @@ struct SearchFeature {
             switch action {
             case .queryChanged(let query):
                 state.query = query
-                state.status = .idle
+                state.phase = .idle
                 return .cancel(id: CancelID.search)
 
             case .submitButtonTapped, .retryButtonTapped:
                 let query = state.query.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !query.isEmpty else {
-                    state.status = .idle
+                    state.phase = .idle
                     return .cancel(id: CancelID.search)
                 }
                 let requestID = uuid()
-                state.status = .loading(requestID: requestID, stage: .checkingAccess)
+                state.phase = .loading(requestID: requestID, stage: .checkingAccess)
                 return .run { send in
                     let access = await musicProvider.currentAccess()
                     await send(.currentAccessResponse(requestID, access))
@@ -71,7 +71,7 @@ struct SearchFeature {
                 .cancellable(id: CancelID.search, cancelInFlight: true)
 
             case .resultTapped(let songID):
-                guard case .loaded(let songs) = state.status,
+                guard case .loaded(let songs) = state.phase,
                     let song = songs.first(where: { $0.id == songID })
                 else { return .none }
                 return .send(.delegate(.songSelected(song)))
@@ -80,15 +80,15 @@ struct SearchFeature {
                 return .none
 
             case .currentAccessResponse(let requestID, let access):
-                let expectedStatus: Status = .loading(
+                let expectedPhase: Phase = .loading(
                     requestID: requestID,
                     stage: .checkingAccess
                 )
-                guard state.status == expectedStatus else { return .none }
+                guard state.phase == expectedPhase else { return .none }
                 guard access.authorization == .notDetermined else {
                     return .send(.accessResolved(requestID, access))
                 }
-                state.status = .loading(requestID: requestID, stage: .requestingAccess)
+                state.phase = .loading(requestID: requestID, stage: .requestingAccess)
                 return .run { send in
                     let requestedAccess = await musicProvider.requestAccess()
                     await send(.requestAccessResponse(requestID, requestedAccess))
@@ -96,15 +96,15 @@ struct SearchFeature {
                 .cancellable(id: CancelID.search)
 
             case .requestAccessResponse(let requestID, let access):
-                let expectedStatus: Status = .loading(
+                let expectedPhase: Phase = .loading(
                     requestID: requestID,
                     stage: .requestingAccess
                 )
-                guard state.status == expectedStatus else { return .none }
+                guard state.phase == expectedPhase else { return .none }
                 return .send(.accessResolved(requestID, access))
 
             case .accessResolved(let requestID, let access):
-                guard case .loading(let activeRequestID, let stage) = state.status,
+                guard case .loading(let activeRequestID, let stage) = state.phase,
                     activeRequestID == requestID,
                     stage == .checkingAccess || stage == .requestingAccess
                 else { return .none }
@@ -112,7 +112,7 @@ struct SearchFeature {
                 switch access.authorization {
                 case .authorized:
                     let query = state.query.trimmingCharacters(in: .whitespacesAndNewlines)
-                    state.status = .loading(requestID: requestID, stage: .searching)
+                    state.phase = .loading(requestID: requestID, stage: .searching)
                     return .run { send in
                         do {
                             let songs = try await musicProvider.search(query, 20)
@@ -125,30 +125,30 @@ struct SearchFeature {
                     }
                     .cancellable(id: CancelID.search)
                 case .denied:
-                    state.status = .denied
+                    state.phase = .denied
                 case .restricted:
-                    state.status = .restricted
+                    state.phase = .restricted
                 case .notDetermined:
-                    state.status = .failed
+                    state.phase = .failed
                 }
                 return .none
 
             case .searchResponse(let requestID, .success(let songs)):
-                let expectedStatus: Status = .loading(
+                let expectedPhase: Phase = .loading(
                     requestID: requestID,
                     stage: .searching
                 )
-                guard state.status == expectedStatus else { return .none }
-                state.status = .loaded(songs)
+                guard state.phase == expectedPhase else { return .none }
+                state.phase = .loaded(songs)
                 return .none
 
             case .searchResponse(let requestID, .failure):
-                let expectedStatus: Status = .loading(
+                let expectedPhase: Phase = .loading(
                     requestID: requestID,
                     stage: .searching
                 )
-                guard state.status == expectedStatus else { return .none }
-                state.status = .failed
+                guard state.phase == expectedPhase else { return .none }
+                state.phase = .failed
                 return .none
             }
         }

@@ -10,7 +10,7 @@ struct SearchPresentationAdapterTests {
         let song = makeSong()
         let store = makeStore(
             query: "result",
-            status: .loaded([song]),
+            phase: .loaded([song]),
             playbackEligibility: .eligible
         )
         let model = SearchResultsView.Model(store)
@@ -29,7 +29,7 @@ struct SearchPresentationAdapterTests {
     func emptyResultsPreserveTheSubmittedQuery() {
         let store = makeStore(
             query: "No matches",
-            status: .loaded([]),
+            phase: .loaded([]),
             playbackEligibility: .eligible
         )
         let model = SearchResultsView.Model(store)
@@ -41,12 +41,12 @@ struct SearchPresentationAdapterTests {
     func unknownEligibilityVisibilityTracksResultPresence() {
         let resultsStore = makeStore(
             query: "result",
-            status: .loaded([makeSong()]),
+            phase: .loaded([makeSong()]),
             playbackEligibility: .unknown
         )
         let emptyStore = makeStore(
             query: "result",
-            status: .loaded([]),
+            phase: .loaded([]),
             playbackEligibility: .unknown
         )
         let resultsModel = PlaybackEligibilityNoticeView.Model(resultsStore)
@@ -60,14 +60,14 @@ struct SearchPresentationAdapterTests {
     func retryForwardsToTheSearchReducer() {
         let store = makeStore(
             query: "",
-            status: .failed,
+            phase: .failed,
             playbackEligibility: .unknown
         )
         let model = SearchResultsView.Model(store)
 
         model.onRetry()
 
-        #expect(store.status == .idle)
+        #expect(store.phase == .idle)
     }
 
     @Test
@@ -79,12 +79,12 @@ struct SearchPresentationAdapterTests {
                 activeProviderID: "apple-music",
                 search: SearchFeature.State(
                     query: "result",
-                    status: .loaded([song]),
+                    phase: .loaded([song]),
                     playbackEligibility: .eligible
                 ),
                 musicPlayback: MusicPlaybackFeature.State(
                     selectedSong: nil,
-                    status: .observing(.idle),
+                    phase: .observing(.idle),
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled
                 ),
@@ -106,13 +106,13 @@ struct SearchPresentationAdapterTests {
 
     private func makeStore(
         query: String,
-        status: SearchFeature.Status,
+        phase: SearchFeature.Phase,
         playbackEligibility: CatalogPlaybackEligibility
     ) -> StoreOf<SearchFeature> {
         Store(
             initialState: SearchFeature.State(
                 query: query,
-                status: status,
+                phase: phase,
                 playbackEligibility: playbackEligibility
             )
         ) {
