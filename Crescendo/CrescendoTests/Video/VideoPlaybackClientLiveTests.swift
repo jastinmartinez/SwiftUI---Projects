@@ -11,7 +11,7 @@ struct VideoPlaybackClientLiveTests {
         let url = makeURL("video.mp4")
         let item = AVPlayerItem(url: url)
         let player = AVPlayer()
-        let controller = VideoPlaybackController(player: player)
+        let controller = AVPlayerController(player: player)
         var preparedURLs: [URL] = []
         let itemLoader = VideoPlayableItemLoader(
             load: { submittedURL in
@@ -34,7 +34,7 @@ struct VideoPlaybackClientLiveTests {
     func preparationFailurePreservesCurrentItem() async {
         let oldItem = AVPlayerItem(url: makeURL("old.mp4"))
         let player = AVPlayer(playerItem: oldItem)
-        let controller = VideoPlaybackController(player: player)
+        let controller = AVPlayerController(player: player)
         let itemLoader = VideoPlayableItemLoader(
             load: { _ in throw VideoPlaybackError.notPlayable }
         )
@@ -55,7 +55,7 @@ struct VideoPlaybackClientLiveTests {
         let oldItem = AVPlayerItem(url: makeURL("old.mp4"))
         let newItem = AVPlayerItem(url: makeURL("new.mp4"))
         let player = AVPlayer(playerItem: oldItem)
-        let controller = VideoPlaybackController(player: player)
+        let controller = AVPlayerController(player: player)
         let (started, startedContinuation) = AsyncStream<Void>.makeStream()
         let (resume, resumeContinuation) = AsyncStream<Void>.makeStream()
         let itemLoader = VideoPlayableItemLoader(

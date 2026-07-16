@@ -6,12 +6,12 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct VideoPlaybackControllerTests {
+struct AVPlayerControllerTests {
     @Test
     func preparedItemReplacesInjectedPlayerWithoutAutoplay() {
         let player = AVPlayer()
         let item = AVPlayerItem(url: makeURL("video.mp4"))
-        let controller = VideoPlaybackController(player: player)
+        let controller = AVPlayerController(player: player)
 
         controller.replaceCurrentItem(with: item)
 
@@ -24,7 +24,7 @@ struct VideoPlaybackControllerTests {
         let player = AVPlayer(
             playerItem: AVPlayerItem(url: makeURL("video.mp4"))
         )
-        let controller = VideoPlaybackController(player: player)
+        let controller = AVPlayerController(player: player)
 
         controller.clear()
 
@@ -33,7 +33,7 @@ struct VideoPlaybackControllerTests {
 
     @Test
     func playbackObservationStartsWithCurrentSnapshot() async throws {
-        let controller = VideoPlaybackController(player: AVPlayer())
+        let controller = AVPlayerController(player: AVPlayer())
         let receivedSnapshot = LockIsolated<VideoPlaybackSnapshot?>(nil)
         let observationTask = Task { @MainActor in
             var iterator = controller.playbackSnapshots().makeAsyncIterator()
@@ -48,19 +48,15 @@ struct VideoPlaybackControllerTests {
     }
 
     @Test
-    func completedDurationProducesEndedSnapshot() {
-        let snapshot = VideoPlaybackController.makeSnapshot(
+    func completedValuesProduceEndedStatus() {
+        let status = VideoPlaybackStatus(
             hasCurrentItem: true,
             timeControlStatus: .paused,
             currentTime: 10,
             duration: 10
         )
-        let expectedSnapshot = VideoPlaybackSnapshot(
-            status: .ended,
-            currentTime: 10
-        )
 
-        #expect(snapshot == expectedSnapshot)
+        #expect(status == .ended)
     }
 
     // MARK: - Helpers

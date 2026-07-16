@@ -1,10 +1,10 @@
 import AVFoundation
 import Foundation
 
-/// Controls an explicitly injected AVPlayer on the main actor.
+/// Controls an explicitly injected AVPlayer for URL-backed media.
 @MainActor
-final class VideoPlaybackController {
-    let player: AVPlayer
+final class AVPlayerController {
+    private let player: AVPlayer
 
     init(player: AVPlayer) {
         self.player = player
@@ -42,7 +42,7 @@ final class VideoPlaybackController {
                 }
 
                 while !Task.isCancelled {
-                    continuation.yield(currentSnapshot())
+                    continuation.yield(makeSnapshot())
                     do {
                         try await Task.sleep(for: .milliseconds(500))
                     } catch {
@@ -57,31 +57,16 @@ final class VideoPlaybackController {
         }
     }
 
-    /// Reads one normalized snapshot from the injected player.
-    private func currentSnapshot() -> VideoPlaybackSnapshot {
+    /// Normalizes the injected player's current values into an app-owned snapshot.
+    private func makeSnapshot() -> VideoPlaybackSnapshot {
         let playerTime = player.currentTime().seconds
         let currentTime = playerTime.isFinite ? max(0, playerTime) : 0
-        return Self.makeSnapshot(
-            hasCurrentItem: player.currentItem != nil,
-            timeControlStatus: player.timeControlStatus,
-            currentTime: currentTime,
-            duration: player.currentItem?.duration.seconds
-        )
-    }
-
-    /// Normalizes framework playback values into an app-owned snapshot.
-    static func makeSnapshot(
-        hasCurrentItem: Bool,
-        timeControlStatus: AVPlayer.TimeControlStatus,
-        currentTime: TimeInterval,
-        duration: TimeInterval?
-    ) -> VideoPlaybackSnapshot {
         return VideoPlaybackSnapshot(
             status: VideoPlaybackStatus(
-                hasCurrentItem: hasCurrentItem,
-                timeControlStatus: timeControlStatus,
+                hasCurrentItem: player.currentItem != nil,
+                timeControlStatus: player.timeControlStatus,
                 currentTime: currentTime,
-                duration: duration
+                duration: player.currentItem?.duration.seconds
             ),
             currentTime: currentTime
         )
@@ -90,7 +75,7 @@ final class VideoPlaybackController {
 
 extension VideoPlaybackStatus {
     /// Maps AVPlayer transport state without turning unknown framework cases into failures.
-    fileprivate init(
+    init(
         hasCurrentItem: Bool,
         timeControlStatus: AVPlayer.TimeControlStatus,
         currentTime: TimeInterval,

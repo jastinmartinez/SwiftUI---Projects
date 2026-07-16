@@ -4,7 +4,7 @@ extension VideoPlaybackClient {
     /// Coordinates an explicitly constructed item loader and playback controller.
     @MainActor
     static func live(
-        controller: VideoPlaybackController,
+        controller: AVPlayerController,
         itemLoader: VideoPlayableItemLoader
     ) -> Self {
         Self(
@@ -29,7 +29,7 @@ extension VideoPlaybackClient {
     private static func prepareAndReplace(
         _ url: URL,
         itemLoader: VideoPlayableItemLoader,
-        controller: VideoPlaybackController
+        controller: AVPlayerController
     ) async throws {
         let item = try await itemLoader.load(url)
         try Task.checkCancellation()
