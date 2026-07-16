@@ -1,0 +1,64 @@
+name: Crescendo
+
+options:
+  defaultSourceDirectoryType: syncedFolder
+  deploymentTarget:
+    iOS: "18.0"
+  minimumXcodeGenVersion: 2.45.4
+
+attributes:
+  LastUpgradeCheck: "2660"
+
+packages:
+  ComposableArchitecture:
+    url: https://github.com/pointfreeco/swift-composable-architecture
+    exactVersion: 1.26.0
+
+settings:
+  base:
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    STRING_CATALOG_GENERATE_SYMBOLS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    SWIFT_VERSION: "6.0"
+
+targets:
+  Crescendo:
+    type: application
+    platform: iOS
+    sources:
+      - path: Crescendo
+    dependencies:
+      - package: ComposableArchitecture
+        product: ComposableArchitecture
+    settings:
+      base:
+        DEVELOPMENT_TEAM: WQNY636DWS
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSAppleMusicUsageDescription: Crescendo uses Apple Music access to search and play catalog songs in this learning demo.
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        PRODUCT_BUNDLE_IDENTIFIER: com.jastin.crescendo
+
+  CrescendoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: CrescendoTests
+    dependencies:
+      - target: Crescendo
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.jastin.CrescendoTests
+
+schemes:
+  Crescendo:
+    build:
+      targets:
+        Crescendo: all
+        CrescendoTests: [test]
+    test:
+      targets:
+        - CrescendoTests
