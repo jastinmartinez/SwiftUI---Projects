@@ -55,22 +55,26 @@ struct MusicPlaybackFeature {
                 guard state.canPlaySelectedSong else { return .none }
                 guard let itemID = state.selectedSong?.id else { return .none }
                 state.snapshot.status = .loading
+                state.snapshot.error = nil
                 return transportEffect {
                     try await musicProvider.play(itemID)
                 }
 
             case .pauseTapped:
+                state.snapshot.error = nil
                 return transportEffect {
                     try await musicProvider.pause()
                 }
 
             case .stopTapped:
+                state.snapshot.error = nil
                 return transportEffect {
                     try await musicProvider.stop()
                 }
 
             case .seekRequested(let time):
                 guard state.capabilities.supportsSeeking else { return .none }
+                state.snapshot.error = nil
                 return transportEffect {
                     try await musicProvider.seek(time)
                 }
@@ -84,6 +88,8 @@ struct MusicPlaybackFeature {
                 return .none
 
             case .snapshotReceived(let snapshot):
+                // Keep command failures visible until the user starts another transport command.
+                guard state.snapshot.error == nil else { return .none }
                 state.snapshot = snapshot
                 return .none
             }

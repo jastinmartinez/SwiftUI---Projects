@@ -31,6 +31,55 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test
+    func pollingSnapshotPreservesFailureUntilNextPlaybackAttempt() async {
+        let (snapshots, continuation) = AsyncStream<MusicPlaybackSnapshot>.makeStream()
+        let playCallCount = LockIsolated(0)
+        let song = makeSong()
+        let store = makeStore(song: song) {
+            $0.musicProvider.playbackSnapshots = { snapshots }
+            $0.musicProvider.play = { _ in
+                let shouldFail = playCallCount.withValue { callCount in
+                    callCount += 1
+                    return callCount == 1
+                }
+                if shouldFail {
+                    throw MusicProviderError.playbackFailed
+                }
+            }
+        }
+
+        await store.send(.task)
+        await store.send(.playTapped) {
+            $0.snapshot.status = .loading
+        }
+        await store.receive(.transportFailed(.playbackFailed)) {
+            $0.snapshot.status = .failed
+            $0.snapshot.error = .playbackFailed
+        }
+
+        continuation.yield(.idle)
+        await store.receive(.snapshotReceived(.idle))
+
+        await store.send(.playTapped) {
+            $0.snapshot.status = .loading
+            $0.snapshot.error = nil
+        }
+        await store.receive(.transportFinished)
+
+        let playingSnapshot = MusicPlaybackSnapshot(
+            currentItem: song,
+            status: .playing,
+            currentTime: 1,
+            error: nil
+        )
+        continuation.yield(playingSnapshot)
+        continuation.finish()
+        await store.receive(.snapshotReceived(playingSnapshot)) {
+            $0.snapshot = playingSnapshot
+        }
+    }
+
+    @Test
     func playForwardsTheSelectedItemID() async {
         let receivedItemID = LockIsolated<MusicItemID?>(nil)
         let song = makeSong()
