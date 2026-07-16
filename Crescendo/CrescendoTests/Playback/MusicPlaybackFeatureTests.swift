@@ -50,26 +50,18 @@ struct MusicPlaybackFeatureTests {
     @Test
     func pollingSnapshotPreservesFailureUntilNextPlaybackAttempt() async {
         let (snapshots, continuation) = AsyncStream<MusicPlaybackSnapshot>.makeStream()
-        let playCallCount = LockIsolated(0)
         let song = makeSong()
         let store = makeStore(song: song) {
             $0.musicProvider.playbackSnapshots = { snapshots }
-            $0.musicProvider.play = { _ in
-                let shouldFail = playCallCount.withValue { callCount in
-                    callCount += 1
-                    return callCount == 1
-                }
-                if shouldFail {
-                    throw MusicProviderError.playbackFailed
-                }
-            }
         }
 
         await store.send(.task)
-        await store.send(.playTapped) {
+        await store.send(.playTapped)
+        await store.receive(.delegate(.playRequested(song.id)))
+        await store.send(.playbackStartAccepted) {
             $0.phase = .loading(.idle)
         }
-        await store.receive(.transportFailed(.playbackFailed)) {
+        await store.send(.transportFailed(.playbackFailed)) {
             $0.phase = .failed(
                 .playbackFailed,
                 lastSnapshot: .idle
@@ -89,10 +81,12 @@ struct MusicPlaybackFeatureTests {
             )
         }
 
-        await store.send(.playTapped) {
+        await store.send(.playTapped)
+        await store.receive(.delegate(.playRequested(song.id)))
+        await store.send(.playbackStartAccepted) {
             $0.phase = .loading(latestSnapshot)
         }
-        await store.receive(.transportFinished) {
+        await store.send(.transportFinished) {
             $0.phase = .observing(latestSnapshot)
         }
 
@@ -109,23 +103,29 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test
-    func playForwardsTheSelectedItemID() async {
-        let receivedItemID = LockIsolated<MusicItemID?>(nil)
+    func eligiblePlayDelegatesWithoutCallingProvider() async {
+        let playCallCount = LockIsolated(0)
         let song = makeSong()
         let store = makeStore(song: song) {
-            $0.musicProvider.play = { itemID in
-                receivedItemID.withValue { $0 = itemID }
+            $0.musicProvider.play = { _ in
+                playCallCount.withValue { $0 += 1 }
             }
         }
 
-        await store.send(.playTapped) {
+        await store.send(.playTapped)
+        await store.receive(.delegate(.playRequested(song.id)))
+
+        #expect(playCallCount.value == 0)
+        #expect(store.state.phase == .observing(.idle))
+    }
+
+    @Test
+    func parentAcceptanceMovesMusicToLoading() async {
+        let store = makeStore(song: makeSong())
+
+        await store.send(.playbackStartAccepted) {
             $0.phase = .loading(.idle)
         }
-        await store.receive(.transportFinished) {
-            $0.phase = .observing(.idle)
-        }
-
-        #expect(receivedItemID.value == song.id)
     }
 
     @Test
@@ -144,16 +144,11 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test
-    func ineligibleAccountCannotStartPlayback() async {
-        let song = makeSong()
+    func ineligibleAccountDoesNotDelegatePlayback() async {
         let store = makeStore(
-            song: song,
+            song: makeSong(),
             playbackEligibility: .ineligible
-        ) {
-            $0.musicProvider.play = { _ in
-                Issue.record("Playback must remain gated for an ineligible account")
-            }
-        }
+        )
 
         #expect(!store.state.canPlaySelectedSong)
         await store.send(.playTapped)
@@ -225,18 +220,14 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test
-    func playFailureRetainsSelection() async {
+    func acceptedPlayFailureRetainsSelection() async {
         let song = makeSong()
-        let store = makeStore(song: song) {
-            $0.musicProvider.play = { _ in
-                throw MusicProviderError.playbackFailed
-            }
-        }
+        let store = makeStore(song: song)
 
-        await store.send(.playTapped) {
+        await store.send(.playbackStartAccepted) {
             $0.phase = .loading(.idle)
         }
-        await store.receive(.transportFailed(.playbackFailed)) {
+        await store.send(.transportFailed(.playbackFailed)) {
             $0.phase = .failed(
                 .playbackFailed,
                 lastSnapshot: .idle

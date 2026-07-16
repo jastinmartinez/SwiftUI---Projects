@@ -41,9 +41,16 @@ struct MusicPlaybackFeature {
         }
     }
 
+    /// Events emitted after validating child-owned playback intent.
+    enum Delegate: Equatable {
+        case playRequested(MusicItemID)
+    }
+
     enum Action: Equatable {
         case task
         case playTapped
+        case playbackStartAccepted
+        case delegate(Delegate)
         case pauseTapped
         case stopTapped
         case seekRequested(TimeInterval)
@@ -74,12 +81,17 @@ struct MusicPlaybackFeature {
                 )
 
             case .playTapped:
-                guard state.canPlaySelectedSong else { return .none }
-                guard let itemID = state.selectedSong?.id else { return .none }
+                guard state.canPlaySelectedSong,
+                    let itemID = state.selectedSong?.id
+                else { return .none }
+                return .send(.delegate(.playRequested(itemID)))
+
+            case .playbackStartAccepted:
                 state.phase = .loading(state.phase.snapshot)
-                return transportEffect {
-                    try await musicProvider.play(itemID)
-                }
+                return .none
+
+            case .delegate:
+                return .none
 
             case .pauseTapped:
                 state.phase = .observing(state.phase.snapshot)
