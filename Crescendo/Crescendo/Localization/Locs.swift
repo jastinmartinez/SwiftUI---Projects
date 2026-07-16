@@ -29,4 +29,20 @@ extension Locs {
             localized: "music_access.availability_unknown"
         )
     }
+
+    enum MusicPlayback {
+        static let noSelection = String(localized: "music_playback.no_selection")
+        static let play = String(localized: "music_playback.play")
+        static let pause = String(localized: "music_playback.pause")
+        static let stop = String(localized: "music_playback.stop")
+
+        enum Status {
+            static let idle = String(localized: "music_playback.status.idle")
+            static let loading = String(localized: "music_playback.status.loading")
+            static let playing = String(localized: "music_playback.status.playing")
+            static let paused = String(localized: "music_playback.status.paused")
+            static let stopped = String(localized: "music_playback.status.stopped")
+            static let failed = String(localized: "music_playback.status.failed")
+        }
+    }
 }

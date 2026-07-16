@@ -6,12 +6,23 @@ import Testing
 @MainActor
 struct AppPlaybackPresentationTests {
     @Test
-    func dismissingSheetKeepsPlaybackState() async {
+    func dismissingAndReopeningSheetKeepsPlaybackState() async {
         let song = SongSummary(
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
             artistName: "Artist",
             artworkURL: nil
+        )
+        let snapshot = MusicPlaybackSnapshot(
+            currentItem: song,
+            status: .paused,
+            currentTime: 42
+        )
+        let musicPlayback = MusicPlaybackFeature.State(
+            selectedSong: song,
+            phase: .failed(.playbackFailed, lastSnapshot: snapshot),
+            playbackEligibility: .eligible,
+            capabilities: .allEnabled
         )
         let state = AppFeature.State(
             registeredProviders: [.appleMusic],
@@ -21,26 +32,18 @@ struct AppPlaybackPresentationTests {
                 phase: .loaded([song]),
                 playbackEligibility: .eligible
             ),
-            musicPlayback: MusicPlaybackFeature.State(
-                selectedSong: nil,
-                phase: .observing(.idle),
-                playbackEligibility: .unknown,
-                capabilities: .allEnabled
-            ),
-            isPlayerPresented: false
+            musicPlayback: musicPlayback,
+            isPlayerPresented: true
         )
         let store = TestStore(initialState: state) { AppFeature() }
 
-        await store.send(.search(.resultTapped(song.id)))
-        await store.receive(.search(.delegate(.songSelected(song)))) {
-            $0.musicPlayback.selectedSong = song
-            $0.musicPlayback.playbackEligibility = .eligible
-            $0.isPlayerPresented = true
-        }
         await store.send(.setPlayerPresented(false)) {
             $0.isPlayerPresented = false
         }
-        #expect(store.state.musicPlayback.selectedSong == song)
-        #expect(store.state.musicPlayback.phase == .observing(.idle))
+        await store.send(.setPlayerPresented(true)) {
+            $0.isPlayerPresented = true
+        }
+
+        #expect(store.state.musicPlayback == musicPlayback)
     }
 }
