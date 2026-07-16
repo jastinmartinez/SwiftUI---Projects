@@ -311,6 +311,8 @@ struct AppPlaybackCoordinationTests {
             isPlayerPresented: false,
             video: nil,
             videoCloseRequestID: nil,
+            pendingProviderID: nil,
+            providerSwitchRequestID: nil,
             playbackTransition: nil
         )
     }

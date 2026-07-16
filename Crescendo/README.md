@@ -30,3 +30,7 @@ xcodebuild test \
   -scheme Crescendo \
   -destination 'platform=iOS Simulator,name=iPhone 13,OS=18.6'
 ```
+
+## Phase 1 verification
+
+From the workspace root, run `Crescendo/scripts/verify-phase1-boundaries.sh` and record final evidence in the [Phase 1 verification checklist](docs/verification/phase-1-checklist.md).

@@ -13,6 +13,8 @@ struct AppFeature {
         var isPlayerPresented: Bool
         var video: VideoPlaybackFeature.State?
         var videoCloseRequestID: UUID?
+        var pendingProviderID: MusicProviderID?
+        var providerSwitchRequestID: UUID?
         var playbackTransition: PlaybackTransition?
 
         var requiresProviderSelection: Bool {
@@ -27,6 +29,8 @@ struct AppFeature {
             isPlayerPresented: Bool,
             video: VideoPlaybackFeature.State?,
             videoCloseRequestID: UUID?,
+            pendingProviderID: MusicProviderID?,
+            providerSwitchRequestID: UUID?,
             playbackTransition: PlaybackTransition?
         ) {
             self.registeredProviders = registeredProviders
@@ -36,6 +40,8 @@ struct AppFeature {
             self.isPlayerPresented = isPlayerPresented
             self.video = video
             self.videoCloseRequestID = videoCloseRequestID
+            self.pendingProviderID = pendingProviderID
+            self.providerSwitchRequestID = providerSwitchRequestID
             self.playbackTransition = playbackTransition
         }
     }
@@ -43,6 +49,14 @@ struct AppFeature {
     enum Action: Equatable {
         case task
         case providerSelected(MusicProviderID)
+        case providerSwitchPauseSucceeded(
+            requestID: UUID,
+            providerID: MusicProviderID
+        )
+        case providerSwitchPauseFailed(
+            requestID: UUID,
+            providerID: MusicProviderID
+        )
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
         case musicStartSucceeded(MusicItemID)
@@ -54,6 +68,10 @@ struct AppFeature {
         case closeVideoRequested
         case closeVideoFinished(UUID)
         case video(VideoPlaybackFeature.Action)
+    }
+
+    enum CancelID {
+        case providerSwitch
     }
 
     @Dependency(\.uuid) var uuid
@@ -76,13 +94,77 @@ struct AppFeature {
                 return .none
 
             case .providerSelected(let providerID):
-                let isRegisteredProvider = state.registeredProviders.contains(
-                    where: { $0.id == providerID }
-                )
-                guard isRegisteredProvider else {
+                guard
+                    state.registeredProviders.contains(
+                        where: { $0.id == providerID }
+                    ),
+                    state.playbackTransition == nil,
+                    state.videoCloseRequestID == nil
+                else {
                     return .none
                 }
+
+                let requestID = uuid()
+                state.pendingProviderID = providerID
+                state.providerSwitchRequestID = requestID
+                return .run { send in
+                    do {
+                        try await musicProvider.pause()
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .providerSwitchPauseSucceeded(
+                                requestID: requestID,
+                                providerID: providerID
+                            )
+                        )
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .providerSwitchPauseFailed(
+                                requestID: requestID,
+                                providerID: providerID
+                            )
+                        )
+                    }
+                }
+                .cancellable(id: CancelID.providerSwitch, cancelInFlight: true)
+
+            case .providerSwitchPauseSucceeded(let requestID, let providerID):
+                guard state.providerSwitchRequestID == requestID,
+                    state.pendingProviderID == providerID,
+                    let provider = state.registeredProviders.first(
+                        where: { $0.id == providerID }
+                    )
+                else {
+                    return .none
+                }
+
                 state.activeProviderID = providerID
+                state.pendingProviderID = nil
+                state.providerSwitchRequestID = nil
+                state.search = SearchFeature.State(
+                    query: "",
+                    phase: .idle,
+                    playbackEligibility: .unknown
+                )
+                state.musicPlayback = MusicPlaybackFeature.State(
+                    selectedSong: nil,
+                    phase: .observing(.idle),
+                    playbackEligibility: .unknown,
+                    capabilities: provider.capabilities
+                )
+                state.isPlayerPresented = false
+                return .none
+
+            case .providerSwitchPauseFailed(let requestID, let providerID):
+                guard state.providerSwitchRequestID == requestID,
+                    state.pendingProviderID == providerID
+                else {
+                    return .none
+                }
+
+                state.pendingProviderID = nil
+                state.providerSwitchRequestID = nil
                 return .none
 
             case .search(.delegate(.songSelected(let song))):
@@ -96,7 +178,8 @@ struct AppFeature {
 
             case .musicPlayback(.delegate(.playRequested(let itemID))):
                 guard state.playbackTransition == nil,
-                    state.videoCloseRequestID == nil
+                    state.videoCloseRequestID == nil,
+                    state.providerSwitchRequestID == nil
                 else {
                     return .none
                 }
@@ -140,7 +223,8 @@ struct AppFeature {
             case .openVideoButtonTapped:
                 guard state.video == nil,
                     state.videoCloseRequestID == nil,
-                    state.playbackTransition == nil
+                    state.playbackTransition == nil,
+                    state.providerSwitchRequestID == nil
                 else {
                     return .none
                 }
@@ -180,7 +264,8 @@ struct AppFeature {
             case .closeVideoRequested:
                 guard state.video != nil,
                     state.videoCloseRequestID == nil,
-                    state.playbackTransition == nil
+                    state.playbackTransition == nil,
+                    state.providerSwitchRequestID == nil
                 else {
                     return .none
                 }

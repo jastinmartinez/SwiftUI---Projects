@@ -215,6 +215,8 @@ struct AppVideoRouteTests {
             isPlayerPresented: false,
             video: video,
             videoCloseRequestID: videoCloseRequestID,
+            pendingProviderID: nil,
+            providerSwitchRequestID: nil,
             playbackTransition: nil
         )
     }

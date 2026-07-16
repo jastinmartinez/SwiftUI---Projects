@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Foundation
 import Testing
 
 @testable import Crescendo
@@ -32,7 +33,18 @@ struct AppFeatureTests {
         #expect(store.state.requiresProviderSelection)
 
         await store.send(.providerSelected("future")) {
+            $0.pendingProviderID = "future"
+            $0.providerSwitchRequestID = UUID(0)
+        }
+        await store.receive(
+            .providerSwitchPauseSucceeded(
+                requestID: UUID(0),
+                providerID: "future"
+            )
+        ) {
             $0.activeProviderID = "future"
+            $0.pendingProviderID = nil
+            $0.providerSwitchRequestID = nil
         }
         #expect(!store.state.requiresProviderSelection)
     }
@@ -63,10 +75,15 @@ struct AppFeatureTests {
                 isPlayerPresented: false,
                 video: nil,
                 videoCloseRequestID: nil,
+                pendingProviderID: nil,
+                providerSwitchRequestID: nil,
                 playbackTransition: nil
             )
         ) {
             AppFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.musicProvider.pause = {}
         }
     }
 
