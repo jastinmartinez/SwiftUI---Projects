@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Foundation
 import Testing
 
 @testable import Crescendo
@@ -45,7 +46,7 @@ struct AppPlaybackCoordinationTests {
 
         resumePauseContinuation.yield()
         resumePauseContinuation.finish()
-        await store.receive(\.musicStartSucceeded) {
+        await store.receive(.musicStartSucceeded(song.id)) {
             $0.playbackTransition = nil
         }
         await store.receive(\.musicPlayback.transportFinished) {
@@ -124,7 +125,7 @@ struct AppPlaybackCoordinationTests {
         await store.receive(\.musicPlayback.playbackStartAccepted) {
             $0.musicPlayback.phase = .loading(.idle)
         }
-        await store.receive(\.musicStartFailed) {
+        await store.receive(.musicStartFailed(song.id, .network)) {
             $0.playbackTransition = nil
         }
         await store.receive(\.musicPlayback.transportFailed) {
@@ -171,7 +172,7 @@ struct AppPlaybackCoordinationTests {
 
         resumePauseContinuation.yield()
         resumePauseContinuation.finish()
-        await store.receive(\.musicStartSucceeded) {
+        await store.receive(.musicStartSucceeded(song.id)) {
             $0.playbackTransition = nil
         }
         await store.receive(\.musicPlayback.transportFinished) {
@@ -197,6 +198,97 @@ struct AppPlaybackCoordinationTests {
 
         #expect(store.state.playbackTransition == .startingMusic(song.id))
         #expect(store.state.video == nil)
+    }
+
+    @Test
+    func staleMusicCompletionsForDifferentItemAreIgnored() async {
+        let song = makeSong()
+        let staleItemID = MusicItemID(providerID: "fake", nativeID: "stale")
+        var state = makeState(song: song)
+        state.musicPlayback.phase = .loading(.idle)
+        state.playbackTransition = .startingMusic(song.id)
+        let store = TestStore(initialState: state) {
+            AppFeature()
+        }
+
+        await store.send(.musicStartSucceeded(staleItemID))
+        await store.send(.musicStartFailed(staleItemID, .network))
+
+        #expect(store.state.playbackTransition == .startingMusic(song.id))
+        #expect(store.state.musicPlayback.phase == .loading(.idle))
+    }
+
+    @Test
+    func closeRequestDuringMusicTransitionIsIgnored() async {
+        let events = LockIsolated<[String]>([])
+        let song = makeSong()
+        var state = makeState(song: song)
+        state.video = makeVideoState()
+        state.playbackTransition = .startingMusic(song.id)
+        let store = TestStore(initialState: state) {
+            AppFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.videoPlayback.pause = {
+                events.withValue { $0.append("pause-video") }
+            }
+            $0.videoPlayback.clear = {
+                events.withValue { $0.append("clear-video") }
+            }
+        }
+
+        await store.send(.closeVideoRequested)
+
+        #expect(store.state.video == makeVideoState())
+        #expect(store.state.videoCloseRequestID == nil)
+        #expect(store.state.playbackTransition == .startingMusic(song.id))
+        #expect(events.value.isEmpty)
+    }
+
+    @Test
+    func musicStartDuringVideoCloseIsIgnored() async {
+        let events = LockIsolated<[String]>([])
+        let song = makeSong()
+        var state = makeState(song: song)
+        state.video = makeVideoState()
+        state.videoCloseRequestID = UUID(0)
+        let store = TestStore(initialState: state) {
+            AppFeature()
+        } withDependencies: {
+            $0.videoPlayback.pause = {
+                events.withValue { $0.append("pause-video") }
+            }
+            $0.musicProvider.play = { _ in
+                events.withValue { $0.append("play-music") }
+            }
+        }
+
+        await store.send(.musicPlayback(.delegate(.playRequested(song.id))))
+
+        #expect(store.state.playbackTransition == nil)
+        #expect(store.state.musicPlayback.phase == .observing(.idle))
+        #expect(events.value.isEmpty)
+    }
+
+    @Test
+    func openingVideoWithStaleCloseRequestIsIgnored() async {
+        let events = LockIsolated<[String]>([])
+        let song = makeSong()
+        var state = makeState(song: song)
+        state.videoCloseRequestID = UUID(0)
+        let store = TestStore(initialState: state) {
+            AppFeature()
+        } withDependencies: {
+            $0.musicProvider.pause = {
+                events.withValue { $0.append("pause-music") }
+            }
+        }
+
+        await store.send(.openVideoButtonTapped)
+
+        #expect(store.state.video == nil)
+        #expect(store.state.playbackTransition == nil)
+        #expect(events.value.isEmpty)
     }
 
     // MARK: - Helpers

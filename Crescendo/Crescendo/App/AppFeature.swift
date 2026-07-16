@@ -45,8 +45,8 @@ struct AppFeature {
         case providerSelected(MusicProviderID)
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
-        case musicStartSucceeded
-        case musicStartFailed(MusicProviderError)
+        case musicStartSucceeded(MusicItemID)
+        case musicStartFailed(MusicItemID, MusicProviderError)
         case setPlayerPresented(Bool)
         case openVideoButtonTapped
         case openVideoSucceeded
@@ -95,7 +95,9 @@ struct AppFeature {
                 return .none
 
             case .musicPlayback(.delegate(.playRequested(let itemID))):
-                guard state.playbackTransition == nil else {
+                guard state.playbackTransition == nil,
+                    state.videoCloseRequestID == nil
+                else {
                     return .none
                 }
                 state.playbackTransition = .startingMusic(itemID)
@@ -105,11 +107,11 @@ struct AppFeature {
                         await videoPlayback.pause()
                         do {
                             try await musicProvider.play(itemID)
-                            await send(.musicStartSucceeded)
+                            await send(.musicStartSucceeded(itemID))
                         } catch let error as MusicProviderError {
-                            await send(.musicStartFailed(error))
+                            await send(.musicStartFailed(itemID, error))
                         } catch {
-                            await send(.musicStartFailed(.playbackFailed))
+                            await send(.musicStartFailed(itemID, .playbackFailed))
                         }
                     }
                 )
@@ -117,15 +119,15 @@ struct AppFeature {
             case .musicPlayback:
                 return .none
 
-            case .musicStartSucceeded:
-                guard case .startingMusic = state.playbackTransition else {
+            case .musicStartSucceeded(let itemID):
+                guard state.playbackTransition == .startingMusic(itemID) else {
                     return .none
                 }
                 state.playbackTransition = nil
                 return .send(.musicPlayback(.transportFinished))
 
-            case .musicStartFailed(let error):
-                guard case .startingMusic = state.playbackTransition else {
+            case .musicStartFailed(let itemID, let error):
+                guard state.playbackTransition == .startingMusic(itemID) else {
                     return .none
                 }
                 state.playbackTransition = nil
@@ -136,7 +138,10 @@ struct AppFeature {
                 return .none
 
             case .openVideoButtonTapped:
-                guard state.video == nil, state.playbackTransition == nil else {
+                guard state.video == nil,
+                    state.videoCloseRequestID == nil,
+                    state.playbackTransition == nil
+                else {
                     return .none
                 }
                 state.playbackTransition = .openingVideo
@@ -173,7 +178,10 @@ struct AppFeature {
                 return .send(.closeVideoRequested)
 
             case .closeVideoRequested:
-                guard state.video != nil, state.videoCloseRequestID == nil else {
+                guard state.video != nil,
+                    state.videoCloseRequestID == nil,
+                    state.playbackTransition == nil
+                else {
                     return .none
                 }
                 let requestID = uuid()
