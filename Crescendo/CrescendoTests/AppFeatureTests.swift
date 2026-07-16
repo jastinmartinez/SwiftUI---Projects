@@ -58,7 +58,8 @@ struct AppFeatureTests {
             initialState: AppFeature.State(
                 registeredProviders: registeredProviders,
                 activeProviderID: activeProviderID,
-                search: makeSearchState()
+                search: makeSearchState(),
+                musicPlayback: makeMusicPlaybackState()
             )
         ) {
             AppFeature()
@@ -82,6 +83,15 @@ struct AppFeatureTests {
             query: "",
             status: .idle,
             playbackEligibility: .unknown
+        )
+    }
+
+    private func makeMusicPlaybackState() -> MusicPlaybackFeature.State {
+        MusicPlaybackFeature.State(
+            selectedSong: nil,
+            snapshot: .idle,
+            playbackEligibility: .unknown,
+            capabilities: .allEnabled
         )
     }
 }

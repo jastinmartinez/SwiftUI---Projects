@@ -12,6 +12,12 @@ struct CrescendoApp: App {
                 query: "",
                 status: .idle,
                 playbackEligibility: .unknown
+            ),
+            musicPlayback: MusicPlaybackFeature.State(
+                selectedSong: nil,
+                snapshot: .idle,
+                playbackEligibility: .unknown,
+                capabilities: .allEnabled
             )
         )
     ) {

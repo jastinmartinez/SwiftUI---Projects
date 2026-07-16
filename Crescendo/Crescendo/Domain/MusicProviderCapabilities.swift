@@ -9,3 +9,13 @@ struct MusicProviderCapabilities: Equatable, Sendable {
     /// Whether playback can replace the active queue.
     let supportsQueueReplacement: Bool
 }
+
+extension MusicProviderCapabilities {
+    /// Enables every provider-neutral capability supported by the Phase 1 provider.
+    static let allEnabled = Self(
+        supportsCatalogSearch: true,
+        supportsEmbeddedPlayback: true,
+        supportsSeeking: true,
+        supportsQueueReplacement: true
+    )
+}

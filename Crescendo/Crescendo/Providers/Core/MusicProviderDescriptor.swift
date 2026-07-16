@@ -8,11 +8,6 @@ extension MusicProviderDescriptor {
     /// The Apple Music provider registered by the Phase 1 composition root.
     static let appleMusic = Self(
         id: "apple-music",
-        capabilities: .init(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: true,
-            supportsQueueReplacement: true
-        )
+        capabilities: .allEnabled
     )
 }

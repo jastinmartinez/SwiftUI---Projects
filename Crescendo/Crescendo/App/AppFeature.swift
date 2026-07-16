@@ -8,6 +8,7 @@ struct AppFeature {
         let registeredProviders: [MusicProviderDescriptor]
         var activeProviderID: MusicProviderID?
         var search: SearchFeature.State
+        var musicPlayback: MusicPlaybackFeature.State
 
         var requiresProviderSelection: Bool {
             registeredProviders.count > 1 && activeProviderID == nil
@@ -16,11 +17,13 @@ struct AppFeature {
         init(
             registeredProviders: [MusicProviderDescriptor],
             activeProviderID: MusicProviderID?,
-            search: SearchFeature.State
+            search: SearchFeature.State,
+            musicPlayback: MusicPlaybackFeature.State
         ) {
             self.registeredProviders = registeredProviders
             self.activeProviderID = activeProviderID
             self.search = search
+            self.musicPlayback = musicPlayback
         }
     }
 
@@ -28,11 +31,15 @@ struct AppFeature {
         case task
         case providerSelected(MusicProviderID)
         case search(SearchFeature.Action)
+        case musicPlayback(MusicPlaybackFeature.Action)
     }
 
     var body: some ReducerOf<Self> {
         Scope(state: \.search, action: \.search) {
             SearchFeature()
+        }
+        Scope(state: \.musicPlayback, action: \.musicPlayback) {
+            MusicPlaybackFeature()
         }
         Reduce { state, action in
             switch action {
@@ -53,6 +60,9 @@ struct AppFeature {
                 return .none
 
             case .search:
+                return .none
+
+            case .musicPlayback:
                 return .none
             }
         }
