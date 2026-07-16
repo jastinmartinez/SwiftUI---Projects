@@ -23,12 +23,7 @@ extension SearchResultsView.Model {
         self.init(
             content: content,
             onRetry: { store.send(.retryButtonTapped) },
-            onSongTapped: { songID in
-                guard case .loaded(let songs) = store.status,
-                    let song = songs.first(where: { $0.id == songID })
-                else { return }
-                store.send(.resultTapped(song))
-            }
+            onSongTapped: { store.send(.resultTapped($0)) }
         )
     }
 }

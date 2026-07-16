@@ -26,11 +26,17 @@ struct SearchFeature {
         var playbackEligibility: CatalogPlaybackEligibility
     }
 
+    /// Events emitted after search state validates a presentation action.
+    enum Delegate: Equatable {
+        case songSelected(SongSummary)
+    }
+
     enum Action: Equatable {
         case queryChanged(String)
         case submitButtonTapped
         case retryButtonTapped
-        case resultTapped(SongSummary)
+        case resultTapped(MusicItemID)
+        case delegate(Delegate)
         case currentAccessResponse(UUID, MusicProviderAccess)
         case requestAccessResponse(UUID, MusicProviderAccess)
         case accessResolved(UUID, MusicProviderAccess)
@@ -64,7 +70,13 @@ struct SearchFeature {
                 }
                 .cancellable(id: CancelID.search, cancelInFlight: true)
 
-            case .resultTapped:
+            case .resultTapped(let songID):
+                guard case .loaded(let songs) = state.status,
+                    let song = songs.first(where: { $0.id == songID })
+                else { return .none }
+                return .send(.delegate(.songSelected(song)))
+
+            case .delegate:
                 return .none
 
             case .currentAccessResponse(let requestID, let access):

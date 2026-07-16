@@ -18,7 +18,7 @@ struct AppPlaybackPresentationTests {
             activeProviderID: "apple-music",
             search: SearchFeature.State(
                 query: "",
-                status: .idle,
+                status: .loaded([song]),
                 playbackEligibility: .eligible
             ),
             musicPlayback: MusicPlaybackFeature.State(
@@ -31,7 +31,8 @@ struct AppPlaybackPresentationTests {
         )
         let store = TestStore(initialState: state) { AppFeature() }
 
-        await store.send(.search(.resultTapped(song))) {
+        await store.send(.search(.resultTapped(song.id)))
+        await store.receive(.search(.delegate(.songSelected(song)))) {
             $0.musicPlayback.selectedSong = song
             $0.musicPlayback.playbackEligibility = .eligible
             $0.isPlayerPresented = true

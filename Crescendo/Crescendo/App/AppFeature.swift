@@ -63,7 +63,7 @@ struct AppFeature {
                 state.activeProviderID = providerID
                 return .none
 
-            case .search(.resultTapped(let song)):
+            case .search(.delegate(.songSelected(let song))):
                 state.musicPlayback.selectedSong = song
                 state.musicPlayback.playbackEligibility = state.search.playbackEligibility
                 state.isPlayerPresented = true

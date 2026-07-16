@@ -71,7 +71,7 @@ struct SearchPresentationAdapterTests {
     }
 
     @Test
-    func songTapForwardsSelectedSummaryToTheAppReducer() {
+    func songTapSelectsLoadedResultThroughReducer() {
         let song = makeSong()
         let appStore = Store(
             initialState: AppFeature.State(
