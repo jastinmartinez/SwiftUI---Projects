@@ -9,7 +9,7 @@ extension VideoPlaybackClient {
     ) -> Self {
         Self(
             load: { url in
-                try await prepareAndReplace(
+                try await loadAndReplaceCurrentItem(
                     url,
                     itemLoader: itemLoader,
                     controller: controller
@@ -26,7 +26,7 @@ extension VideoPlaybackClient {
 
     /// Keeps AVPlayerItem preparation and replacement on the main actor.
     @MainActor
-    private static func prepareAndReplace(
+    private static func loadAndReplaceCurrentItem(
         _ url: URL,
         itemLoader: VideoPlayableItemLoader,
         controller: AVPlayerController
