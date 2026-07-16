@@ -7,6 +7,120 @@ import Testing
 @MainActor
 struct Phase1IntegrationTests {
     @Test
+    func reselectingActiveProviderWithoutPendingSwitchIsNoOp() async {
+        let events = LockIsolated<[String]>([])
+        let state = makeState()
+        let store = TestStore(initialState: state) {
+            AppFeature()
+        } withDependencies: {
+            $0.musicProvider.pause = {
+                events.withValue { $0.append("pause") }
+            }
+        }
+
+        await store.send(.providerSelected("apple-music"))
+
+        #expect(store.state == state)
+        #expect(events.value.isEmpty)
+    }
+
+    @Test
+    func selectingActiveProviderCancelsPendingSwitchWithoutResettingState() async {
+        let events = LockIsolated<[String]>([])
+        let pauseCount = LockIsolated(0)
+        let (pauseStarted, pauseStartedContinuation) = AsyncStream<Void>.makeStream()
+        let state = makeState()
+        let store = TestStore(initialState: state) {
+            AppFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.musicProvider.pause = {
+                let call = pauseCount.withValue { count in
+                    count += 1
+                    return count
+                }
+                events.withValue { $0.append("pause-\(call)") }
+                if call == 1 {
+                    pauseStartedContinuation.yield()
+                    try await Task.sleep(for: .seconds(60))
+                }
+            }
+        }
+
+        await store.send(.providerSelected("future")) {
+            $0.pendingProviderID = "future"
+            $0.providerSwitchRequestID = UUID(0)
+        }
+        var pauseStartedIterator = pauseStarted.makeAsyncIterator()
+        _ = await pauseStartedIterator.next()
+
+        await store.send(.providerSelected("apple-music")) {
+            $0.pendingProviderID = nil
+            $0.providerSwitchRequestID = nil
+        }
+
+        #expect(store.state == state)
+        #expect(events.value == ["pause-1"])
+        await store.finish()
+        pauseStartedContinuation.finish()
+    }
+
+    @Test
+    func selectingPendingProviderAgainDoesNotStartDuplicatePause() async {
+        let pauseCount = LockIsolated(0)
+        let (pauseStarted, pauseStartedContinuation) = AsyncStream<Void>.makeStream()
+        let (resumePause, resumePauseContinuation) = AsyncStream<Void>.makeStream()
+        let store = TestStore(initialState: makeState()) {
+            AppFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.musicProvider.pause = {
+                pauseCount.withValue { $0 += 1 }
+                pauseStartedContinuation.yield()
+                for await _ in resumePause { break }
+            }
+        }
+
+        await store.send(.providerSelected("future")) {
+            $0.pendingProviderID = "future"
+            $0.providerSwitchRequestID = UUID(0)
+        }
+        var pauseStartedIterator = pauseStarted.makeAsyncIterator()
+        _ = await pauseStartedIterator.next()
+
+        await store.send(.providerSelected("future"))
+        #expect(pauseCount.value == 1)
+
+        resumePauseContinuation.yield()
+        resumePauseContinuation.finish()
+        await store.receive(
+            .providerSwitchPauseSucceeded(
+                requestID: UUID(0),
+                providerID: "future"
+            )
+        ) {
+            $0.activeProviderID = "future"
+            $0.pendingProviderID = nil
+            $0.providerSwitchRequestID = nil
+            $0.search = SearchFeature.State(
+                query: "",
+                phase: .idle,
+                playbackEligibility: .unknown
+            )
+            $0.musicPlayback = MusicPlaybackFeature.State(
+                selectedSong: nil,
+                phase: .observing(.idle),
+                playbackEligibility: .unknown,
+                capabilities: futureCapabilities
+            )
+            $0.isPlayerPresented = false
+        }
+
+        await store.finish()
+        pauseStartedContinuation.finish()
+    }
+
+    @Test
     func providerSwitchPausesBeforeResettingProviderOwnedState() async {
         let events = LockIsolated<[String]>([])
         let (pauseStarted, pauseStartedContinuation) = AsyncStream<Void>.makeStream()

@@ -104,6 +104,29 @@ struct AppFeature {
                     return .none
                 }
 
+                guard let activeProviderID = state.activeProviderID else {
+                    state.activeProviderID = providerID
+                    return .none
+                }
+
+                if providerID == activeProviderID {
+                    guard
+                        state.pendingProviderID != nil
+                            || state.providerSwitchRequestID != nil
+                    else {
+                        return .none
+                    }
+                    state.pendingProviderID = nil
+                    state.providerSwitchRequestID = nil
+                    return .cancel(id: CancelID.providerSwitch)
+                }
+
+                if state.pendingProviderID == providerID,
+                    state.providerSwitchRequestID != nil
+                {
+                    return .none
+                }
+
                 let requestID = uuid()
                 state.pendingProviderID = providerID
                 state.providerSwitchRequestID = requestID

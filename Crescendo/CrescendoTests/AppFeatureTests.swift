@@ -21,32 +21,26 @@ struct AppFeatureTests {
 
     @Test
     func multipleProvidersRequireSelection() async {
+        let events = LockIsolated<[String]>([])
         let store = makeStore(
             registeredProviders: [
                 .appleMusic,
                 makeProvider(id: "future"),
             ],
-            activeProviderID: nil
+            activeProviderID: nil,
+            pause: {
+                events.withValue { $0.append("pause") }
+            }
         )
 
         await store.send(.task)
         #expect(store.state.requiresProviderSelection)
 
         await store.send(.providerSelected("future")) {
-            $0.pendingProviderID = "future"
-            $0.providerSwitchRequestID = UUID(0)
-        }
-        await store.receive(
-            .providerSwitchPauseSucceeded(
-                requestID: UUID(0),
-                providerID: "future"
-            )
-        ) {
             $0.activeProviderID = "future"
-            $0.pendingProviderID = nil
-            $0.providerSwitchRequestID = nil
         }
         #expect(!store.state.requiresProviderSelection)
+        #expect(events.value.isEmpty)
     }
 
     @Test
@@ -64,7 +58,8 @@ struct AppFeatureTests {
 
     private func makeStore(
         registeredProviders: [MusicProviderDescriptor],
-        activeProviderID: MusicProviderID?
+        activeProviderID: MusicProviderID?,
+        pause: @escaping @Sendable () async throws -> Void = {}
     ) -> TestStoreOf<AppFeature> {
         TestStore(
             initialState: AppFeature.State(
@@ -83,7 +78,7 @@ struct AppFeatureTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.pause = {}
+            $0.musicProvider.pause = pause
         }
     }
 

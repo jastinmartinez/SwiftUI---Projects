@@ -25,7 +25,7 @@ Crescendo/scripts/verify-phase1-boundaries.sh
 
 xcodebuild test -project Crescendo/Crescendo.xcodeproj -scheme Crescendo \
   -destination 'platform=iOS Simulator,id=765DD318-02F6-465C-ACFB-DCF2932B4589'
-# TEST SUCCEEDED: 94 tests in 19 suites
+# TEST SUCCEEDED: 97 tests in 19 suites
 
 xcrun swift-format lint --recursive --strict \
   --configuration Crescendo/.swift-format \

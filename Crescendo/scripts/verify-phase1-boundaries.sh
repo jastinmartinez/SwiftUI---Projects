@@ -5,8 +5,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 music_kit_matches="$(
   rg -n \
-    '^[[:space:]]*(?:@preconcurrency[[:space:]]+)?import(?:[[:space:]]+(?:class|struct|enum|protocol|typealias|func|var|let))?[[:space:]]+MusicKit(?:\.|[[:space:]]|$)|\b(MusicAuthorization|MusicSubscription|MusicCatalogSearchRequest|ApplicationMusicPlayer)\b' \
+    '^[[:space:]]*(?:@preconcurrency[[:space:]]+)?import(?:[[:space:]]+(?:class|struct|enum|protocol|typealias|func|var|let))?[[:space:]]+MusicKit(?:\.|[[:space:]]|$)|\b(MusicAuthorization|MusicSubscription|MusicCatalogSearchRequest|ApplicationMusicPlayer)\b|(?<![A-Za-z0-9_"])Song(?![A-Za-z0-9_"])' \
     "$ROOT/Crescendo" "$ROOT/CrescendoTests" \
+    --pcre2 \
     --glob '*.swift' \
     || true
 )"
@@ -44,9 +45,10 @@ fi
 
 inline_copy_violations="$(
   rg -n \
-    'Text\("|Button\("|ProgressView\("|navigationTitle\("|String\(describing:' \
+    '\b(Text|Button|ProgressView|Label|ContentUnavailableView|TextField|SecureField|Toggle|Picker|Menu|Section|Link)\b[[:space:]]*\([[:space:]]*"|\bText\b[[:space:]]*\([[:space:]]*verbatim:[[:space:]]*"|\b(navigationTitle|alert|confirmationDialog)\b[[:space:]]*\([[:space:]]*"|\bString\b[[:space:]]*\([[:space:]]*describing:' \
     "$ROOT/Crescendo/App" "$ROOT/Crescendo/Search" \
     "$ROOT/Crescendo/Playback" "$ROOT/Crescendo/Video" \
+    --glob '*.swift' \
     || true
 )"
 if [[ -n "$inline_copy_violations" ]]; then
@@ -100,7 +102,13 @@ then
   exit 1
 fi
 
-info_plist_strings="$(find "$ROOT" -type f -name InfoPlist.strings -print)"
+info_plist_strings="$(
+  rg --files "$ROOT" \
+    --hidden \
+    --no-ignore \
+    --glob 'InfoPlist.strings' \
+    || true
+)"
 if [[ -n "$info_plist_strings" ]]; then
   print -u2 -- "InfoPlist.strings must not be present:"
   print -u2 -- "$info_plist_strings"
