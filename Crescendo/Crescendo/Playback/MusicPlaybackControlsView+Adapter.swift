@@ -11,25 +11,4 @@ extension MusicPlaybackControlsView.Model {
             onStop: { store.send(.stopTapped) }
         )
     }
-
-    /// Maps the playback phase into localized presentation copy.
-    static func localizedStatus(for phase: MusicPlaybackFeature.Phase) -> String {
-        switch phase {
-        case .loading:
-            Locs.MusicPlayback.Status.loading
-        case .failed:
-            Locs.MusicPlayback.Status.failed
-        case .observing(let snapshot):
-            switch snapshot.status {
-            case .idle:
-                Locs.MusicPlayback.Status.idle
-            case .playing:
-                Locs.MusicPlayback.Status.playing
-            case .paused:
-                Locs.MusicPlayback.Status.paused
-            case .stopped:
-                Locs.MusicPlayback.Status.stopped
-            }
-        }
-    }
 }
