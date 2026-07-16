@@ -88,7 +88,9 @@ struct SearchPresentationAdapterTests {
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled
                 ),
-                isPlayerPresented: false
+                isPlayerPresented: false,
+                video: nil,
+                videoCloseRequestID: nil
             )
         ) {
             AppFeature()

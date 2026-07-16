@@ -60,7 +60,9 @@ struct AppFeatureTests {
                 activeProviderID: activeProviderID,
                 search: makeSearchState(),
                 musicPlayback: makeMusicPlaybackState(),
-                isPlayerPresented: false
+                isPlayerPresented: false,
+                video: nil,
+                videoCloseRequestID: nil
             )
         ) {
             AppFeature()

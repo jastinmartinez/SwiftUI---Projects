@@ -27,7 +27,6 @@ struct VideoPlaybackFeatureView: View {
                 }
             }
             .task { await store.send(.task).finish() }
-            .onDisappear { store.send(.routeExited) }
         }
     }
 }

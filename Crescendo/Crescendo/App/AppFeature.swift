@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Foundation
 
 /// The root reducer responsible for application-wide state and coordination.
 @Reducer
@@ -10,6 +11,8 @@ struct AppFeature {
         var search: SearchFeature.State
         var musicPlayback: MusicPlaybackFeature.State
         var isPlayerPresented: Bool
+        var video: VideoPlaybackFeature.State?
+        var videoCloseRequestID: UUID?
 
         var requiresProviderSelection: Bool {
             registeredProviders.count > 1 && activeProviderID == nil
@@ -20,13 +23,17 @@ struct AppFeature {
             activeProviderID: MusicProviderID?,
             search: SearchFeature.State,
             musicPlayback: MusicPlaybackFeature.State,
-            isPlayerPresented: Bool
+            isPlayerPresented: Bool,
+            video: VideoPlaybackFeature.State?,
+            videoCloseRequestID: UUID?
         ) {
             self.registeredProviders = registeredProviders
             self.activeProviderID = activeProviderID
             self.search = search
             self.musicPlayback = musicPlayback
             self.isPlayerPresented = isPlayerPresented
+            self.video = video
+            self.videoCloseRequestID = videoCloseRequestID
         }
     }
 
@@ -36,7 +43,14 @@ struct AppFeature {
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
         case setPlayerPresented(Bool)
+        case openVideoButtonTapped
+        case closeVideoRequested
+        case closeVideoFinished(UUID)
+        case video(VideoPlaybackFeature.Action)
     }
+
+    @Dependency(\.uuid) var uuid
+    @Dependency(\.videoPlayback) var videoPlayback
 
     var body: some ReducerOf<Self> {
         Scope(state: \.search, action: \.search) {
@@ -78,7 +92,51 @@ struct AppFeature {
             case .setPlayerPresented(let isPresented):
                 state.isPlayerPresented = isPresented
                 return .none
+
+            case .openVideoButtonTapped:
+                guard state.video == nil, state.videoCloseRequestID == nil else {
+                    return .none
+                }
+                state.video = VideoPlaybackFeature.State(
+                    urlText: "",
+                    loadedVideoURL: nil,
+                    phase: .observing(.idle),
+                    observationID: nil
+                )
+                return .none
+
+            case .video(.delegate(.closeRequested)):
+                return .send(.closeVideoRequested)
+
+            case .closeVideoRequested:
+                guard state.video != nil, state.videoCloseRequestID == nil else {
+                    return .none
+                }
+                let requestID = uuid()
+                state.videoCloseRequestID = requestID
+                return .concatenate(
+                    .send(.video(.routeExited)),
+                    .run { send in
+                        await videoPlayback.pause()
+                        await videoPlayback.clear()
+                        await send(.closeVideoFinished(requestID))
+                    }
+                )
+
+            case .closeVideoFinished(let requestID):
+                guard state.videoCloseRequestID == requestID else {
+                    return .none
+                }
+                state.video = nil
+                state.videoCloseRequestID = nil
+                return .none
+
+            case .video:
+                return .none
             }
+        }
+        .ifLet(\.video, action: \.video) {
+            VideoPlaybackFeature()
         }
     }
 }

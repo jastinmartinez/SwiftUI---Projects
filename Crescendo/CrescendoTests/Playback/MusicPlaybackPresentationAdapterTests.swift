@@ -236,7 +236,9 @@ struct MusicPlaybackPresentationAdapterTests {
                     playbackEligibility: .eligible,
                     capabilities: .allEnabled
                 ),
-                isPlayerPresented: false
+                isPlayerPresented: false,
+                video: nil,
+                videoCloseRequestID: nil
             )
         ) {
             AppFeature()
