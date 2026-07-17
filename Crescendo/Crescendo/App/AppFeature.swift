@@ -12,7 +12,7 @@ struct AppFeature {
         var isPlayerPresented: Bool
         var pendingProviderID: ProviderID?
         var providerSwitchRequestID: UUID?
-        var playbackTransition: PlaybackTransition?
+        var playbackTransition: PlaybackTransitionFeature.State?
 
         var requiresProviderSelection: Bool {
             providerConnection.connection == .disconnected
@@ -29,7 +29,7 @@ struct AppFeature {
             isPlayerPresented: Bool,
             pendingProviderID: ProviderID?,
             providerSwitchRequestID: UUID?,
-            playbackTransition: PlaybackTransition?
+            playbackTransition: PlaybackTransitionFeature.State?
         ) {
             self.providerConnection = providerConnection
             self.search = search
@@ -56,8 +56,7 @@ struct AppFeature {
         )
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
-        case musicStartSucceeded(MusicItemID)
-        case musicStartFailed(MusicItemID, MusicProviderError)
+        case playbackTransition(PlaybackTransitionFeature.Action)
         case setPlayerPresented(Bool)
     }
 
@@ -225,42 +224,49 @@ struct AppFeature {
                 else {
                     return .none
                 }
-                state.playbackTransition = .startingMusic(itemID)
+                state.playbackTransition = .musicStart(
+                    MusicStartFeature.State(itemID: itemID)
+                )
                 return .concatenate(
                     .send(.musicPlayback(.playbackStartAccepted)),
-                    .run { send in
-                        do {
-                            try await musicProvider.play(itemID)
-                            await send(.musicStartSucceeded(itemID))
-                        } catch let error as MusicProviderError {
-                            await send(.musicStartFailed(itemID, error))
-                        } catch {
-                            await send(.musicStartFailed(itemID, .playbackFailed))
-                        }
-                    }
+                    .send(.playbackTransition(.musicStart(.start)))
                 )
 
             case .musicPlayback:
                 return .none
 
-            case .musicStartSucceeded(let itemID):
-                guard state.playbackTransition == .startingMusic(itemID) else {
+            case .playbackTransition(
+                .musicStart(.delegate(.succeeded(let itemID)))
+            ):
+                guard case .musicStart(let musicStartState) = state.playbackTransition,
+                    musicStartState.itemID == itemID
+                else {
                     return .none
                 }
                 state.playbackTransition = nil
                 return .send(.musicPlayback(.transportFinished))
 
-            case .musicStartFailed(let itemID, let error):
-                guard state.playbackTransition == .startingMusic(itemID) else {
+            case .playbackTransition(
+                .musicStart(.delegate(.failed(let itemID, let error)))
+            ):
+                guard case .musicStart(let musicStartState) = state.playbackTransition,
+                    musicStartState.itemID == itemID
+                else {
                     return .none
                 }
                 state.playbackTransition = nil
                 return .send(.musicPlayback(.transportFailed(error)))
 
+            case .playbackTransition:
+                return .none
+
             case .setPlayerPresented(let isPresented):
                 state.isPlayerPresented = isPresented
                 return .none
             }
+        }
+        .ifLet(\.playbackTransition, action: \.playbackTransition) {
+            PlaybackTransitionFeature.body
         }
     }
 }

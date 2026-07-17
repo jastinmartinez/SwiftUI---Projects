@@ -447,7 +447,11 @@ struct AppProviderSwitchingTests {
     @Test
     func providerSelectionIsIgnoredDuringPlaybackTransition() async {
         let events = LockIsolated<[String]>([])
-        let state = makeState(playbackTransition: .startingMusic(makeSong().id))
+        let state = makeState(
+            playbackTransition: .musicStart(
+                MusicStartFeature.State(itemID: makeSong().id)
+            )
+        )
         let store = makeStore(
             state: state,
             pause: { events.withValue { $0.append("pause") } }
@@ -514,7 +518,7 @@ struct AppProviderSwitchingTests {
         providerConnection: ProviderConnection? = nil,
         pendingProviderID: ProviderID? = nil,
         providerSwitchRequestID: UUID? = nil,
-        playbackTransition: PlaybackTransition? = nil
+        playbackTransition: PlaybackTransitionFeature.State? = nil
     ) -> AppFeature.State {
         AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(

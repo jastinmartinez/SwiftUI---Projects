@@ -90,7 +90,10 @@ struct AppPlaybackPresentationTests {
 
         model.onTogglePlayPause()
 
-        #expect(store.playbackTransition == .startingMusic(song.id))
+        #expect(
+            store.playbackTransition
+                == .musicStart(MusicStartFeature.State(itemID: song.id))
+        )
     }
 
     // MARK: - Helpers
