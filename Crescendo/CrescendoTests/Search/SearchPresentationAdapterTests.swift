@@ -7,6 +7,42 @@ import Testing
 @MainActor
 struct SearchPresentationAdapterTests {
     @Test
+    func searchHeaderMapsPresentationAndForwardsActions() {
+        let actions = LockIsolated<[SearchFeature.Action]>([])
+        let store: StoreOf<SearchFeature> = Store(
+            initialState: SearchFeature.State(
+                query: "vela",
+                phase: .idle,
+                playbackEligibility: .eligible
+            )
+        ) {
+            Reduce { _, action in
+                actions.withValue { $0.append(action) }
+                return .none
+            }
+        }
+        let providerSelection = ProviderSelectionView.Model(
+            providers: [.appleMusic],
+            activeProviderID: .appleMusic,
+            isSelectionEnabled: true,
+            onSelect: { _ in }
+        )
+        let model = SearchHeaderView.Model(
+            store,
+            providerSelection: providerSelection
+        )
+
+        #expect(model.query == "vela")
+        #expect(model.providerSelection.activeProviderName == "Apple Music")
+        #expect(model.isSearchEnabled)
+
+        model.onQueryChanged("")
+        model.onSubmit()
+
+        #expect(actions.value == [.queryChanged(""), .submitButtonTapped])
+    }
+
+    @Test
     func loadedSongsMapToResultRows() {
         let song = makeSong()
         let store = makeStore(

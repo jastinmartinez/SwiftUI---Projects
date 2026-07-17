@@ -181,6 +181,16 @@
         }
       }
     },
+    "search.clear" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear search"
+          }
+        }
+      }
+    },
     "search.denied_message" : {
       "localizations" : {
         "en" : {

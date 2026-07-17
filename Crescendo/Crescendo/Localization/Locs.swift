@@ -15,6 +15,7 @@ extension Locs {
 
     enum Search {
         static let action = String(localized: "search.action")
+        static let clear = String(localized: "search.clear")
         static let prompt = String(localized: "search.prompt")
         static let emptyTitle = String(localized: "search.empty_title")
         static let searching = String(localized: "search.searching")

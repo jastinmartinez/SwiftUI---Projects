@@ -4,47 +4,27 @@ import SwiftUI
 /// Connects the search feature store to stateless search components.
 struct SearchFeatureView: View {
     let store: StoreOf<SearchFeature>
-    let providerName: String?
+    let providerSelection: ProviderSelectionView.Model
 
     var body: some View {
-        let resultsModel = SearchResultsView.Model(store)
-        let eligibilityModel = PlaybackEligibilityNoticeView.Model(store)
-
         NavigationStack {
-            List {
-                HStack {
-                    TextField(
-                        Locs.Search.prompt,
-                        text: Binding(
-                            get: { store.query },
-                            set: { store.send(.queryChanged($0)) }
+            ScrollView {
+                LazyVStack(spacing: 24) {
+                    SearchHeaderView(
+                        model: .init(
+                            store,
+                            providerSelection: providerSelection
                         )
                     )
-                    .submitLabel(.search)
-                    .onSubmit { store.send(.submitButtonTapped) }
-
-                    Button(Locs.Search.action) {
-                        store.send(.submitButtonTapped)
-                    }
-                    .buttonStyle(.borderedProminent)
+                    SearchResultsView(model: .init(store))
+                    PlaybackEligibilityNoticeView(model: .init(store))
                 }
-
-                SearchResultsView(model: resultsModel)
-                PlaybackEligibilityNoticeView(model: eligibilityModel)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
-            .navigationTitle(Locs.App.title)
-            .toolbar {
-                if let providerName {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Text(providerName)
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(.tint.opacity(0.12), in: Capsule())
-                            .foregroundStyle(.tint)
-                    }
-                }
-            }
+            .background(Color(uiColor: .systemGroupedBackground))
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
