@@ -51,8 +51,78 @@ struct AppPlaybackPresentationTests {
     }
 
     @Test
-    func barToggleChoosesTransportActionFromPlayingState() {
-        #expect(NowPlayingBarView.Model.toggleAction(isPlaying: true) == .pauseTapped)
-        #expect(NowPlayingBarView.Model.toggleAction(isPlaying: false) == .playTapped)
+    func barToggleWhilePlayingPausesThroughReducer() async {
+        let song = makeSong()
+        let (pauseCalled, pauseCalledContinuation) = AsyncStream<Void>.makeStream()
+        let store = Store(initialState: makeState(song: song, status: .playing)) {
+            AppFeature()
+        } withDependencies: {
+            $0.musicProvider.pause = { pauseCalledContinuation.yield() }
+        }
+        let model = NowPlayingBarView.Model(store, song: song)
+        #expect(model.isPlaying)
+
+        model.onTogglePlayPause()
+
+        var pauseCalledIterator = pauseCalled.makeAsyncIterator()
+        _ = await pauseCalledIterator.next()
+    }
+
+    @Test
+    func barToggleWhilePausedRequestsPlayThroughReducer() {
+        let song = makeSong()
+        let store = Store(initialState: makeState(song: song, status: .paused)) {
+            AppFeature()
+        } withDependencies: {
+            $0.musicProvider.play = { _ in }
+        }
+        let model = NowPlayingBarView.Model(store, song: song)
+        #expect(!model.isPlaying)
+
+        model.onTogglePlayPause()
+
+        #expect(store.playbackTransition == .startingMusic(song.id))
+    }
+
+    // MARK: - Helpers
+
+    private func makeState(
+        song: SongSummary,
+        status: MusicPlaybackStatus
+    ) -> AppFeature.State {
+        AppFeature.State(
+            registeredProviders: [.appleMusic],
+            activeProviderID: "apple-music",
+            search: SearchFeature.State(
+                query: "",
+                phase: .loaded([song]),
+                playbackEligibility: .eligible
+            ),
+            musicPlayback: MusicPlaybackFeature.State(
+                selectedSong: song,
+                phase: .observing(
+                    MusicPlaybackSnapshot(
+                        currentItem: song,
+                        status: status,
+                        currentTime: 0
+                    )
+                ),
+                playbackEligibility: .eligible,
+                capabilities: .allEnabled
+            ),
+            isPlayerPresented: false,
+            pendingProviderID: nil,
+            providerSwitchRequestID: nil,
+            playbackTransition: nil
+        )
+    }
+
+    private func makeSong() -> SongSummary {
+        SongSummary(
+            id: .init(providerID: "fake", nativeID: "1"),
+            title: "Song",
+            artistName: "Artist",
+            artworkURL: nil
+        )
     }
 }

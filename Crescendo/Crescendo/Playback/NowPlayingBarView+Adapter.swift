@@ -13,13 +13,8 @@ extension NowPlayingBarView.Model {
             isPlayEnabled: store.musicPlayback.canPlaySelectedSong,
             onOpenPlayer: { store.send(.setPlayerPresented(true)) },
             onTogglePlayPause: {
-                store.send(.musicPlayback(Self.toggleAction(isPlaying: isPlaying)))
+                store.send(.musicPlayback(isPlaying ? .pauseTapped : .playTapped))
             }
         )
-    }
-
-    /// Chooses the transport action the bar's toggle sends for the current state.
-    static func toggleAction(isPlaying: Bool) -> MusicPlaybackFeature.Action {
-        isPlaying ? .pauseTapped : .playTapped
     }
 }
