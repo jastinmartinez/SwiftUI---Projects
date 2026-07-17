@@ -382,7 +382,7 @@ struct AppProviderSwitchingTests {
         id: MusicProviderID,
         capabilities: MusicProviderCapabilities
     ) -> MusicProviderDescriptor {
-        MusicProviderDescriptor(id: id, capabilities: capabilities)
+        MusicProviderDescriptor(id: id, name: "Future", capabilities: capabilities)
     }
 
     private func makeSearchState() -> SearchFeature.State {

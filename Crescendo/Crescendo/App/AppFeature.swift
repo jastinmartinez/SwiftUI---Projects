@@ -19,6 +19,10 @@ struct AppFeature {
             registeredProviders.count > 1 && activeProviderID == nil
         }
 
+        var activeProvider: MusicProviderDescriptor? {
+            registeredProviders.first { $0.id == activeProviderID }
+        }
+
         init(
             registeredProviders: [MusicProviderDescriptor],
             activeProviderID: MusicProviderID?,
