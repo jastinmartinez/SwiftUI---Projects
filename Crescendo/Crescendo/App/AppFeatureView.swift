@@ -7,7 +7,10 @@ struct AppFeatureView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SearchFeatureView(store: store.scope(state: \.search, action: \.search))
+            SearchFeatureView(
+                store: store.scope(state: \.search, action: \.search),
+                providerName: store.activeProvider?.name
+            )
             if let song = store.musicPlayback.selectedSong {
                 NowPlayingBarView(model: .init(store, song: song))
             }
