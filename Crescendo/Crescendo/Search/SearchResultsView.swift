@@ -24,8 +24,7 @@ struct SearchResultsView: View {
         case .unavailable:
             ContentUnavailableView(
                 Locs.Search.unavailableTitle,
-                systemImage: "music.note.slash",
-                description: Text(Locs.Search.videoStillAvailable)
+                systemImage: "music.note.slash"
             )
         case .failed:
             Button(Locs.Common.retry, action: model.onRetry)
