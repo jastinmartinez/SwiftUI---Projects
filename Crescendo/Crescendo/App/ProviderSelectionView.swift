@@ -44,10 +44,10 @@ struct ProviderSelectionView: View {
 
 extension ProviderSelectionView {
     struct Model {
-        let providers: [MusicProviderDescriptor]
-        let activeProviderID: MusicProviderID?
+        let providers: [ProviderDescriptor]
+        let activeProviderID: ProviderID?
         let isSelectionEnabled: Bool
-        let onSelect: (MusicProviderID) -> Void
+        let onSelect: (ProviderID) -> Void
 
         var activeProviderName: String? {
             providers.first { $0.id == activeProviderID }?.name

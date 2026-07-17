@@ -356,7 +356,13 @@ struct MusicPlaybackPresentationAdapterTests {
         Store(
             initialState: AppFeature.State(
                 registeredProviders: [.appleMusic],
-                activeProviderID: "apple-music",
+                providerConnection: .connected(
+                    providerID: .appleMusic,
+                    access: MusicProviderAccess(
+                        authorization: .authorized,
+                        playbackEligibility: .eligible
+                    )
+                ),
                 search: SearchFeature.State(
                     query: "",
                     phase: .idle,

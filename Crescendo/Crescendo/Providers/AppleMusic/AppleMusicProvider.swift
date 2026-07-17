@@ -4,7 +4,7 @@ import Foundation
 /// Owns Apple Music authorization, catalog access, playback, mapping, and session caches.
 actor AppleMusicProvider {
     /// The stable application-owned identifier for Apple Music.
-    static let providerID: MusicProviderID = "apple-music"
+    static let providerID: ProviderID = "apple-music"
 
     private let player = ApplicationMusicPlayer.shared
     private var songsByNativeID: [String: Song] = [:]

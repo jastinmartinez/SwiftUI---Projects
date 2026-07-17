@@ -140,7 +140,13 @@ struct AppPlaybackCoordinationTests {
     private func makeState(song: SongSummary) -> AppFeature.State {
         AppFeature.State(
             registeredProviders: [.appleMusic],
-            activeProviderID: "apple-music",
+            providerConnection: .connected(
+                providerID: .appleMusic,
+                access: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            ),
             search: SearchFeature.State(
                 query: "",
                 phase: .idle,

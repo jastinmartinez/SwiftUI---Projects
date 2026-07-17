@@ -27,7 +27,13 @@ struct AppPlaybackPresentationTests {
         )
         let state = AppFeature.State(
             registeredProviders: [.appleMusic],
-            activeProviderID: "apple-music",
+            providerConnection: .connected(
+                providerID: .appleMusic,
+                access: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            ),
             search: SearchFeature.State(
                 query: "",
                 phase: .loaded([song]),
@@ -93,7 +99,13 @@ struct AppPlaybackPresentationTests {
     ) -> AppFeature.State {
         AppFeature.State(
             registeredProviders: [.appleMusic],
-            activeProviderID: "apple-music",
+            providerConnection: .connected(
+                providerID: .appleMusic,
+                access: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            ),
             search: SearchFeature.State(
                 query: "",
                 phase: .loaded([song]),

@@ -1,40 +1,41 @@
 import ComposableArchitecture
 import Foundation
+import UIKit
 
 /// The root reducer responsible for application-wide state and coordination.
 @Reducer
 struct AppFeature {
     @ObservableState
     struct State: Equatable {
-        let registeredProviders: [MusicProviderDescriptor]
-        var activeProviderID: MusicProviderID?
+        let registeredProviders: [ProviderDescriptor]
+        var providerConnection: ProviderConnection
         var search: SearchFeature.State
         var musicPlayback: MusicPlaybackFeature.State
         var isPlayerPresented: Bool
-        var pendingProviderID: MusicProviderID?
+        var pendingProviderID: ProviderID?
         var providerSwitchRequestID: UUID?
         var playbackTransition: PlaybackTransition?
 
         var requiresProviderSelection: Bool {
-            registeredProviders.count > 1 && activeProviderID == nil
+            providerConnection == .disconnected
         }
 
-        var activeProvider: MusicProviderDescriptor? {
-            registeredProviders.first { $0.id == activeProviderID }
+        var activeProvider: ProviderDescriptor? {
+            registeredProviders.first { $0.id == providerConnection.providerID }
         }
 
         init(
-            registeredProviders: [MusicProviderDescriptor],
-            activeProviderID: MusicProviderID?,
+            registeredProviders: [ProviderDescriptor],
+            providerConnection: ProviderConnection,
             search: SearchFeature.State,
             musicPlayback: MusicPlaybackFeature.State,
             isPlayerPresented: Bool,
-            pendingProviderID: MusicProviderID?,
+            pendingProviderID: ProviderID?,
             providerSwitchRequestID: UUID?,
             playbackTransition: PlaybackTransition?
         ) {
             self.registeredProviders = registeredProviders
-            self.activeProviderID = activeProviderID
+            self.providerConnection = providerConnection
             self.search = search
             self.musicPlayback = musicPlayback
             self.isPlayerPresented = isPlayerPresented
@@ -46,14 +47,26 @@ struct AppFeature {
 
     enum Action: Equatable {
         case task
-        case providerSelected(MusicProviderID)
+        case providerSelected(ProviderID)
+        case providerRetryTapped
+        case providerOpenSettingsTapped
         case providerSwitchPauseSucceeded(
             requestID: UUID,
-            providerID: MusicProviderID
+            providerID: ProviderID
         )
         case providerSwitchPauseFailed(
             requestID: UUID,
-            providerID: MusicProviderID
+            providerID: ProviderID
+        )
+        case providerCurrentAccessResponse(
+            requestID: UUID,
+            providerID: ProviderID,
+            access: MusicProviderAccess
+        )
+        case providerRequestedAccessResponse(
+            requestID: UUID,
+            providerID: ProviderID,
+            access: MusicProviderAccess
         )
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
@@ -63,11 +76,13 @@ struct AppFeature {
     }
 
     enum CancelID {
+        case providerAccess
         case providerSwitch
     }
 
     @Dependency(\.uuid) var uuid
     @Dependency(\.musicProvider) var musicProvider
+    @Dependency(\.openURL) var openURL
 
     var body: some ReducerOf<Self> {
         Scope(state: \.search, action: \.search) {
@@ -79,31 +94,25 @@ struct AppFeature {
         Reduce { state, action in
             switch action {
             case .task:
-                if state.activeProviderID == nil, state.registeredProviders.count == 1 {
-                    state.activeProviderID = state.registeredProviders[0].id
-                }
                 return .none
 
             case .providerSelected(let providerID):
+                guard state.playbackTransition == nil else {
+                    return .none
+                }
                 guard
-                    state.registeredProviders.contains(
+                    let provider = state.registeredProviders.first(
                         where: { $0.id == providerID }
-                    ),
-                    state.playbackTransition == nil
+                    )
                 else {
                     return .none
                 }
 
-                guard let activeProviderID = state.activeProviderID else {
-                    state.activeProviderID = providerID
-                    return .none
-                }
-
-                if providerID == activeProviderID {
-                    guard
+                if providerID == state.providerConnection.providerID {
+                    let hasPendingSwitch =
                         state.pendingProviderID != nil
-                            || state.providerSwitchRequestID != nil
-                    else {
+                        || state.providerSwitchRequestID != nil
+                    guard hasPendingSwitch else {
                         return .none
                     }
                     state.pendingProviderID = nil
@@ -117,30 +126,51 @@ struct AppFeature {
                     return .none
                 }
 
-                let requestID = uuid()
-                state.pendingProviderID = providerID
-                state.providerSwitchRequestID = requestID
-                return .run { send in
-                    do {
-                        try await musicProvider.pause()
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .providerSwitchPauseSucceeded(
-                                requestID: requestID,
-                                providerID: providerID
+                if case .connected = state.providerConnection {
+                    let requestID = uuid()
+                    state.pendingProviderID = providerID
+                    state.providerSwitchRequestID = requestID
+                    return .run { send in
+                        do {
+                            try await musicProvider.pause()
+                            guard !Task.isCancelled else { return }
+                            await send(
+                                .providerSwitchPauseSucceeded(
+                                    requestID: requestID,
+                                    providerID: providerID
+                                )
                             )
-                        )
-                    } catch {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .providerSwitchPauseFailed(
-                                requestID: requestID,
-                                providerID: providerID
+                        } catch {
+                            guard !Task.isCancelled else { return }
+                            await send(
+                                .providerSwitchPauseFailed(
+                                    requestID: requestID,
+                                    providerID: providerID
+                                )
                             )
-                        )
+                        }
                     }
+                    .cancellable(id: CancelID.providerSwitch, cancelInFlight: true)
                 }
-                .cancellable(id: CancelID.providerSwitch, cancelInFlight: true)
+
+                return beginAccessResolution(state: &state, provider: provider)
+
+            case .providerRetryTapped:
+                guard case .failed(let providerID) = state.providerConnection,
+                    let provider = state.registeredProviders.first(
+                        where: { $0.id == providerID }
+                    )
+                else {
+                    return .none
+                }
+                return beginAccessResolution(state: &state, provider: provider)
+
+            case .providerOpenSettingsTapped:
+                return .run { _ in
+                    let settingsURL = UIApplication.openSettingsURLString
+                    guard let url = URL(string: settingsURL) else { return }
+                    await openURL(url)
+                }
 
             case .providerSwitchPauseSucceeded(let requestID, let providerID):
                 guard state.providerSwitchRequestID == requestID,
@@ -151,23 +181,7 @@ struct AppFeature {
                 else {
                     return .none
                 }
-
-                state.activeProviderID = providerID
-                state.pendingProviderID = nil
-                state.providerSwitchRequestID = nil
-                state.search = SearchFeature.State(
-                    query: "",
-                    phase: .idle,
-                    playbackEligibility: .unknown
-                )
-                state.musicPlayback = MusicPlaybackFeature.State(
-                    selectedSong: nil,
-                    phase: .observing(.idle),
-                    playbackEligibility: .unknown,
-                    capabilities: provider.capabilities
-                )
-                state.isPlayerPresented = false
-                return .none
+                return beginAccessResolution(state: &state, provider: provider)
 
             case .providerSwitchPauseFailed(let requestID, let providerID):
                 guard state.providerSwitchRequestID == requestID,
@@ -175,9 +189,61 @@ struct AppFeature {
                 else {
                     return .none
                 }
-
                 state.pendingProviderID = nil
                 state.providerSwitchRequestID = nil
+                return .none
+
+            case .providerCurrentAccessResponse(
+                let requestID,
+                let providerID,
+                let access
+            ):
+                let expectedConnection = ProviderConnection.connecting(
+                    providerID: providerID,
+                    requestID: requestID
+                )
+                guard state.providerConnection == expectedConnection else {
+                    return .none
+                }
+
+                guard access.authorization == .notDetermined else {
+                    resolveConnection(
+                        state: &state,
+                        providerID: providerID,
+                        access: access
+                    )
+                    return .none
+                }
+
+                return .run { send in
+                    let requestedAccess = await musicProvider.requestAccess()
+                    await send(
+                        .providerRequestedAccessResponse(
+                            requestID: requestID,
+                            providerID: providerID,
+                            access: requestedAccess
+                        )
+                    )
+                }
+                .cancellable(id: CancelID.providerAccess)
+
+            case .providerRequestedAccessResponse(
+                let requestID,
+                let providerID,
+                let access
+            ):
+                let expectedConnection = ProviderConnection.connecting(
+                    providerID: providerID,
+                    requestID: requestID
+                )
+                guard state.providerConnection == expectedConnection else {
+                    return .none
+                }
+                resolveConnection(
+                    state: &state,
+                    providerID: providerID,
+                    access: access
+                )
                 return .none
 
             case .search(.delegate(.songSelected(let song))):
@@ -191,7 +257,8 @@ struct AppFeature {
 
             case .musicPlayback(.delegate(.playRequested(let itemID))):
                 guard state.playbackTransition == nil,
-                    state.providerSwitchRequestID == nil
+                    state.providerSwitchRequestID == nil,
+                    state.providerConnection.access != nil
                 else {
                     return .none
                 }
@@ -231,6 +298,69 @@ struct AppFeature {
                 state.isPlayerPresented = isPresented
                 return .none
             }
+        }
+    }
+
+    private func beginAccessResolution(
+        state: inout State,
+        provider: ProviderDescriptor
+    ) -> Effect<Action> {
+        let providerChanged = state.providerConnection.providerID != provider.id
+        let requestID = uuid()
+
+        state.providerConnection = .connecting(
+            providerID: provider.id,
+            requestID: requestID
+        )
+        state.pendingProviderID = nil
+        state.providerSwitchRequestID = nil
+
+        if providerChanged {
+            state.search = SearchFeature.State(
+                query: "",
+                phase: .idle,
+                playbackEligibility: .unknown
+            )
+            state.musicPlayback = MusicPlaybackFeature.State(
+                selectedSong: nil,
+                phase: .observing(.idle),
+                playbackEligibility: .unknown,
+                capabilities: provider.musicCapabilities
+            )
+            state.isPlayerPresented = false
+        }
+
+        return .run { send in
+            let access = await musicProvider.currentAccess()
+            await send(
+                .providerCurrentAccessResponse(
+                    requestID: requestID,
+                    providerID: provider.id,
+                    access: access
+                )
+            )
+        }
+        .cancellable(id: CancelID.providerAccess, cancelInFlight: true)
+    }
+
+    private func resolveConnection(
+        state: inout State,
+        providerID: ProviderID,
+        access: MusicProviderAccess
+    ) {
+        switch access.authorization {
+        case .authorized:
+            state.providerConnection = .connected(
+                providerID: providerID,
+                access: access
+            )
+            state.search.playbackEligibility = access.playbackEligibility
+        case .denied:
+            state.providerConnection = .denied(providerID: providerID)
+        case .restricted:
+            state.providerConnection = .restricted(providerID: providerID)
+        case .notDetermined:
+            state.providerConnection = .failed(providerID: providerID)
         }
     }
 }

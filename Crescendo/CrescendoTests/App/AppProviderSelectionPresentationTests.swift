@@ -19,7 +19,7 @@ struct AppProviderSelectionPresentationTests {
         let model = ProviderSelectionView.Model(store)
 
         #expect(model.providers == [.appleMusic])
-        #expect(model.activeProviderID == MusicProviderID.appleMusic)
+        #expect(model.activeProviderID == ProviderID.appleMusic)
         #expect(model.activeProviderName == "Apple Music")
         #expect(model.isSelectionEnabled)
 
@@ -60,7 +60,13 @@ struct AppProviderSelectionPresentationTests {
     private func makeState() -> AppFeature.State {
         AppFeature.State(
             registeredProviders: [.appleMusic],
-            activeProviderID: MusicProviderDescriptor.appleMusic.id,
+            providerConnection: .connected(
+                providerID: .appleMusic,
+                access: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .unknown
+                )
+            ),
             search: SearchFeature.State(
                 query: "",
                 phase: .idle,

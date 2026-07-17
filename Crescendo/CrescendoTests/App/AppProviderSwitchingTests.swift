@@ -7,45 +7,33 @@ import Testing
 @MainActor
 struct AppProviderSwitchingTests {
     @Test
-    func reselectingActiveProviderWithoutPendingSwitchIsNoOp() async {
+    func reselectingConnectedProviderIsNoOp() async {
         let events = LockIsolated<[String]>([])
         let state = makeState()
-        let store = TestStore(initialState: state) {
-            AppFeature()
-        } withDependencies: {
-            $0.musicProvider.pause = {
-                events.withValue { $0.append("pause") }
-            }
-        }
+        let store = makeStore(
+            state: state,
+            pause: { events.withValue { $0.append("pause") } }
+        )
 
-        await store.send(.providerSelected("apple-music"))
+        await store.send(.providerSelected(.appleMusic))
 
         #expect(store.state == state)
         #expect(events.value.isEmpty)
     }
 
     @Test
-    func selectingActiveProviderCancelsPendingSwitchWithoutResettingState() async {
-        let events = LockIsolated<[String]>([])
+    func selectingConnectedProviderCancelsPendingSwitch() async {
         let pauseCount = LockIsolated(0)
         let (pauseStarted, pauseStartedContinuation) = AsyncStream<Void>.makeStream()
         let state = makeState()
-        let store = TestStore(initialState: state) {
-            AppFeature()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.musicProvider.pause = {
-                let call = pauseCount.withValue { count in
-                    count += 1
-                    return count
-                }
-                events.withValue { $0.append("pause-\(call)") }
-                if call == 1 {
-                    pauseStartedContinuation.yield()
-                    try await Task.sleep(for: .seconds(60))
-                }
+        let store = makeStore(
+            state: state,
+            pause: {
+                pauseCount.withValue { $0 += 1 }
+                pauseStartedContinuation.yield()
+                try await Task.sleep(for: .seconds(60))
             }
-        }
+        )
 
         await store.send(.providerSelected("future")) {
             $0.pendingProviderID = "future"
@@ -54,32 +42,31 @@ struct AppProviderSwitchingTests {
         var pauseStartedIterator = pauseStarted.makeAsyncIterator()
         _ = await pauseStartedIterator.next()
 
-        await store.send(.providerSelected("apple-music")) {
+        await store.send(.providerSelected(.appleMusic)) {
             $0.pendingProviderID = nil
             $0.providerSwitchRequestID = nil
         }
 
         #expect(store.state == state)
-        #expect(events.value == ["pause-1"])
+        #expect(pauseCount.value == 1)
         await store.finish()
         pauseStartedContinuation.finish()
     }
 
     @Test
-    func selectingPendingProviderAgainDoesNotStartDuplicatePause() async {
+    func selectingPendingProviderDoesNotStartDuplicatePause() async {
         let pauseCount = LockIsolated(0)
         let (pauseStarted, pauseStartedContinuation) = AsyncStream<Void>.makeStream()
         let (resumePause, resumePauseContinuation) = AsyncStream<Void>.makeStream()
-        let store = TestStore(initialState: makeState()) {
-            AppFeature()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.musicProvider.pause = {
+        let access = makeAccess()
+        let store = makeStore(
+            pause: {
                 pauseCount.withValue { $0 += 1 }
                 pauseStartedContinuation.yield()
                 for await _ in resumePause { break }
-            }
-        }
+            },
+            currentAccess: { access }
+        )
 
         await store.send(.providerSelected("future")) {
             $0.pendingProviderID = "future"
@@ -99,42 +86,42 @@ struct AppProviderSwitchingTests {
                 providerID: "future"
             )
         ) {
-            $0.activeProviderID = "future"
-            $0.pendingProviderID = nil
-            $0.providerSwitchRequestID = nil
-            $0.search = SearchFeature.State(
-                query: "",
-                phase: .idle,
-                playbackEligibility: .unknown
+            reset(&$0, providerID: "future", requestID: UUID(1))
+        }
+        await store.receive(
+            .providerCurrentAccessResponse(
+                requestID: UUID(1),
+                providerID: "future",
+                access: access
             )
-            $0.musicPlayback = MusicPlaybackFeature.State(
-                selectedSong: nil,
-                phase: .observing(.idle),
-                playbackEligibility: .unknown,
-                capabilities: futureCapabilities
+        ) {
+            $0.providerConnection = .connected(
+                providerID: "future",
+                access: access
             )
-            $0.isPlayerPresented = false
+            $0.search.playbackEligibility = .eligible
         }
 
-        await store.finish()
         pauseStartedContinuation.finish()
     }
 
     @Test
-    func providerSwitchPausesBeforeResettingProviderOwnedState() async {
+    func switchingConnectedProviderPausesBeforeResolvingAccess() async {
         let events = LockIsolated<[String]>([])
         let (pauseStarted, pauseStartedContinuation) = AsyncStream<Void>.makeStream()
         let (resumePause, resumePauseContinuation) = AsyncStream<Void>.makeStream()
-        let store = TestStore(initialState: makeState()) {
-            AppFeature()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.musicProvider.pause = {
+        let access = makeAccess()
+        let store = makeStore(
+            pause: {
                 events.withValue { $0.append("pause") }
                 pauseStartedContinuation.yield()
                 for await _ in resumePause { break }
+            },
+            currentAccess: {
+                events.withValue { $0.append("current-access") }
+                return access
             }
-        }
+        )
 
         await store.send(.providerSelected("future")) {
             $0.pendingProviderID = "future"
@@ -143,10 +130,13 @@ struct AppProviderSwitchingTests {
 
         var pauseStartedIterator = pauseStarted.makeAsyncIterator()
         _ = await pauseStartedIterator.next()
-        #expect(store.state.activeProviderID == "apple-music")
-        #expect(store.state.search == makeSearchState())
-        #expect(store.state.musicPlayback == makeMusicPlaybackState())
-        #expect(store.state.isPlayerPresented)
+        #expect(
+            store.state.providerConnection
+                == .connected(
+                    providerID: .appleMusic,
+                    access: makeAccess()
+                )
+        )
         #expect(events.value == ["pause"])
 
         resumePauseContinuation.yield()
@@ -157,39 +147,33 @@ struct AppProviderSwitchingTests {
                 providerID: "future"
             )
         ) {
-            $0.activeProviderID = "future"
-            $0.pendingProviderID = nil
-            $0.providerSwitchRequestID = nil
-            $0.search = SearchFeature.State(
-                query: "",
-                phase: .idle,
-                playbackEligibility: .unknown
+            reset(&$0, providerID: "future", requestID: UUID(1))
+        }
+        await store.receive(
+            .providerCurrentAccessResponse(
+                requestID: UUID(1),
+                providerID: "future",
+                access: access
             )
-            $0.musicPlayback = MusicPlaybackFeature.State(
-                selectedSong: nil,
-                phase: .observing(.idle),
-                playbackEligibility: .unknown,
-                capabilities: futureCapabilities
+        ) {
+            $0.providerConnection = .connected(
+                providerID: "future",
+                access: access
             )
-            $0.isPlayerPresented = false
+            $0.search.playbackEligibility = .eligible
         }
 
-        #expect(events.value == ["pause"])
-        await store.finish()
+        #expect(events.value == ["pause", "current-access"])
         pauseStartedContinuation.finish()
     }
 
     @Test
-    func providerSwitchFailureKeepsActiveProviderState() async {
+    func providerSwitchPauseFailureKeepsConnectedState() async {
         let initialState = makeState()
-        let store = TestStore(initialState: initialState) {
-            AppFeature()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.musicProvider.pause = {
-                throw MusicProviderError.playbackFailed
-            }
-        }
+        let store = makeStore(
+            state: initialState,
+            pause: { throw MusicProviderError.playbackFailed }
+        )
 
         await store.send(.providerSelected("future")) {
             $0.pendingProviderID = "future"
@@ -205,39 +189,32 @@ struct AppProviderSwitchingTests {
             $0.providerSwitchRequestID = nil
         }
 
-        #expect(store.state.activeProviderID == initialState.activeProviderID)
-        #expect(store.state.search == initialState.search)
-        #expect(store.state.musicPlayback == initialState.musicPlayback)
-        #expect(store.state.isPlayerPresented == initialState.isPlayerPresented)
+        #expect(store.state == initialState)
     }
 
     @Test
-    func staleProviderSwitchSuccessAndFailureAreIgnored() async {
-        let activeRequestID = UUID(1)
+    func staleAccessResponseCannotReplaceNewerConnection() async {
         let state = makeState(
-            pendingProviderID: "future",
-            providerSwitchRequestID: activeRequestID
+            providerConnection: .connecting(
+                providerID: "third",
+                requestID: UUID(1)
+            )
         )
-        let store = TestStore(initialState: state) {
-            AppFeature()
-        }
+        let store = makeStore(state: state)
+        let access = makeAccess()
 
         await store.send(
-            .providerSwitchPauseSucceeded(
+            .providerCurrentAccessResponse(
                 requestID: UUID(0),
-                providerID: "future"
+                providerID: "future",
+                access: access
             )
         )
         await store.send(
-            .providerSwitchPauseSucceeded(
-                requestID: activeRequestID,
-                providerID: "third"
-            )
-        )
-        await store.send(
-            .providerSwitchPauseFailed(
+            .providerRequestedAccessResponse(
                 requestID: UUID(0),
-                providerID: "future"
+                providerID: "third",
+                access: access
             )
         )
 
@@ -250,11 +227,9 @@ struct AppProviderSwitchingTests {
         let pauseCount = LockIsolated(0)
         let (firstPauseStarted, firstPauseStartedContinuation) =
             AsyncStream<Void>.makeStream()
-        let store = TestStore(initialState: makeState()) {
-            AppFeature()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.musicProvider.pause = {
+        let access = makeAccess()
+        let store = makeStore(
+            pause: {
                 let call = pauseCount.withValue { count in
                     count += 1
                     return count
@@ -264,8 +239,9 @@ struct AppProviderSwitchingTests {
                     firstPauseStartedContinuation.yield()
                     try await Task.sleep(for: .seconds(60))
                 }
-            }
-        }
+            },
+            currentAccess: { access }
+        )
 
         await store.send(.providerSelected("future")) {
             $0.pendingProviderID = "future"
@@ -284,21 +260,20 @@ struct AppProviderSwitchingTests {
                 providerID: "third"
             )
         ) {
-            $0.activeProviderID = "third"
-            $0.pendingProviderID = nil
-            $0.providerSwitchRequestID = nil
-            $0.search = SearchFeature.State(
-                query: "",
-                phase: .idle,
-                playbackEligibility: .unknown
+            reset(&$0, providerID: "third", requestID: UUID(2))
+        }
+        await store.receive(
+            .providerCurrentAccessResponse(
+                requestID: UUID(2),
+                providerID: "third",
+                access: access
             )
-            $0.musicPlayback = MusicPlaybackFeature.State(
-                selectedSong: nil,
-                phase: .observing(.idle),
-                playbackEligibility: .unknown,
-                capabilities: .allEnabled
+        ) {
+            $0.providerConnection = .connected(
+                providerID: "third",
+                access: access
             )
-            $0.isPlayerPresented = false
+            $0.search.playbackEligibility = .eligible
         }
 
         #expect(events.value == ["pause-1", "pause-2"])
@@ -307,16 +282,13 @@ struct AppProviderSwitchingTests {
     }
 
     @Test
-    func providerSwitchIsIgnoredDuringPlaybackTransition() async {
+    func providerSelectionIsIgnoredDuringPlaybackTransition() async {
         let events = LockIsolated<[String]>([])
         let state = makeState(playbackTransition: .startingMusic(makeSong().id))
-        let store = TestStore(initialState: state) {
-            AppFeature()
-        } withDependencies: {
-            $0.musicProvider.pause = {
-                events.withValue { $0.append("pause") }
-            }
-        }
+        let store = makeStore(
+            state: state,
+            pause: { events.withValue { $0.append("pause") } }
+        )
 
         await store.send(.providerSelected("future"))
 
@@ -332,13 +304,10 @@ struct AppProviderSwitchingTests {
             pendingProviderID: "future",
             providerSwitchRequestID: UUID(0)
         )
-        let store = TestStore(initialState: state) {
-            AppFeature()
-        } withDependencies: {
-            $0.musicProvider.play = { _ in
-                events.withValue { $0.append("play-music") }
-            }
-        }
+        let store = makeStore(
+            state: state,
+            play: { _ in events.withValue { $0.append("play-music") } }
+        )
 
         await store.send(.musicPlayback(.delegate(.playRequested(song.id))))
 
@@ -357,18 +326,44 @@ struct AppProviderSwitchingTests {
         )
     }
 
+    private func makeStore(
+        state: AppFeature.State? = nil,
+        pause: @escaping @Sendable () async throws -> Void = {},
+        play: @escaping @Sendable (MusicItemID) async throws -> Void = { _ in },
+        currentAccess: @escaping @Sendable () async -> MusicProviderAccess = {
+            MusicProviderAccess(
+                authorization: .authorized,
+                playbackEligibility: .eligible
+            )
+        }
+    ) -> TestStoreOf<AppFeature> {
+        TestStore(initialState: state ?? makeState()) {
+            AppFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.musicProvider.pause = pause
+            $0.musicProvider.play = play
+            $0.musicProvider.currentAccess = currentAccess
+        }
+    }
+
     private func makeState(
-        pendingProviderID: MusicProviderID? = nil,
+        providerConnection: ProviderConnection? = nil,
+        pendingProviderID: ProviderID? = nil,
         providerSwitchRequestID: UUID? = nil,
         playbackTransition: PlaybackTransition? = nil
     ) -> AppFeature.State {
         AppFeature.State(
             registeredProviders: [
                 .appleMusic,
-                makeProvider(id: "future", capabilities: futureCapabilities),
-                makeProvider(id: "third", capabilities: .allEnabled),
+                makeProvider(id: "future", musicCapabilities: futureCapabilities),
+                makeProvider(id: "third", musicCapabilities: .allEnabled),
             ],
-            activeProviderID: "apple-music",
+            providerConnection: providerConnection
+                ?? .connected(
+                    providerID: .appleMusic,
+                    access: makeAccess()
+                ),
             search: makeSearchState(),
             musicPlayback: makeMusicPlaybackState(),
             isPlayerPresented: true,
@@ -379,10 +374,21 @@ struct AppProviderSwitchingTests {
     }
 
     private func makeProvider(
-        id: MusicProviderID,
-        capabilities: MusicProviderCapabilities
-    ) -> MusicProviderDescriptor {
-        MusicProviderDescriptor(id: id, name: "Future", capabilities: capabilities)
+        id: ProviderID,
+        musicCapabilities: MusicProviderCapabilities
+    ) -> ProviderDescriptor {
+        ProviderDescriptor(
+            id: id,
+            name: "Future",
+            musicCapabilities: musicCapabilities
+        )
+    }
+
+    private func makeAccess() -> MusicProviderAccess {
+        MusicProviderAccess(
+            authorization: .authorized,
+            playbackEligibility: .eligible
+        )
     }
 
     private func makeSearchState() -> SearchFeature.State {
@@ -411,11 +417,38 @@ struct AppProviderSwitchingTests {
 
     private func makeSong() -> SongSummary {
         SongSummary(
-            id: .init(providerID: "apple-music", nativeID: "selected"),
+            id: .init(providerID: .appleMusic, nativeID: "selected"),
             title: "Selected song",
             artistName: "Artist",
             artworkURL: nil,
             duration: nil
         )
+    }
+
+    private func reset(
+        _ state: inout AppFeature.State,
+        providerID: ProviderID,
+        requestID: UUID
+    ) {
+        state.providerConnection = .connecting(
+            providerID: providerID,
+            requestID: requestID
+        )
+        state.pendingProviderID = nil
+        state.providerSwitchRequestID = nil
+        state.search = SearchFeature.State(
+            query: "",
+            phase: .idle,
+            playbackEligibility: .unknown
+        )
+        state.musicPlayback = MusicPlaybackFeature.State(
+            selectedSong: nil,
+            phase: .observing(.idle),
+            playbackEligibility: .unknown,
+            capabilities: state.registeredProviders.first {
+                $0.id == providerID
+            }?.musicCapabilities ?? .allEnabled
+        )
+        state.isPlayerPresented = false
     }
 }

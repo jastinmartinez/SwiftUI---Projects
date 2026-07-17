@@ -2,6 +2,6 @@
 ///
 /// Native identifiers are not assumed to be unique across providers.
 struct MusicItemID: Hashable, Sendable {
-    let providerID: MusicProviderID
+    let providerID: ProviderID
     let nativeID: String
 }
