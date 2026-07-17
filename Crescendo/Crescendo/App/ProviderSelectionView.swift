@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ProviderSelectionView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let model: Model
 
     var body: some View {
@@ -23,7 +25,7 @@ struct ProviderSelectionView: View {
                 Image(systemName: "music.note")
                     .accessibilityHidden(true)
                 Text(model.activeProviderName ?? Locs.ProviderSelection.title)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 Image(systemName: "chevron.down")
                     .font(.caption2.weight(.bold))
                     .accessibilityHidden(true)
