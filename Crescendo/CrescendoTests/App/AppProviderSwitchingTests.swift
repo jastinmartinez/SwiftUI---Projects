@@ -85,20 +85,73 @@ struct AppProviderSwitchingTests {
                 requestID: UUID(0),
                 providerID: "future"
             )
-        ) {
-            reset(&$0, providerID: "future", requestID: UUID(1))
+        )
+        await store.receive(.providerConnection(.connect("future")))
+        await store.receive(.providerConnection(.startConnection("future"))) {
+            $0.providerConnection.connection = .connecting(
+                providerID: "future",
+                requestID: UUID(1)
+            )
         }
         await store.receive(
-            .providerCurrentAccessResponse(
-                requestID: UUID(1),
-                providerID: "future",
-                access: access
+            .providerConnection(
+                .delegate(
+                    .connectionStarted(
+                        providerID: "future",
+                        providerChanged: true
+                    )
+                )
             )
         ) {
-            $0.providerConnection = .connected(
+            $0.pendingProviderID = nil
+            $0.providerSwitchRequestID = nil
+        }
+        await store.receive(.resetProviderOwnedState("future")) {
+            $0.search = SearchFeature.State(
+                query: "",
+                phase: .idle,
+                playbackEligibility: .unknown
+            )
+            $0.musicPlayback = MusicPlaybackFeature.State(
+                selectedSong: nil,
+                phase: .observing(.idle),
+                playbackEligibility: .unknown,
+                capabilities: futureCapabilities
+            )
+            $0.isPlayerPresented = false
+        }
+        await store.receive(
+            .providerConnection(
+                .currentAccessResponse(
+                    requestID: UUID(1),
+                    providerID: "future",
+                    access: access
+                )
+            )
+        )
+        await store.receive(
+            .providerConnection(
+                .accessResolved(
+                    requestID: UUID(1),
+                    providerID: "future",
+                    access: access
+                )
+            )
+        ) {
+            $0.providerConnection.connection = .connected(
                 providerID: "future",
                 access: access
             )
+        }
+        await store.receive(
+            .providerConnection(
+                .delegate(
+                    .connectionResolved(
+                        .connected(providerID: "future", access: access)
+                    )
+                )
+            )
+        ) {
             $0.search.playbackEligibility = .eligible
         }
 
@@ -131,7 +184,7 @@ struct AppProviderSwitchingTests {
         var pauseStartedIterator = pauseStarted.makeAsyncIterator()
         _ = await pauseStartedIterator.next()
         #expect(
-            store.state.providerConnection
+            store.state.providerConnection.connection
                 == .connected(
                     providerID: .appleMusic,
                     access: makeAccess()
@@ -146,20 +199,73 @@ struct AppProviderSwitchingTests {
                 requestID: UUID(0),
                 providerID: "future"
             )
-        ) {
-            reset(&$0, providerID: "future", requestID: UUID(1))
+        )
+        await store.receive(.providerConnection(.connect("future")))
+        await store.receive(.providerConnection(.startConnection("future"))) {
+            $0.providerConnection.connection = .connecting(
+                providerID: "future",
+                requestID: UUID(1)
+            )
         }
         await store.receive(
-            .providerCurrentAccessResponse(
-                requestID: UUID(1),
-                providerID: "future",
-                access: access
+            .providerConnection(
+                .delegate(
+                    .connectionStarted(
+                        providerID: "future",
+                        providerChanged: true
+                    )
+                )
             )
         ) {
-            $0.providerConnection = .connected(
+            $0.pendingProviderID = nil
+            $0.providerSwitchRequestID = nil
+        }
+        await store.receive(.resetProviderOwnedState("future")) {
+            $0.search = SearchFeature.State(
+                query: "",
+                phase: .idle,
+                playbackEligibility: .unknown
+            )
+            $0.musicPlayback = MusicPlaybackFeature.State(
+                selectedSong: nil,
+                phase: .observing(.idle),
+                playbackEligibility: .unknown,
+                capabilities: futureCapabilities
+            )
+            $0.isPlayerPresented = false
+        }
+        await store.receive(
+            .providerConnection(
+                .currentAccessResponse(
+                    requestID: UUID(1),
+                    providerID: "future",
+                    access: access
+                )
+            )
+        )
+        await store.receive(
+            .providerConnection(
+                .accessResolved(
+                    requestID: UUID(1),
+                    providerID: "future",
+                    access: access
+                )
+            )
+        ) {
+            $0.providerConnection.connection = .connected(
                 providerID: "future",
                 access: access
             )
+        }
+        await store.receive(
+            .providerConnection(
+                .delegate(
+                    .connectionResolved(
+                        .connected(providerID: "future", access: access)
+                    )
+                )
+            )
+        ) {
             $0.search.playbackEligibility = .eligible
         }
 
@@ -204,17 +310,21 @@ struct AppProviderSwitchingTests {
         let access = makeAccess()
 
         await store.send(
-            .providerCurrentAccessResponse(
-                requestID: UUID(0),
-                providerID: "future",
-                access: access
+            .providerConnection(
+                .currentAccessResponse(
+                    requestID: UUID(0),
+                    providerID: "future",
+                    access: access
+                )
             )
         )
         await store.send(
-            .providerRequestedAccessResponse(
-                requestID: UUID(0),
-                providerID: "third",
-                access: access
+            .providerConnection(
+                .requestedAccessResponse(
+                    requestID: UUID(0),
+                    providerID: "third",
+                    access: access
+                )
             )
         )
 
@@ -259,20 +369,73 @@ struct AppProviderSwitchingTests {
                 requestID: UUID(1),
                 providerID: "third"
             )
-        ) {
-            reset(&$0, providerID: "third", requestID: UUID(2))
+        )
+        await store.receive(.providerConnection(.connect("third")))
+        await store.receive(.providerConnection(.startConnection("third"))) {
+            $0.providerConnection.connection = .connecting(
+                providerID: "third",
+                requestID: UUID(2)
+            )
         }
         await store.receive(
-            .providerCurrentAccessResponse(
-                requestID: UUID(2),
-                providerID: "third",
-                access: access
+            .providerConnection(
+                .delegate(
+                    .connectionStarted(
+                        providerID: "third",
+                        providerChanged: true
+                    )
+                )
             )
         ) {
-            $0.providerConnection = .connected(
+            $0.pendingProviderID = nil
+            $0.providerSwitchRequestID = nil
+        }
+        await store.receive(.resetProviderOwnedState("third")) {
+            $0.search = SearchFeature.State(
+                query: "",
+                phase: .idle,
+                playbackEligibility: .unknown
+            )
+            $0.musicPlayback = MusicPlaybackFeature.State(
+                selectedSong: nil,
+                phase: .observing(.idle),
+                playbackEligibility: .unknown,
+                capabilities: .allEnabled
+            )
+            $0.isPlayerPresented = false
+        }
+        await store.receive(
+            .providerConnection(
+                .currentAccessResponse(
+                    requestID: UUID(2),
+                    providerID: "third",
+                    access: access
+                )
+            )
+        )
+        await store.receive(
+            .providerConnection(
+                .accessResolved(
+                    requestID: UUID(2),
+                    providerID: "third",
+                    access: access
+                )
+            )
+        ) {
+            $0.providerConnection.connection = .connected(
                 providerID: "third",
                 access: access
             )
+        }
+        await store.receive(
+            .providerConnection(
+                .delegate(
+                    .connectionResolved(
+                        .connected(providerID: "third", access: access)
+                    )
+                )
+            )
+        ) {
             $0.search.playbackEligibility = .eligible
         }
 
@@ -354,16 +517,24 @@ struct AppProviderSwitchingTests {
         playbackTransition: PlaybackTransition? = nil
     ) -> AppFeature.State {
         AppFeature.State(
-            registeredProviders: [
-                .appleMusic,
-                makeProvider(id: "future", musicCapabilities: futureCapabilities),
-                makeProvider(id: "third", musicCapabilities: .allEnabled),
-            ],
-            providerConnection: providerConnection
-                ?? .connected(
-                    providerID: .appleMusic,
-                    access: makeAccess()
-                ),
+            providerConnection: ProviderConnectionFeature.State(
+                providers: [
+                    .appleMusic,
+                    makeProvider(
+                        id: "future",
+                        musicCapabilities: futureCapabilities
+                    ),
+                    makeProvider(
+                        id: "third",
+                        musicCapabilities: .allEnabled
+                    ),
+                ],
+                connection: providerConnection
+                    ?? .connected(
+                        providerID: .appleMusic,
+                        access: makeAccess()
+                    )
+            ),
             search: makeSearchState(),
             musicPlayback: makeMusicPlaybackState(),
             isPlayerPresented: true,
@@ -425,30 +596,4 @@ struct AppProviderSwitchingTests {
         )
     }
 
-    private func reset(
-        _ state: inout AppFeature.State,
-        providerID: ProviderID,
-        requestID: UUID
-    ) {
-        state.providerConnection = .connecting(
-            providerID: providerID,
-            requestID: requestID
-        )
-        state.pendingProviderID = nil
-        state.providerSwitchRequestID = nil
-        state.search = SearchFeature.State(
-            query: "",
-            phase: .idle,
-            playbackEligibility: .unknown
-        )
-        state.musicPlayback = MusicPlaybackFeature.State(
-            selectedSong: nil,
-            phase: .observing(.idle),
-            playbackEligibility: .unknown,
-            capabilities: state.registeredProviders.first {
-                $0.id == providerID
-            }?.musicCapabilities ?? .allEnabled
-        )
-        state.isPlayerPresented = false
-    }
 }

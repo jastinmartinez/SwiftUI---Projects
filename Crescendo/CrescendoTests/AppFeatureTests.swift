@@ -1,7 +1,6 @@
 import ComposableArchitecture
 import Foundation
 import Testing
-import UIKit
 
 @testable import Crescendo
 
@@ -13,207 +12,192 @@ struct AppFeatureTests {
 
         await store.send(.task)
 
-        #expect(store.state.providerConnection == .disconnected)
+        #expect(store.state.providerConnection.connection == .disconnected)
         #expect(store.state.requiresProviderSelection)
     }
 
     @Test
-    func selectingAuthorizedProviderUsesCurrentAccessWithoutRequestingPermission() async {
-        let currentAccessCount = LockIsolated(0)
-        let requestAccessCount = LockIsolated(0)
+    func providerSelectionRoutesConnectionThroughChild() async {
         let access = makeAccess(
             authorization: .authorized,
             playbackEligibility: .eligible
         )
-        let store = makeStore(
-            currentAccess: {
-                currentAccessCount.withValue { $0 += 1 }
-                return access
-            },
-            requestAccess: {
-                requestAccessCount.withValue { $0 += 1 }
-                return access
-            }
-        )
+        let store = makeStore(currentAccess: { access })
 
-        await store.send(.providerSelected(.appleMusic)) {
-            $0.providerConnection = .connecting(
+        await store.send(.providerSelected(.appleMusic))
+        await store.receive(.providerConnection(.connect(.appleMusic)))
+        await store.receive(
+            .providerConnection(.startConnection(.appleMusic))
+        ) {
+            $0.providerConnection.connection = .connecting(
                 providerID: .appleMusic,
                 requestID: UUID(0)
             )
         }
         await store.receive(
-            .providerCurrentAccessResponse(
-                requestID: UUID(0),
-                providerID: .appleMusic,
-                access: access
+            .providerConnection(
+                .delegate(
+                    .connectionStarted(
+                        providerID: .appleMusic,
+                        providerChanged: true
+                    )
+                )
+            )
+        )
+        await store.receive(.resetProviderOwnedState(.appleMusic))
+        await store.receive(
+            .providerConnection(
+                .currentAccessResponse(
+                    requestID: UUID(0),
+                    providerID: .appleMusic,
+                    access: access
+                )
+            )
+        )
+        await store.receive(
+            .providerConnection(
+                .accessResolved(
+                    requestID: UUID(0),
+                    providerID: .appleMusic,
+                    access: access
+                )
             )
         ) {
-            $0.providerConnection = .connected(
+            $0.providerConnection.connection = .connected(
                 providerID: .appleMusic,
                 access: access
             )
+        }
+        await store.receive(
+            .providerConnection(
+                .delegate(
+                    .connectionResolved(
+                        .connected(
+                            providerID: .appleMusic,
+                            access: access
+                        )
+                    )
+                )
+            )
+        ) {
             $0.search.playbackEligibility = .eligible
         }
-
-        #expect(currentAccessCount.value == 1)
-        #expect(requestAccessCount.value == 0)
     }
 
     @Test
-    func undeterminedAccessRequestsPermission() async {
-        let requestAccessCount = LockIsolated(0)
-        let currentAccess = makeAccess(authorization: .notDetermined)
-        let requestedAccess = makeAccess(
+    func changedProviderConnectionStartResetsProviderOwnedState() async {
+        let song = makeSong()
+        let futureProvider = makeProvider(id: "future")
+        let state = makeState(
+            providers: [.appleMusic, futureProvider],
+            connection: .connecting(
+                providerID: futureProvider.id,
+                requestID: UUID(0)
+            ),
+            search: SearchFeature.State(
+                query: "Selected song",
+                phase: .loaded([song]),
+                playbackEligibility: .eligible
+            ),
+            musicPlayback: MusicPlaybackFeature.State(
+                selectedSong: song,
+                phase: .observing(
+                    MusicPlaybackSnapshot(
+                        currentItem: song,
+                        status: .playing,
+                        currentTime: 42
+                    )
+                ),
+                playbackEligibility: .eligible,
+                capabilities: .allEnabled
+            ),
+            isPlayerPresented: true
+        )
+        let store = makeStore(state: state)
+
+        await store.send(
+            .providerConnection(
+                .delegate(
+                    .connectionStarted(
+                        providerID: futureProvider.id,
+                        providerChanged: true
+                    )
+                )
+            )
+        )
+        await store.receive(.resetProviderOwnedState(futureProvider.id)) {
+            $0.search = SearchFeature.State(
+                query: "",
+                phase: .idle,
+                playbackEligibility: .unknown
+            )
+            $0.musicPlayback = MusicPlaybackFeature.State(
+                selectedSong: nil,
+                phase: .observing(.idle),
+                playbackEligibility: .unknown,
+                capabilities: futureProvider.musicCapabilities
+            )
+            $0.isPlayerPresented = false
+        }
+    }
+
+    @Test
+    func unchangedProviderConnectionStartPreservesProviderOwnedState() async {
+        let state = makeState(
+            connection: .connecting(
+                providerID: .appleMusic,
+                requestID: UUID(0)
+            )
+        )
+        let store = makeStore(state: state)
+
+        await store.send(
+            .providerConnection(
+                .delegate(
+                    .connectionStarted(
+                        providerID: .appleMusic,
+                        providerChanged: false
+                    )
+                )
+            )
+        )
+
+        #expect(store.state == state)
+    }
+
+    @Test
+    func resolvedConnectionSynchronizesPlaybackEligibility() async {
+        let access = makeAccess(
             authorization: .authorized,
             playbackEligibility: .ineligible
         )
-        let store = makeStore(
-            currentAccess: { currentAccess },
-            requestAccess: {
-                requestAccessCount.withValue { $0 += 1 }
-                return requestedAccess
-            }
-        )
-
-        await store.send(.providerSelected(.appleMusic)) {
-            $0.providerConnection = .connecting(
-                providerID: .appleMusic,
-                requestID: UUID(0)
-            )
-        }
-        await store.receive(
-            .providerCurrentAccessResponse(
-                requestID: UUID(0),
-                providerID: .appleMusic,
-                access: currentAccess
-            )
-        )
-        await store.receive(
-            .providerRequestedAccessResponse(
-                requestID: UUID(0),
-                providerID: .appleMusic,
-                access: requestedAccess
-            )
-        ) {
-            $0.providerConnection = .connected(
-                providerID: .appleMusic,
-                access: requestedAccess
-            )
-            $0.search.playbackEligibility = .ineligible
-        }
-
-        #expect(requestAccessCount.value == 1)
-    }
-
-    @Test(arguments: [
-        (MusicAuthorizationStatus.denied, ProviderConnection.denied(providerID: .appleMusic)),
-        (
-            MusicAuthorizationStatus.restricted,
-            ProviderConnection.restricted(providerID: .appleMusic)
-        ),
-    ])
-    func currentAccessMapsUnavailableAuthorization(
-        authorization: MusicAuthorizationStatus,
-        expectedConnection: ProviderConnection
-    ) async {
-        let access = makeAccess(authorization: authorization)
-        let store = makeStore(currentAccess: { access })
-
-        await store.send(.providerSelected(.appleMusic)) {
-            $0.providerConnection = .connecting(
-                providerID: .appleMusic,
-                requestID: UUID(0)
-            )
-        }
-        await store.receive(
-            .providerCurrentAccessResponse(
-                requestID: UUID(0),
-                providerID: .appleMusic,
-                access: access
-            )
-        ) {
-            $0.providerConnection = expectedConnection
-        }
-    }
-
-    @Test
-    func secondUndeterminedResponseFailsConnection() async {
-        let access = makeAccess(authorization: .notDetermined)
-        let store = makeStore(
-            currentAccess: { access },
-            requestAccess: { access }
-        )
-
-        await store.send(.providerSelected(.appleMusic)) {
-            $0.providerConnection = .connecting(
-                providerID: .appleMusic,
-                requestID: UUID(0)
-            )
-        }
-        await store.receive(
-            .providerCurrentAccessResponse(
-                requestID: UUID(0),
+        let state = makeState(
+            connection: .connected(
                 providerID: .appleMusic,
                 access: access
             )
         )
-        await store.receive(
-            .providerRequestedAccessResponse(
-                requestID: UUID(0),
-                providerID: .appleMusic,
-                access: access
-            )
-        ) {
-            $0.providerConnection = .failed(providerID: .appleMusic)
-        }
-    }
+        let store = makeStore(state: state)
 
-    @Test
-    func retryStartsFreshConnectionRequest() async {
-        let access = makeAccess(authorization: .authorized)
-        let (resumeAccess, resumeAccessContinuation) = AsyncStream<Void>.makeStream()
-        let store = makeStore(
-            providerConnection: .failed(providerID: .appleMusic),
-            currentAccess: {
-                for await _ in resumeAccess { break }
-                return access
-            }
-        )
-
-        await store.send(.providerRetryTapped) {
-            $0.providerConnection = .connecting(
-                providerID: .appleMusic,
-                requestID: UUID(0)
-            )
-        }
         await store.send(
-            .providerCurrentAccessResponse(
-                requestID: UUID(99),
-                providerID: .appleMusic,
-                access: access
-            )
-        )
-
-        resumeAccessContinuation.yield()
-        resumeAccessContinuation.finish()
-        await store.receive(
-            .providerCurrentAccessResponse(
-                requestID: UUID(0),
-                providerID: .appleMusic,
-                access: access
+            .providerConnection(
+                .delegate(
+                    .connectionResolved(
+                        .connected(
+                            providerID: .appleMusic,
+                            access: access
+                        )
+                    )
+                )
             )
         ) {
-            $0.providerConnection = .connected(
-                providerID: .appleMusic,
-                access: access
-            )
+            $0.search.playbackEligibility = .ineligible
         }
     }
 
     @Test
     func unavailableProviderCannotBeSelected() async {
-        let state = makeState(registeredProviders: [])
+        let state = makeState(providers: [])
         let store = makeStore(state: state)
 
         await store.send(.providerSelected("missing"))
@@ -221,116 +205,67 @@ struct AppFeatureTests {
         #expect(store.state == state)
     }
 
-    @Test
-    func activeProviderUsesConnectionIdentity() {
-        let access = makeAccess(authorization: .authorized)
-        var state = makeState(
-            providerConnection: .connected(
-                providerID: .appleMusic,
-                access: access
-            )
-        )
-
-        #expect(state.activeProvider?.name == "Apple Music")
-
-        state.providerConnection = .disconnected
-        #expect(state.activeProvider == nil)
-    }
-
-    @Test
-    func providerOpenSettingsUsesSystemSettingsURL() async {
-        let openedURLs = LockIsolated<[URL]>([])
-        let store = makeStore(
-            configureDependencies: {
-                $0.openURL = OpenURLEffect { url in
-                    openedURLs.withValue { $0.append(url) }
-                    return true
-                }
-            }
-        )
-
-        await store.send(.providerOpenSettingsTapped)
-
-        #expect(
-            openedURLs.value
-                == [URL(string: UIApplication.openSettingsURLString)]
-        )
-    }
-
     // MARK: - Helpers
 
     private func makeStore(
-        providerConnection: ProviderConnection = .disconnected,
+        state: AppFeature.State? = nil,
         currentAccess: @escaping @Sendable () async -> MusicProviderAccess = {
             MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .unknown
             )
-        },
-        requestAccess: @escaping @Sendable () async -> MusicProviderAccess = {
-            MusicProviderAccess(
-                authorization: .authorized,
-                playbackEligibility: .unknown
-            )
-        },
-        configureDependencies: (inout DependencyValues) -> Void = { _ in }
+        }
     ) -> TestStoreOf<AppFeature> {
-        makeStore(
-            state: makeState(providerConnection: providerConnection),
-            currentAccess: currentAccess,
-            requestAccess: requestAccess,
-            configureDependencies: configureDependencies
-        )
-    }
-
-    private func makeStore(
-        state: AppFeature.State,
-        currentAccess: @escaping @Sendable () async -> MusicProviderAccess = {
-            MusicProviderAccess(
-                authorization: .authorized,
-                playbackEligibility: .unknown
-            )
-        },
-        requestAccess: @escaping @Sendable () async -> MusicProviderAccess = {
-            MusicProviderAccess(
-                authorization: .authorized,
-                playbackEligibility: .unknown
-            )
-        },
-        configureDependencies: (inout DependencyValues) -> Void = { _ in }
-    ) -> TestStoreOf<AppFeature> {
-        TestStore(initialState: state) {
+        TestStore(initialState: state ?? makeState()) {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.musicProvider.currentAccess = currentAccess
-            $0.musicProvider.requestAccess = requestAccess
-            configureDependencies(&$0)
         }
     }
 
     private func makeState(
-        registeredProviders: [ProviderDescriptor] = [.appleMusic],
-        providerConnection: ProviderConnection = .disconnected
+        providers: [ProviderDescriptor] = [.appleMusic],
+        connection: ProviderConnection = .disconnected,
+        search: SearchFeature.State? = nil,
+        musicPlayback: MusicPlaybackFeature.State? = nil,
+        isPlayerPresented: Bool = false
     ) -> AppFeature.State {
         AppFeature.State(
-            registeredProviders: registeredProviders,
-            providerConnection: providerConnection,
-            search: SearchFeature.State(
-                query: "",
-                phase: .idle,
-                playbackEligibility: .unknown
+            providerConnection: ProviderConnectionFeature.State(
+                providers: providers,
+                connection: connection
             ),
-            musicPlayback: MusicPlaybackFeature.State(
-                selectedSong: nil,
-                phase: .observing(.idle),
-                playbackEligibility: .unknown,
-                capabilities: .allEnabled
-            ),
-            isPlayerPresented: false,
+            search: search
+                ?? SearchFeature.State(
+                    query: "",
+                    phase: .idle,
+                    playbackEligibility: .unknown
+                ),
+            musicPlayback: musicPlayback
+                ?? MusicPlaybackFeature.State(
+                    selectedSong: nil,
+                    phase: .observing(.idle),
+                    playbackEligibility: .unknown,
+                    capabilities: .allEnabled
+                ),
+            isPlayerPresented: isPlayerPresented,
             pendingProviderID: nil,
             providerSwitchRequestID: nil,
             playbackTransition: nil
+        )
+    }
+
+    private func makeProvider(id: ProviderID) -> ProviderDescriptor {
+        ProviderDescriptor(
+            id: id,
+            name: "Future",
+            musicCapabilities: MusicProviderCapabilities(
+                supportsCatalogSearch: true,
+                supportsEmbeddedPlayback: true,
+                supportsSeeking: false,
+                supportsQueueReplacement: true
+            )
         )
     }
 
@@ -341,6 +276,16 @@ struct AppFeatureTests {
         MusicProviderAccess(
             authorization: authorization,
             playbackEligibility: playbackEligibility
+        )
+    }
+
+    private func makeSong() -> SongSummary {
+        SongSummary(
+            id: .init(providerID: .appleMusic, nativeID: "selected"),
+            title: "Selected song",
+            artistName: "Artist",
+            artworkURL: nil,
+            duration: nil
         )
     }
 }

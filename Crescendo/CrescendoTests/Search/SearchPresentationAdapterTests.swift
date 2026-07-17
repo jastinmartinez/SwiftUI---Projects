@@ -120,12 +120,14 @@ struct SearchPresentationAdapterTests {
         let song = makeSong()
         let appStore = Store(
             initialState: AppFeature.State(
-                registeredProviders: [.appleMusic],
-                providerConnection: .connected(
-                    providerID: .appleMusic,
-                    access: MusicProviderAccess(
-                        authorization: .authorized,
-                        playbackEligibility: .eligible
+                providerConnection: ProviderConnectionFeature.State(
+                    providers: [.appleMusic],
+                    connection: .connected(
+                        providerID: .appleMusic,
+                        access: MusicProviderAccess(
+                            authorization: .authorized,
+                            playbackEligibility: .eligible
+                        )
                     )
                 ),
                 search: SearchFeature.State(

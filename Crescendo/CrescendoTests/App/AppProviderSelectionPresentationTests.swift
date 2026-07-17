@@ -59,12 +59,14 @@ struct AppProviderSelectionPresentationTests {
 
     private func makeState() -> AppFeature.State {
         AppFeature.State(
-            registeredProviders: [.appleMusic],
-            providerConnection: .connected(
-                providerID: .appleMusic,
-                access: MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .unknown
+            providerConnection: ProviderConnectionFeature.State(
+                providers: [.appleMusic],
+                connection: .connected(
+                    providerID: .appleMusic,
+                    access: MusicProviderAccess(
+                        authorization: .authorized,
+                        playbackEligibility: .unknown
+                    )
                 )
             ),
             search: SearchFeature.State(

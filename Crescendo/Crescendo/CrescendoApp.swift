@@ -9,8 +9,10 @@ struct CrescendoApp: App {
     init() {
         self.store = Store(
             initialState: AppFeature.State(
-                registeredProviders: [.appleMusic],
-                providerConnection: .disconnected,
+                providerConnection: ProviderConnectionFeature.State(
+                    providers: [.appleMusic],
+                    connection: .disconnected
+                ),
                 search: SearchFeature.State(
                     query: "",
                     phase: .idle,

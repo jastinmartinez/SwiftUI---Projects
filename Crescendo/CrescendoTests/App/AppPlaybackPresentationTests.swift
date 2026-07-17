@@ -26,12 +26,14 @@ struct AppPlaybackPresentationTests {
             capabilities: .allEnabled
         )
         let state = AppFeature.State(
-            registeredProviders: [.appleMusic],
-            providerConnection: .connected(
-                providerID: .appleMusic,
-                access: MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
+            providerConnection: ProviderConnectionFeature.State(
+                providers: [.appleMusic],
+                connection: .connected(
+                    providerID: .appleMusic,
+                    access: MusicProviderAccess(
+                        authorization: .authorized,
+                        playbackEligibility: .eligible
+                    )
                 )
             ),
             search: SearchFeature.State(
@@ -98,12 +100,14 @@ struct AppPlaybackPresentationTests {
         status: MusicPlaybackStatus
     ) -> AppFeature.State {
         AppFeature.State(
-            registeredProviders: [.appleMusic],
-            providerConnection: .connected(
-                providerID: .appleMusic,
-                access: MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
+            providerConnection: ProviderConnectionFeature.State(
+                providers: [.appleMusic],
+                connection: .connected(
+                    providerID: .appleMusic,
+                    access: MusicProviderAccess(
+                        authorization: .authorized,
+                        playbackEligibility: .eligible
+                    )
                 )
             ),
             search: SearchFeature.State(
