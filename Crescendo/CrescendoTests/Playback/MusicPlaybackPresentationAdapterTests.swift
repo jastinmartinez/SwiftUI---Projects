@@ -186,14 +186,17 @@ struct MusicPlaybackPresentationAdapterTests {
 
     @Test
     func nowPlayingBarMapsSongAndOpensPlayer() {
-        let song = makeSong()
-        let store = makeAppStore(song: song)
+        let song = makeSong(duration: 215)
+        let store = makeAppStore(song: song, currentTime: 43)
         let model = NowPlayingBarView.Model(store, song: song)
 
         #expect(model.title == song.title)
         #expect(model.artistName == song.artistName)
         #expect(model.artworkURL == song.artworkURL)
         #expect(model.isPlaying)
+        #expect(model.elapsedTimeText == "0:43")
+        #expect(model.durationText == "3:35")
+        #expect(model.progress == 0.2)
 
         model.onOpenPlayer()
 
@@ -252,7 +255,10 @@ struct MusicPlaybackPresentationAdapterTests {
         }
     }
 
-    private func makeAppStore(song: SongSummary) -> StoreOf<AppFeature> {
+    private func makeAppStore(
+        song: SongSummary,
+        currentTime: TimeInterval = 0
+    ) -> StoreOf<AppFeature> {
         Store(
             initialState: AppFeature.State(
                 registeredProviders: [.appleMusic],
@@ -265,7 +271,7 @@ struct MusicPlaybackPresentationAdapterTests {
                 musicPlayback: MusicPlaybackFeature.State(
                     selectedSong: song,
                     phase: .observing(
-                        makeSnapshot(status: .playing, currentTime: 0)
+                        makeSnapshot(status: .playing, currentTime: currentTime)
                     ),
                     playbackEligibility: .eligible,
                     capabilities: .allEnabled
@@ -302,13 +308,13 @@ struct MusicPlaybackPresentationAdapterTests {
         )
     }
 
-    private func makeSong() -> SongSummary {
+    private func makeSong(duration: TimeInterval? = nil) -> SongSummary {
         SongSummary(
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
             artistName: "Artist",
             artworkURL: URL(string: "https://example.com/artwork.jpg"),
-            duration: nil
+            duration: duration
         )
     }
 }

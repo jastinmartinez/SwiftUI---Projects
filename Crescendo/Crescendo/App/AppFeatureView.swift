@@ -8,13 +8,15 @@ struct AppFeatureView: View {
     var body: some View {
         let providerSelection = ProviderSelectionView.Model(store)
 
-        VStack(spacing: 0) {
-            SearchFeatureView(
-                store: store.scope(state: \.search, action: \.search),
-                providerSelection: providerSelection
-            )
+        SearchFeatureView(
+            store: store.scope(state: \.search, action: \.search),
+            providerSelection: providerSelection
+        )
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if let song = store.musicPlayback.selectedSong {
                 NowPlayingBarView(model: .init(store, song: song))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
             }
         }
         .task {
