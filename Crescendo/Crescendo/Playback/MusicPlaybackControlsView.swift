@@ -5,20 +5,64 @@ struct MusicPlaybackControlsView: View {
     let model: Model
 
     var body: some View {
-        HStack {
-            Button(Locs.MusicPlayback.play, action: model.onPlay)
-                .disabled(!model.canPlay)
-            Button(Locs.MusicPlayback.pause, action: model.onPause)
-            Button(Locs.MusicPlayback.stop, action: model.onStop)
+        HStack(spacing: 28) {
+            Button(action: model.onPrimaryAction) {
+                Image(systemName: primarySymbolName)
+                    .font(.title.bold())
+                    .foregroundStyle(.white)
+                    .frame(width: 72, height: 72)
+                    .background(LinearGradient.crescendoSpectrum, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(primaryAccessibilityLabel)
+            .disabled(!model.isPrimaryEnabled)
+
+            Button(action: model.onStop) {
+                Image(systemName: "stop.fill")
+                    .font(.title3)
+                    .foregroundStyle(.tint)
+                    .frame(width: 52, height: 52)
+                    .background(
+                        Color(uiColor: .secondarySystemGroupedBackground),
+                        in: Circle()
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Locs.MusicPlayback.stop)
+            .disabled(!model.isStopEnabled)
+        }
+    }
+
+    private var primarySymbolName: String {
+        switch model.primaryAction {
+        case .play:
+            "play.fill"
+        case .pause:
+            "pause.fill"
+        }
+    }
+
+    private var primaryAccessibilityLabel: String {
+        switch model.primaryAction {
+        case .play:
+            Locs.MusicPlayback.play
+        case .pause:
+            Locs.MusicPlayback.pause
         }
     }
 }
 
 extension MusicPlaybackControlsView {
     struct Model {
-        let canPlay: Bool
-        let onPlay: () -> Void
-        let onPause: () -> Void
+        enum PrimaryAction: Equatable {
+            case play
+            case pause
+        }
+
+        let primaryAction: PrimaryAction
+        let isPrimaryEnabled: Bool
+        let isStopEnabled: Bool
+        let onPrimaryAction: () -> Void
         let onStop: () -> Void
     }
 }

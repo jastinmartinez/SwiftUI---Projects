@@ -38,47 +38,92 @@ struct MusicPlaybackPresentationAdapterTests {
             )
             let model = MusicPlaybackView.Model(store, providerName: nil)
 
-            #expect(model.statusText == expectedStatusText)
+            #expect(model.metadata.statusText == expectedStatusText)
         }
     }
 
     @Test
     func playbackPresentationMapsMetadataTimeAndChildModels() {
-        let song = makeSong()
+        let song = makeSong(duration: 215)
         let store = makeMusicPlaybackStore(
             selectedSong: song,
             phase: .observing(
-                makeSnapshot(status: .playing, currentTime: 42)
+                makeSnapshot(status: .playing, currentTime: 43)
             ),
-            playbackEligibility: .ineligible,
+            playbackEligibility: .eligible,
             capabilities: makeCapabilities(supportsSeeking: true)
         )
-        let model = MusicPlaybackView.Model(store, providerName: nil)
-        let expectedRange: ClosedRange<TimeInterval> = 0...102
+        let model = MusicPlaybackView.Model(store, providerName: "Apple Music")
+        let expectedRange: ClosedRange<TimeInterval> = 0...215
 
-        #expect(model.title == song.title)
-        #expect(model.artistName == song.artistName)
+        #expect(model.metadata.title == song.title)
+        #expect(model.metadata.artistName == song.artistName)
+        #expect(model.metadata.providerAttribution?.contains("Apple Music") == true)
         #expect(model.artworkURL == song.artworkURL)
-        #expect(model.elapsedTimeText == "42")
-        #expect(!model.controls.canPlay)
-        #expect(model.eligibility.presentation == .subscriptionRequired)
-        #expect(model.seek?.position == 42)
-        #expect(model.seek?.range == expectedRange)
+        #expect(model.timeline?.position == 43)
+        #expect(model.timeline?.range == expectedRange)
+        #expect(model.timeline?.elapsedTimeText == "0:43")
+        #expect(model.timeline?.durationText == "3:35")
+        #expect(model.controls.primaryAction == .pause)
+        #expect(model.controls.isPrimaryEnabled)
+        #expect(model.eligibility.presentation == .hidden)
     }
 
     @Test
-    func unavailablePresentationUsesFallbackAndOmitsSeeking() {
+    func unsupportedSeekingUsesFallbackAndOmitsTimeline() {
         let store = makeMusicPlaybackStore(
-            selectedSong: nil,
+            selectedSong: makeSong(duration: 215),
             phase: .observing(.idle),
             playbackEligibility: .unknown,
             capabilities: makeCapabilities(supportsSeeking: false)
         )
         let model = MusicPlaybackView.Model(store, providerName: nil)
 
-        #expect(model.title == Locs.MusicPlayback.noSelection)
-        #expect(model.artistName == nil)
-        #expect(model.seek?.position == nil)
+        #expect(model.timeline == nil)
+    }
+
+    @Test
+    func supportedSeekingWithoutPositiveDurationOmitsTimeline() {
+        let durations: [TimeInterval?] = [nil, 0]
+
+        for duration in durations {
+            let store = makeMusicPlaybackStore(
+                selectedSong: makeSong(duration: duration),
+                phase: .observing(
+                    makeSnapshot(status: .playing, currentTime: 43)
+                ),
+                playbackEligibility: .eligible,
+                capabilities: makeCapabilities(supportsSeeking: true)
+            )
+            let model = MusicPlaybackView.Model(store, providerName: nil)
+
+            #expect(model.timeline == nil)
+        }
+    }
+
+    @Test
+    func timelineClampsPositionToSongDuration() {
+        let cases: [(currentTime: TimeInterval, expectedPosition: TimeInterval)] = [
+            (-1, 0),
+            (216, 215),
+        ]
+
+        for testCase in cases {
+            let store = makeMusicPlaybackStore(
+                selectedSong: makeSong(duration: 215),
+                phase: .observing(
+                    makeSnapshot(
+                        status: .playing,
+                        currentTime: testCase.currentTime
+                    )
+                ),
+                playbackEligibility: .eligible,
+                capabilities: makeCapabilities(supportsSeeking: true)
+            )
+            let model = MusicPlaybackView.Model(store, providerName: nil)
+
+            #expect(model.timeline?.position == testCase.expectedPosition)
+        }
     }
 
     @Test
@@ -100,8 +145,10 @@ struct MusicPlaybackPresentationAdapterTests {
             )
         )
 
-        #expect(!unavailableModel.canPlay)
-        #expect(availableModel.canPlay)
+        #expect(unavailableModel.primaryAction == .play)
+        #expect(!unavailableModel.isPrimaryEnabled)
+        #expect(availableModel.primaryAction == .play)
+        #expect(availableModel.isPrimaryEnabled)
     }
 
     @Test
@@ -109,7 +156,7 @@ struct MusicPlaybackPresentationAdapterTests {
         let actions = LockIsolated<[MusicPlaybackFeature.Action]>([])
         let store: StoreOf<MusicPlaybackFeature> = Store(
             initialState: MusicPlaybackFeature.State(
-                selectedSong: makeSong(),
+                selectedSong: makeSong(duration: 215),
                 phase: .observing(.idle),
                 playbackEligibility: .eligible,
                 capabilities: makeCapabilities(supportsSeeking: true)
@@ -122,34 +169,41 @@ struct MusicPlaybackPresentationAdapterTests {
         }
         let model = MusicPlaybackView.Model(store, providerName: nil)
 
-        model.seek?.onSeek(42)
+        model.timeline?.onSeek(42)
 
         #expect(actions.value == [.seekRequested(42)])
     }
 
     @Test
     func playbackControlsForwardTransportActions() {
-        let actions = LockIsolated<[MusicPlaybackFeature.Action]>([])
-        let store: StoreOf<MusicPlaybackFeature> = Store(
-            initialState: MusicPlaybackFeature.State(
-                selectedSong: makeSong(),
-                phase: .observing(.idle),
-                playbackEligibility: .eligible,
-                capabilities: .allEnabled
-            )
-        ) {
-            Reduce { _, action in
-                actions.withValue { $0.append(action) }
-                return .none
-            }
-        }
-        let model = MusicPlaybackControlsView.Model(store)
+        let playingActions = LockIsolated<[MusicPlaybackFeature.Action]>([])
+        let playingStore = makeActionRecordingPlaybackStore(
+            status: .playing,
+            actions: playingActions
+        )
+        let playingModel = MusicPlaybackControlsView.Model(playingStore)
 
-        model.onPlay()
-        model.onPause()
-        model.onStop()
+        #expect(playingModel.primaryAction == .pause)
+        #expect(playingModel.isStopEnabled)
 
-        #expect(actions.value == [.playTapped, .pauseTapped, .stopTapped])
+        playingModel.onPrimaryAction()
+        playingModel.onStop()
+
+        #expect(playingActions.value == [.pauseTapped, .stopTapped])
+
+        let pausedActions = LockIsolated<[MusicPlaybackFeature.Action]>([])
+        let pausedStore = makeActionRecordingPlaybackStore(
+            status: .paused,
+            actions: pausedActions
+        )
+        let pausedModel = MusicPlaybackControlsView.Model(pausedStore)
+
+        #expect(pausedModel.primaryAction == .play)
+        #expect(pausedModel.isStopEnabled)
+
+        pausedModel.onPrimaryAction()
+
+        #expect(pausedActions.value == [.playTapped])
     }
 
     @Test
@@ -214,8 +268,8 @@ struct MusicPlaybackPresentationAdapterTests {
 
         let model = MusicPlaybackView.Model(store, providerName: nil)
 
-        #expect(model.statusText == Locs.MusicPlayback.Status.unavailable)
-        #expect(model.statusText != Locs.MusicPlayback.Status.failed)
+        #expect(model.metadata.statusText == Locs.MusicPlayback.Status.unavailable)
+        #expect(model.metadata.statusText != Locs.MusicPlayback.Status.failed)
     }
 
     @Test
@@ -228,11 +282,11 @@ struct MusicPlaybackPresentationAdapterTests {
         )
 
         let attributed = MusicPlaybackView.Model(store, providerName: "Apple Music")
-        let attribution = try #require(attributed.providerAttribution)
+        let attribution = try #require(attributed.metadata.providerAttribution)
         #expect(attribution.contains("Apple Music"))
 
         let anonymous = MusicPlaybackView.Model(store, providerName: nil)
-        #expect(anonymous.providerAttribution == nil)
+        #expect(anonymous.metadata.providerAttribution == nil)
     }
 
     // MARK: - Helpers
@@ -252,6 +306,27 @@ struct MusicPlaybackPresentationAdapterTests {
             )
         ) {
             MusicPlaybackFeature()
+        }
+    }
+
+    private func makeActionRecordingPlaybackStore(
+        status: MusicPlaybackStatus,
+        actions: LockIsolated<[MusicPlaybackFeature.Action]>
+    ) -> StoreOf<MusicPlaybackFeature> {
+        Store(
+            initialState: MusicPlaybackFeature.State(
+                selectedSong: makeSong(duration: 215),
+                phase: .observing(
+                    makeSnapshot(status: status, currentTime: 43)
+                ),
+                playbackEligibility: .eligible,
+                capabilities: .allEnabled
+            )
+        ) {
+            Reduce { _, action in
+                actions.withValue { $0.append(action) }
+                return .none
+            }
         }
     }
 

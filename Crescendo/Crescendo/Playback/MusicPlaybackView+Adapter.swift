@@ -26,29 +26,32 @@ extension MusicPlaybackView.Model {
             }
         }
 
-        let seek: Seek?
-        if store.capabilities.supportsSeeking {
-            seek = Seek(
-                position: snapshot.currentTime,
-                range: 0...max(1, snapshot.currentTime + 60),
-                onSeek: { store.send(.seekRequested($0)) }
-            )
-        } else {
-            seek = nil
-        }
+        let timeline: MusicPlaybackTimelineView.Model? =
+            store.selectedSong?.duration.flatMap { duration in
+                guard store.capabilities.supportsSeeking, duration > 0 else {
+                    return nil
+                }
+                let position = min(max(snapshot.currentTime, 0), duration)
+                return MusicPlaybackTimelineView.Model(
+                    position: position,
+                    range: 0...duration,
+                    elapsedTimeText: position.musicDurationText,
+                    durationText: duration.musicDurationText,
+                    onSeek: { store.send(.seekRequested($0)) }
+                )
+            }
 
         self.init(
-            title: store.selectedSong?.title ?? Locs.MusicPlayback.noSelection,
-            artistName: store.selectedSong?.artistName,
-            providerAttribution: providerName.map(Locs.MusicPlayback.playingFrom),
             artworkURL: store.selectedSong?.artworkURL,
-            statusText: statusText,
-            elapsedTimeText: snapshot.currentTime.formatted(
-                .number.precision(.fractionLength(0))
+            metadata: MusicPlaybackMetadataView.Model(
+                title: store.selectedSong?.title ?? Locs.MusicPlayback.noSelection,
+                artistName: store.selectedSong?.artistName,
+                providerAttribution: providerName.map(Locs.MusicPlayback.playingFrom),
+                statusText: statusText
             ),
+            timeline: timeline,
             controls: MusicPlaybackControlsView.Model(store),
-            eligibility: PlaybackEligibilityNoticeView.Model(store),
-            seek: seek
+            eligibility: PlaybackEligibilityNoticeView.Model(store)
         )
     }
 }
