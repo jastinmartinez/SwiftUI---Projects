@@ -5,3 +5,8 @@ struct MusicProviderID: Hashable, RawRepresentable, Sendable, ExpressibleByStrin
     init(rawValue: String) { self.rawValue = rawValue }
     init(stringLiteral rawValue: String) { self.init(rawValue: rawValue) }
 }
+
+extension MusicProviderID {
+    /// The identifier of Crescendo's Apple Music provider.
+    static let appleMusic = Self(rawValue: "apple-music")
+}

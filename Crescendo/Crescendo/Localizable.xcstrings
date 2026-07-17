@@ -161,6 +161,16 @@
         }
       }
     },
+    "provider_selection.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Music Provider"
+          }
+        }
+      }
+    },
     "search.action" : {
       "localizations" : {
         "en" : {

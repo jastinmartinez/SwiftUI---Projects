@@ -8,7 +8,7 @@ struct MusicProviderDescriptor: Equatable, Sendable {
 extension MusicProviderDescriptor {
     /// The Apple Music provider registered by the application composition root.
     static let appleMusic = Self(
-        id: "apple-music",
+        id: .appleMusic,
         name: "Apple Music",
         capabilities: .allEnabled
     )

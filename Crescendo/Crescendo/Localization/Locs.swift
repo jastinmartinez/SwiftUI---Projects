@@ -57,4 +57,8 @@ extension Locs {
             static let unavailable = String(localized: "music_playback.status.unavailable")
         }
     }
+
+    enum ProviderSelection {
+        static let title = String(localized: "provider_selection.title")
+    }
 }
