@@ -1,44 +1,44 @@
 import SwiftUI
 
 struct ProviderSelectionView: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     let model: Model
 
     var body: some View {
-        Menu {
-            ForEach(model.providers, id: \.id) { provider in
-                Button {
-                    model.onSelect(provider.id)
-                } label: {
-                    Label {
-                        Text(provider.name)
-                    } icon: {
-                        if provider.id == model.activeProviderID {
-                            Image(systemName: "checkmark")
+        AccessibilityLayoutReader { layout in
+            Menu {
+                ForEach(model.providers, id: \.id) { provider in
+                    Button {
+                        model.onSelect(provider.id)
+                    } label: {
+                        Label {
+                            Text(provider.name)
+                        } icon: {
+                            if provider.id == model.activeProviderID {
+                                Image(systemName: "checkmark")
+                            }
                         }
                     }
                 }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "music.note")
+                        .accessibilityHidden(true)
+                    Text(model.activeProviderName ?? Locs.ProviderSelection.title)
+                        .lineLimit(layout == .expanded ? 2 : 1)
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.bold))
+                        .accessibilityHidden(true)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tint)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 32)
+                .background(.tint.opacity(0.1), in: Capsule())
             }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "music.note")
-                    .accessibilityHidden(true)
-                Text(model.activeProviderName ?? Locs.ProviderSelection.title)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                Image(systemName: "chevron.down")
-                    .font(.caption2.weight(.bold))
-                    .accessibilityHidden(true)
-            }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.tint)
-            .padding(.horizontal, 12)
-            .frame(minHeight: 32)
-            .background(.tint.opacity(0.1), in: Capsule())
+            .disabled(!model.isSelectionEnabled || model.providers.isEmpty)
+            .accessibilityLabel(Locs.ProviderSelection.title)
+            .accessibilityValue(model.accessibilityValue)
         }
-        .disabled(!model.isSelectionEnabled || model.providers.isEmpty)
-        .accessibilityLabel(Locs.ProviderSelection.title)
-        .accessibilityValue(model.accessibilityValue)
     }
 }
 

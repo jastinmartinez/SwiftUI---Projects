@@ -1,20 +1,20 @@
 import SwiftUI
 
 struct SearchHeaderView: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     let model: Model
 
     var body: some View {
-        VStack(spacing: 16) {
-            identity
-            searchControls
+        AccessibilityLayoutReader { layout in
+            VStack(spacing: 16) {
+                identity(layout: layout)
+                searchControls(layout: layout)
+            }
         }
     }
 
     @ViewBuilder
-    private var identity: some View {
-        if dynamicTypeSize.isAccessibilitySize {
+    private func identity(layout: AccessibilityLayout) -> some View {
+        if layout == .expanded {
             VStack(alignment: .leading, spacing: 12) {
                 title
                 ProviderSelectionView(model: model.providerSelection)
@@ -30,16 +30,16 @@ struct SearchHeaderView: View {
     }
 
     @ViewBuilder
-    private var searchControls: some View {
-        if dynamicTypeSize.isAccessibilitySize {
+    private func searchControls(layout: AccessibilityLayout) -> some View {
+        if layout == .expanded {
             VStack(spacing: 12) {
                 searchField
-                searchButton
+                searchButton(layout: layout)
             }
         } else {
             HStack(spacing: 12) {
                 searchField
-                searchButton
+                searchButton(layout: layout)
             }
         }
     }
@@ -83,14 +83,14 @@ struct SearchHeaderView: View {
         )
     }
 
-    private var searchButton: some View {
+    private func searchButton(layout: AccessibilityLayout) -> some View {
         Button(action: model.onSubmit) {
             Text(Locs.Search.action)
                 .font(.headline)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 18)
                 .frame(
-                    maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil,
+                    maxWidth: layout == .expanded ? .infinity : nil,
                     minHeight: 56
                 )
                 .background(
