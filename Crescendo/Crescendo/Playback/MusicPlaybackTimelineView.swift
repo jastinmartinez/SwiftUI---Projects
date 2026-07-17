@@ -14,6 +14,8 @@ struct MusicPlaybackTimelineView: View {
                 ),
                 in: model.range
             )
+            .accessibilityLabel(model.accessibilityLabel)
+            .accessibilityValue(model.accessibilityValue)
 
             HStack {
                 Text(model.elapsedTimeText)
@@ -33,5 +35,16 @@ extension MusicPlaybackTimelineView {
         let elapsedTimeText: String
         let durationText: String
         let onSeek: (TimeInterval) -> Void
+
+        var accessibilityLabel: String {
+            Locs.MusicPlayback.position
+        }
+
+        var accessibilityValue: String {
+            Locs.MusicPlayback.positionValue(
+                elapsedTime: elapsedTimeText,
+                durationTime: durationText
+            )
+        }
     }
 }

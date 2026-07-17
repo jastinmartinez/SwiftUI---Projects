@@ -70,6 +70,25 @@ struct MusicPlaybackPresentationAdapterTests {
     }
 
     @Test
+    func timelineMapsLocalizedAccessibilityPresentation() throws {
+        let store = makeMusicPlaybackStore(
+            selectedSong: makeSong(duration: 215),
+            phase: .observing(
+                makeSnapshot(status: .playing, currentTime: 43)
+            ),
+            playbackEligibility: .eligible,
+            capabilities: makeCapabilities(supportsSeeking: true)
+        )
+
+        let model = try #require(
+            MusicPlaybackView.Model(store, providerName: nil).timeline
+        )
+
+        #expect(model.accessibilityLabel == Locs.MusicPlayback.position)
+        #expect(model.accessibilityValue == "0:43 of 3:35")
+    }
+
+    @Test
     func unsupportedSeekingUsesFallbackAndOmitsTimeline() {
         let store = makeMusicPlaybackStore(
             selectedSong: makeSong(duration: 215),

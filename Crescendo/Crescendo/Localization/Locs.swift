@@ -56,7 +56,19 @@ extension Locs {
         static let noSelection = String(localized: "music_playback.no_selection")
         static let play = String(localized: "music_playback.play")
         static let pause = String(localized: "music_playback.pause")
+        static let position = String(localized: "music_playback.position")
         static let stop = String(localized: "music_playback.stop")
+
+        static func positionValue(
+            elapsedTime: String,
+            durationTime: String
+        ) -> String {
+            String(
+                format: String(localized: "music_playback.position_value"),
+                elapsedTime,
+                durationTime
+            )
+        }
 
         static func playingFrom(_ providerName: String) -> String {
             String(
@@ -78,5 +90,8 @@ extension Locs {
 
     enum ProviderSelection {
         static let title = String(localized: "provider_selection.title")
+        static let noActiveProvider = String(
+            localized: "provider_selection.no_active_provider"
+        )
     }
 }

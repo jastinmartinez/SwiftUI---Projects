@@ -38,6 +38,7 @@ struct ProviderSelectionView: View {
         }
         .disabled(!model.isSelectionEnabled || model.providers.isEmpty)
         .accessibilityLabel(Locs.ProviderSelection.title)
+        .accessibilityValue(model.accessibilityValue)
     }
 }
 
@@ -50,6 +51,10 @@ extension ProviderSelectionView {
 
         var activeProviderName: String? {
             providers.first { $0.id == activeProviderID }?.name
+        }
+
+        var accessibilityValue: String {
+            activeProviderName ?? Locs.ProviderSelection.noActiveProvider
         }
     }
 }

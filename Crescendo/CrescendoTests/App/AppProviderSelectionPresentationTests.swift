@@ -28,6 +28,33 @@ struct AppProviderSelectionPresentationTests {
         #expect(actions.value == [.providerSelected(.appleMusic)])
     }
 
+    @Test
+    func providerAccessibilityValueAnnouncesActiveProvider() {
+        let model = ProviderSelectionView.Model(
+            providers: [.appleMusic],
+            activeProviderID: .appleMusic,
+            isSelectionEnabled: true,
+            onSelect: { _ in }
+        )
+
+        #expect(model.accessibilityValue == "Apple Music")
+    }
+
+    @Test
+    func providerAccessibilityValueAnnouncesMissingProvider() {
+        let model = ProviderSelectionView.Model(
+            providers: [],
+            activeProviderID: nil,
+            isSelectionEnabled: true,
+            onSelect: { _ in }
+        )
+
+        #expect(
+            model.accessibilityValue == Locs.ProviderSelection.noActiveProvider
+        )
+        #expect(model.accessibilityValue == "No provider selected")
+    }
+
     // MARK: - Helpers
 
     private func makeState() -> AppFeature.State {
