@@ -309,7 +309,7 @@ struct AppProviderSwitchingTests {
     @Test
     func providerSwitchIsIgnoredDuringPlaybackTransition() async {
         let events = LockIsolated<[String]>([])
-        let state = makeState(playbackTransition: .openingVideo)
+        let state = makeState(playbackTransition: .startingMusic(makeSong().id))
         let store = TestStore(initialState: state) {
             AppFeature()
         } withDependencies: {
@@ -325,25 +325,7 @@ struct AppProviderSwitchingTests {
     }
 
     @Test
-    func providerSwitchIsIgnoredDuringVideoClose() async {
-        let events = LockIsolated<[String]>([])
-        let state = makeState(videoCloseRequestID: UUID(0))
-        let store = TestStore(initialState: state) {
-            AppFeature()
-        } withDependencies: {
-            $0.musicProvider.pause = {
-                events.withValue { $0.append("pause") }
-            }
-        }
-
-        await store.send(.providerSelected("future"))
-
-        #expect(store.state == state)
-        #expect(events.value.isEmpty)
-    }
-
-    @Test
-    func musicStartAndVideoOpenAreIgnoredDuringProviderSwitch() async {
+    func musicStartIsIgnoredDuringProviderSwitch() async {
         let events = LockIsolated<[String]>([])
         let song = makeSong()
         let state = makeState(
@@ -353,44 +335,12 @@ struct AppProviderSwitchingTests {
         let store = TestStore(initialState: state) {
             AppFeature()
         } withDependencies: {
-            $0.videoPlayback.pause = {
-                events.withValue { $0.append("pause-video") }
-            }
-            $0.musicProvider.pause = {
-                events.withValue { $0.append("pause-music") }
-            }
             $0.musicProvider.play = { _ in
                 events.withValue { $0.append("play-music") }
             }
         }
 
         await store.send(.musicPlayback(.delegate(.playRequested(song.id))))
-        await store.send(.openVideoButtonTapped)
-
-        #expect(store.state == state)
-        #expect(events.value.isEmpty)
-    }
-
-    @Test
-    func videoCloseIsIgnoredDuringProviderSwitch() async {
-        let events = LockIsolated<[String]>([])
-        let state = makeState(
-            video: makeVideoState(),
-            pendingProviderID: "future",
-            providerSwitchRequestID: UUID(0)
-        )
-        let store = TestStore(initialState: state) {
-            AppFeature()
-        } withDependencies: {
-            $0.videoPlayback.pause = {
-                events.withValue { $0.append("pause-video") }
-            }
-            $0.videoPlayback.clear = {
-                events.withValue { $0.append("clear-video") }
-            }
-        }
-
-        await store.send(.closeVideoRequested)
 
         #expect(store.state == state)
         #expect(events.value.isEmpty)
@@ -408,8 +358,6 @@ struct AppProviderSwitchingTests {
     }
 
     private func makeState(
-        video: VideoPlaybackFeature.State? = nil,
-        videoCloseRequestID: UUID? = nil,
         pendingProviderID: MusicProviderID? = nil,
         providerSwitchRequestID: UUID? = nil,
         playbackTransition: PlaybackTransition? = nil
@@ -424,8 +372,6 @@ struct AppProviderSwitchingTests {
             search: makeSearchState(),
             musicPlayback: makeMusicPlaybackState(),
             isPlayerPresented: true,
-            video: video,
-            videoCloseRequestID: videoCloseRequestID,
             pendingProviderID: pendingProviderID,
             providerSwitchRequestID: providerSwitchRequestID,
             playbackTransition: playbackTransition
@@ -460,15 +406,6 @@ struct AppProviderSwitchingTests {
             ),
             playbackEligibility: .eligible,
             capabilities: .allEnabled
-        )
-    }
-
-    private func makeVideoState() -> VideoPlaybackFeature.State {
-        VideoPlaybackFeature.State(
-            urlText: "",
-            loadedVideoURL: nil,
-            phase: .observing(.idle),
-            observationID: nil
         )
     }
 

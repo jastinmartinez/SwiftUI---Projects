@@ -34,8 +34,6 @@ struct AppPlaybackPresentationTests {
             ),
             musicPlayback: musicPlayback,
             isPlayerPresented: true,
-            video: nil,
-            videoCloseRequestID: nil,
             pendingProviderID: nil,
             providerSwitchRequestID: nil,
             playbackTransition: nil

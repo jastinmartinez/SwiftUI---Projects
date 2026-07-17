@@ -68,8 +68,6 @@ struct AppFeatureTests {
                 search: makeSearchState(),
                 musicPlayback: makeMusicPlaybackState(),
                 isPlayerPresented: false,
-                video: nil,
-                videoCloseRequestID: nil,
                 pendingProviderID: nil,
                 providerSwitchRequestID: nil,
                 playbackTransition: nil
