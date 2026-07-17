@@ -6,4 +6,5 @@ struct SongSummary: Equatable, Identifiable, Sendable {
     let title: String
     let artistName: String
     let artworkURL: URL?
+    let duration: TimeInterval?
 }

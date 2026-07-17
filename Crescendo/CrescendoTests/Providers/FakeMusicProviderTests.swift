@@ -9,7 +9,8 @@ struct FakeMusicProviderTests {
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Test Song",
             artistName: "Test Artist",
-            artworkURL: nil
+            artworkURL: nil,
+            duration: nil
         )
         let expectedAccess = MusicProviderAccess(
             authorization: .authorized,

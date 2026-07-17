@@ -11,7 +11,8 @@ struct AppPlaybackPresentationTests {
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
             artistName: "Artist",
-            artworkURL: nil
+            artworkURL: nil,
+            duration: nil
         )
         let snapshot = MusicPlaybackSnapshot(
             currentItem: song,
@@ -122,7 +123,8 @@ struct AppPlaybackPresentationTests {
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
             artistName: "Artist",
-            artworkURL: nil
+            artworkURL: nil,
+            duration: nil
         )
     }
 }

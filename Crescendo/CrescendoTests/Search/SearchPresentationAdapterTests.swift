@@ -151,7 +151,8 @@ struct SearchPresentationAdapterTests {
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Result",
             artistName: "Artist",
-            artworkURL: URL(string: "https://example.com/artwork.jpg")
+            artworkURL: URL(string: "https://example.com/artwork.jpg"),
+            duration: nil
         )
     }
 }

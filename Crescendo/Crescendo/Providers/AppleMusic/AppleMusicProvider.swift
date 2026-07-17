@@ -41,7 +41,8 @@ actor AppleMusicProvider {
                 appleMusicNativeID: nativeID,
                 title: appleMusicSong.title,
                 artistName: appleMusicSong.artistName,
-                artworkURL: appleMusicSong.artwork?.url(width: 300, height: 300)
+                artworkURL: appleMusicSong.artwork?.url(width: 300, height: 300),
+                duration: appleMusicSong.duration
             )
             songsByNativeID[nativeID] = appleMusicSong
             summariesByNativeID[nativeID] = songSummary
@@ -169,7 +170,8 @@ extension SongSummary {
         appleMusicNativeID: String,
         title: String,
         artistName: String,
-        artworkURL: URL?
+        artworkURL: URL?,
+        duration: TimeInterval?
     ) {
         self.init(
             id: .init(
@@ -178,7 +180,8 @@ extension SongSummary {
             ),
             title: title,
             artistName: artistName,
-            artworkURL: artworkURL
+            artworkURL: artworkURL,
+            duration: duration
         )
     }
 }

@@ -239,7 +239,8 @@ struct SearchFeatureTests {
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Result",
             artistName: "Artist",
-            artworkURL: nil
+            artworkURL: nil,
+            duration: nil
         )
     }
 }

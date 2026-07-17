@@ -4,12 +4,13 @@ import Testing
 
 struct AppleMusicCatalogMappingTests {
     @Test
-    func namespacesSongIdentityWithAppleMusicProvider() {
+    func mapsProviderNeutralSongMetadata() {
         let songSummary = SongSummary(
             appleMusicNativeID: "42",
             title: "Song",
             artistName: "Artist",
-            artworkURL: nil
+            artworkURL: nil,
+            duration: 215
         )
         let expectedSongID = MusicItemID(
             providerID: "apple-music",
@@ -17,5 +18,6 @@ struct AppleMusicCatalogMappingTests {
         )
 
         #expect(songSummary.id == expectedSongID)
+        #expect(songSummary.duration == 215)
     }
 }

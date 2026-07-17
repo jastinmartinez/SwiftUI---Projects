@@ -307,7 +307,8 @@ struct MusicPlaybackPresentationAdapterTests {
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
             artistName: "Artist",
-            artworkURL: URL(string: "https://example.com/artwork.jpg")
+            artworkURL: URL(string: "https://example.com/artwork.jpg"),
+            duration: nil
         )
     }
 }

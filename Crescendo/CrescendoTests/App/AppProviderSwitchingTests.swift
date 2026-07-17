@@ -414,7 +414,8 @@ struct AppProviderSwitchingTests {
             id: .init(providerID: "apple-music", nativeID: "selected"),
             title: "Selected song",
             artistName: "Artist",
-            artworkURL: nil
+            artworkURL: nil,
+            duration: nil
         )
     }
 }
