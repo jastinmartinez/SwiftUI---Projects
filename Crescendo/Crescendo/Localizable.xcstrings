@@ -261,6 +261,36 @@
         }
       }
     },
+    "search.result_count" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld song"
+          }
+        }
+      }
+    },
+    "search.results_count" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld songs"
+          }
+        }
+      }
+    },
+    "search.results_provider" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        }
+      }
+    },
     "search.searching" : {
       "localizations" : {
         "en" : {

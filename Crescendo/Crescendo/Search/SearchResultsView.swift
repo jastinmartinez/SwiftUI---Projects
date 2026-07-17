@@ -12,15 +12,14 @@ struct SearchResultsView: View {
             ProgressView(Locs.Search.searching)
         case .empty(let query):
             ContentUnavailableView.search(text: query)
-        case .results(let rows):
-            ForEach(rows) { row in
-                Button {
-                    model.onSongTapped(row.songID)
-                } label: {
-                    SongRowView(model: row)
-                }
-                .buttonStyle(.plain)
-            }
+        case .results(let summary, let rows):
+            SearchResultListView(
+                model: .init(
+                    summary: summary,
+                    rows: rows,
+                    onSongTapped: model.onSongTapped
+                )
+            )
         case .denied:
             ContentUnavailableView {
                 Label(Locs.Search.deniedTitle, systemImage: "music.note.slash")

@@ -24,6 +24,23 @@ extension Locs {
         static let openSettings = String(localized: "search.open_settings")
         static let restrictedTitle = String(localized: "search.restricted_title")
         static let restrictedMessage = String(localized: "search.restricted_message")
+
+        static func resultsSummary(
+            count: Int,
+            providerName: String?
+        ) -> String {
+            let countFormat =
+                count == 1
+                ? String(localized: "search.result_count")
+                : String(localized: "search.results_count")
+            let countText = String(format: countFormat, Int64(count))
+            guard let providerName else { return countText }
+            return String(
+                format: String(localized: "search.results_provider"),
+                countText,
+                providerName
+            )
+        }
     }
 
     enum MusicAccess {

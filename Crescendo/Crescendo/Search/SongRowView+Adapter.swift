@@ -5,7 +5,8 @@ extension SongRowView.Model {
             songID: song.id,
             title: song.title,
             artistName: song.artistName,
-            artworkURL: song.artworkURL
+            artworkURL: song.artworkURL,
+            durationText: song.duration?.musicDurationText
         )
     }
 }

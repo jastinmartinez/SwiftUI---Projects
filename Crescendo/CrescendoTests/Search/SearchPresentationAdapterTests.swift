@@ -50,17 +50,24 @@ struct SearchPresentationAdapterTests {
             phase: .loaded([song]),
             playbackEligibility: .eligible
         )
-        let model = SearchResultsView.Model(store)
+        let model = SearchResultsView.Model(store, providerName: "Apple Music")
         let expectedRows = [
             SongRowView.Model(
                 songID: song.id,
                 title: "Result",
                 artistName: "Artist",
-                artworkURL: song.artworkURL
+                artworkURL: song.artworkURL,
+                durationText: "3:35"
             )
         ]
 
-        #expect(model.content == .results(expectedRows))
+        #expect(
+            model.content
+                == .results(
+                    summary: "1 song · Apple Music",
+                    rows: expectedRows
+                )
+        )
     }
 
     @Test
@@ -70,7 +77,7 @@ struct SearchPresentationAdapterTests {
             phase: .loaded([]),
             playbackEligibility: .eligible
         )
-        let model = SearchResultsView.Model(store)
+        let model = SearchResultsView.Model(store, providerName: nil)
 
         #expect(model.content == .empty(query: "No matches"))
     }
@@ -101,7 +108,7 @@ struct SearchPresentationAdapterTests {
             phase: .failed,
             playbackEligibility: .unknown
         )
-        let model = SearchResultsView.Model(store)
+        let model = SearchResultsView.Model(store, providerName: nil)
 
         model.onRetry()
 
@@ -135,7 +142,7 @@ struct SearchPresentationAdapterTests {
             AppFeature()
         }
         let searchStore = appStore.scope(state: \.search, action: \.search)
-        let model = SearchResultsView.Model(searchStore)
+        let model = SearchResultsView.Model(searchStore, providerName: nil)
 
         model.onSongTapped(song.id)
 
@@ -150,7 +157,8 @@ struct SearchPresentationAdapterTests {
                 query: "vela",
                 phase: .denied,
                 playbackEligibility: .unknown
-            )
+            ),
+            providerName: nil
         )
         #expect(deniedModel.content == .denied)
 
@@ -159,7 +167,8 @@ struct SearchPresentationAdapterTests {
                 query: "vela",
                 phase: .restricted,
                 playbackEligibility: .unknown
-            )
+            ),
+            providerName: nil
         )
         #expect(restrictedModel.content == .restricted)
     }
@@ -188,7 +197,7 @@ struct SearchPresentationAdapterTests {
             title: "Result",
             artistName: "Artist",
             artworkURL: URL(string: "https://example.com/artwork.jpg"),
-            duration: nil
+            duration: 215
         )
     }
 }

@@ -16,7 +16,12 @@ struct SearchFeatureView: View {
                             providerSelection: providerSelection
                         )
                     )
-                    SearchResultsView(model: .init(store))
+                    SearchResultsView(
+                        model: .init(
+                            store,
+                            providerName: providerSelection.activeProviderName
+                        )
+                    )
                     PlaybackEligibilityNoticeView(model: .init(store))
                 }
                 .padding(.horizontal, 20)
