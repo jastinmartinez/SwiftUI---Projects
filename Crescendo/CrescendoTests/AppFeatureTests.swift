@@ -198,14 +198,21 @@ struct AppFeatureTests {
         }
     }
 
-    @Test
-    func unavailableConnectionClearsProviderAccess() async {
+    @Test(arguments: [
+        ProviderConnection.disconnected,
+        .denied(providerID: .appleMusic),
+        .restricted(providerID: .appleMusic),
+        .failed(providerID: .appleMusic),
+    ])
+    func unavailableConnectionClearsProviderAccess(
+        connection: ProviderConnection
+    ) async {
         let staleAccess = makeAccess(
             authorization: .authorized,
             playbackEligibility: .eligible
         )
         let state = makeState(
-            connection: .denied(providerID: .appleMusic),
+            connection: connection,
             search: SearchFeature.State(
                 query: "result",
                 phase: .loaded([makeSong()]),
@@ -216,9 +223,7 @@ struct AppFeatureTests {
 
         await store.send(
             .providerConnection(
-                .delegate(
-                    .connectionResolved(.denied(providerID: .appleMusic))
-                )
+                .delegate(.connectionResolved(connection))
             )
         ) {
             $0.search.providerAccess = nil

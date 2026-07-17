@@ -73,23 +73,34 @@ struct SearchFeatureTests {
     }
 
     @Test
-    func nilAccessMakesSubmitANoOp() async {
-        let store = TestStore(
-            initialState: makeState(
-                query: "result",
-                phase: .idle,
-                providerAccess: nil
-            )
-        ) {
-            SearchFeature()
-        } withDependencies: {
-            $0.musicProvider.search = { _, _ in
-                Issue.record("Search must not run without authorized access")
-                return []
-            }
-        }
+    func unresolvedAccessMakesSubmitATrueNoOp() async {
+        let song = makeSong()
+        let cases: [MusicProviderAccess?] = [
+            nil,
+            makeAccess(
+                authorization: .denied,
+                playbackEligibility: .unknown
+            ),
+        ]
 
-        await store.send(.submitButtonTapped)
+        for providerAccess in cases {
+            let state = makeState(
+                query: "result",
+                phase: .loaded([song]),
+                providerAccess: providerAccess
+            )
+            let store = TestStore(initialState: state) {
+                SearchFeature()
+            } withDependencies: {
+                $0.musicProvider.search = { _, _ in
+                    Issue.record("Search must not run without authorized access")
+                    return []
+                }
+            }
+
+            await store.send(.submitButtonTapped)
+            #expect(store.state == state)
+        }
     }
 
     @Test

@@ -46,10 +46,11 @@ struct SearchFeature {
                 return .cancel(id: CancelID.search)
 
             case .submitButtonTapped, .retryButtonTapped:
+                guard state.providerAccess?.authorization == .authorized else {
+                    return .none
+                }
                 let query = state.query.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard state.providerAccess?.authorization == .authorized,
-                    !query.isEmpty
-                else {
+                guard !query.isEmpty else {
                     state.phase = .idle
                     return .cancel(id: CancelID.search)
                 }
