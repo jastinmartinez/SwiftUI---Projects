@@ -36,7 +36,7 @@ struct MusicPlaybackPresentationAdapterTests {
                 playbackEligibility: .eligible,
                 capabilities: makeCapabilities(supportsSeeking: true)
             )
-            let model = MusicPlaybackView.Model(store)
+            let model = MusicPlaybackView.Model(store, providerName: nil)
 
             #expect(model.statusText == expectedStatusText)
         }
@@ -53,7 +53,7 @@ struct MusicPlaybackPresentationAdapterTests {
             playbackEligibility: .ineligible,
             capabilities: makeCapabilities(supportsSeeking: true)
         )
-        let model = MusicPlaybackView.Model(store)
+        let model = MusicPlaybackView.Model(store, providerName: nil)
         let expectedRange: ClosedRange<TimeInterval> = 0...102
 
         #expect(model.title == song.title)
@@ -74,7 +74,7 @@ struct MusicPlaybackPresentationAdapterTests {
             playbackEligibility: .unknown,
             capabilities: makeCapabilities(supportsSeeking: false)
         )
-        let model = MusicPlaybackView.Model(store)
+        let model = MusicPlaybackView.Model(store, providerName: nil)
 
         #expect(model.title == Locs.MusicPlayback.noSelection)
         #expect(model.artistName == nil)
@@ -120,7 +120,7 @@ struct MusicPlaybackPresentationAdapterTests {
                 return .none
             }
         }
-        let model = MusicPlaybackView.Model(store)
+        let model = MusicPlaybackView.Model(store, providerName: nil)
 
         model.seek?.onSeek(42)
 
@@ -198,6 +198,23 @@ struct MusicPlaybackPresentationAdapterTests {
         model.onOpenPlayer()
 
         #expect(store.isPlayerPresented)
+    }
+
+    @Test
+    func providerNameMapsToAttributionText() throws {
+        let store = makeMusicPlaybackStore(
+            selectedSong: makeSong(),
+            phase: .observing(makeSnapshot(status: .playing, currentTime: 0)),
+            playbackEligibility: .eligible,
+            capabilities: .allEnabled
+        )
+
+        let attributed = MusicPlaybackView.Model(store, providerName: "Apple Music")
+        let attribution = try #require(attributed.providerAttribution)
+        #expect(attribution.contains("Apple Music"))
+
+        let anonymous = MusicPlaybackView.Model(store, providerName: nil)
+        #expect(anonymous.providerAttribution == nil)
     }
 
     // MARK: - Helpers

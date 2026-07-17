@@ -36,6 +36,13 @@ extension Locs {
         static let pause = String(localized: "music_playback.pause")
         static let stop = String(localized: "music_playback.stop")
 
+        static func playingFrom(_ providerName: String) -> String {
+            String(
+                format: String(localized: "music_playback.playing_from"),
+                providerName
+            )
+        }
+
         enum Status {
             static let idle = String(localized: "music_playback.status.idle")
             static let loading = String(localized: "music_playback.status.loading")

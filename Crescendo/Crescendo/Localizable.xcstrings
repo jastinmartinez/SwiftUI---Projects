@@ -71,6 +71,16 @@
         }
       }
     },
+    "music_playback.playing_from" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playing from %@"
+          }
+        }
+      }
+    },
     "music_playback.status.failed" : {
       "localizations" : {
         "en" : {

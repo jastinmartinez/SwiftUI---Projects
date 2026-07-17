@@ -26,7 +26,8 @@ struct AppFeatureView: View {
             )
         ) {
             MusicPlaybackFeatureView(
-                store: store.scope(state: \.musicPlayback, action: \.musicPlayback)
+                store: store.scope(state: \.musicPlayback, action: \.musicPlayback),
+                providerName: store.activeProvider?.name
             )
         }
     }
