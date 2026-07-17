@@ -25,6 +25,7 @@ extension SearchResultsView.Model {
         self.init(
             content: content,
             onRetry: { store.send(.retryButtonTapped) },
+            onOpenSettings: { store.send(.openSettingsButtonTapped) },
             onSongTapped: { store.send(.resultTapped($0)) }
         )
     }

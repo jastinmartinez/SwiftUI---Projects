@@ -1,10 +1,8 @@
 import SwiftUI
-import UIKit
 
 /// Renders mutually exclusive search results and recovery states.
 struct SearchResultsView: View {
     let model: Model
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         switch model.content {
@@ -29,12 +27,8 @@ struct SearchResultsView: View {
             } description: {
                 Text(Locs.Search.deniedMessage)
             } actions: {
-                Button(Locs.Search.openSettings) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        openURL(url)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
+                Button(Locs.Search.openSettings, action: model.onOpenSettings)
+                    .buttonStyle(.borderedProminent)
             }
         case .restricted:
             ContentUnavailableView(

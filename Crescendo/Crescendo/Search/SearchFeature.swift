@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import UIKit
 
 /// Owns catalog-search input, its phase, and access checks.
 @Reducer
@@ -35,6 +36,7 @@ struct SearchFeature {
         case queryChanged(String)
         case submitButtonTapped
         case retryButtonTapped
+        case openSettingsButtonTapped
         case resultTapped(MusicItemID)
         case delegate(Delegate)
         case currentAccessResponse(UUID, MusicProviderAccess)
@@ -46,6 +48,7 @@ struct SearchFeature {
     enum CancelID { case search }
 
     @Dependency(\.musicProvider) var musicProvider
+    @Dependency(\.openURL) var openURL
     @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
@@ -69,6 +72,14 @@ struct SearchFeature {
                     await send(.currentAccessResponse(requestID, access))
                 }
                 .cancellable(id: CancelID.search, cancelInFlight: true)
+
+            case .openSettingsButtonTapped:
+                return .run { _ in
+                    guard let url = URL(string: UIApplication.openSettingsURLString) else {
+                        return
+                    }
+                    await openURL(url)
+                }
 
             case .resultTapped(let songID):
                 guard case .loaded(let songs) = state.phase,

@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Foundation
 import Testing
+import UIKit
 
 @testable import Crescendo
 
@@ -176,6 +177,30 @@ struct SearchFeatureTests {
         await store.receive(\.accessResolved) {
             $0.phase = .denied
         }
+    }
+
+    @Test
+    func openSettingsOpensSystemSettingsURL() async {
+        let opened = LockIsolated<[URL]>([])
+        let store = TestStore(
+            initialState: makeState(
+                query: "",
+                phase: .denied,
+                playbackEligibility: .unknown
+            )
+        ) {
+            SearchFeature()
+        } withDependencies: {
+            $0.openURL = OpenURLEffect { url in
+                opened.withValue { $0.append(url) }
+                return true
+            }
+        }
+
+        await store.send(.openSettingsButtonTapped)
+        await store.finish()
+
+        #expect(opened.value.map(\.absoluteString) == [UIApplication.openSettingsURLString])
     }
 
     @Test

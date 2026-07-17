@@ -3,6 +3,7 @@ extension SearchResultsView {
     struct Model {
         let content: Content
         let onRetry: () -> Void
+        let onOpenSettings: () -> Void
         let onSongTapped: (MusicItemID) -> Void
     }
 }
