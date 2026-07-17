@@ -1,8 +1,8 @@
 import ComposableArchitecture
 
-/// Owns one attempt to start playback for a provider-neutral music item.
+/// Owns one attempt to start provider playback for an item.
 @Reducer
-struct MusicStartFeature {
+struct PlaybackStartFeature {
     @ObservableState
     struct State: Equatable {
         let itemID: MusicItemID

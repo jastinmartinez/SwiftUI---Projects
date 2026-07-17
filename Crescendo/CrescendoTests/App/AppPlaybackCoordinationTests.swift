@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct AppPlaybackCoordinationTests {
     @Test
-    func musicStartPreservesLatestSnapshotWhilePlayInFlight() async {
+    func playbackStartPreservesLatestSnapshotWhilePlayInFlight() async {
         let song = makeSong()
         let latestSnapshot = MusicPlaybackSnapshot(
             currentItem: song,
@@ -26,16 +26,12 @@ struct AppPlaybackCoordinationTests {
         }
 
         await store.send(.musicPlayback(.delegate(.playRequested(song.id)))) {
-            $0.playbackTransition = .musicStart(
-                MusicStartFeature.State(itemID: song.id)
-            )
+            $0.playbackStart = PlaybackStartFeature.State(itemID: song.id)
         }
         await store.receive(\.musicPlayback.playbackStartAccepted) {
             $0.musicPlayback.phase = .loading(.idle)
         }
-        await store.receive(
-            .playbackTransition(.musicStart(.start))
-        )
+        await store.receive(.playbackStart(.start))
 
         var playStartedIterator = playStarted.makeAsyncIterator()
         _ = await playStartedIterator.next()
@@ -45,15 +41,9 @@ struct AppPlaybackCoordinationTests {
 
         resumePlayContinuation.yield()
         resumePlayContinuation.finish()
-        await store.receive(
-            .playbackTransition(.musicStart(.playSucceeded))
-        )
-        await store.receive(
-            .playbackTransition(
-                .musicStart(.delegate(.succeeded(song.id)))
-            )
-        ) {
-            $0.playbackTransition = nil
+        await store.receive(.playbackStart(.playSucceeded))
+        await store.receive(.playbackStart(.delegate(.succeeded(song.id)))) {
+            $0.playbackStart = nil
         }
         await store.receive(\.musicPlayback.transportFinished) {
             $0.musicPlayback.phase = .observing(latestSnapshot)
@@ -62,7 +52,7 @@ struct AppPlaybackCoordinationTests {
     }
 
     @Test
-    func failedMusicStartFinishesChildRequestWithProviderError() async {
+    func failedPlaybackStartFinishesChildRequestWithProviderError() async {
         let song = makeSong()
         let store = TestStore(initialState: makeState(song: song)) {
             AppFeature()
@@ -73,25 +63,17 @@ struct AppPlaybackCoordinationTests {
         }
 
         await store.send(.musicPlayback(.delegate(.playRequested(song.id)))) {
-            $0.playbackTransition = .musicStart(
-                MusicStartFeature.State(itemID: song.id)
-            )
+            $0.playbackStart = PlaybackStartFeature.State(itemID: song.id)
         }
         await store.receive(\.musicPlayback.playbackStartAccepted) {
             $0.musicPlayback.phase = .loading(.idle)
         }
+        await store.receive(.playbackStart(.start))
+        await store.receive(.playbackStart(.playFailed(.network)))
         await store.receive(
-            .playbackTransition(.musicStart(.start))
-        )
-        await store.receive(
-            .playbackTransition(.musicStart(.playFailed(.network)))
-        )
-        await store.receive(
-            .playbackTransition(
-                .musicStart(.delegate(.failed(song.id, .network)))
-            )
+            .playbackStart(.delegate(.failed(song.id, .network)))
         ) {
-            $0.playbackTransition = nil
+            $0.playbackStart = nil
         }
         await store.receive(\.musicPlayback.transportFailed) {
             $0.musicPlayback.phase = .failed(.network, lastSnapshot: .idle)
@@ -99,7 +81,7 @@ struct AppPlaybackCoordinationTests {
     }
 
     @Test
-    func overlappingPlaybackRequestsDoNotStartAnotherTransition() async {
+    func overlappingPlaybackRequestsDoNotStartAnotherOperation() async {
         let events = LockIsolated<[String]>([])
         let song = makeSong()
         let otherSongID = MusicItemID(providerID: "fake", nativeID: "2")
@@ -116,37 +98,27 @@ struct AppPlaybackCoordinationTests {
         }
 
         await store.send(.musicPlayback(.delegate(.playRequested(song.id)))) {
-            $0.playbackTransition = .musicStart(
-                MusicStartFeature.State(itemID: song.id)
-            )
+            $0.playbackStart = PlaybackStartFeature.State(itemID: song.id)
         }
         await store.receive(\.musicPlayback.playbackStartAccepted) {
             $0.musicPlayback.phase = .loading(.idle)
         }
-        await store.receive(
-            .playbackTransition(.musicStart(.start))
-        )
+        await store.receive(.playbackStart(.start))
 
         var playStartedIterator = playStarted.makeAsyncIterator()
         _ = await playStartedIterator.next()
         await store.send(.musicPlayback(.delegate(.playRequested(otherSongID))))
         #expect(
-            store.state.playbackTransition
-                == .musicStart(MusicStartFeature.State(itemID: song.id))
+            store.state.playbackStart
+                == PlaybackStartFeature.State(itemID: song.id)
         )
         #expect(events.value == ["play-1"])
 
         resumePlayContinuation.yield()
         resumePlayContinuation.finish()
-        await store.receive(
-            .playbackTransition(.musicStart(.playSucceeded))
-        )
-        await store.receive(
-            .playbackTransition(
-                .musicStart(.delegate(.succeeded(song.id)))
-            )
-        ) {
-            $0.playbackTransition = nil
+        await store.receive(.playbackStart(.playSucceeded))
+        await store.receive(.playbackStart(.delegate(.succeeded(song.id)))) {
+            $0.playbackStart = nil
         }
         await store.receive(\.musicPlayback.transportFinished) {
             $0.musicPlayback.phase = .observing(.idle)
@@ -157,32 +129,24 @@ struct AppPlaybackCoordinationTests {
     }
 
     @Test
-    func staleMusicCompletionsForDifferentItemAreIgnored() async {
+    func stalePlaybackCompletionsForDifferentItemAreIgnored() async {
         let song = makeSong()
         let staleItemID = MusicItemID(providerID: "fake", nativeID: "stale")
         var state = makeState(song: song)
         state.musicPlayback.phase = .loading(.idle)
-        state.playbackTransition = .musicStart(
-            MusicStartFeature.State(itemID: song.id)
-        )
+        state.playbackStart = PlaybackStartFeature.State(itemID: song.id)
         let store = TestStore(initialState: state) {
             AppFeature()
         }
 
+        await store.send(.playbackStart(.delegate(.succeeded(staleItemID))))
         await store.send(
-            .playbackTransition(
-                .musicStart(.delegate(.succeeded(staleItemID)))
-            )
-        )
-        await store.send(
-            .playbackTransition(
-                .musicStart(.delegate(.failed(staleItemID, .network)))
-            )
+            .playbackStart(.delegate(.failed(staleItemID, .network)))
         )
 
         #expect(
-            store.state.playbackTransition
-                == .musicStart(MusicStartFeature.State(itemID: song.id))
+            store.state.playbackStart
+                == PlaybackStartFeature.State(itemID: song.id)
         )
         #expect(store.state.musicPlayback.phase == .loading(.idle))
     }
@@ -215,7 +179,7 @@ struct AppPlaybackCoordinationTests {
             isPlayerPresented: false,
             pendingProviderID: nil,
             providerSwitchRequestID: nil,
-            playbackTransition: nil
+            playbackStart: nil
         )
     }
 

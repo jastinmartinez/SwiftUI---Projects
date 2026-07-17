@@ -252,7 +252,7 @@ struct AppFeatureTests {
             isPlayerPresented: isPlayerPresented,
             pendingProviderID: nil,
             providerSwitchRequestID: nil,
-            playbackTransition: nil
+            playbackStart: nil
         )
     }
 

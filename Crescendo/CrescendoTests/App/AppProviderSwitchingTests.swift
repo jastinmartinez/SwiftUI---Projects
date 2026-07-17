@@ -445,12 +445,10 @@ struct AppProviderSwitchingTests {
     }
 
     @Test
-    func providerSelectionIsIgnoredDuringPlaybackTransition() async {
+    func providerSelectionIsIgnoredDuringPlaybackStart() async {
         let events = LockIsolated<[String]>([])
         let state = makeState(
-            playbackTransition: .musicStart(
-                MusicStartFeature.State(itemID: makeSong().id)
-            )
+            playbackStart: PlaybackStartFeature.State(itemID: makeSong().id)
         )
         let store = makeStore(
             state: state,
@@ -464,7 +462,7 @@ struct AppProviderSwitchingTests {
     }
 
     @Test
-    func musicStartIsIgnoredDuringProviderSwitch() async {
+    func playbackStartIsIgnoredDuringProviderSwitch() async {
         let events = LockIsolated<[String]>([])
         let song = makeSong()
         let state = makeState(
@@ -473,7 +471,7 @@ struct AppProviderSwitchingTests {
         )
         let store = makeStore(
             state: state,
-            play: { _ in events.withValue { $0.append("play-music") } }
+            play: { _ in events.withValue { $0.append("play") } }
         )
 
         await store.send(.musicPlayback(.delegate(.playRequested(song.id))))
@@ -518,7 +516,7 @@ struct AppProviderSwitchingTests {
         providerConnection: ProviderConnection? = nil,
         pendingProviderID: ProviderID? = nil,
         providerSwitchRequestID: UUID? = nil,
-        playbackTransition: PlaybackTransitionFeature.State? = nil
+        playbackStart: PlaybackStartFeature.State? = nil
     ) -> AppFeature.State {
         AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
@@ -544,7 +542,7 @@ struct AppProviderSwitchingTests {
             isPlayerPresented: true,
             pendingProviderID: pendingProviderID,
             providerSwitchRequestID: providerSwitchRequestID,
-            playbackTransition: playbackTransition
+            playbackStart: playbackStart
         )
     }
 

@@ -381,7 +381,7 @@ struct MusicPlaybackPresentationAdapterTests {
                 isPlayerPresented: false,
                 pendingProviderID: nil,
                 providerSwitchRequestID: nil,
-                playbackTransition: nil
+                playbackStart: nil
             )
         ) {
             AppFeature()

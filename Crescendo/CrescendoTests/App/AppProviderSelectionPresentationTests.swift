@@ -83,7 +83,7 @@ struct AppProviderSelectionPresentationTests {
             isPlayerPresented: false,
             pendingProviderID: nil,
             providerSwitchRequestID: nil,
-            playbackTransition: nil
+            playbackStart: nil
         )
     }
 }

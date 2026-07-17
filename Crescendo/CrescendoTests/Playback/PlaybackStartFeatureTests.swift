@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct MusicStartFeatureTests {
+struct PlaybackStartFeatureTests {
     @Test
     func successfulStartPlaysItemOnceAndDelegatesItsIdentity() async {
         let itemID = makeItemID()
@@ -50,11 +50,11 @@ struct MusicStartFeatureTests {
     private func makeStore(
         itemID: MusicItemID,
         play: @escaping @Sendable (MusicItemID) async throws -> Void
-    ) -> TestStoreOf<MusicStartFeature> {
+    ) -> TestStoreOf<PlaybackStartFeature> {
         TestStore(
-            initialState: MusicStartFeature.State(itemID: itemID)
+            initialState: PlaybackStartFeature.State(itemID: itemID)
         ) {
-            MusicStartFeature()
+            PlaybackStartFeature()
         } withDependencies: {
             $0.musicProvider.play = play
         }

@@ -12,7 +12,7 @@ struct AppFeature {
         var isPlayerPresented: Bool
         var pendingProviderID: ProviderID?
         var providerSwitchRequestID: UUID?
-        var playbackTransition: PlaybackTransitionFeature.State?
+        var playbackStart: PlaybackStartFeature.State?
 
         var requiresProviderSelection: Bool {
             providerConnection.connection == .disconnected
@@ -29,7 +29,7 @@ struct AppFeature {
             isPlayerPresented: Bool,
             pendingProviderID: ProviderID?,
             providerSwitchRequestID: UUID?,
-            playbackTransition: PlaybackTransitionFeature.State?
+            playbackStart: PlaybackStartFeature.State?
         ) {
             self.providerConnection = providerConnection
             self.search = search
@@ -37,7 +37,7 @@ struct AppFeature {
             self.isPlayerPresented = isPlayerPresented
             self.pendingProviderID = pendingProviderID
             self.providerSwitchRequestID = providerSwitchRequestID
-            self.playbackTransition = playbackTransition
+            self.playbackStart = playbackStart
         }
     }
 
@@ -56,7 +56,7 @@ struct AppFeature {
         )
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
-        case playbackTransition(PlaybackTransitionFeature.Action)
+        case playbackStart(PlaybackStartFeature.Action)
         case setPlayerPresented(Bool)
     }
 
@@ -83,7 +83,7 @@ struct AppFeature {
                 return .none
 
             case .providerSelected(let providerID):
-                guard state.playbackTransition == nil else {
+                guard state.playbackStart == nil else {
                     return .none
                 }
                 guard
@@ -218,46 +218,36 @@ struct AppFeature {
                 return .none
 
             case .musicPlayback(.delegate(.playRequested(let itemID))):
-                guard state.playbackTransition == nil,
+                guard state.playbackStart == nil,
                     state.providerSwitchRequestID == nil,
                     state.providerConnection.connection.access != nil
                 else {
                     return .none
                 }
-                state.playbackTransition = .musicStart(
-                    MusicStartFeature.State(itemID: itemID)
-                )
+                state.playbackStart = PlaybackStartFeature.State(itemID: itemID)
                 return .concatenate(
                     .send(.musicPlayback(.playbackStartAccepted)),
-                    .send(.playbackTransition(.musicStart(.start)))
+                    .send(.playbackStart(.start))
                 )
 
             case .musicPlayback:
                 return .none
 
-            case .playbackTransition(
-                .musicStart(.delegate(.succeeded(let itemID)))
-            ):
-                guard case .musicStart(let musicStartState) = state.playbackTransition,
-                    musicStartState.itemID == itemID
-                else {
+            case .playbackStart(.delegate(.succeeded(let itemID))):
+                guard state.playbackStart?.itemID == itemID else {
                     return .none
                 }
-                state.playbackTransition = nil
+                state.playbackStart = nil
                 return .send(.musicPlayback(.transportFinished))
 
-            case .playbackTransition(
-                .musicStart(.delegate(.failed(let itemID, let error)))
-            ):
-                guard case .musicStart(let musicStartState) = state.playbackTransition,
-                    musicStartState.itemID == itemID
-                else {
+            case .playbackStart(.delegate(.failed(let itemID, let error))):
+                guard state.playbackStart?.itemID == itemID else {
                     return .none
                 }
-                state.playbackTransition = nil
+                state.playbackStart = nil
                 return .send(.musicPlayback(.transportFailed(error)))
 
-            case .playbackTransition:
+            case .playbackStart:
                 return .none
 
             case .setPlayerPresented(let isPresented):
@@ -265,8 +255,8 @@ struct AppFeature {
                 return .none
             }
         }
-        .ifLet(\.playbackTransition, action: \.playbackTransition) {
-            PlaybackTransitionFeature.body
+        .ifLet(\.playbackStart, action: \.playbackStart) {
+            PlaybackStartFeature()
         }
     }
 }

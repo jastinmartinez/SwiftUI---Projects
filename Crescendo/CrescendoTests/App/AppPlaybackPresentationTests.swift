@@ -45,7 +45,7 @@ struct AppPlaybackPresentationTests {
             isPlayerPresented: true,
             pendingProviderID: nil,
             providerSwitchRequestID: nil,
-            playbackTransition: nil
+            playbackStart: nil
         )
         let store = TestStore(initialState: state) { AppFeature() }
 
@@ -91,8 +91,8 @@ struct AppPlaybackPresentationTests {
         model.onTogglePlayPause()
 
         #expect(
-            store.playbackTransition
-                == .musicStart(MusicStartFeature.State(itemID: song.id))
+            store.playbackStart
+                == PlaybackStartFeature.State(itemID: song.id)
         )
     }
 
@@ -133,7 +133,7 @@ struct AppPlaybackPresentationTests {
             isPlayerPresented: false,
             pendingProviderID: nil,
             providerSwitchRequestID: nil,
-            playbackTransition: nil
+            playbackStart: nil
         )
     }
 
