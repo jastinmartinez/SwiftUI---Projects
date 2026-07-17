@@ -6,7 +6,7 @@ extension ProviderSelectionView.Model {
         self.init(
             providers: store.providerConnection.providers,
             activeProviderID: store.providerConnection.connection.providerID,
-            isSelectionEnabled: store.providerSwitchRequestID == nil
+            isSelectionEnabled: store.providerSwitch == nil
                 && store.playbackStart == nil,
             onSelect: { store.send(.providerSelected($0)) }
         )

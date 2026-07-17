@@ -10,8 +10,7 @@ struct AppFeature {
         var search: SearchFeature.State
         var musicPlayback: MusicPlaybackFeature.State
         var isPlayerPresented: Bool
-        var pendingProviderID: ProviderID?
-        var providerSwitchRequestID: UUID?
+        var providerSwitch: ProviderSwitchFeature.State?
         var playbackStart: PlaybackStartFeature.State?
 
         var requiresProviderSelection: Bool {
@@ -27,16 +26,14 @@ struct AppFeature {
             search: SearchFeature.State,
             musicPlayback: MusicPlaybackFeature.State,
             isPlayerPresented: Bool,
-            pendingProviderID: ProviderID?,
-            providerSwitchRequestID: UUID?,
+            providerSwitch: ProviderSwitchFeature.State?,
             playbackStart: PlaybackStartFeature.State?
         ) {
             self.providerConnection = providerConnection
             self.search = search
             self.musicPlayback = musicPlayback
             self.isPlayerPresented = isPlayerPresented
-            self.pendingProviderID = pendingProviderID
-            self.providerSwitchRequestID = providerSwitchRequestID
+            self.providerSwitch = providerSwitch
             self.playbackStart = playbackStart
         }
     }
@@ -46,26 +43,12 @@ struct AppFeature {
         case providerSelected(ProviderID)
         case providerConnection(ProviderConnectionFeature.Action)
         case resetProviderOwnedState(ProviderID)
-        case providerSwitchPauseSucceeded(
-            requestID: UUID,
-            providerID: ProviderID
-        )
-        case providerSwitchPauseFailed(
-            requestID: UUID,
-            providerID: ProviderID
-        )
+        case providerSwitch(ProviderSwitchFeature.Action)
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
         case playbackStart(PlaybackStartFeature.Action)
         case setPlayerPresented(Bool)
     }
-
-    enum CancelID {
-        case providerSwitch
-    }
-
-    @Dependency(\.uuid) var uuid
-    @Dependency(\.musicProvider) var musicProvider
 
     var body: some ReducerOf<Self> {
         Scope(state: \.providerConnection, action: \.providerConnection) {
@@ -95,69 +78,36 @@ struct AppFeature {
                 }
 
                 if providerID == state.providerConnection.connection.providerID {
-                    let hasPendingSwitch =
-                        state.pendingProviderID != nil
-                        || state.providerSwitchRequestID != nil
-                    guard hasPendingSwitch else {
-                        return .none
-                    }
-                    state.pendingProviderID = nil
-                    state.providerSwitchRequestID = nil
-                    return .cancel(id: CancelID.providerSwitch)
+                    guard state.providerSwitch != nil else { return .none }
+                    return .send(.providerSwitch(.cancel))
                 }
 
-                if state.pendingProviderID == providerID,
-                    state.providerSwitchRequestID != nil
+                if state.providerSwitch != nil {
+                    return .send(.providerSwitch(.targetChanged(providerID)))
+                }
+
+                if case .connected(let currentProviderID, _) =
+                    state.providerConnection.connection
                 {
-                    return .none
-                }
-
-                if case .connected = state.providerConnection.connection {
-                    let requestID = uuid()
-                    state.pendingProviderID = providerID
-                    state.providerSwitchRequestID = requestID
-                    return .run { send in
-                        do {
-                            try await musicProvider.pause()
-                            guard !Task.isCancelled else { return }
-                            await send(
-                                .providerSwitchPauseSucceeded(
-                                    requestID: requestID,
-                                    providerID: providerID
-                                )
-                            )
-                        } catch {
-                            guard !Task.isCancelled else { return }
-                            await send(
-                                .providerSwitchPauseFailed(
-                                    requestID: requestID,
-                                    providerID: providerID
-                                )
-                            )
-                        }
-                    }
-                    .cancellable(id: CancelID.providerSwitch, cancelInFlight: true)
+                    state.providerSwitch = ProviderSwitchFeature.State(
+                        sourceProviderID: currentProviderID,
+                        phase: .ready(targetProviderID: providerID)
+                    )
+                    return .send(.providerSwitch(.start))
                 }
 
                 return .send(.providerConnection(.connect(provider.id)))
 
-            case .providerSwitchPauseSucceeded(let requestID, let providerID):
-                guard state.providerSwitchRequestID == requestID,
-                    state.pendingProviderID == providerID,
-                    state.providerConnection.provider(id: providerID) != nil
-                else {
-                    return .none
-                }
+            case .providerSwitch(.delegate(.readyToConnect(let providerID))):
+                state.providerSwitch = nil
                 return .send(.providerConnection(.connect(providerID)))
 
-            case .providerSwitchPauseFailed(let requestID, let providerID):
-                guard state.providerSwitchRequestID == requestID,
-                    state.pendingProviderID == providerID
-                else {
-                    return .none
-                }
-                state.pendingProviderID = nil
-                state.providerSwitchRequestID = nil
+            case .providerSwitch(.delegate(.failed)),
+                .providerSwitch(.delegate(.cancelled)):
+                state.providerSwitch = nil
+                return .none
+
+            case .providerSwitch:
                 return .none
 
             case .providerConnection(
@@ -165,8 +115,6 @@ struct AppFeature {
                     .connectionStarted(let providerID, let providerChanged)
                 )
             ):
-                state.pendingProviderID = nil
-                state.providerSwitchRequestID = nil
                 guard providerChanged,
                     let provider = state.providerConnection.provider(
                         id: providerID
@@ -219,7 +167,7 @@ struct AppFeature {
 
             case .musicPlayback(.delegate(.playRequested(let itemID))):
                 guard state.playbackStart == nil,
-                    state.providerSwitchRequestID == nil,
+                    state.providerSwitch == nil,
                     state.providerConnection.connection.access != nil
                 else {
                     return .none
@@ -257,6 +205,9 @@ struct AppFeature {
         }
         .ifLet(\.playbackStart, action: \.playbackStart) {
             PlaybackStartFeature()
+        }
+        .ifLet(\.providerSwitch, action: \.providerSwitch) {
+            ProviderSwitchFeature()
         }
     }
 }

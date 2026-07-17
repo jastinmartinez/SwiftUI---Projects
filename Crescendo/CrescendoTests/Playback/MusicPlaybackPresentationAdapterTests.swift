@@ -379,8 +379,7 @@ struct MusicPlaybackPresentationAdapterTests {
                     capabilities: .allEnabled
                 ),
                 isPlayerPresented: false,
-                pendingProviderID: nil,
-                providerSwitchRequestID: nil,
+                providerSwitch: nil,
                 playbackStart: nil
             )
         ) {

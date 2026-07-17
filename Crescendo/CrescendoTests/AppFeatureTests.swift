@@ -250,8 +250,7 @@ struct AppFeatureTests {
                     capabilities: .allEnabled
                 ),
             isPlayerPresented: isPlayerPresented,
-            pendingProviderID: nil,
-            providerSwitchRequestID: nil,
+            providerSwitch: nil,
             playbackStart: nil
         )
     }

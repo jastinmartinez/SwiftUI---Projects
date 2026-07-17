@@ -43,8 +43,7 @@ struct AppPlaybackPresentationTests {
             ),
             musicPlayback: musicPlayback,
             isPlayerPresented: true,
-            pendingProviderID: nil,
-            providerSwitchRequestID: nil,
+            providerSwitch: nil,
             playbackStart: nil
         )
         let store = TestStore(initialState: state) { AppFeature() }
@@ -131,8 +130,7 @@ struct AppPlaybackPresentationTests {
                 capabilities: .allEnabled
             ),
             isPlayerPresented: false,
-            pendingProviderID: nil,
-            providerSwitchRequestID: nil,
+            providerSwitch: nil,
             playbackStart: nil
         )
     }
