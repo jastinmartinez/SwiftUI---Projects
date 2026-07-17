@@ -49,4 +49,10 @@ struct AppPlaybackPresentationTests {
 
         #expect(store.state.musicPlayback == musicPlayback)
     }
+
+    @Test
+    func barToggleChoosesTransportActionFromPlayingState() {
+        #expect(NowPlayingBarView.Model.toggleAction(isPlaying: true) == .pauseTapped)
+        #expect(NowPlayingBarView.Model.toggleAction(isPlaying: false) == .playTapped)
+    }
 }
