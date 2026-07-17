@@ -21,11 +21,20 @@ struct SearchResultsView: View {
                 }
                 .buttonStyle(.plain)
             }
-        case .unavailable:
+        case .denied:
+            ContentUnavailableView {
+                Label(Locs.Search.deniedTitle, systemImage: "music.note.slash")
+            } description: {
+                Text(Locs.Search.deniedMessage)
+            } actions: {
+                Button(Locs.Search.openSettings, action: model.onOpenSettings)
+                    .buttonStyle(.borderedProminent)
+            }
+        case .restricted:
             ContentUnavailableView(
-                Locs.Search.unavailableTitle,
+                Locs.Search.restrictedTitle,
                 systemImage: "music.note.slash",
-                description: Text(Locs.Search.videoStillAvailable)
+                description: Text(Locs.Search.restrictedMessage)
             )
         case .failed:
             Button(Locs.Common.retry, action: model.onRetry)

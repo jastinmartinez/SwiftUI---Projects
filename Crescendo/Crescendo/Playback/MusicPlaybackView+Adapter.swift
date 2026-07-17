@@ -3,12 +3,14 @@ import ComposableArchitecture
 extension MusicPlaybackView.Model {
     /// Adapts reducer-owned playback state and actions into presentation values.
     @MainActor
-    init(_ store: StoreOf<MusicPlaybackFeature>) {
+    init(_ store: StoreOf<MusicPlaybackFeature>, providerName: String?) {
         let snapshot = store.phase.snapshot
         let statusText: String
         switch store.phase {
         case .loading:
             statusText = Locs.MusicPlayback.Status.loading
+        case .failed(.unavailable, _):
+            statusText = Locs.MusicPlayback.Status.unavailable
         case .failed:
             statusText = Locs.MusicPlayback.Status.failed
         case .observing:
@@ -38,6 +40,7 @@ extension MusicPlaybackView.Model {
         self.init(
             title: store.selectedSong?.title ?? Locs.MusicPlayback.noSelection,
             artistName: store.selectedSong?.artistName,
+            providerAttribution: providerName.map(Locs.MusicPlayback.playingFrom),
             artworkURL: store.selectedSong?.artworkURL,
             statusText: statusText,
             elapsedTimeText: snapshot.currentTime.formatted(

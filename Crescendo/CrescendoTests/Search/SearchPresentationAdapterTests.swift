@@ -91,8 +91,6 @@ struct SearchPresentationAdapterTests {
                     capabilities: .allEnabled
                 ),
                 isPlayerPresented: false,
-                video: nil,
-                videoCloseRequestID: nil,
                 pendingProviderID: nil,
                 providerSwitchRequestID: nil,
                 playbackTransition: nil
@@ -107,6 +105,27 @@ struct SearchPresentationAdapterTests {
 
         #expect(appStore.musicPlayback.selectedSong == song)
         #expect(appStore.isPlayerPresented)
+    }
+
+    @Test
+    func deniedAndRestrictedPhasesMapToDistinctContent() {
+        let deniedModel = SearchResultsView.Model(
+            makeStore(
+                query: "vela",
+                phase: .denied,
+                playbackEligibility: .unknown
+            )
+        )
+        #expect(deniedModel.content == .denied)
+
+        let restrictedModel = SearchResultsView.Model(
+            makeStore(
+                query: "vela",
+                phase: .restricted,
+                playbackEligibility: .unknown
+            )
+        )
+        #expect(restrictedModel.content == .restricted)
     }
 
     // MARK: - Helpers

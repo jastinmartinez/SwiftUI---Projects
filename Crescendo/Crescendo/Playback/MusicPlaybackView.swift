@@ -20,6 +20,11 @@ struct MusicPlaybackView: View {
                 Text(artistName)
                     .foregroundStyle(.secondary)
             }
+            if let attribution = model.providerAttribution {
+                Text(attribution)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
             Text(model.statusText)
             Text(model.elapsedTimeText)
             MusicPlaybackControlsView(model: model.controls)
@@ -43,6 +48,7 @@ extension MusicPlaybackView {
     struct Model {
         let title: String
         let artistName: String?
+        let providerAttribution: String?
         let artworkURL: URL?
         let statusText: String
         let elapsedTimeText: String

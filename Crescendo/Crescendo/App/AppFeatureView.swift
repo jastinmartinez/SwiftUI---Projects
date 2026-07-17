@@ -4,16 +4,15 @@ import SwiftUI
 /// The root store-connected view of Crescendo.
 struct AppFeatureView: View {
     let store: StoreOf<AppFeature>
-    let videoPlayerSession: AVPlayerSession
 
     var body: some View {
         VStack(spacing: 0) {
-            SearchFeatureView(store: store.scope(state: \.search, action: \.search))
+            SearchFeatureView(
+                store: store.scope(state: \.search, action: \.search),
+                providerName: store.activeProvider?.name
+            )
             if let song = store.musicPlayback.selectedSong {
                 NowPlayingBarView(model: .init(store, song: song))
-            }
-            Button(Locs.Video.openAction) {
-                store.send(.openVideoButtonTapped)
             }
         }
         .task {
@@ -27,21 +26,9 @@ struct AppFeatureView: View {
             )
         ) {
             MusicPlaybackFeatureView(
-                store: store.scope(state: \.musicPlayback, action: \.musicPlayback)
+                store: store.scope(state: \.musicPlayback, action: \.musicPlayback),
+                providerName: store.activeProvider?.name
             )
-        }
-        .fullScreenCover(
-            isPresented: Binding(
-                get: { store.video != nil },
-                set: { if !$0 { store.send(.closeVideoRequested) } }
-            )
-        ) {
-            if let videoStore = store.scope(state: \.video, action: \.video) {
-                VideoPlaybackFeatureView(
-                    store: videoStore,
-                    playerSession: videoPlayerSession
-                )
-            }
         }
     }
 }

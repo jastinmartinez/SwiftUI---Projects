@@ -54,6 +54,25 @@ struct AppFeatureTests {
         #expect(store.state.activeProviderID == nil)
     }
 
+    @Test
+    func activeProviderExposesDescriptorForSelectedID() {
+        var state = AppFeature.State(
+            registeredProviders: [.appleMusic],
+            activeProviderID: "apple-music",
+            search: makeSearchState(),
+            musicPlayback: makeMusicPlaybackState(),
+            isPlayerPresented: false,
+            pendingProviderID: nil,
+            providerSwitchRequestID: nil,
+            playbackTransition: nil
+        )
+
+        #expect(state.activeProvider?.name == "Apple Music")
+
+        state.activeProviderID = nil
+        #expect(state.activeProvider == nil)
+    }
+
     // MARK: - Helpers
 
     private func makeStore(
@@ -68,8 +87,6 @@ struct AppFeatureTests {
                 search: makeSearchState(),
                 musicPlayback: makeMusicPlaybackState(),
                 isPlayerPresented: false,
-                video: nil,
-                videoCloseRequestID: nil,
                 pendingProviderID: nil,
                 providerSwitchRequestID: nil,
                 playbackTransition: nil
@@ -85,6 +102,7 @@ struct AppFeatureTests {
     private func makeProvider(id: MusicProviderID) -> MusicProviderDescriptor {
         MusicProviderDescriptor(
             id: id,
+            name: "Future",
             capabilities: .init(
                 supportsCatalogSearch: true,
                 supportsEmbeddedPlayback: true,
