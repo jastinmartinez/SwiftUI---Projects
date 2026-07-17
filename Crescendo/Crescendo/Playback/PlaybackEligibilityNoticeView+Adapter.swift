@@ -8,12 +8,12 @@ extension PlaybackEligibilityNoticeView.Model {
         switch store.phase {
         case .loaded(let songs):
             hasResults = !songs.isEmpty
-        case .idle, .loading, .denied, .restricted, .failed:
+        case .idle, .loading, .failed:
             hasResults = false
         }
 
         let presentation: Presentation =
-            switch store.playbackEligibility {
+            switch store.providerAccess?.playbackEligibility ?? .unknown {
             case .eligible:
                 .hidden
             case .ineligible:

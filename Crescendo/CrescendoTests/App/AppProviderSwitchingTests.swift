@@ -101,6 +101,7 @@ struct AppProviderSwitchingTests {
                 providerID: "future",
                 requestID: UUID(0)
             )
+            $0.search.providerAccess = nil
         }
         await store.receive(
             .providerConnection(
@@ -116,7 +117,7 @@ struct AppProviderSwitchingTests {
             $0.search = SearchFeature.State(
                 query: "",
                 phase: .idle,
-                playbackEligibility: .unknown
+                providerAccess: nil
             )
             $0.musicPlayback = MusicPlaybackFeature.State(
                 selectedSong: nil,
@@ -162,7 +163,7 @@ struct AppProviderSwitchingTests {
                 )
             )
         ) {
-            $0.search.playbackEligibility = .eligible
+            $0.search.providerAccess = access
         }
     }
 
@@ -273,7 +274,10 @@ struct AppProviderSwitchingTests {
             search: SearchFeature.State(
                 query: "Selected song",
                 phase: .loaded([makeSong()]),
-                playbackEligibility: .eligible
+                providerAccess: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
             ),
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: makeSong(),

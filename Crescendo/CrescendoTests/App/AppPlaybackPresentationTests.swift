@@ -39,7 +39,10 @@ struct AppPlaybackPresentationTests {
             search: SearchFeature.State(
                 query: "",
                 phase: .loaded([song]),
-                playbackEligibility: .eligible
+                providerAccess: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
             ),
             musicPlayback: musicPlayback,
             isPlayerPresented: true,
@@ -115,7 +118,10 @@ struct AppPlaybackPresentationTests {
             search: SearchFeature.State(
                 query: "",
                 phase: .loaded([song]),
-                playbackEligibility: .eligible
+                providerAccess: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
             ),
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: song,

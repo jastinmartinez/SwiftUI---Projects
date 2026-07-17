@@ -80,7 +80,7 @@ struct AppFeatureTests {
                 )
             )
         ) {
-            $0.search.playbackEligibility = .eligible
+            $0.search.providerAccess = access
         }
     }
 
@@ -97,7 +97,10 @@ struct AppFeatureTests {
             search: SearchFeature.State(
                 query: "Selected song",
                 phase: .loaded([song]),
-                playbackEligibility: .eligible
+                providerAccess: makeAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
             ),
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: song,
@@ -129,7 +132,7 @@ struct AppFeatureTests {
             $0.search = SearchFeature.State(
                 query: "",
                 phase: .idle,
-                playbackEligibility: .unknown
+                providerAccess: nil
             )
             $0.musicPlayback = MusicPlaybackFeature.State(
                 selectedSong: nil,
@@ -166,7 +169,7 @@ struct AppFeatureTests {
     }
 
     @Test
-    func resolvedConnectionSynchronizesPlaybackEligibility() async {
+    func resolvedConnectionSynchronizesProviderAccess() async {
         let access = makeAccess(
             authorization: .authorized,
             playbackEligibility: .ineligible
@@ -191,7 +194,64 @@ struct AppFeatureTests {
                 )
             )
         ) {
-            $0.search.playbackEligibility = .ineligible
+            $0.search.providerAccess = access
+        }
+    }
+
+    @Test
+    func unavailableConnectionClearsProviderAccess() async {
+        let staleAccess = makeAccess(
+            authorization: .authorized,
+            playbackEligibility: .eligible
+        )
+        let state = makeState(
+            connection: .denied(providerID: .appleMusic),
+            search: SearchFeature.State(
+                query: "result",
+                phase: .loaded([makeSong()]),
+                providerAccess: staleAccess
+            )
+        )
+        let store = makeStore(state: state)
+
+        await store.send(
+            .providerConnection(
+                .delegate(
+                    .connectionResolved(.denied(providerID: .appleMusic))
+                )
+            )
+        ) {
+            $0.search.providerAccess = nil
+        }
+    }
+
+    @Test
+    func selectedSongUsesConnectionPlaybackEligibility() async {
+        let song = makeSong()
+        let connectionAccess = makeAccess(
+            authorization: .authorized,
+            playbackEligibility: .eligible
+        )
+        let state = makeState(
+            connection: .connected(
+                providerID: .appleMusic,
+                access: connectionAccess
+            ),
+            search: SearchFeature.State(
+                query: "Selected song",
+                phase: .loaded([song]),
+                providerAccess: makeAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .ineligible
+                )
+            )
+        )
+        let store = makeStore(state: state)
+
+        await store.send(.search(.delegate(.songSelected(song)))) {
+            $0.musicPlayback.selectedSong = song
+            $0.musicPlayback.playbackEligibility = .eligible
+            $0.isPlayerPresented = true
         }
     }
 
@@ -240,7 +300,7 @@ struct AppFeatureTests {
                 ?? SearchFeature.State(
                     query: "",
                     phase: .idle,
-                    playbackEligibility: .unknown
+                    providerAccess: nil
                 ),
             musicPlayback: musicPlayback
                 ?? MusicPlaybackFeature.State(

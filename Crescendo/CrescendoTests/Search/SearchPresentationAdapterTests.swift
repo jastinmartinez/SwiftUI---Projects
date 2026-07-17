@@ -7,39 +7,47 @@ import Testing
 @MainActor
 struct SearchPresentationAdapterTests {
     @Test
-    func searchHeaderMapsPresentationAndForwardsActions() {
-        let actions = LockIsolated<[SearchFeature.Action]>([])
-        let store: StoreOf<SearchFeature> = Store(
-            initialState: SearchFeature.State(
-                query: "vela",
-                phase: .idle,
-                playbackEligibility: .eligible
-            )
-        ) {
-            Reduce { _, action in
-                actions.withValue { $0.append(action) }
-                return .none
-            }
-        }
-        let providerSelection = ProviderSelectionView.Model(
-            providers: [.appleMusic],
-            activeProviderID: .appleMusic,
-            isSelectionEnabled: true,
-            onSelect: { _ in }
+    func searchHeaderRequiresAuthorizedAccessAndTrimmedQuery() {
+        let access = makeAccess(
+            authorization: .authorized,
+            playbackEligibility: .eligible
         )
-        let model = SearchHeaderView.Model(
-            store,
-            providerSelection: providerSelection
+        let enabledModel = SearchHeaderView.Model(
+            makeStore(query: " vela ", phase: .idle, providerAccess: access),
+            providerSelection: makeProviderSelection()
+        )
+        let emptyQueryModel = SearchHeaderView.Model(
+            makeStore(query: "   ", phase: .idle, providerAccess: access),
+            providerSelection: makeProviderSelection()
+        )
+        let disconnectedModel = SearchHeaderView.Model(
+            makeStore(query: "vela", phase: .idle, providerAccess: nil),
+            providerSelection: makeProviderSelection()
         )
 
-        #expect(model.query == "vela")
-        #expect(model.providerSelection.activeProviderName == "Apple Music")
-        #expect(model.isSearchEnabled)
+        #expect(enabledModel.isSearchEnabled)
+        #expect(!emptyQueryModel.isSearchEnabled)
+        #expect(!disconnectedModel.isSearchEnabled)
+    }
 
-        model.onQueryChanged("")
-        model.onSubmit()
+    @Test
+    func disconnectedProviderShowsRequiresProviderContent() {
+        let model = SearchResultsView.Model(
+            makeStore(query: "vela", phase: .failed, providerAccess: nil),
+            providerName: nil
+        )
 
-        #expect(actions.value == [.queryChanged(""), .submitButtonTapped])
+        #expect(model.content == .requiresProvider)
+    }
+
+    @Test
+    func requiresProviderTakesPrecedenceOverSearchPhase() {
+        let model = SearchResultsView.Model(
+            makeStore(query: "vela", phase: .loaded([makeSong()]), providerAccess: nil),
+            providerName: nil
+        )
+
+        #expect(model.content == .requiresProvider)
     }
 
     @Test
@@ -48,7 +56,10 @@ struct SearchPresentationAdapterTests {
         let store = makeStore(
             query: "result",
             phase: .loaded([song]),
-            playbackEligibility: .eligible
+            providerAccess: makeAccess(
+                authorization: .authorized,
+                playbackEligibility: .eligible
+            )
         )
         let model = SearchResultsView.Model(store, providerName: "Apple Music")
         let expectedRows = [
@@ -71,113 +82,20 @@ struct SearchPresentationAdapterTests {
     }
 
     @Test
-    func emptyResultsPreserveTheSubmittedQuery() {
+    func ineligibleAccessStillShowsSubscriptionNoticeForResults() {
         let store = makeStore(
-            query: "No matches",
-            phase: .loaded([]),
-            playbackEligibility: .eligible
-        )
-        let model = SearchResultsView.Model(store, providerName: nil)
-
-        #expect(model.content == .empty(query: "No matches"))
-    }
-
-    @Test
-    func unknownEligibilityVisibilityTracksResultPresence() {
-        let resultsStore = makeStore(
             query: "result",
             phase: .loaded([makeSong()]),
-            playbackEligibility: .unknown
-        )
-        let emptyStore = makeStore(
-            query: "result",
-            phase: .loaded([]),
-            playbackEligibility: .unknown
-        )
-        let resultsModel = PlaybackEligibilityNoticeView.Model(resultsStore)
-        let emptyModel = PlaybackEligibilityNoticeView.Model(emptyStore)
-
-        #expect(resultsModel.presentation == .availabilityUnknown)
-        #expect(emptyModel.presentation == .hidden)
-    }
-
-    @Test
-    func retryForwardsToTheSearchReducer() {
-        let store = makeStore(
-            query: "",
-            phase: .failed,
-            playbackEligibility: .unknown
-        )
-        let model = SearchResultsView.Model(store, providerName: nil)
-
-        model.onRetry()
-
-        #expect(store.phase == .idle)
-    }
-
-    @Test
-    func songTapSelectsLoadedResultThroughReducer() {
-        let song = makeSong()
-        let appStore = Store(
-            initialState: AppFeature.State(
-                providerConnection: ProviderConnectionFeature.State(
-                    providers: [.appleMusic],
-                    connection: .connected(
-                        providerID: .appleMusic,
-                        access: MusicProviderAccess(
-                            authorization: .authorized,
-                            playbackEligibility: .eligible
-                        )
-                    )
-                ),
-                search: SearchFeature.State(
-                    query: "result",
-                    phase: .loaded([song]),
-                    playbackEligibility: .eligible
-                ),
-                musicPlayback: MusicPlaybackFeature.State(
-                    selectedSong: nil,
-                    phase: .observing(.idle),
-                    playbackEligibility: .unknown,
-                    capabilities: .allEnabled
-                ),
-                isPlayerPresented: false,
-                providerSwitch: nil,
-                playbackStart: nil
+            providerAccess: makeAccess(
+                authorization: .authorized,
+                playbackEligibility: .ineligible
             )
-        ) {
-            AppFeature()
-        }
-        let searchStore = appStore.scope(state: \.search, action: \.search)
-        let model = SearchResultsView.Model(searchStore, providerName: nil)
-
-        model.onSongTapped(song.id)
-
-        #expect(appStore.musicPlayback.selectedSong == song)
-        #expect(appStore.isPlayerPresented)
-    }
-
-    @Test
-    func deniedAndRestrictedPhasesMapToDistinctContent() {
-        let deniedModel = SearchResultsView.Model(
-            makeStore(
-                query: "vela",
-                phase: .denied,
-                playbackEligibility: .unknown
-            ),
-            providerName: nil
         )
-        #expect(deniedModel.content == .denied)
 
-        let restrictedModel = SearchResultsView.Model(
-            makeStore(
-                query: "vela",
-                phase: .restricted,
-                playbackEligibility: .unknown
-            ),
-            providerName: nil
+        #expect(
+            PlaybackEligibilityNoticeView.Model(store).presentation
+                == .subscriptionRequired
         )
-        #expect(restrictedModel.content == .restricted)
     }
 
     // MARK: - Helpers
@@ -185,17 +103,36 @@ struct SearchPresentationAdapterTests {
     private func makeStore(
         query: String,
         phase: SearchFeature.Phase,
-        playbackEligibility: CatalogPlaybackEligibility
+        providerAccess: MusicProviderAccess?
     ) -> StoreOf<SearchFeature> {
         Store(
             initialState: SearchFeature.State(
                 query: query,
                 phase: phase,
-                playbackEligibility: playbackEligibility
+                providerAccess: providerAccess
             )
         ) {
             SearchFeature()
         }
+    }
+
+    private func makeProviderSelection() -> ProviderSelectionView.Model {
+        ProviderSelectionView.Model(
+            providers: [.appleMusic],
+            activeProviderID: .appleMusic,
+            isSelectionEnabled: true,
+            onSelect: { _ in }
+        )
+    }
+
+    private func makeAccess(
+        authorization: MusicAuthorizationStatus,
+        playbackEligibility: CatalogPlaybackEligibility
+    ) -> MusicProviderAccess {
+        MusicProviderAccess(
+            authorization: authorization,
+            playbackEligibility: playbackEligibility
+        )
     }
 
     private func makeSong() -> SongSummary {

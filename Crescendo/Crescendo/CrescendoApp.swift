@@ -16,7 +16,7 @@ struct CrescendoApp: App {
                 search: SearchFeature.State(
                     query: "",
                     phase: .idle,
-                    playbackEligibility: .unknown
+                    providerAccess: nil
                 ),
                 musicPlayback: MusicPlaybackFeature.State(
                     selectedSong: nil,

@@ -368,7 +368,10 @@ struct MusicPlaybackPresentationAdapterTests {
                 search: SearchFeature.State(
                     query: "",
                     phase: .idle,
-                    playbackEligibility: .eligible
+                    providerAccess: MusicProviderAccess(
+                        authorization: .authorized,
+                        playbackEligibility: .eligible
+                    )
                 ),
                 musicPlayback: MusicPlaybackFeature.State(
                     selectedSong: song,

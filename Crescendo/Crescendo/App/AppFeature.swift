@@ -124,6 +124,10 @@ struct AppFeature {
                 }
                 return .send(.resetProviderOwnedState(provider.id))
 
+            case .providerConnection(.startConnection):
+                state.search.providerAccess = nil
+                return .none
+
             case .resetProviderOwnedState(let providerID):
                 guard
                     let provider = state.providerConnection.provider(
@@ -135,7 +139,7 @@ struct AppFeature {
                 state.search = SearchFeature.State(
                     query: "",
                     phase: .idle,
-                    playbackEligibility: .unknown
+                    providerAccess: nil
                 )
                 state.musicPlayback = MusicPlaybackFeature.State(
                     selectedSong: nil,
@@ -149,8 +153,13 @@ struct AppFeature {
             case .providerConnection(
                 .delegate(.connectionResolved(let connection))
             ):
-                state.search.playbackEligibility =
-                    connection.access?.playbackEligibility ?? .unknown
+                if case .connected(_, let access) = connection,
+                    access.authorization == .authorized
+                {
+                    state.search.providerAccess = access
+                } else {
+                    state.search.providerAccess = nil
+                }
                 return .none
 
             case .providerConnection:
@@ -158,7 +167,12 @@ struct AppFeature {
 
             case .search(.delegate(.songSelected(let song))):
                 state.musicPlayback.selectedSong = song
-                state.musicPlayback.playbackEligibility = state.search.playbackEligibility
+                state.musicPlayback.playbackEligibility =
+                    state
+                    .providerConnection
+                    .connection
+                    .access?
+                    .playbackEligibility ?? .unknown
                 state.isPlayerPresented = true
                 return .none
 

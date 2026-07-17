@@ -72,7 +72,10 @@ struct AppProviderSelectionPresentationTests {
             search: SearchFeature.State(
                 query: "",
                 phase: .idle,
-                playbackEligibility: .unknown
+                providerAccess: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .unknown
+                )
             ),
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: nil,

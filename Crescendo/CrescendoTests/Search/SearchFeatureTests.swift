@@ -1,206 +1,126 @@
 import ComposableArchitecture
 import Foundation
 import Testing
-import UIKit
 
 @testable import Crescendo
 
 @MainActor
 struct SearchFeatureTests {
     @Test
-    func successfulSearch() async {
-        let accessCalls = LockIsolated<[String]>([])
+    func authorizedAccessSearchesImmediatelyWithoutRequestingAccess() async {
         let song = makeSong()
+        let access = makeAccess(
+            authorization: .authorized,
+            playbackEligibility: .eligible
+        )
         let store = TestStore(
             initialState: makeState(
                 query: "result",
                 phase: .idle,
-                playbackEligibility: .unknown
+                providerAccess: access
             )
         ) {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.musicProvider.currentAccess = {
-                accessCalls.withValue { $0.append("current") }
-                return .init(authorization: .authorized, playbackEligibility: .eligible)
+                Issue.record("Search must not read current access")
+                return access
             }
             $0.musicProvider.requestAccess = {
-                accessCalls.withValue { $0.append("request") }
-                return .init(authorization: .denied, playbackEligibility: .unknown)
+                Issue.record("Search must not request access")
+                return access
             }
             $0.musicProvider.search = { _, _ in [song] }
         }
 
         await store.send(.submitButtonTapped) {
-            $0.phase = .loading(requestID: UUID(0), stage: .checkingAccess)
+            $0.phase = .loading(requestID: UUID(0))
         }
-        await store.receive(\.currentAccessResponse)
-        await store.receive(\.accessResolved) {
-            $0.playbackEligibility = .eligible
-            $0.phase = .loading(requestID: UUID(0), stage: .searching)
-        }
-        await store.receive(\.searchResponse) {
+        await store.receive(.searchResponse(UUID(0), .success([song]))) {
             $0.phase = .loaded([song])
         }
-        #expect(accessCalls.value == ["current"])
     }
 
     @Test
-    func ineligibleAccountStillReceivesSearchResults() async {
+    func ineligibleAuthorizedAccessStillSearchesAndIsRetained() async {
         let song = makeSong()
+        let access = makeAccess(
+            authorization: .authorized,
+            playbackEligibility: .ineligible
+        )
         let store = TestStore(
             initialState: makeState(
                 query: "result",
                 phase: .idle,
-                playbackEligibility: .unknown
+                providerAccess: access
             )
         ) {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.currentAccess = {
-                .init(authorization: .authorized, playbackEligibility: .ineligible)
-            }
             $0.musicProvider.search = { _, _ in [song] }
         }
 
         await store.send(.submitButtonTapped) {
-            $0.phase = .loading(requestID: UUID(0), stage: .checkingAccess)
+            $0.phase = .loading(requestID: UUID(0))
         }
-        await store.receive(\.currentAccessResponse)
-        await store.receive(\.accessResolved) {
-            $0.playbackEligibility = .ineligible
-            $0.phase = .loading(requestID: UUID(0), stage: .searching)
-        }
-        await store.receive(\.searchResponse) {
+        await store.receive(.searchResponse(UUID(0), .success([song]))) {
             $0.phase = .loaded([song])
         }
+
+        #expect(store.state.providerAccess == access)
     }
 
     @Test
-    func undeterminedAccessIsRequestedBeforeSearch() async {
-        let accessCalls = LockIsolated<[String]>([])
-        let song = makeSong()
+    func nilAccessMakesSubmitANoOp() async {
         let store = TestStore(
             initialState: makeState(
                 query: "result",
                 phase: .idle,
-                playbackEligibility: .unknown
+                providerAccess: nil
+            )
+        ) {
+            SearchFeature()
+        } withDependencies: {
+            $0.musicProvider.search = { _, _ in
+                Issue.record("Search must not run without authorized access")
+                return []
+            }
+        }
+
+        await store.send(.submitButtonTapped)
+    }
+
+    @Test
+    func queryChangeCancelsInFlightSearchAndIgnoresStaleResponse() async {
+        let access = makeAccess(
+            authorization: .authorized,
+            playbackEligibility: .eligible
+        )
+        let store = TestStore(
+            initialState: makeState(
+                query: "old",
+                phase: .idle,
+                providerAccess: access
             )
         ) {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.currentAccess = {
-                accessCalls.withValue { $0.append("current") }
-                return .init(authorization: .notDetermined, playbackEligibility: .unknown)
+            $0.musicProvider.search = { _, _ in
+                try await Task.never()
             }
-            $0.musicProvider.requestAccess = {
-                accessCalls.withValue { $0.append("request") }
-                return .init(authorization: .authorized, playbackEligibility: .eligible)
-            }
-            $0.musicProvider.search = { _, _ in [song] }
         }
 
         await store.send(.submitButtonTapped) {
-            $0.phase = .loading(requestID: UUID(0), stage: .checkingAccess)
+            $0.phase = .loading(requestID: UUID(0))
         }
-        await store.receive(\.currentAccessResponse) {
-            $0.phase = .loading(requestID: UUID(0), stage: .requestingAccess)
-        }
-        await store.receive(\.requestAccessResponse)
-        await store.receive(\.accessResolved) {
-            $0.playbackEligibility = .eligible
-            $0.phase = .loading(requestID: UUID(0), stage: .searching)
-        }
-        await store.receive(\.searchResponse) {
-            $0.phase = .loaded([song])
-        }
-        #expect(accessCalls.value == ["current", "request"])
-    }
-
-    @Test
-    func staleResponseIsIgnored() async {
-        let state = makeState(
-            query: "new",
-            phase: .loading(requestID: UUID(2), stage: .searching),
-            playbackEligibility: .unknown
-        )
-        let store = TestStore(initialState: state) { SearchFeature() }
-
-        await store.send(.searchResponse(UUID(1), .success([])))
-    }
-
-    @Test
-    func changingQueryInvalidatesLoadingSearch() async {
-        let state = makeState(
-            query: "old",
-            phase: .loading(requestID: UUID(0), stage: .checkingAccess),
-            playbackEligibility: .unknown
-        )
-        let store = TestStore(initialState: state) { SearchFeature() }
-
         await store.send(.queryChanged("new")) {
             $0.query = "new"
             $0.phase = .idle
         }
-        await store.send(
-            .currentAccessResponse(
-                UUID(0),
-                .init(authorization: .authorized, playbackEligibility: .eligible)
-            )
-        )
-    }
-
-    @Test
-    func deniedAccessIsRecoverable() async {
-        let store = TestStore(
-            initialState: makeState(
-                query: "term",
-                phase: .idle,
-                playbackEligibility: .unknown
-            )
-        ) {
-            SearchFeature()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.musicProvider.currentAccess = {
-                .init(authorization: .denied, playbackEligibility: .unknown)
-            }
-        }
-
-        await store.send(.submitButtonTapped) {
-            $0.phase = .loading(requestID: UUID(0), stage: .checkingAccess)
-        }
-        await store.receive(\.currentAccessResponse)
-        await store.receive(\.accessResolved) {
-            $0.phase = .denied
-        }
-    }
-
-    @Test
-    func openSettingsOpensSystemSettingsURL() async {
-        let opened = LockIsolated<[URL]>([])
-        let store = TestStore(
-            initialState: makeState(
-                query: "",
-                phase: .denied,
-                playbackEligibility: .unknown
-            )
-        ) {
-            SearchFeature()
-        } withDependencies: {
-            $0.openURL = OpenURLEffect { url in
-                opened.withValue { $0.append(url) }
-                return true
-            }
-        }
-
-        await store.send(.openSettingsButtonTapped)
-        await store.finish()
-
-        #expect(opened.value.map(\.absoluteString) == [UIApplication.openSettingsURLString])
+        await store.send(.searchResponse(UUID(0), .success([makeSong()])))
     }
 
     @Test
@@ -210,7 +130,10 @@ struct SearchFeatureTests {
             initialState: makeState(
                 query: "result",
                 phase: .loaded([song]),
-                playbackEligibility: .eligible
+                providerAccess: makeAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
             )
         ) {
             SearchFeature()
@@ -225,11 +148,21 @@ struct SearchFeatureTests {
     private func makeState(
         query: String,
         phase: SearchFeature.Phase,
-        playbackEligibility: CatalogPlaybackEligibility
+        providerAccess: MusicProviderAccess?
     ) -> SearchFeature.State {
         SearchFeature.State(
             query: query,
             phase: phase,
+            providerAccess: providerAccess
+        )
+    }
+
+    private func makeAccess(
+        authorization: MusicAuthorizationStatus,
+        playbackEligibility: CatalogPlaybackEligibility
+    ) -> MusicProviderAccess {
+        MusicProviderAccess(
+            authorization: authorization,
             playbackEligibility: playbackEligibility
         )
     }
