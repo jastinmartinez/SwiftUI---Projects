@@ -54,6 +54,7 @@ extension Locs {
             static let paused = String(localized: "music_playback.status.paused")
             static let stopped = String(localized: "music_playback.status.stopped")
             static let failed = String(localized: "music_playback.status.failed")
+            static let unavailable = String(localized: "music_playback.status.unavailable")
         }
     }
 }

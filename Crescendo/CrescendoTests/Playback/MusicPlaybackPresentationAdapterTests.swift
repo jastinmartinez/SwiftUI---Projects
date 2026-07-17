@@ -201,6 +201,21 @@ struct MusicPlaybackPresentationAdapterTests {
     }
 
     @Test
+    func unavailableFailureMapsToDistinctStatusText() {
+        let store = makeMusicPlaybackStore(
+            selectedSong: makeSong(),
+            phase: .failed(.unavailable, lastSnapshot: .idle),
+            playbackEligibility: .eligible,
+            capabilities: .allEnabled
+        )
+
+        let model = MusicPlaybackView.Model(store, providerName: nil)
+
+        #expect(model.statusText == Locs.MusicPlayback.Status.unavailable)
+        #expect(model.statusText != Locs.MusicPlayback.Status.failed)
+    }
+
+    @Test
     func providerNameMapsToAttributionText() throws {
         let store = makeMusicPlaybackStore(
             selectedSong: makeSong(),

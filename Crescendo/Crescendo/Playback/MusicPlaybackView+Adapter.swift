@@ -9,6 +9,8 @@ extension MusicPlaybackView.Model {
         switch store.phase {
         case .loading:
             statusText = Locs.MusicPlayback.Status.loading
+        case .failed(.unavailable, _):
+            statusText = Locs.MusicPlayback.Status.unavailable
         case .failed:
             statusText = Locs.MusicPlayback.Status.failed
         case .observing:

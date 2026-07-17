@@ -141,6 +141,16 @@
         }
       }
     },
+    "music_playback.status.unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This song isn't available with your account or region."
+          }
+        }
+      }
+    },
     "music_playback.stop" : {
       "localizations" : {
         "en" : {
