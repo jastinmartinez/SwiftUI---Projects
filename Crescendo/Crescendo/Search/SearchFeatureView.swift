@@ -11,15 +11,22 @@ struct SearchFeatureView: View {
 
         NavigationStack {
             List {
-                TextField(
-                    Locs.Search.prompt,
-                    text: Binding(
-                        get: { store.query },
-                        set: { store.send(.queryChanged($0)) }
+                HStack {
+                    TextField(
+                        Locs.Search.prompt,
+                        text: Binding(
+                            get: { store.query },
+                            set: { store.send(.queryChanged($0)) }
+                        )
                     )
-                )
-                .submitLabel(.search)
-                .onSubmit { store.send(.submitButtonTapped) }
+                    .submitLabel(.search)
+                    .onSubmit { store.send(.submitButtonTapped) }
+
+                    Button(Locs.Search.action) {
+                        store.send(.submitButtonTapped)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
 
                 SearchResultsView(model: resultsModel)
                 PlaybackEligibilityNoticeView(model: eligibilityModel)
