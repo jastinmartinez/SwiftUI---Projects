@@ -18,7 +18,11 @@ extension Locs {
         static let prompt = String(localized: "search.prompt")
         static let emptyTitle = String(localized: "search.empty_title")
         static let searching = String(localized: "search.searching")
-        static let unavailableTitle = String(localized: "search.unavailable_title")
+        static let deniedTitle = String(localized: "search.denied_title")
+        static let deniedMessage = String(localized: "search.denied_message")
+        static let openSettings = String(localized: "search.open_settings")
+        static let restrictedTitle = String(localized: "search.restricted_title")
+        static let restrictedMessage = String(localized: "search.restricted_message")
     }
 
     enum MusicAccess {

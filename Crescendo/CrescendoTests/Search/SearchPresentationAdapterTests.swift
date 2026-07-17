@@ -107,6 +107,27 @@ struct SearchPresentationAdapterTests {
         #expect(appStore.isPlayerPresented)
     }
 
+    @Test
+    func deniedAndRestrictedPhasesMapToDistinctContent() {
+        let deniedModel = SearchResultsView.Model(
+            makeStore(
+                query: "vela",
+                phase: .denied,
+                playbackEligibility: .unknown
+            )
+        )
+        #expect(deniedModel.content == .denied)
+
+        let restrictedModel = SearchResultsView.Model(
+            makeStore(
+                query: "vela",
+                phase: .restricted,
+                playbackEligibility: .unknown
+            )
+        )
+        #expect(restrictedModel.content == .restricted)
+    }
+
     // MARK: - Helpers
 
     private func makeStore(

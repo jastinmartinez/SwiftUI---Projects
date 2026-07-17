@@ -14,8 +14,10 @@ extension SearchResultsView.Model {
                 .empty(query: store.query)
             case .loaded(let songs):
                 .results(songs.map(SongRowView.Model.init))
-            case .denied, .restricted:
-                .unavailable
+            case .denied:
+                .denied
+            case .restricted:
+                .restricted
             case .failed:
                 .failed
             }

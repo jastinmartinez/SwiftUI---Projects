@@ -13,7 +13,8 @@ extension SearchResultsView.Model {
         case loading
         case empty(query: String)
         case results([SongRowView.Model])
-        case unavailable
+        case denied
+        case restricted
         case failed
     }
 }

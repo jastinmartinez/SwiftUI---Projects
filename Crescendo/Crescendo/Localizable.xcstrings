@@ -161,12 +161,42 @@
         }
       }
     },
+    "search.denied_message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crescendo needs permission to search and play from your music library. You can turn it on in Settings."
+          }
+        }
+      }
+    },
+    "search.denied_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Music access is off"
+          }
+        }
+      }
+    },
     "search.empty_title" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Search for songs"
+          }
+        }
+      }
+    },
+    "search.open_settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
           }
         }
       }
@@ -181,22 +211,32 @@
         }
       }
     },
+    "search.restricted_message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This device's settings don't allow music library access."
+          }
+        }
+      }
+    },
+    "search.restricted_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Music access is restricted"
+          }
+        }
+      }
+    },
     "search.searching" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Searching"
-          }
-        }
-      }
-    },
-    "search.unavailable_title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Music unavailable"
           }
         }
       }
