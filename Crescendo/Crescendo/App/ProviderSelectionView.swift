@@ -80,6 +80,7 @@ struct ProviderSelectionView: View {
             .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
         }
         .disabled(!model.isSelectionEnabled || model.providerRows.isEmpty)
+        .buttonStyle(.plain)
         .accessibilityLabel(model.menuTitle)
         .accessibilityValue(model.accessibilityValue)
     }
