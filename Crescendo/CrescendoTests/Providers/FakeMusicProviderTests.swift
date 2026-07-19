@@ -29,4 +29,61 @@ struct FakeMusicProviderTests {
         #expect(requestedAccess == expectedAccess)
         #expect(searchResults == [expectedSong])
     }
+
+    @Test
+    func playStartsAtTimeZero() async throws {
+        let fake = makeFakeProvider()
+        let musicProvider = await fake.client()
+
+        try await musicProvider.seek(42)
+        try await musicProvider.play(.init(providerID: "fake", nativeID: "1"))
+        let playbackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
+
+        #expect(playbackSnapshot?.status == .playing)
+        #expect(playbackSnapshot?.currentTime == 0)
+    }
+
+    @Test
+    func resumePreservesSoughtTimeAndChangesStatusToPlaying() async throws {
+        let fake = makeFakeProvider()
+        let musicProvider = await fake.client()
+
+        try await musicProvider.seek(42)
+        try await musicProvider.pause()
+        try await musicProvider.resume()
+        let playbackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
+
+        #expect(playbackSnapshot?.status == .playing)
+        #expect(playbackSnapshot?.currentTime == 42)
+    }
+
+    @Test
+    func stopResetsPositionToZero() async throws {
+        let fake = makeFakeProvider()
+        let musicProvider = await fake.client()
+
+        try await musicProvider.seek(42)
+        try await musicProvider.stop()
+        let playbackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
+
+        #expect(playbackSnapshot?.status == .idle)
+        #expect(playbackSnapshot?.currentTime == 0)
+    }
+
+    // MARK: - Helpers
+
+    private func makeFakeProvider() -> FakeMusicProvider {
+        FakeMusicProvider(
+            access: .init(authorization: .authorized, playbackEligibility: .eligible),
+            searchResults: []
+        )
+    }
+
+    private func nextPlaybackSnapshot(
+        from musicProvider: MusicProviderClient
+    ) async -> MusicPlaybackSnapshot? {
+        let snapshots = await musicProvider.playbackSnapshots()
+        var iterator = snapshots.makeAsyncIterator()
+        return await iterator.next()
+    }
 }

@@ -12,6 +12,7 @@ struct MusicProviderClient: Sendable {
     }
     var search: @Sendable (_ query: String, _ limit: Int) async throws -> [SongSummary]
     var play: @Sendable (_ itemID: MusicItemID) async throws -> Void
+    var resume: @Sendable () async throws -> Void
     var pause: @Sendable () async throws -> Void
     var stop: @Sendable () async throws -> Void
     var seek: @Sendable (_ time: TimeInterval) async throws -> Void
@@ -49,6 +50,9 @@ extension MusicProviderClient {
             },
             play: { itemID in
                 try await appleMusicProvider.play(itemID)
+            },
+            resume: {
+                try await appleMusicProvider.resume()
             },
             pause: {
                 await appleMusicProvider.pause()

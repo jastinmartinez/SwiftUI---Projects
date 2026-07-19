@@ -64,6 +64,11 @@ actor AppleMusicProvider {
         try await player.play()
     }
 
+    /// Resumes the existing application-player queue without replacing its item or position.
+    func resume() async throws {
+        try await player.play()
+    }
+
     /// Pauses playback while preserving the current position.
     func pause() {
         player.pause()

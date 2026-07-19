@@ -24,10 +24,11 @@ actor FakeMusicProvider {
             search: { [weak self] _, limit in
                 Array((self?.configuredResults ?? []).prefix(limit))
             },
-            play: { [weak self] itemID in
+            play: { [weak self] _ in
                 guard let self else { throw MusicProviderError.unavailable }
-                await self.setPlaying(itemID)
+                await self.startPlayback()
             },
+            resume: { [weak self] in await self?.setStatus(.playing) },
             pause: { [weak self] in await self?.setStatus(.paused) },
             stop: { [weak self] in await self?.stopPlayback() },
             seek: { [weak self] time in await self?.setTime(time) },
@@ -41,8 +42,9 @@ actor FakeMusicProvider {
         )
     }
 
-    private func setPlaying(_ itemID: MusicItemID) {
+    private func startPlayback() {
         playbackSnapshot.status = .playing
+        playbackSnapshot.currentTime = 0
     }
 
     private func setStatus(_ status: MusicPlaybackStatus) {
