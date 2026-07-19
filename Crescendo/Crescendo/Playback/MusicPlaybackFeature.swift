@@ -44,12 +44,13 @@ struct MusicPlaybackFeature {
     /// Events emitted after validating child-owned playback intent.
     enum Delegate: Equatable {
         case playRequested(MusicItemID)
+        case resumeRequested(MusicItemID)
     }
 
     enum Action: Equatable {
         case task
         case playTapped
-        case playbackStartAccepted
+        case playbackCommandAccepted
         case delegate(Delegate)
         case pauseTapped
         case stopTapped
@@ -84,9 +85,18 @@ struct MusicPlaybackFeature {
                 guard state.canPlaySelectedSong,
                     let itemID = state.selectedSong?.id
                 else { return .none }
-                return .send(.delegate(.playRequested(itemID)))
+                let shouldResume =
+                    state.phase.snapshot.currentItem?.id == itemID
+                    && state.phase.snapshot.status == .paused
+                return .send(
+                    .delegate(
+                        shouldResume
+                            ? .resumeRequested(itemID)
+                            : .playRequested(itemID)
+                    )
+                )
 
-            case .playbackStartAccepted:
+            case .playbackCommandAccepted:
                 state.phase = .loading(state.phase.snapshot)
                 return .none
 

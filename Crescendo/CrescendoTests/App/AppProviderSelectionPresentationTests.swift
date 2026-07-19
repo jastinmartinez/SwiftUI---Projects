@@ -87,6 +87,30 @@ struct AppProviderSelectionPresentationTests {
         #expect(model.providerRows[0].isSelected)
     }
 
+    @Test(arguments: [
+        PlaybackCommandFeature.Command.play(
+            MusicItemID(providerID: .appleMusic, nativeID: "selected")
+        ),
+        .resume(
+            MusicItemID(providerID: .appleMusic, nativeID: "selected")
+        ),
+    ])
+    func playbackCommandDisablesProviderSelection(
+        command: PlaybackCommandFeature.Command
+    ) {
+        let model = ProviderSelectionView.Model(
+            makeStore(
+                connection: connectedConnection,
+                playbackCommand: PlaybackCommandFeature.State(
+                    command: command
+                )
+            )
+        )
+
+        #expect(!model.isSelectionEnabled)
+        #expect(!model.providerRows[0].isEnabled)
+    }
+
     @Test
     func providerAndRecoveryActionsForwardToTheReducer() {
         let actions = LockIsolated<[AppFeature.Action]>([])
@@ -133,6 +157,7 @@ struct AppProviderSelectionPresentationTests {
 
     private func makeStore(
         connection: ProviderConnection,
+        playbackCommand: PlaybackCommandFeature.State? = nil,
         actions: LockIsolated<[AppFeature.Action]>? = nil
     ) -> StoreOf<AppFeature> {
         Store(
@@ -154,7 +179,7 @@ struct AppProviderSelectionPresentationTests {
                 ),
                 isPlayerPresented: false,
                 providerSwitch: nil,
-                playbackStart: nil
+                playbackCommand: playbackCommand
             )
         ) {
             Reduce { _, action in

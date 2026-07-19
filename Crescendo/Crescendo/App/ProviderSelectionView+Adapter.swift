@@ -10,7 +10,7 @@ extension ProviderSelectionView.Model {
         )
         let isSelectionEnabled =
             store.providerSwitch == nil
-            && store.playbackStart == nil
+            && store.playbackCommand == nil
             && !Self.isConnecting(status)
 
         self.init(

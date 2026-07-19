@@ -26,7 +26,7 @@ struct CrescendoApp: App {
                 ),
                 isPlayerPresented: false,
                 providerSwitch: nil,
-                playbackStart: nil
+                playbackCommand: nil
             )
         ) {
             AppFeature()

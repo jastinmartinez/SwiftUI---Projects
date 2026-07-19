@@ -58,7 +58,7 @@ struct MusicPlaybackFeatureTests {
         await store.send(.task)
         await store.send(.playTapped)
         await store.receive(.delegate(.playRequested(song.id)))
-        await store.send(.playbackStartAccepted) {
+        await store.send(.playbackCommandAccepted) {
             $0.phase = .loading(.idle)
         }
         await store.send(.transportFailed(.playbackFailed)) {
@@ -82,8 +82,8 @@ struct MusicPlaybackFeatureTests {
         }
 
         await store.send(.playTapped)
-        await store.receive(.delegate(.playRequested(song.id)))
-        await store.send(.playbackStartAccepted) {
+        await store.receive(.delegate(.resumeRequested(song.id)))
+        await store.send(.playbackCommandAccepted) {
             $0.phase = .loading(latestSnapshot)
         }
         await store.send(.transportFinished) {
@@ -120,10 +120,70 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test
+    func pausedCurrentSongDelegatesResumeWithoutCallingProvider() async {
+        let song = makeSong()
+        let playCallCount = LockIsolated(0)
+        let resumeCallCount = LockIsolated(0)
+        let store = makeStore(
+            song: song,
+            phase: .observing(makeSnapshot(song: song, status: .paused))
+        ) {
+            $0.musicProvider.play = { _ in
+                playCallCount.withValue { $0 += 1 }
+            }
+            $0.musicProvider.resume = {
+                resumeCallCount.withValue { $0 += 1 }
+            }
+        }
+
+        await store.send(.playTapped)
+        await store.receive(.delegate(.resumeRequested(song.id)))
+
+        #expect(playCallCount.value == 0)
+        #expect(resumeCallCount.value == 0)
+    }
+
+    @Test
+    func stoppedCurrentSongDelegatesPlay() async {
+        let song = makeSong()
+        let store = makeStore(
+            song: song,
+            phase: .observing(makeSnapshot(song: song, status: .stopped))
+        )
+
+        await store.send(.playTapped)
+        await store.receive(.delegate(.playRequested(song.id)))
+    }
+
+    @Test
+    func pausedDifferentSongDelegatesPlay() async {
+        let selectedSong = makeSong()
+        let currentSong = makeSong(nativeID: "2")
+        let store = makeStore(
+            song: selectedSong,
+            phase: .observing(
+                makeSnapshot(song: currentSong, status: .paused)
+            )
+        )
+
+        await store.send(.playTapped)
+        await store.receive(.delegate(.playRequested(selectedSong.id)))
+    }
+
+    @Test
+    func idleSnapshotDelegatesPlay() async {
+        let song = makeSong()
+        let store = makeStore(song: song)
+
+        await store.send(.playTapped)
+        await store.receive(.delegate(.playRequested(song.id)))
+    }
+
+    @Test
     func parentAcceptanceMovesMusicToLoading() async {
         let store = makeStore(song: makeSong())
 
-        await store.send(.playbackStartAccepted) {
+        await store.send(.playbackCommandAccepted) {
             $0.phase = .loading(.idle)
         }
     }
@@ -149,6 +209,31 @@ struct MusicPlaybackFeatureTests {
             song: makeSong(),
             playbackEligibility: .ineligible
         )
+
+        #expect(!store.state.canPlaySelectedSong)
+        await store.send(.playTapped)
+    }
+
+    @Test
+    func unsupportedPlaybackDoesNotDelegatePlayback() async {
+        let capabilities = MusicProviderCapabilities(
+            supportsCatalogSearch: true,
+            supportsEmbeddedPlayback: false,
+            supportsSeeking: true,
+            supportsQueueReplacement: true
+        )
+        let store = makeStore(
+            song: makeSong(),
+            capabilities: capabilities
+        )
+
+        #expect(!store.state.canPlaySelectedSong)
+        await store.send(.playTapped)
+    }
+
+    @Test
+    func missingSelectionDoesNotDelegatePlayback() async {
+        let store = makeStore(song: nil)
 
         #expect(!store.state.canPlaySelectedSong)
         await store.send(.playTapped)
@@ -224,7 +309,7 @@ struct MusicPlaybackFeatureTests {
         let song = makeSong()
         let store = makeStore(song: song)
 
-        await store.send(.playbackStartAccepted) {
+        await store.send(.playbackCommandAccepted) {
             $0.phase = .loading(.idle)
         }
         await store.send(.transportFailed(.playbackFailed)) {
@@ -240,7 +325,7 @@ struct MusicPlaybackFeatureTests {
     // MARK: - Helpers
 
     private func makeStore(
-        song: SongSummary,
+        song: SongSummary?,
         phase: MusicPlaybackFeature.Phase = .observing(.idle),
         playbackEligibility: CatalogPlaybackEligibility = .eligible,
         capabilities: MusicProviderCapabilities = .allEnabled,
@@ -260,9 +345,20 @@ struct MusicPlaybackFeatureTests {
         }
     }
 
-    private func makeSong() -> SongSummary {
+    private func makeSnapshot(
+        song: SongSummary,
+        status: MusicPlaybackStatus
+    ) -> MusicPlaybackSnapshot {
+        MusicPlaybackSnapshot(
+            currentItem: song,
+            status: status,
+            currentTime: 42
+        )
+    }
+
+    private func makeSong(nativeID: String = "1") -> SongSummary {
         SongSummary(
-            id: .init(providerID: "fake", nativeID: "1"),
+            id: .init(providerID: "fake", nativeID: nativeID),
             title: "Song",
             artistName: "Artist",
             artworkURL: nil,

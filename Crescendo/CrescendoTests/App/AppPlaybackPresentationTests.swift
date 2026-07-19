@@ -47,7 +47,7 @@ struct AppPlaybackPresentationTests {
             musicPlayback: musicPlayback,
             isPlayerPresented: true,
             providerSwitch: nil,
-            playbackStart: nil
+            playbackCommand: nil
         )
         let store = TestStore(initialState: state) { AppFeature() }
 
@@ -80,22 +80,42 @@ struct AppPlaybackPresentationTests {
     }
 
     @Test
-    func barToggleWhilePausedRequestsPlayThroughReducer() {
+    func barToggleWhilePausedResumesWithoutResettingSelection() async {
         let song = makeSong()
+        let playCallCount = LockIsolated(0)
+        let resumeCallCount = LockIsolated(0)
+        let (resumeStarted, resumeStartedContinuation) = AsyncStream<Void>.makeStream()
+        let (finishResume, finishResumeContinuation) = AsyncStream<Void>.makeStream()
         let store = Store(initialState: makeState(song: song, status: .paused)) {
             AppFeature()
         } withDependencies: {
-            $0.musicProvider.play = { _ in }
+            $0.musicProvider.play = { _ in
+                playCallCount.withValue { $0 += 1 }
+            }
+            $0.musicProvider.resume = {
+                resumeCallCount.withValue { $0 += 1 }
+                resumeStartedContinuation.yield()
+                for await _ in finishResume { break }
+            }
         }
         let model = NowPlayingBarView.Model(store, song: song)
         #expect(!model.isPlaying)
 
         model.onTogglePlayPause()
 
+        var resumeStartedIterator = resumeStarted.makeAsyncIterator()
+        _ = await resumeStartedIterator.next()
         #expect(
-            store.playbackStart
-                == PlaybackStartFeature.State(itemID: song.id)
+            store.playbackCommand
+                == PlaybackCommandFeature.State(command: .resume(song.id))
         )
+        #expect(store.musicPlayback.selectedSong == song)
+        #expect(playCallCount.value == 0)
+        #expect(resumeCallCount.value == 1)
+
+        finishResumeContinuation.yield()
+        finishResumeContinuation.finish()
+        resumeStartedContinuation.finish()
     }
 
     // MARK: - Helpers
@@ -137,7 +157,7 @@ struct AppPlaybackPresentationTests {
             ),
             isPlayerPresented: false,
             providerSwitch: nil,
-            playbackStart: nil
+            playbackCommand: nil
         )
     }
 

@@ -190,10 +190,19 @@ struct AppProviderSwitchingTests {
         #expect(store.state.providerConnection == state.providerConnection)
     }
 
-    @Test
-    func providerSelectionIsRejectedDuringPlaybackStart() async {
+    @Test(arguments: [
+        PlaybackCommandFeature.Command.play(
+            MusicItemID(providerID: .appleMusic, nativeID: "selected")
+        ),
+        .resume(
+            MusicItemID(providerID: .appleMusic, nativeID: "selected")
+        ),
+    ])
+    func providerSelectionIsRejectedDuringPlaybackCommand(
+        command: PlaybackCommandFeature.Command
+    ) async {
         let state = makeState(
-            playbackStart: PlaybackStartFeature.State(itemID: makeSong().id)
+            playbackCommand: PlaybackCommandFeature.State(command: command)
         )
         let store = makeStore(state: state)
 
@@ -203,7 +212,7 @@ struct AppProviderSwitchingTests {
     }
 
     @Test
-    func playbackStartIsRejectedDuringProviderSwitch() async {
+    func playbackCommandIsRejectedDuringProviderSwitch() async {
         let song = makeSong()
         let state = makeState(
             providerSwitch: ProviderSwitchFeature.State(
@@ -217,6 +226,7 @@ struct AppProviderSwitchingTests {
         let store = makeStore(state: state)
 
         await store.send(.musicPlayback(.delegate(.playRequested(song.id))))
+        await store.send(.musicPlayback(.delegate(.resumeRequested(song.id))))
 
         #expect(store.state == state)
     }
@@ -251,7 +261,7 @@ struct AppProviderSwitchingTests {
 
     private func makeState(
         providerSwitch: ProviderSwitchFeature.State? = nil,
-        playbackStart: PlaybackStartFeature.State? = nil
+        playbackCommand: PlaybackCommandFeature.State? = nil
     ) -> AppFeature.State {
         AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
@@ -293,7 +303,7 @@ struct AppProviderSwitchingTests {
             ),
             isPlayerPresented: true,
             providerSwitch: providerSwitch,
-            playbackStart: playbackStart
+            playbackCommand: playbackCommand
         )
     }
 

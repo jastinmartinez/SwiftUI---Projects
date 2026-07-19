@@ -316,7 +316,7 @@ struct AppFeatureTests {
                 ),
             isPlayerPresented: isPlayerPresented,
             providerSwitch: nil,
-            playbackStart: nil
+            playbackCommand: nil
         )
     }
 
