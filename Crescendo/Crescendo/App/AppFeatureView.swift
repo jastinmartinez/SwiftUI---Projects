@@ -31,7 +31,7 @@ struct AppFeatureView: View {
         ) {
             MusicPlaybackFeatureView(
                 store: store.scope(state: \.musicPlayback, action: \.musicPlayback),
-                providerName: providerSelection.activeProviderName
+                providerName: providerSelection.connectedProviderName
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)

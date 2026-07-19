@@ -191,12 +191,132 @@
         }
       }
     },
+    "provider_selection.connect_provider" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect a Provider"
+          }
+        }
+      }
+    },
+    "provider_selection.connecting" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting…"
+          }
+        }
+      }
+    },
+    "provider_selection.connecting_to" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting to %@…"
+          }
+        }
+      }
+    },
+    "provider_selection.connection_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · Connection Failed"
+          }
+        }
+      }
+    },
+    "provider_selection.connection_failed_indicator" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection Failed"
+          }
+        }
+      }
+    },
+    "provider_selection.menu_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Music Provider"
+          }
+        }
+      }
+    },
+    "provider_selection.needs_access" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · Needs Access"
+          }
+        }
+      }
+    },
+    "provider_selection.needs_access_indicator" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Needs Access"
+          }
+        }
+      }
+    },
+    "provider_selection.open_settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        }
+      }
+    },
+    "provider_selection.restricted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · Restricted"
+          }
+        }
+      }
+    },
+    "provider_selection.restricted_indicator" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restricted"
+          }
+        }
+      }
+    },
     "provider_selection.title" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Music Provider"
+          }
+        }
+      }
+    },
+    "provider_selection.try_again" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
           }
         }
       }

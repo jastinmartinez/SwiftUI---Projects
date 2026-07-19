@@ -1,91 +1,158 @@
 import ComposableArchitecture
+import Foundation
 import Testing
 
 @testable import Crescendo
 
 @MainActor
 struct AppProviderSelectionPresentationTests {
+    @Test(arguments: [
+        (
+            ProviderConnection.disconnected,
+            ProviderSelectionView.Model.Status.disconnected,
+            "Connect a Provider"
+        ),
+        (
+            .connecting(providerID: .appleMusic, requestID: UUID(0)),
+            .connecting(providerName: "Apple Music"),
+            "Connecting to Apple Music…"
+        ),
+        (
+            .connected(
+                providerID: .appleMusic,
+                access: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            ),
+            .connected(providerName: "Apple Music"),
+            "Apple Music"
+        ),
+        (
+            .denied(providerID: .appleMusic),
+            .needsAccess(providerName: "Apple Music"),
+            "Apple Music · Needs Access"
+        ),
+        (
+            .restricted(providerID: .appleMusic),
+            .restricted(providerName: "Apple Music"),
+            "Apple Music · Restricted"
+        ),
+        (
+            .failed(providerID: .appleMusic),
+            .failed(providerName: "Apple Music"),
+            "Apple Music · Connection Failed"
+        ),
+    ])
+    func providerSelectionPresentsEachConnectionStatus(
+        connection: ProviderConnection,
+        expectedStatus: ProviderSelectionView.Model.Status,
+        expectedCollapsedLabel: String
+    ) {
+        let model = ProviderSelectionView.Model(makeStore(connection: connection))
+
+        #expect(model.status == expectedStatus)
+        #expect(model.collapsedLabel == expectedCollapsedLabel)
+    }
+
     @Test
-    func providerSelectionMapsStateAndForwardsSelection() {
+    func connectingDisablesRepeatSelection() {
+        let model = ProviderSelectionView.Model(
+            makeStore(
+                connection: .connecting(
+                    providerID: .appleMusic,
+                    requestID: UUID(0)
+                )
+            )
+        )
+
+        #expect(!model.isSelectionEnabled)
+        #expect(!model.providerRows[0].isEnabled)
+    }
+
+    @Test
+    func connectedProviderRowIsSelected() {
+        let model = ProviderSelectionView.Model(
+            makeStore(connection: connectedConnection)
+        )
+
+        #expect(model.providerRows[0].isSelected)
+    }
+
+    @Test
+    func providerAndRecoveryActionsForwardToTheReducer() {
         let actions = LockIsolated<[AppFeature.Action]>([])
-        let store = Store<AppFeature.State, AppFeature.Action>(
-            initialState: makeState()
-        ) {
-            Reduce { _, action in
-                actions.withValue { $0.append(action) }
-                return .none
-            }
-        }
-        let model = ProviderSelectionView.Model(store)
-
-        #expect(model.providers == [.appleMusic])
-        #expect(model.activeProviderID == ProviderID.appleMusic)
-        #expect(model.activeProviderName == "Apple Music")
-        #expect(model.isSelectionEnabled)
-
-        model.onSelect(.appleMusic)
-
-        #expect(actions.value == [.providerSelected(.appleMusic)])
-    }
-
-    @Test
-    func providerAccessibilityValueAnnouncesActiveProvider() {
-        let model = ProviderSelectionView.Model(
-            providers: [.appleMusic],
-            activeProviderID: .appleMusic,
-            isSelectionEnabled: true,
-            onSelect: { _ in }
+        let store = makeStore(
+            connection: .disconnected,
+            actions: actions
         )
 
-        #expect(model.accessibilityValue == "Apple Music")
-    }
+        let disconnected = ProviderSelectionView.Model(store)
+        disconnected.providerRows[0].onSelect()
 
-    @Test
-    func providerAccessibilityValueAnnouncesMissingProvider() {
-        let model = ProviderSelectionView.Model(
-            providers: [],
-            activeProviderID: nil,
-            isSelectionEnabled: true,
-            onSelect: { _ in }
+        let failed = ProviderSelectionView.Model(
+            makeStore(connection: .failed(providerID: .appleMusic), actions: actions)
         )
+        #expect(failed.recoveryAction?.label == "Try Again")
+        failed.recoveryAction?.perform()
+
+        let needsAccess = ProviderSelectionView.Model(
+            makeStore(connection: .denied(providerID: .appleMusic), actions: actions)
+        )
+        #expect(needsAccess.recoveryAction?.label == "Open Settings")
+        needsAccess.recoveryAction?.perform()
 
         #expect(
-            model.accessibilityValue == Locs.ProviderSelection.noActiveProvider
+            actions.value == [
+                .providerSelected(.appleMusic),
+                .providerConnection(.retryButtonTapped),
+                .providerConnection(.openSettingsButtonTapped),
+            ]
         )
-        #expect(model.accessibilityValue == "No provider selected")
     }
 
     // MARK: - Helpers
 
-    private func makeState() -> AppFeature.State {
-        AppFeature.State(
-            providerConnection: ProviderConnectionFeature.State(
-                providers: [.appleMusic],
-                connection: .connected(
-                    providerID: .appleMusic,
-                    access: MusicProviderAccess(
-                        authorization: .authorized,
-                        playbackEligibility: .unknown
-                    )
-                )
-            ),
-            search: SearchFeature.State(
-                query: "",
-                phase: .idle,
-                providerAccess: MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .unknown
-                )
-            ),
-            musicPlayback: MusicPlaybackFeature.State(
-                selectedSong: nil,
-                phase: .observing(.idle),
-                playbackEligibility: .unknown,
-                capabilities: .allEnabled
-            ),
-            isPlayerPresented: false,
-            providerSwitch: nil,
-            playbackStart: nil
+    private var connectedConnection: ProviderConnection {
+        .connected(
+            providerID: .appleMusic,
+            access: MusicProviderAccess(
+                authorization: .authorized,
+                playbackEligibility: .eligible
+            )
         )
+    }
+
+    private func makeStore(
+        connection: ProviderConnection,
+        actions: LockIsolated<[AppFeature.Action]>? = nil
+    ) -> StoreOf<AppFeature> {
+        Store(
+            initialState: AppFeature.State(
+                providerConnection: ProviderConnectionFeature.State(
+                    providers: [.appleMusic],
+                    connection: connection
+                ),
+                search: SearchFeature.State(
+                    query: "",
+                    phase: .idle,
+                    providerAccess: nil
+                ),
+                musicPlayback: MusicPlaybackFeature.State(
+                    selectedSong: nil,
+                    phase: .observing(.idle),
+                    playbackEligibility: .unknown,
+                    capabilities: .allEnabled
+                ),
+                isPlayerPresented: false,
+                providerSwitch: nil,
+                playbackStart: nil
+            )
+        ) {
+            Reduce { _, action in
+                actions?.withValue { $0.append(action) }
+                return .none
+            }
+        }
     }
 }

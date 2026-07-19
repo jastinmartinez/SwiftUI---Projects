@@ -5,56 +5,178 @@ struct ProviderSelectionView: View {
 
     var body: some View {
         AccessibilityLayoutReader { layout in
-            Menu {
-                ForEach(model.providers, id: \.id) { provider in
-                    Button {
-                        model.onSelect(provider.id)
-                    } label: {
-                        Label {
-                            Text(provider.name)
-                        } icon: {
-                            if provider.id == model.activeProviderID {
+            providerMenu(layout: layout)
+        }
+    }
+
+    // MARK: - Views
+
+    private func providerMenu(layout: AccessibilityLayout) -> some View {
+        Menu {
+            Section(model.menuTitle) {
+                ForEach(model.providerRows) { row in
+                    Button(action: row.onSelect) {
+                        HStack(spacing: 10) {
+                            Image("AppleMusicProviderIcon")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 22, height: 22)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(row.label)
+                                if let statusLabel = row.statusLabel {
+                                    Text(statusLabel)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            if row.isSelected {
+                                Spacer()
                                 Image(systemName: "checkmark")
+                                    .accessibilityHidden(true)
                             }
                         }
                     }
+                    .disabled(!row.isEnabled)
                 }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "music.note")
-                        .accessibilityHidden(true)
-                    Text(model.activeProviderName ?? Locs.ProviderSelection.title)
-                        .lineLimit(layout == .expanded ? 2 : 1)
-                    Image(systemName: "chevron.down")
-                        .font(.caption2.weight(.bold))
-                        .accessibilityHidden(true)
+
+                if let recoveryAction = model.recoveryAction {
+                    Button(recoveryAction.label, action: recoveryAction.perform)
                 }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tint)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 32)
-                .background(.tint.opacity(0.1), in: Capsule())
             }
-            .disabled(!model.isSelectionEnabled || model.providers.isEmpty)
-            .accessibilityLabel(Locs.ProviderSelection.title)
-            .accessibilityValue(model.accessibilityValue)
+        } label: {
+            HStack(spacing: 8) {
+                Image("AppleMusicProviderIcon")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
+                    .accessibilityHidden(true)
+                Text(model.collapsedLabel)
+                    .lineLimit(layout == .expanded ? 2 : 1)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 32)
+            .background(Color.white, in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(.gray.opacity(0.25), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
         }
+        .disabled(!model.isSelectionEnabled || model.providerRows.isEmpty)
+        .accessibilityLabel(model.menuTitle)
+        .accessibilityValue(model.accessibilityValue)
     }
 }
 
 extension ProviderSelectionView {
     struct Model {
-        let providers: [ProviderDescriptor]
-        let activeProviderID: ProviderID?
+        enum Status: Equatable {
+            case disconnected
+            case connecting(providerName: String)
+            case connected(providerName: String)
+            case needsAccess(providerName: String)
+            case restricted(providerName: String)
+            case failed(providerName: String)
+        }
+
+        struct ProviderRow: Identifiable {
+            let id: ProviderID
+            let label: String
+            let statusLabel: String?
+            let isSelected: Bool
+            let isEnabled: Bool
+            let onSelect: @MainActor () -> Void
+        }
+
+        struct RecoveryAction {
+            let label: String
+            let perform: @MainActor () -> Void
+        }
+
+        let status: Status
+        let collapsedLabel: String
+        let menuTitle: String
+        let providerRows: [ProviderRow]
+        let recoveryAction: RecoveryAction?
         let isSelectionEnabled: Bool
-        let onSelect: (ProviderID) -> Void
 
         var activeProviderName: String? {
-            providers.first { $0.id == activeProviderID }?.name
+            switch status {
+            case .disconnected:
+                nil
+            case .connecting(let providerName),
+                .connected(let providerName),
+                .needsAccess(let providerName),
+                .restricted(let providerName),
+                .failed(let providerName):
+                providerName
+            }
+        }
+
+        var connectedProviderName: String? {
+            guard case .connected(let providerName) = status else { return nil }
+            return providerName
         }
 
         var accessibilityValue: String {
-            activeProviderName ?? Locs.ProviderSelection.noActiveProvider
+            collapsedLabel
+        }
+
+        init(
+            status: Status,
+            collapsedLabel: String,
+            menuTitle: String,
+            providerRows: [ProviderRow],
+            recoveryAction: RecoveryAction?,
+            isSelectionEnabled: Bool
+        ) {
+            self.status = status
+            self.collapsedLabel = collapsedLabel
+            self.menuTitle = menuTitle
+            self.providerRows = providerRows
+            self.recoveryAction = recoveryAction
+            self.isSelectionEnabled = isSelectionEnabled
+        }
+
+        init(
+            providers: [ProviderDescriptor],
+            activeProviderID: ProviderID?,
+            isSelectionEnabled: Bool,
+            onSelect: @escaping @MainActor (ProviderID) -> Void
+        ) {
+            let activeProviderName = providers.first {
+                $0.id == activeProviderID
+            }?.name
+            let status =
+                activeProviderName.map(Status.connected)
+                ?? .disconnected
+
+            self.init(
+                status: status,
+                collapsedLabel: activeProviderName
+                    ?? Locs.ProviderSelection.connectProvider,
+                menuTitle: Locs.ProviderSelection.menuTitle,
+                providerRows: providers.map { provider in
+                    ProviderRow(
+                        id: provider.id,
+                        label: provider.name,
+                        statusLabel: nil,
+                        isSelected: provider.id == activeProviderID,
+                        isEnabled: isSelectionEnabled,
+                        onSelect: { onSelect(provider.id) }
+                    )
+                },
+                recoveryAction: nil,
+                isSelectionEnabled: isSelectionEnabled
+            )
         }
     }
 }
