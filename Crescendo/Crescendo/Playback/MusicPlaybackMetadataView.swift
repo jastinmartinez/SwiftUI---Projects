@@ -20,13 +20,13 @@ struct MusicPlaybackMetadataView: View {
 
             if let providerAttribution = model.providerAttribution {
                 Text(providerAttribution)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Text(model.statusText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(LinearGradient.crescendoSpectrum)
         }
     }
 }

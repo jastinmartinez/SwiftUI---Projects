@@ -457,6 +457,52 @@ struct MusicPlaybackPresentationAdapterTests {
         #expect(anonymous.metadata.providerAttribution == nil)
     }
 
+    @Test
+    func statusTextUsesExactApprovedWords() {
+        let cases: [(MusicPlaybackStatus, String)] = [
+            (.playing, "Playing"),
+            (.paused, "Paused"),
+            (.stopped, "Stopped"),
+        ]
+
+        for (status, expectedWord) in cases {
+            let store = makeMusicPlaybackStore(
+                selectedSong: makeSong(),
+                phase: .observing(makeSnapshot(status: status, currentTime: 0)),
+                playbackEligibility: .eligible,
+                capabilities: makeCapabilities(supportsSeeking: true)
+            )
+            let model = MusicPlaybackView.Model(store, providerName: nil)
+
+            #expect(model.metadata.statusText == expectedWord)
+        }
+    }
+
+    @Test
+    func providerAttributionUsesExactApprovedCopy() {
+        let store = makeMusicPlaybackStore(
+            selectedSong: makeSong(),
+            phase: .observing(makeSnapshot(status: .playing, currentTime: 0)),
+            playbackEligibility: .eligible,
+            capabilities: makeCapabilities(supportsSeeking: true)
+        )
+
+        let model = MusicPlaybackView.Model(store, providerName: "Apple Music")
+
+        #expect(model.metadata.providerAttribution == "Playing from Apple Music")
+    }
+
+    @Test
+    func controlCommandWordsStayDistinctFromStatusWords() {
+        #expect(Locs.MusicPlayback.play == "Play")
+        #expect(Locs.MusicPlayback.pause == "Pause")
+        #expect(Locs.MusicPlayback.stop == "Stop")
+
+        #expect(Locs.MusicPlayback.play != Locs.MusicPlayback.Status.playing)
+        #expect(Locs.MusicPlayback.pause != Locs.MusicPlayback.Status.paused)
+        #expect(Locs.MusicPlayback.stop != Locs.MusicPlayback.Status.stopped)
+    }
+
     // MARK: - Helpers
 
     private func makeMusicPlaybackStore(
