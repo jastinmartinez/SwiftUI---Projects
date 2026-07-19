@@ -145,7 +145,10 @@ struct AppFeature {
                     selectedSong: nil,
                     phase: .observing(.idle),
                     playbackEligibility: .unknown,
-                    capabilities: provider.musicCapabilities
+                    capabilities: provider.musicCapabilities,
+                    timeline: MusicPlaybackTimelineFeature.State(
+                        interaction: .idle
+                    )
                 )
                 state.isPlayerPresented = false
                 return .none
@@ -166,15 +169,21 @@ struct AppFeature {
                 return .none
 
             case .search(.delegate(.songSelected(let song))):
-                state.musicPlayback.selectedSong = song
-                state.musicPlayback.playbackEligibility =
+                let playbackEligibility =
                     state
                     .providerConnection
                     .connection
                     .access?
                     .playbackEligibility ?? .unknown
                 state.isPlayerPresented = true
-                return .none
+                return .send(
+                    .musicPlayback(
+                        .songSelected(
+                            song,
+                            playbackEligibility: playbackEligibility
+                        )
+                    )
+                )
 
             case .search:
                 return .none

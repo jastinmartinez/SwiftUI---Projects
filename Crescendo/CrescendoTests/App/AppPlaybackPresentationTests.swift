@@ -23,7 +23,10 @@ struct AppPlaybackPresentationTests {
             selectedSong: song,
             phase: .failed(.playbackFailed, lastSnapshot: snapshot),
             playbackEligibility: .eligible,
-            capabilities: .allEnabled
+            capabilities: .allEnabled,
+            timeline: MusicPlaybackTimelineFeature.State(
+                interaction: .idle
+            )
         )
         let state = AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
@@ -153,7 +156,10 @@ struct AppPlaybackPresentationTests {
                     )
                 ),
                 playbackEligibility: .eligible,
-                capabilities: .allEnabled
+                capabilities: .allEnabled,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .idle
+                )
             ),
             isPlayerPresented: false,
             providerSwitch: nil,

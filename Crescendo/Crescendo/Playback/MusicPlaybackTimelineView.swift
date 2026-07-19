@@ -10,9 +10,13 @@ struct MusicPlaybackTimelineView: View {
             Slider(
                 value: Binding(
                     get: { model.position },
-                    set: { model.onSeek($0) }
+                    set: { model.onPositionChanged($0) }
                 ),
-                in: model.range
+                in: model.range,
+                onEditingChanged: { isEditing in
+                    guard !isEditing else { return }
+                    model.onDragEnded()
+                }
             )
             .accessibilityLabel(model.accessibilityLabel)
             .accessibilityValue(model.accessibilityValue)
@@ -34,7 +38,8 @@ extension MusicPlaybackTimelineView {
         let range: ClosedRange<TimeInterval>
         let elapsedTimeText: String
         let durationText: String
-        let onSeek: (TimeInterval) -> Void
+        let onPositionChanged: (TimeInterval) -> Void
+        let onDragEnded: () -> Void
 
         var accessibilityLabel: String {
             Locs.MusicPlayback.position

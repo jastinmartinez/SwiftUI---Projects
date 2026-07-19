@@ -175,7 +175,10 @@ struct AppProviderSelectionPresentationTests {
                     selectedSong: nil,
                     phase: .observing(.idle),
                     playbackEligibility: .unknown,
-                    capabilities: .allEnabled
+                    capabilities: .allEnabled,
+                    timeline: MusicPlaybackTimelineFeature.State(
+                        interaction: .idle
+                    )
                 ),
                 isPlayerPresented: false,
                 providerSwitch: nil,

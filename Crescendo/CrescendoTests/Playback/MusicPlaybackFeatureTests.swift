@@ -295,38 +295,95 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test
-    func supportedSeekForwardsTheRequestedTime() async {
-        let receivedTime = LockIsolated<TimeInterval?>(nil)
-        let store = makeStore(song: makeSong()) {
-            $0.musicProvider.seek = { time in
-                receivedTime.withValue { $0 = time }
-            }
+    func differentSongSelectionResetsTimelineInteraction() async {
+        let selectedSong = makeSong()
+        let nextSong = makeSong(nativeID: "2")
+        let store = makeStore(
+            song: selectedSong,
+            timelineInteraction: .dragging(position: 30)
+        )
+
+        await store.send(
+            .songSelected(
+                nextSong,
+                playbackEligibility: .ineligible
+            )
+        ) {
+            $0.selectedSong = nextSong
+            $0.playbackEligibility = .ineligible
+            $0.timeline.interaction = .idle
         }
 
-        await store.send(.seekRequested(30))
-        await store.receive(.transportFinished)
-
-        #expect(receivedTime.value == 30)
+        await store.send(
+            .timeline(.seekSucceeded(requestID: UUID(0)))
+        )
     }
 
     @Test
-    func unsupportedSeekDoesNothing() async {
-        let capabilities = MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: false,
-            supportsQueueReplacement: true
+    func sameSongSelectionPreservesTimelineInteraction() async {
+        let song = makeSong()
+        let store = makeStore(
+            song: song,
+            timelineInteraction: .dragging(position: 30)
         )
+
+        await store.send(
+            .songSelected(song, playbackEligibility: .ineligible)
+        ) {
+            $0.playbackEligibility = .ineligible
+        }
+    }
+
+    @Test
+    func stopResetsTimelineInteraction() async {
         let store = makeStore(
             song: makeSong(),
-            capabilities: capabilities
+            timelineInteraction: .dragging(position: 30)
         ) {
-            $0.musicProvider.seek = { _ in
-                Issue.record("Seeking must remain gated when unsupported")
-            }
+            $0.musicProvider.stop = {}
         }
 
-        await store.send(.seekRequested(30))
+        await store.send(.stopTapped) {
+            $0.timeline.interaction = .idle
+        }
+        await store.receive(.transportFinished)
+    }
+
+    @Test
+    func timelineFailurePreservesLatestSnapshot() async {
+        let song = makeSong()
+        let snapshot = makeSnapshot(song: song, status: .playing)
+        let store = makeStore(
+            song: song,
+            phase: .observing(snapshot)
+        )
+
+        await store.send(
+            .timeline(.delegate(.transportFailed(.network)))
+        ) {
+            $0.phase = .failed(.network, lastSnapshot: snapshot)
+        }
+    }
+
+    @Test(arguments: [
+        MusicPlaybackTimelineFeature.Interaction.dragging(position: 30),
+        .seeking(requestID: UUID(0), position: 30),
+    ])
+    func snapshotDuringInteractionPreservesTimelineInteraction(
+        interaction: MusicPlaybackTimelineFeature.Interaction
+    ) async {
+        let song = makeSong()
+        let snapshot = makeSnapshot(song: song, status: .playing)
+        let store = makeStore(
+            song: song,
+            timelineInteraction: interaction
+        )
+
+        await store.send(.snapshotReceived(snapshot)) {
+            $0.phase = .observing(snapshot)
+        }
+
+        #expect(store.state.timeline.interaction == interaction)
     }
 
     @Test
@@ -354,6 +411,7 @@ struct MusicPlaybackFeatureTests {
         phase: MusicPlaybackFeature.Phase = .observing(.idle),
         playbackEligibility: CatalogPlaybackEligibility = .eligible,
         capabilities: MusicProviderCapabilities = .allEnabled,
+        timelineInteraction: MusicPlaybackTimelineFeature.Interaction = .idle,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
     ) -> TestStoreOf<MusicPlaybackFeature> {
         TestStore(
@@ -361,7 +419,10 @@ struct MusicPlaybackFeatureTests {
                 selectedSong: song,
                 phase: phase,
                 playbackEligibility: playbackEligibility,
-                capabilities: capabilities
+                capabilities: capabilities,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: timelineInteraction
+                )
             )
         ) {
             MusicPlaybackFeature()

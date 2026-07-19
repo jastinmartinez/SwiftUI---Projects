@@ -268,7 +268,10 @@ struct AppPlaybackCoordinationTests {
                 selectedSong: song,
                 phase: phase,
                 playbackEligibility: .eligible,
-                capabilities: .allEnabled
+                capabilities: .allEnabled,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .idle
+                )
             ),
             isPlayerPresented: false,
             providerSwitch: nil,

@@ -123,7 +123,10 @@ struct AppProviderSwitchingTests {
                 selectedSong: nil,
                 phase: .observing(.idle),
                 playbackEligibility: .unknown,
-                capabilities: futureCapabilities
+                capabilities: futureCapabilities,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .idle
+                )
             )
             $0.isPlayerPresented = false
         }
@@ -299,7 +302,10 @@ struct AppProviderSwitchingTests {
                     )
                 ),
                 playbackEligibility: .eligible,
-                capabilities: .allEnabled
+                capabilities: .allEnabled,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .idle
+                )
             ),
             isPlayerPresented: true,
             providerSwitch: providerSwitch,

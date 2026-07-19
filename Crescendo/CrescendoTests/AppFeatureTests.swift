@@ -112,7 +112,10 @@ struct AppFeatureTests {
                     )
                 ),
                 playbackEligibility: .eligible,
-                capabilities: .allEnabled
+                capabilities: .allEnabled,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .dragging(position: 18)
+                )
             ),
             isPlayerPresented: true
         )
@@ -138,7 +141,10 @@ struct AppFeatureTests {
                 selectedSong: nil,
                 phase: .observing(.idle),
                 playbackEligibility: .unknown,
-                capabilities: futureProvider.musicCapabilities
+                capabilities: futureProvider.musicCapabilities,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .idle
+                )
             )
             $0.isPlayerPresented = false
         }
@@ -233,6 +239,7 @@ struct AppFeatureTests {
     @Test
     func selectedSongUsesConnectionPlaybackEligibility() async {
         let song = makeSong()
+        let previousSong = makeSong(nativeID: "previous")
         let connectionAccess = makeAccess(
             authorization: .authorized,
             playbackEligibility: .eligible
@@ -249,14 +256,30 @@ struct AppFeatureTests {
                     authorization: .authorized,
                     playbackEligibility: .ineligible
                 )
+            ),
+            musicPlayback: MusicPlaybackFeature.State(
+                selectedSong: previousSong,
+                phase: .observing(.idle),
+                playbackEligibility: .unknown,
+                capabilities: .allEnabled,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .dragging(position: 18)
+                )
             )
         )
         let store = makeStore(state: state)
 
         await store.send(.search(.delegate(.songSelected(song)))) {
+            $0.isPlayerPresented = true
+        }
+        await store.receive(
+            .musicPlayback(
+                .songSelected(song, playbackEligibility: .eligible)
+            )
+        ) {
             $0.musicPlayback.selectedSong = song
             $0.musicPlayback.playbackEligibility = .eligible
-            $0.isPlayerPresented = true
+            $0.musicPlayback.timeline.interaction = .idle
         }
     }
 
@@ -312,7 +335,10 @@ struct AppFeatureTests {
                     selectedSong: nil,
                     phase: .observing(.idle),
                     playbackEligibility: .unknown,
-                    capabilities: .allEnabled
+                    capabilities: .allEnabled,
+                    timeline: MusicPlaybackTimelineFeature.State(
+                        interaction: .idle
+                    )
                 ),
             isPlayerPresented: isPlayerPresented,
             providerSwitch: nil,
@@ -343,9 +369,9 @@ struct AppFeatureTests {
         )
     }
 
-    private func makeSong() -> SongSummary {
+    private func makeSong(nativeID: String = "selected") -> SongSummary {
         SongSummary(
-            id: .init(providerID: .appleMusic, nativeID: "selected"),
+            id: .init(providerID: .appleMusic, nativeID: nativeID),
             title: "Selected song",
             artistName: "Artist",
             artworkURL: nil,

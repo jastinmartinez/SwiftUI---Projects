@@ -188,14 +188,17 @@ struct MusicPlaybackPresentationAdapterTests {
     }
 
     @Test
-    func seekCallbackForwardsReducerAction() {
+    func timelineCallbacksForwardReducerActions() {
         let actions = LockIsolated<[MusicPlaybackFeature.Action]>([])
         let store: StoreOf<MusicPlaybackFeature> = Store(
             initialState: MusicPlaybackFeature.State(
                 selectedSong: makeSong(duration: 215),
                 phase: .observing(.idle),
                 playbackEligibility: .eligible,
-                capabilities: makeCapabilities(supportsSeeking: true)
+                capabilities: makeCapabilities(supportsSeeking: true),
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .idle
+                )
             )
         ) {
             Reduce { _, action in
@@ -205,9 +208,38 @@ struct MusicPlaybackPresentationAdapterTests {
         }
         let model = MusicPlaybackView.Model(store, providerName: nil)
 
-        model.timeline?.onSeek(42)
+        model.timeline?.onPositionChanged(42)
+        model.timeline?.onDragEnded()
 
-        #expect(actions.value == [.seekRequested(42)])
+        #expect(
+            actions.value == [
+                .timeline(.positionChanged(42)),
+                .timeline(.dragEnded),
+            ]
+        )
+    }
+
+    @Test(arguments: [
+        MusicPlaybackTimelineFeature.Interaction.dragging(position: 86),
+        .seeking(requestID: UUID(0), position: 86),
+    ])
+    func timelineInteractionPositionOverridesProviderSnapshot(
+        interaction: MusicPlaybackTimelineFeature.Interaction
+    ) {
+        let store = makeMusicPlaybackStore(
+            selectedSong: makeSong(duration: 215),
+            phase: .observing(
+                makeSnapshot(status: .playing, currentTime: 43)
+            ),
+            playbackEligibility: .eligible,
+            capabilities: makeCapabilities(supportsSeeking: true),
+            timelineInteraction: interaction
+        )
+
+        let model = MusicPlaybackView.Model(store, providerName: nil)
+
+        #expect(model.timeline?.position == 86)
+        #expect(model.timeline?.elapsedTimeText == "1:26")
     }
 
     @Test
@@ -331,14 +363,18 @@ struct MusicPlaybackPresentationAdapterTests {
         selectedSong: SongSummary?,
         phase: MusicPlaybackFeature.Phase,
         playbackEligibility: CatalogPlaybackEligibility,
-        capabilities: MusicProviderCapabilities
+        capabilities: MusicProviderCapabilities,
+        timelineInteraction: MusicPlaybackTimelineFeature.Interaction = .idle
     ) -> StoreOf<MusicPlaybackFeature> {
         Store(
             initialState: MusicPlaybackFeature.State(
                 selectedSong: selectedSong,
                 phase: phase,
                 playbackEligibility: playbackEligibility,
-                capabilities: capabilities
+                capabilities: capabilities,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: timelineInteraction
+                )
             )
         ) {
             MusicPlaybackFeature()
@@ -356,7 +392,10 @@ struct MusicPlaybackPresentationAdapterTests {
                     makeSnapshot(status: status, currentTime: 43)
                 ),
                 playbackEligibility: .eligible,
-                capabilities: .allEnabled
+                capabilities: .allEnabled,
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .idle
+                )
             )
         ) {
             Reduce { _, action in
@@ -396,7 +435,10 @@ struct MusicPlaybackPresentationAdapterTests {
                         makeSnapshot(status: .playing, currentTime: currentTime)
                     ),
                     playbackEligibility: .eligible,
-                    capabilities: .allEnabled
+                    capabilities: .allEnabled,
+                    timeline: MusicPlaybackTimelineFeature.State(
+                        interaction: .idle
+                    )
                 ),
                 isPlayerPresented: false,
                 providerSwitch: nil,

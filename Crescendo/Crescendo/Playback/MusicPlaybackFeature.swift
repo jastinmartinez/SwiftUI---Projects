@@ -10,6 +10,7 @@ struct MusicPlaybackFeature {
         var phase: Phase
         var playbackEligibility: CatalogPlaybackEligibility
         var capabilities: MusicProviderCapabilities
+        var timeline: MusicPlaybackTimelineFeature.State
 
         var canPlaySelectedSong: Bool {
             guard let itemID = selectedSong?.id,
@@ -55,12 +56,16 @@ struct MusicPlaybackFeature {
 
     enum Action: Equatable {
         case task
+        case songSelected(
+            SongSummary,
+            playbackEligibility: CatalogPlaybackEligibility
+        )
         case playTapped
         case playbackCommandAccepted
         case delegate(Delegate)
         case pauseTapped
         case stopTapped
-        case seekRequested(TimeInterval)
+        case timeline(MusicPlaybackTimelineFeature.Action)
         case transportFinished
         case transportFailed(MusicProviderError)
         case snapshotReceived(MusicPlaybackSnapshot)
@@ -73,6 +78,9 @@ struct MusicPlaybackFeature {
     @Dependency(\.musicProvider) var musicProvider
 
     var body: some ReducerOf<Self> {
+        Scope(state: \.timeline, action: \.timeline) {
+            MusicPlaybackTimelineFeature()
+        }
         Reduce { state, action in
             switch action {
             case .task:
@@ -86,6 +94,15 @@ struct MusicPlaybackFeature {
                     id: CancelID.playbackObservation,
                     cancelInFlight: true
                 )
+
+            case .songSelected(let song, let playbackEligibility):
+                let isDifferentSong = state.selectedSong?.id != song.id
+                state.selectedSong = song
+                state.playbackEligibility = playbackEligibility
+                if isDifferentSong {
+                    state.timeline.interaction = .idle
+                }
+                return .none
 
             case .playTapped:
                 guard let itemID = state.selectedSong?.id,
@@ -118,16 +135,20 @@ struct MusicPlaybackFeature {
 
             case .stopTapped:
                 state.phase = .observing(state.phase.snapshot)
+                state.timeline.interaction = .idle
                 return transportEffect {
                     try await musicProvider.stop()
                 }
 
-            case .seekRequested(let time):
-                guard state.capabilities.supportsSeeking else { return .none }
-                state.phase = .observing(state.phase.snapshot)
-                return transportEffect {
-                    try await musicProvider.seek(time)
-                }
+            case .timeline(.delegate(.transportFailed(let error))):
+                state.phase = .failed(
+                    error,
+                    lastSnapshot: state.phase.snapshot
+                )
+                return .none
+
+            case .timeline:
+                return .none
 
             case .transportFinished:
                 guard case .loading(let snapshot) = state.phase else {

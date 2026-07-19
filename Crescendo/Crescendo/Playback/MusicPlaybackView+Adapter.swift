@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Foundation
 
 extension MusicPlaybackView.Model {
     /// Adapts reducer-owned playback state and actions into presentation values.
@@ -31,13 +32,25 @@ extension MusicPlaybackView.Model {
                 guard store.capabilities.supportsSeeking, duration > 0 else {
                     return nil
                 }
-                let position = min(max(snapshot.currentTime, 0), duration)
+                let currentPosition: TimeInterval
+                switch store.timeline.interaction {
+                case .idle:
+                    currentPosition = snapshot.currentTime
+                case .dragging(let position), .seeking(_, let position):
+                    currentPosition = position
+                }
+                let position = min(max(currentPosition, 0), duration)
                 return MusicPlaybackTimelineView.Model(
                     position: position,
                     range: 0...duration,
                     elapsedTimeText: position.musicDurationText,
                     durationText: duration.musicDurationText,
-                    onSeek: { store.send(.seekRequested($0)) }
+                    onPositionChanged: {
+                        store.send(.timeline(.positionChanged($0)))
+                    },
+                    onDragEnded: {
+                        store.send(.timeline(.dragEnded))
+                    }
                 )
             }
 
