@@ -117,11 +117,24 @@ struct SearchPresentationAdapterTests {
     }
 
     private func makeProviderSelection() -> ProviderSelectionView.Model {
-        ProviderSelectionView.Model(
-            providers: [.appleMusic],
-            activeProviderID: .appleMusic,
+        let provider = ProviderDescriptor.appleMusic
+
+        return ProviderSelectionView.Model(
+            status: .connected(providerName: provider.name),
+            collapsedLabel: provider.name,
+            menuTitle: Locs.ProviderSelection.menuTitle,
+            providerRows: [
+                .init(
+                    id: provider.id,
+                    label: provider.name,
+                    statusLabel: nil,
+                    isSelected: true,
+                    isEnabled: true,
+                    onSelect: {}
+                )
+            ],
+            recoveryAction: nil,
             isSelectionEnabled: true,
-            onSelect: { _ in }
         )
     }
 

@@ -21,6 +21,7 @@ struct ProviderSelectionView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 22, height: 22)
+                                .accessibilityHidden(true)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(row.label)
@@ -146,37 +147,5 @@ extension ProviderSelectionView {
             self.isSelectionEnabled = isSelectionEnabled
         }
 
-        init(
-            providers: [ProviderDescriptor],
-            activeProviderID: ProviderID?,
-            isSelectionEnabled: Bool,
-            onSelect: @escaping @MainActor (ProviderID) -> Void
-        ) {
-            let activeProviderName = providers.first {
-                $0.id == activeProviderID
-            }?.name
-            let status =
-                activeProviderName.map(Status.connected)
-                ?? .disconnected
-
-            self.init(
-                status: status,
-                collapsedLabel: activeProviderName
-                    ?? Locs.ProviderSelection.connectProvider,
-                menuTitle: Locs.ProviderSelection.menuTitle,
-                providerRows: providers.map { provider in
-                    ProviderRow(
-                        id: provider.id,
-                        label: provider.name,
-                        statusLabel: nil,
-                        isSelected: provider.id == activeProviderID,
-                        isEnabled: isSelectionEnabled,
-                        onSelect: { onSelect(provider.id) }
-                    )
-                },
-                recoveryAction: nil,
-                isSelectionEnabled: isSelectionEnabled
-            )
-        }
     }
 }
