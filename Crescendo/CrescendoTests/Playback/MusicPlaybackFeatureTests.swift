@@ -144,6 +144,31 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test
+    func pausedCurrentSongCanResumeWithoutQueueReplacement() async {
+        let song = makeSong()
+        let store = makeStore(
+            song: song,
+            phase: .observing(makeSnapshot(song: song, status: .paused)),
+            capabilities: makeResumeOnlyCapabilities()
+        )
+
+        #expect(store.state.canPlaySelectedSong)
+        await store.send(.playTapped)
+        await store.receive(.delegate(.resumeRequested(song.id)))
+    }
+
+    @Test
+    func idleSongCannotPlayWithoutQueueReplacement() async {
+        let store = makeStore(
+            song: makeSong(),
+            capabilities: makeResumeOnlyCapabilities()
+        )
+
+        #expect(!store.state.canPlaySelectedSong)
+        await store.send(.playTapped)
+    }
+
+    @Test
     func stoppedCurrentSongDelegatesPlay() async {
         let song = makeSong()
         let store = makeStore(
@@ -353,6 +378,15 @@ struct MusicPlaybackFeatureTests {
             currentItem: song,
             status: status,
             currentTime: 42
+        )
+    }
+
+    private func makeResumeOnlyCapabilities() -> MusicProviderCapabilities {
+        MusicProviderCapabilities(
+            supportsCatalogSearch: true,
+            supportsEmbeddedPlayback: true,
+            supportsSeeking: true,
+            supportsQueueReplacement: false
         )
     }
 

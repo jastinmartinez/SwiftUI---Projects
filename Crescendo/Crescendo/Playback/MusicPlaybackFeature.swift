@@ -12,10 +12,16 @@ struct MusicPlaybackFeature {
         var capabilities: MusicProviderCapabilities
 
         var canPlaySelectedSong: Bool {
-            selectedSong != nil
-                && playbackEligibility == .eligible
-                && capabilities.supportsEmbeddedPlayback
-                && capabilities.supportsQueueReplacement
+            guard let itemID = selectedSong?.id,
+                playbackEligibility == .eligible,
+                capabilities.supportsEmbeddedPlayback
+            else {
+                return false
+            }
+            let shouldResume =
+                phase.snapshot.currentItem?.id == itemID
+                && phase.snapshot.status == .paused
+            return shouldResume || capabilities.supportsQueueReplacement
         }
     }
 
@@ -82,19 +88,20 @@ struct MusicPlaybackFeature {
                 )
 
             case .playTapped:
-                guard state.canPlaySelectedSong,
-                    let itemID = state.selectedSong?.id
+                guard let itemID = state.selectedSong?.id,
+                    state.playbackEligibility == .eligible,
+                    state.capabilities.supportsEmbeddedPlayback
                 else { return .none }
                 let shouldResume =
                     state.phase.snapshot.currentItem?.id == itemID
                     && state.phase.snapshot.status == .paused
-                return .send(
-                    .delegate(
-                        shouldResume
-                            ? .resumeRequested(itemID)
-                            : .playRequested(itemID)
-                    )
-                )
+                if shouldResume {
+                    return .send(.delegate(.resumeRequested(itemID)))
+                }
+                guard state.capabilities.supportsQueueReplacement else {
+                    return .none
+                }
+                return .send(.delegate(.playRequested(itemID)))
 
             case .playbackCommandAccepted:
                 state.phase = .loading(state.phase.snapshot)

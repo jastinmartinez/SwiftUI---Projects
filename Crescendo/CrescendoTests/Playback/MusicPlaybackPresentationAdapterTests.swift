@@ -163,11 +163,28 @@ struct MusicPlaybackPresentationAdapterTests {
                 capabilities: makeCapabilities(supportsSeeking: true)
             )
         )
+        let song = makeSong()
+        let resumableModel = MusicPlaybackControlsView.Model(
+            makeMusicPlaybackStore(
+                selectedSong: song,
+                phase: .observing(
+                    MusicPlaybackSnapshot(
+                        currentItem: song,
+                        status: .paused,
+                        currentTime: 43
+                    )
+                ),
+                playbackEligibility: .eligible,
+                capabilities: makeResumeOnlyCapabilities()
+            )
+        )
 
         #expect(unavailableModel.primaryAction == .play)
         #expect(!unavailableModel.isPrimaryEnabled)
         #expect(availableModel.primaryAction == .play)
         #expect(availableModel.isPrimaryEnabled)
+        #expect(resumableModel.primaryAction == .play)
+        #expect(resumableModel.isPrimaryEnabled)
     }
 
     @Test
@@ -409,6 +426,15 @@ struct MusicPlaybackPresentationAdapterTests {
             supportsEmbeddedPlayback: true,
             supportsSeeking: supportsSeeking,
             supportsQueueReplacement: true
+        )
+    }
+
+    private func makeResumeOnlyCapabilities() -> MusicProviderCapabilities {
+        MusicProviderCapabilities(
+            supportsCatalogSearch: true,
+            supportsEmbeddedPlayback: true,
+            supportsSeeking: true,
+            supportsQueueReplacement: false
         )
     }
 
