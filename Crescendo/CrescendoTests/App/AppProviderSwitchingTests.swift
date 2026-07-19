@@ -113,7 +113,9 @@ struct AppProviderSwitchingTests {
                 )
             )
         )
-        await store.receive(.resetProviderOwnedState("future")) {
+        await store.receive(.resetProviderOwnedState("future"))
+        await store.receive(.musicPlayback(.timeline(.reset)))
+        await store.receive(.replaceProviderOwnedState("future")) {
             $0.search = SearchFeature.State(
                 query: "",
                 phase: .idle,

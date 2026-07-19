@@ -289,6 +289,7 @@ struct MusicPlaybackFeatureTests {
         }
 
         await store.send(.stopTapped)
+        await store.receive(.timeline(.reset))
         await store.receive(.transportFinished)
 
         #expect(stopCallCount.value == 1)
@@ -296,57 +297,90 @@ struct MusicPlaybackFeatureTests {
 
     @Test
     func differentSongSelectionResetsTimelineInteraction() async {
+        let suspendedSeek = SuspendedSeekProbe()
         let selectedSong = makeSong()
         let nextSong = makeSong(nativeID: "2")
-        let store = makeStore(
-            song: selectedSong,
-            timelineInteraction: .dragging(position: 30)
-        )
+        let store = makeStore(song: selectedSong) {
+            $0.musicProvider.seek = suspendedSeek.callAsFunction
+        }
+        await startSuspendedSeek(suspendedSeek, on: store)
 
         await store.send(
             .songSelected(
                 nextSong,
                 playbackEligibility: .ineligible
             )
+        )
+        await store.receive(.timeline(.reset)) {
+            $0.timeline.interaction = .idle
+        }
+        #expect(suspendedSeek.cancellationObserved.value)
+        #expect(store.state.selectedSong == selectedSong)
+
+        await store.receive(
+            .applySongSelection(
+                nextSong,
+                playbackEligibility: .ineligible
+            )
         ) {
             $0.selectedSong = nextSong
             $0.playbackEligibility = .ineligible
-            $0.timeline.interaction = .idle
         }
 
-        await store.send(
-            .timeline(.seekSucceeded(requestID: UUID(0)))
-        )
+        suspendedSeek.fail(with: .network)
+        await store.finish()
+        #expect(store.state.selectedSong == nextSong)
+        #expect(store.state.timeline.interaction == .idle)
     }
 
     @Test
     func sameSongSelectionPreservesTimelineInteraction() async {
+        let suspendedSeek = SuspendedSeekProbe()
         let song = makeSong()
-        let store = makeStore(
-            song: song,
-            timelineInteraction: .dragging(position: 30)
-        )
+        let store = makeStore(song: song) {
+            $0.musicProvider.seek = suspendedSeek.callAsFunction
+        }
+        await startSuspendedSeek(suspendedSeek, on: store)
 
         await store.send(
             .songSelected(song, playbackEligibility: .ineligible)
         ) {
             $0.playbackEligibility = .ineligible
         }
+        #expect(!suspendedSeek.cancellationObserved.value)
+
+        await store.send(.timeline(.reset)) {
+            $0.timeline.interaction = .idle
+        }
+        suspendedSeek.succeed()
+        await store.finish()
     }
 
     @Test
     func stopResetsTimelineInteraction() async {
-        let store = makeStore(
-            song: makeSong(),
-            timelineInteraction: .dragging(position: 30)
-        ) {
-            $0.musicProvider.stop = {}
+        let suspendedSeek = SuspendedSeekProbe()
+        let stopObservedCancellation = LockIsolated(false)
+        let store = makeStore(song: makeSong()) {
+            $0.musicProvider.seek = suspendedSeek.callAsFunction
+            $0.musicProvider.stop = {
+                stopObservedCancellation.withValue {
+                    $0 = suspendedSeek.cancellationObserved.value
+                }
+            }
         }
+        await startSuspendedSeek(suspendedSeek, on: store)
 
-        await store.send(.stopTapped) {
+        await store.send(.stopTapped)
+        await store.receive(.timeline(.reset)) {
             $0.timeline.interaction = .idle
         }
+        #expect(suspendedSeek.cancellationObserved.value)
         await store.receive(.transportFinished)
+
+        suspendedSeek.succeed()
+        await store.finish()
+        #expect(stopObservedCancellation.value)
+        #expect(store.state.timeline.interaction == .idle)
     }
 
     @Test
@@ -427,8 +461,25 @@ struct MusicPlaybackFeatureTests {
         ) {
             MusicPlaybackFeature()
         } withDependencies: {
+            $0.uuid = .incrementing
             configureDependencies(&$0)
         }
+    }
+
+    private func startSuspendedSeek(
+        _ suspendedSeek: SuspendedSeekProbe,
+        on store: TestStoreOf<MusicPlaybackFeature>
+    ) async {
+        await store.send(.timeline(.positionChanged(30))) {
+            $0.timeline.interaction = .dragging(position: 30)
+        }
+        await store.send(.timeline(.dragEnded)) {
+            $0.timeline.interaction = .seeking(
+                requestID: UUID(0),
+                position: 30
+            )
+        }
+        await suspendedSeek.waitUntilStarted()
     }
 
     private func makeSnapshot(

@@ -115,13 +115,40 @@ struct MusicPlaybackTimelineFeatureTests {
         #expect(seekPositions.value.isEmpty)
     }
 
+    @Test
+    func resetCancelsLiveSeekAndDropsLateFailure() async {
+        let suspendedSeek = SuspendedSeekProbe()
+        let store = makeStore(
+            interaction: .dragging(position: 20),
+            seekOperation: suspendedSeek.callAsFunction
+        )
+
+        await store.send(.dragEnded) {
+            $0.interaction = .seeking(
+                requestID: UUID(0),
+                position: 20
+            )
+        }
+        await suspendedSeek.waitUntilStarted()
+
+        await store.send(.reset) {
+            $0.interaction = .idle
+        }
+        #expect(suspendedSeek.cancellationObserved.value)
+
+        suspendedSeek.fail(with: .network)
+        await store.finish()
+        #expect(store.state.interaction == .idle)
+    }
+
     // MARK: - Helpers
 
     private func makeStore(
         interaction: MusicPlaybackTimelineFeature.Interaction = .idle,
         seekPositions: LockIsolated<[TimeInterval]> = LockIsolated([]),
         seekError: MusicProviderError? = nil,
-        finishSeek: AsyncStream<Void>? = nil
+        finishSeek: AsyncStream<Void>? = nil,
+        seekOperation: (@Sendable (TimeInterval) async throws -> Void)? = nil
     ) -> TestStoreOf<MusicPlaybackTimelineFeature> {
         TestStore(
             initialState: MusicPlaybackTimelineFeature.State(
@@ -133,6 +160,10 @@ struct MusicPlaybackTimelineFeatureTests {
             $0.uuid = .incrementing
             $0.musicProvider.seek = { position in
                 seekPositions.withValue { $0.append(position) }
+                if let seekOperation {
+                    try await seekOperation(position)
+                    return
+                }
                 if let seekError {
                     throw seekError
                 }
@@ -140,6 +171,54 @@ struct MusicPlaybackTimelineFeatureTests {
                     for await _ in finishSeek { break }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Suspended Effect Probe
+
+struct SuspendedSeekProbe: Sendable {
+    let cancellationObserved = LockIsolated(false)
+
+    private let started: AsyncStream<Void>
+    private let startedContinuation: AsyncStream<Void>.Continuation
+    private let pendingContinuation =
+        LockIsolated<CheckedContinuation<Void, any Error>?>(nil)
+
+    init() {
+        (started, startedContinuation) = AsyncStream<Void>.makeStream()
+    }
+
+    func callAsFunction(_ position: TimeInterval) async throws {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                pendingContinuation.withValue { $0 = continuation }
+                startedContinuation.yield()
+            }
+        } onCancel: {
+            cancellationObserved.withValue { $0 = true }
+        }
+    }
+
+    func waitUntilStarted() async {
+        var iterator = started.makeAsyncIterator()
+        _ = await iterator.next()
+        startedContinuation.finish()
+    }
+
+    func succeed() {
+        pendingContinuation.withValue { pendingContinuation in
+            let continuation = pendingContinuation
+            pendingContinuation = nil
+            continuation?.resume(returning: ())
+        }
+    }
+
+    func fail(with error: MusicProviderError) {
+        pendingContinuation.withValue { pendingContinuation in
+            let continuation = pendingContinuation
+            pendingContinuation = nil
+            continuation?.resume(throwing: error)
         }
     }
 }

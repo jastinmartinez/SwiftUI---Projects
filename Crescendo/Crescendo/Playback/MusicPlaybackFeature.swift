@@ -60,6 +60,10 @@ struct MusicPlaybackFeature {
             SongSummary,
             playbackEligibility: CatalogPlaybackEligibility
         )
+        case applySongSelection(
+            SongSummary,
+            playbackEligibility: CatalogPlaybackEligibility
+        )
         case playTapped
         case playbackCommandAccepted
         case delegate(Delegate)
@@ -97,11 +101,24 @@ struct MusicPlaybackFeature {
 
             case .songSelected(let song, let playbackEligibility):
                 let isDifferentSong = state.selectedSong?.id != song.id
+                if isDifferentSong {
+                    return .concatenate(
+                        .send(.timeline(.reset)),
+                        .send(
+                            .applySongSelection(
+                                song,
+                                playbackEligibility: playbackEligibility
+                            )
+                        )
+                    )
+                }
                 state.selectedSong = song
                 state.playbackEligibility = playbackEligibility
-                if isDifferentSong {
-                    state.timeline.interaction = .idle
-                }
+                return .none
+
+            case .applySongSelection(let song, let playbackEligibility):
+                state.selectedSong = song
+                state.playbackEligibility = playbackEligibility
                 return .none
 
             case .playTapped:
@@ -135,10 +152,12 @@ struct MusicPlaybackFeature {
 
             case .stopTapped:
                 state.phase = .observing(state.phase.snapshot)
-                state.timeline.interaction = .idle
-                return transportEffect {
-                    try await musicProvider.stop()
-                }
+                return .concatenate(
+                    .send(.timeline(.reset)),
+                    transportEffect {
+                        try await musicProvider.stop()
+                    }
+                )
 
             case .timeline(.delegate(.transportFailed(let error))):
                 state.phase = .failed(

@@ -43,6 +43,7 @@ struct AppFeature {
         case providerSelected(ProviderID)
         case providerConnection(ProviderConnectionFeature.Action)
         case resetProviderOwnedState(ProviderID)
+        case replaceProviderOwnedState(ProviderID)
         case providerSwitch(ProviderSwitchFeature.Action)
         case search(SearchFeature.Action)
         case musicPlayback(MusicPlaybackFeature.Action)
@@ -129,6 +130,19 @@ struct AppFeature {
                 return .none
 
             case .resetProviderOwnedState(let providerID):
+                guard
+                    let provider = state.providerConnection.provider(
+                        id: providerID
+                    )
+                else {
+                    return .none
+                }
+                return .concatenate(
+                    .send(.musicPlayback(.timeline(.reset))),
+                    .send(.replaceProviderOwnedState(provider.id))
+                )
+
+            case .replaceProviderOwnedState(let providerID):
                 guard
                     let provider = state.providerConnection.provider(
                         id: providerID

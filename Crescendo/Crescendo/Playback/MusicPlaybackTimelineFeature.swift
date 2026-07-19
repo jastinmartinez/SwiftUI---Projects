@@ -18,6 +18,7 @@ struct MusicPlaybackTimelineFeature {
     enum Action: Equatable {
         case positionChanged(TimeInterval)
         case dragEnded
+        case reset
         case seekSucceeded(requestID: UUID)
         case seekFailed(requestID: UUID, error: MusicProviderError)
         case delegate(Delegate)
@@ -68,6 +69,10 @@ struct MusicPlaybackTimelineFeature {
                     }
                 }
                 .cancellable(id: CancelID.seek, cancelInFlight: true)
+
+            case .reset:
+                state.interaction = .idle
+                return .cancel(id: CancelID.seek)
 
             case .seekSucceeded(let requestID):
                 guard

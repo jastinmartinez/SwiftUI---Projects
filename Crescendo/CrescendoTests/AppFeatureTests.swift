@@ -45,6 +45,8 @@ struct AppFeatureTests {
             )
         )
         await store.receive(.resetProviderOwnedState(.appleMusic))
+        await store.receive(.musicPlayback(.timeline(.reset)))
+        await store.receive(.replaceProviderOwnedState(.appleMusic))
         await store.receive(
             .providerConnection(
                 .currentAccessResponse(
@@ -86,6 +88,7 @@ struct AppFeatureTests {
 
     @Test
     func changedProviderConnectionStartResetsProviderOwnedState() async {
+        let suspendedSeek = SuspendedSeekProbe()
         let song = makeSong()
         let futureProvider = makeProvider(id: "future")
         let state = makeState(
@@ -114,12 +117,16 @@ struct AppFeatureTests {
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
                 timeline: MusicPlaybackTimelineFeature.State(
-                    interaction: .dragging(position: 18)
+                    interaction: .idle
                 )
             ),
             isPlayerPresented: true
         )
-        let store = makeStore(state: state)
+        let store = makeStore(
+            state: state,
+            seek: suspendedSeek.callAsFunction
+        )
+        await startSuspendedSeek(suspendedSeek, on: store)
 
         await store.send(
             .providerConnection(
@@ -131,7 +138,14 @@ struct AppFeatureTests {
                 )
             )
         )
-        await store.receive(.resetProviderOwnedState(futureProvider.id)) {
+        await store.receive(.resetProviderOwnedState(futureProvider.id))
+        await store.receive(.musicPlayback(.timeline(.reset))) {
+            $0.musicPlayback.timeline.interaction = .idle
+        }
+        #expect(suspendedSeek.cancellationObserved.value)
+        #expect(store.state.musicPlayback.selectedSong == song)
+
+        await store.receive(.replaceProviderOwnedState(futureProvider.id)) {
             $0.search = SearchFeature.State(
                 query: "",
                 phase: .idle,
@@ -148,6 +162,10 @@ struct AppFeatureTests {
             )
             $0.isPlayerPresented = false
         }
+
+        suspendedSeek.fail(with: .network)
+        await store.finish()
+        #expect(store.state.musicPlayback.timeline.interaction == .idle)
     }
 
     @Test
@@ -276,10 +294,20 @@ struct AppFeatureTests {
             .musicPlayback(
                 .songSelected(song, playbackEligibility: .eligible)
             )
+        )
+        await store.receive(.musicPlayback(.timeline(.reset))) {
+            $0.musicPlayback.timeline.interaction = .idle
+        }
+        await store.receive(
+            .musicPlayback(
+                .applySongSelection(
+                    song,
+                    playbackEligibility: .eligible
+                )
+            )
         ) {
             $0.musicPlayback.selectedSong = song
             $0.musicPlayback.playbackEligibility = .eligible
-            $0.musicPlayback.timeline.interaction = .idle
         }
     }
 
@@ -302,14 +330,34 @@ struct AppFeatureTests {
                 authorization: .authorized,
                 playbackEligibility: .unknown
             )
-        }
+        },
+        seek: @escaping @Sendable (TimeInterval) async throws -> Void = { _ in }
     ) -> TestStoreOf<AppFeature> {
         TestStore(initialState: state ?? makeState()) {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.musicProvider.currentAccess = currentAccess
+            $0.musicProvider.seek = seek
         }
+    }
+
+    private func startSuspendedSeek(
+        _ suspendedSeek: SuspendedSeekProbe,
+        on store: TestStoreOf<AppFeature>
+    ) async {
+        await store.send(
+            .musicPlayback(.timeline(.positionChanged(18)))
+        ) {
+            $0.musicPlayback.timeline.interaction = .dragging(position: 18)
+        }
+        await store.send(.musicPlayback(.timeline(.dragEnded))) {
+            $0.musicPlayback.timeline.interaction = .seeking(
+                requestID: UUID(0),
+                position: 18
+            )
+        }
+        await suspendedSeek.waitUntilStarted()
     }
 
     private func makeState(
