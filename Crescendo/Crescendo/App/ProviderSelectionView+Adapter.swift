@@ -15,6 +15,7 @@ extension ProviderSelectionView.Model {
 
         self.init(
             status: status,
+            collapsedIcon: Self.collapsedIcon(for: status),
             collapsedLabel: Self.collapsedLabel(for: status),
             menuTitle: Locs.ProviderSelection.menuTitle,
             providerRows: state.providers.map { provider in
@@ -60,6 +61,15 @@ extension ProviderSelectionView.Model {
         case .failed(let providerID):
             return providerName(for: providerID).map(Status.failed)
                 ?? .disconnected
+        }
+    }
+
+    private static func collapsedIcon(for status: Status) -> Icon {
+        switch status {
+        case .disconnected:
+            .generic
+        case .connecting, .connected, .needsAccess, .restricted, .failed:
+            .appleMusic
         }
     }
 

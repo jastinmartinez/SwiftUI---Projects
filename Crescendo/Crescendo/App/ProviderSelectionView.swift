@@ -48,11 +48,19 @@ struct ProviderSelectionView: View {
             }
         } label: {
             HStack(spacing: 8) {
-                Image("AppleMusicProviderIcon")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 18, height: 18)
-                    .accessibilityHidden(true)
+                switch model.collapsedIcon {
+                case .generic:
+                    Image(systemName: "link")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18, height: 18)
+                        .accessibilityHidden(true)
+                case .appleMusic:
+                    Image("AppleMusicProviderIcon")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .accessibilityHidden(true)
+                }
                 Text(model.collapsedLabel)
                     .lineLimit(layout == .expanded ? 2 : 1)
                 Image(systemName: "chevron.down")
@@ -79,6 +87,11 @@ struct ProviderSelectionView: View {
 
 extension ProviderSelectionView {
     struct Model {
+        enum Icon: Equatable {
+            case generic
+            case appleMusic
+        }
+
         enum Status: Equatable {
             case disconnected
             case connecting(providerName: String)
@@ -103,6 +116,7 @@ extension ProviderSelectionView {
         }
 
         let status: Status
+        let collapsedIcon: Icon
         let collapsedLabel: String
         let menuTitle: String
         let providerRows: [ProviderRow]
@@ -133,6 +147,7 @@ extension ProviderSelectionView {
 
         init(
             status: Status,
+            collapsedIcon: Icon,
             collapsedLabel: String,
             menuTitle: String,
             providerRows: [ProviderRow],
@@ -140,6 +155,7 @@ extension ProviderSelectionView {
             isSelectionEnabled: Bool
         ) {
             self.status = status
+            self.collapsedIcon = collapsedIcon
             self.collapsedLabel = collapsedLabel
             self.menuTitle = menuTitle
             self.providerRows = providerRows

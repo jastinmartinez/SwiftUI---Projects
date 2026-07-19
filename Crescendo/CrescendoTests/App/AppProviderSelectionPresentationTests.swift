@@ -10,12 +10,14 @@ struct AppProviderSelectionPresentationTests {
         (
             ProviderConnection.disconnected,
             ProviderSelectionView.Model.Status.disconnected,
-            "Connect"
+            "Connect",
+            ProviderSelectionView.Model.Icon.generic
         ),
         (
             .connecting(providerID: .appleMusic, requestID: UUID(0)),
             .connecting(providerName: "Apple Music"),
-            "Connecting to Apple Music…"
+            "Connecting to Apple Music…",
+            .appleMusic
         ),
         (
             .connected(
@@ -26,33 +28,39 @@ struct AppProviderSelectionPresentationTests {
                 )
             ),
             .connected(providerName: "Apple Music"),
-            "Apple Music"
+            "Apple Music",
+            .appleMusic
         ),
         (
             .denied(providerID: .appleMusic),
             .needsAccess(providerName: "Apple Music"),
-            "Apple Music · Needs Access"
+            "Apple Music · Needs Access",
+            .appleMusic
         ),
         (
             .restricted(providerID: .appleMusic),
             .restricted(providerName: "Apple Music"),
-            "Apple Music · Restricted"
+            "Apple Music · Restricted",
+            .appleMusic
         ),
         (
             .failed(providerID: .appleMusic),
             .failed(providerName: "Apple Music"),
-            "Apple Music · Connection Failed"
+            "Apple Music · Connection Failed",
+            .appleMusic
         ),
     ])
     func providerSelectionPresentsEachConnectionStatus(
         connection: ProviderConnection,
         expectedStatus: ProviderSelectionView.Model.Status,
-        expectedCollapsedLabel: String
+        expectedCollapsedLabel: String,
+        expectedCollapsedIcon: ProviderSelectionView.Model.Icon
     ) {
         let model = ProviderSelectionView.Model(makeStore(connection: connection))
 
         #expect(model.status == expectedStatus)
         #expect(model.collapsedLabel == expectedCollapsedLabel)
+        #expect(model.collapsedIcon == expectedCollapsedIcon)
     }
 
     @Test
