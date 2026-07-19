@@ -27,32 +27,18 @@ extension MusicPlaybackView.Model {
             }
         }
 
-        let timeline: MusicPlaybackTimelineView.Model? =
-            store.selectedSong?.duration.flatMap { duration in
-                guard store.capabilities.supportsSeeking, duration > 0 else {
-                    return nil
-                }
-                let currentPosition: TimeInterval
-                switch store.timeline.interaction {
-                case .idle:
-                    currentPosition = snapshot.currentTime
-                case .dragging(let position), .seeking(_, let position):
-                    currentPosition = position
-                }
-                let position = min(max(currentPosition, 0), duration)
-                return MusicPlaybackTimelineView.Model(
-                    position: position,
-                    range: 0...duration,
-                    elapsedTimeText: position.musicDurationText,
-                    durationText: duration.musicDurationText,
-                    onPositionChanged: {
-                        store.send(.timeline(.positionChanged($0)))
-                    },
-                    onDragEnded: {
-                        store.send(.timeline(.dragEnded))
-                    }
-                )
+        let timeline = MusicPlaybackTimelineView.Model.make(
+            duration: store.selectedSong?.duration,
+            snapshot: snapshot,
+            timeline: store.timeline,
+            supportsSeeking: store.capabilities.supportsSeeking,
+            onPositionChanged: {
+                store.send(.timeline(.positionChanged($0)))
+            },
+            onDragEnded: {
+                store.send(.timeline(.dragEnded))
             }
+        )
 
         self.init(
             artworkURL: store.selectedSong?.artworkURL,

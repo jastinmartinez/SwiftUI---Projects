@@ -6,56 +6,50 @@ struct NowPlayingBarView: View {
     let model: Model
 
     var body: some View {
-        HStack(spacing: 14) {
-            Button(action: model.onOpenPlayer) {
-                HStack(spacing: 12) {
-                    SongArtworkView(
-                        model: .init(
-                            artworkURL: model.artworkURL,
-                            size: 56,
-                            cornerRadius: 10
+        VStack(spacing: 10) {
+            HStack(spacing: 14) {
+                Button(action: model.onOpenPlayer) {
+                    HStack(spacing: 12) {
+                        SongArtworkView(
+                            model: .init(
+                                artworkURL: model.artworkURL,
+                                size: 56,
+                                cornerRadius: 10
+                            )
                         )
-                    )
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(model.title)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        Text(model.artistName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-
-                        if let progress = model.progress {
-                            HStack(spacing: 8) {
-                                Text(model.elapsedTimeText)
-                                PlaybackProgressView(progress: progress)
-                                if let durationText = model.durationText {
-                                    Text(durationText)
-                                }
-                            }
-                            .font(.caption2.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(model.title)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            Text(model.artistName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
                     }
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+                .buttonStyle(.plain)
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
-            Button(action: model.onTogglePlayPause) {
-                Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .background(LinearGradient.crescendoSpectrum, in: Circle())
+                Button(action: model.onTogglePlayPause) {
+                    Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(width: 52, height: 52)
+                        .background(LinearGradient.crescendoSpectrum, in: Circle())
+                }
+                .accessibilityLabel(
+                    model.isPlaying ? Locs.MusicPlayback.pause : Locs.MusicPlayback.play
+                )
+                .disabled(!model.isPlaying && !model.isPlayEnabled)
             }
-            .accessibilityLabel(
-                model.isPlaying ? Locs.MusicPlayback.pause : Locs.MusicPlayback.play
-            )
-            .disabled(!model.isPlaying && !model.isPlayEnabled)
+
+            if let timeline = model.timeline {
+                MusicPlaybackTimelineView(model: timeline)
+            }
         }
         .padding(14)
         .background(
@@ -73,9 +67,7 @@ extension NowPlayingBarView {
         let artworkURL: URL?
         let isPlaying: Bool
         let isPlayEnabled: Bool
-        let elapsedTimeText: String
-        let durationText: String?
-        let progress: Double?
+        let timeline: MusicPlaybackTimelineView.Model?
         let onOpenPlayer: () -> Void
         let onTogglePlayPause: () -> Void
     }

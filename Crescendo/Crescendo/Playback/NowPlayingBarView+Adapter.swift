@@ -5,11 +5,6 @@ extension NowPlayingBarView.Model {
     @MainActor
     init(_ store: StoreOf<AppFeature>, song: SongSummary) {
         let snapshot = store.musicPlayback.phase.snapshot
-        let duration = song.duration
-        let progress: Double? = duration.flatMap { duration in
-            guard duration > 0 else { return nil }
-            return min(max(snapshot.currentTime / duration, 0), 1)
-        }
         let isPlaying = snapshot.status == .playing
 
         self.init(
@@ -18,9 +13,18 @@ extension NowPlayingBarView.Model {
             artworkURL: song.artworkURL,
             isPlaying: isPlaying,
             isPlayEnabled: store.musicPlayback.canPlaySelectedSong,
-            elapsedTimeText: snapshot.currentTime.musicDurationText,
-            durationText: duration?.musicDurationText,
-            progress: progress,
+            timeline: MusicPlaybackTimelineView.Model.make(
+                duration: song.duration,
+                snapshot: snapshot,
+                timeline: store.musicPlayback.timeline,
+                supportsSeeking: store.musicPlayback.capabilities.supportsSeeking,
+                onPositionChanged: {
+                    store.send(.musicPlayback(.timeline(.positionChanged($0))))
+                },
+                onDragEnded: {
+                    store.send(.musicPlayback(.timeline(.dragEnded)))
+                }
+            ),
             onOpenPlayer: { store.send(.setPlayerPresented(true)) },
             onTogglePlayPause: {
                 store.send(.musicPlayback(isPlaying ? .pauseTapped : .playTapped))

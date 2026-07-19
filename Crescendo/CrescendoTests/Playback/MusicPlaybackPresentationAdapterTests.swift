@@ -243,6 +243,105 @@ struct MusicPlaybackPresentationAdapterTests {
     }
 
     @Test
+    func sharedTimelineFactoryBuildsEqualModelsForCompactAndExpandedPlayers() throws {
+        let duration: TimeInterval = 215
+        let snapshot = makeSnapshot(status: .playing, currentTime: 43)
+        let timelineState = MusicPlaybackTimelineFeature.State(interaction: .idle)
+
+        let compact = try #require(
+            MusicPlaybackTimelineView.Model.make(
+                duration: duration,
+                snapshot: snapshot,
+                timeline: timelineState,
+                supportsSeeking: true,
+                onPositionChanged: { _ in },
+                onDragEnded: {}
+            )
+        )
+        let expanded = try #require(
+            MusicPlaybackTimelineView.Model.make(
+                duration: duration,
+                snapshot: snapshot,
+                timeline: timelineState,
+                supportsSeeking: true,
+                onPositionChanged: { _ in },
+                onDragEnded: {}
+            )
+        )
+
+        #expect(compact.position == expanded.position)
+        #expect(compact.range == expanded.range)
+        #expect(compact.elapsedTimeText == expanded.elapsedTimeText)
+        #expect(compact.durationText == expanded.durationText)
+        #expect(compact.position == 43)
+        #expect(compact.range == 0...215)
+        #expect(compact.elapsedTimeText == "0:43")
+        #expect(compact.durationText == "3:35")
+    }
+
+    @Test
+    func sharedTimelineFactoryReturnsNilForUnsupportedOrInvalidDuration() {
+        let snapshot = makeSnapshot(status: .playing, currentTime: 43)
+        let timelineState = MusicPlaybackTimelineFeature.State(interaction: .idle)
+
+        let unsupportedSeeking = MusicPlaybackTimelineView.Model.make(
+            duration: 215,
+            snapshot: snapshot,
+            timeline: timelineState,
+            supportsSeeking: false,
+            onPositionChanged: { _ in },
+            onDragEnded: {}
+        )
+        let missingDuration = MusicPlaybackTimelineView.Model.make(
+            duration: nil,
+            snapshot: snapshot,
+            timeline: timelineState,
+            supportsSeeking: true,
+            onPositionChanged: { _ in },
+            onDragEnded: {}
+        )
+        let nonpositiveDuration = MusicPlaybackTimelineView.Model.make(
+            duration: 0,
+            snapshot: snapshot,
+            timeline: timelineState,
+            supportsSeeking: true,
+            onPositionChanged: { _ in },
+            onDragEnded: {}
+        )
+
+        #expect(unsupportedSeeking == nil)
+        #expect(missingDuration == nil)
+        #expect(nonpositiveDuration == nil)
+    }
+
+    @Test
+    func sharedTimelineFactoryForwardsCommittedActionValues() throws {
+        let positions = LockIsolated<[TimeInterval]>([])
+        let dragEndedCount = LockIsolated<Int>(0)
+
+        let model = try #require(
+            MusicPlaybackTimelineView.Model.make(
+                duration: 215,
+                snapshot: makeSnapshot(status: .playing, currentTime: 43),
+                timeline: MusicPlaybackTimelineFeature.State(interaction: .idle),
+                supportsSeeking: true,
+                onPositionChanged: { position in
+                    positions.withValue { $0.append(position) }
+                },
+                onDragEnded: {
+                    dragEndedCount.withValue { $0 += 1 }
+                }
+            )
+        )
+
+        model.onPositionChanged(86)
+        model.onDragEnded()
+
+        #expect(positions.value == [86])
+        #expect(dragEndedCount.value == 1)
+    }
+
+    @Test
     func playbackControlsForwardTransportActions() {
         let playingActions = LockIsolated<[MusicPlaybackFeature.Action]>([])
         let playingStore = makeActionRecordingPlaybackStore(
@@ -316,9 +415,10 @@ struct MusicPlaybackPresentationAdapterTests {
         #expect(model.artistName == song.artistName)
         #expect(model.artworkURL == song.artworkURL)
         #expect(model.isPlaying)
-        #expect(model.elapsedTimeText == "0:43")
-        #expect(model.durationText == "3:35")
-        #expect(model.progress == 0.2)
+        #expect(model.timeline?.position == 43)
+        #expect(model.timeline?.range == 0...215)
+        #expect(model.timeline?.elapsedTimeText == "0:43")
+        #expect(model.timeline?.durationText == "3:35")
 
         model.onOpenPlayer()
 
