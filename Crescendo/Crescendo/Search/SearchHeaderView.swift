@@ -99,6 +99,7 @@ struct SearchHeaderView: View {
                 )
         }
         .disabled(!model.isSearchEnabled)
+        .opacity(model.isSearchEnabled ? 1 : 0.45)
     }
 }
 
