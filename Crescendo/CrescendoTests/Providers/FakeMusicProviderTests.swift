@@ -50,11 +50,14 @@ struct FakeMusicProviderTests {
 
         try await musicProvider.seek(42)
         try await musicProvider.pause()
+        let pausedPlaybackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
         try await musicProvider.resume()
-        let playbackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
+        let resumedPlaybackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
 
-        #expect(playbackSnapshot?.status == .playing)
-        #expect(playbackSnapshot?.currentTime == 42)
+        #expect(pausedPlaybackSnapshot?.status == .paused)
+        #expect(pausedPlaybackSnapshot?.currentTime == 42)
+        #expect(resumedPlaybackSnapshot?.status == .playing)
+        #expect(resumedPlaybackSnapshot?.currentTime == 42)
     }
 
     @Test
@@ -62,11 +65,12 @@ struct FakeMusicProviderTests {
         let fake = makeFakeProvider()
         let musicProvider = await fake.client()
 
+        try await musicProvider.play(.init(providerID: "fake", nativeID: "1"))
         try await musicProvider.seek(42)
         try await musicProvider.stop()
         let playbackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
 
-        #expect(playbackSnapshot?.status == .idle)
+        #expect(playbackSnapshot?.status == .stopped)
         #expect(playbackSnapshot?.currentTime == 0)
     }
 

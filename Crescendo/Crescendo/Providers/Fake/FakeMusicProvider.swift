@@ -52,7 +52,8 @@ actor FakeMusicProvider {
     }
 
     private func stopPlayback() {
-        playbackSnapshot = .idle
+        playbackSnapshot.status = .stopped
+        playbackSnapshot.currentTime = 0
     }
 
     private func setTime(_ time: TimeInterval) {
