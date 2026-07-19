@@ -66,7 +66,7 @@ extension ProviderSelectionView.Model {
     private static func collapsedLabel(for status: Status) -> String {
         switch status {
         case .disconnected:
-            Locs.ProviderSelection.connectProvider
+            Locs.ProviderSelection.connect
         case .connecting(let providerName):
             Locs.ProviderSelection.connectingTo(providerName)
         case .connected(let providerName):

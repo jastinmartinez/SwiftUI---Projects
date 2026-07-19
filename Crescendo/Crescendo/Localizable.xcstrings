@@ -191,12 +191,12 @@
         }
       }
     },
-    "provider_selection.connect_provider" : {
+    "provider_selection.connect" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connect a Provider"
+            "value" : "Connect"
           }
         }
       }

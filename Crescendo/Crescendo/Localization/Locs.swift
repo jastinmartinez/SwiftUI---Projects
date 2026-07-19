@@ -91,9 +91,7 @@ extension Locs {
 
     enum ProviderSelection {
         static let menuTitle = String(localized: "provider_selection.menu_title")
-        static let connectProvider = String(
-            localized: "provider_selection.connect_provider"
-        )
+        static let connect = String(localized: "provider_selection.connect")
         static let connecting = String(localized: "provider_selection.connecting")
         static let needsAccessIndicator = String(
             localized: "provider_selection.needs_access_indicator"

@@ -10,7 +10,7 @@ struct AppProviderSelectionPresentationTests {
         (
             ProviderConnection.disconnected,
             ProviderSelectionView.Model.Status.disconnected,
-            "Connect a Provider"
+            "Connect"
         ),
         (
             .connecting(providerID: .appleMusic, requestID: UUID(0)),
