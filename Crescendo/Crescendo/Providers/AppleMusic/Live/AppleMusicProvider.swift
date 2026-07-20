@@ -4,7 +4,7 @@ import Foundation
 /// Owns Apple Music authorization, catalog access, playback, mapping, and session caches.
 actor AppleMusicProvider {
     /// The stable application-owned identifier for Apple Music.
-    static let providerID: ProviderID = "apple-music"
+    static let providerID: ProviderID = .appleMusic
 
     private let player = ApplicationMusicPlayer.shared
     private var songsByNativeID: [String: Song] = [:]
@@ -165,28 +165,6 @@ actor AppleMusicProvider {
             currentItem: currentSongSummary,
             status: MusicPlaybackStatus(appleMusicStatus),
             currentTime: currentTime
-        )
-    }
-}
-
-extension SongSummary {
-    /// Creates app-owned song metadata with an Apple Music-namespaced identity.
-    init(
-        appleMusicNativeID: String,
-        title: String,
-        artistName: String,
-        artworkURL: URL?,
-        duration: TimeInterval?
-    ) {
-        self.init(
-            id: .init(
-                providerID: AppleMusicProvider.providerID,
-                nativeID: appleMusicNativeID
-            ),
-            title: title,
-            artistName: artistName,
-            artworkURL: artworkURL,
-            duration: duration
         )
     }
 }

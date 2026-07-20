@@ -2,7 +2,7 @@ import Testing
 
 @testable import Crescendo
 
-struct AppleMusicAccessTests {
+struct AppleMusicAccessMappingTests {
     @Test(arguments: [
         (AppleMusicAuthorizationStatus.authorized, MusicAuthorizationStatus.authorized),
         (.denied, .denied),
