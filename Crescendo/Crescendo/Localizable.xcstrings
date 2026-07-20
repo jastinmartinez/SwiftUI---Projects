@@ -181,16 +181,6 @@
         }
       }
     },
-    "provider_selection.no_active_provider" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No provider selected"
-          }
-        }
-      }
-    },
     "provider_selection.connect" : {
       "localizations" : {
         "en" : {
@@ -301,16 +291,6 @@
         }
       }
     },
-    "provider_selection.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Music Provider"
-          }
-        }
-      }
-    },
     "provider_selection.try_again" : {
       "localizations" : {
         "en" : {
@@ -351,6 +331,16 @@
         }
       }
     },
+    "search.prompt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search Apple Music"
+          }
+        }
+      }
+    },
     "search.requires_provider.message" : {
       "localizations" : {
         "en" : {
@@ -367,16 +357,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connect a Music Provider"
-          }
-        }
-      }
-    },
-    "search.prompt" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search Apple Music"
           }
         }
       }
