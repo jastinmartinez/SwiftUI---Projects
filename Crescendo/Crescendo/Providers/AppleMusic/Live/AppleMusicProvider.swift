@@ -59,8 +59,10 @@ actor AppleMusicProvider {
             throw MusicProviderError.unavailable
         }
 
+        try Task.checkCancellation()
         player.queue = [song]
         try await player.prepareToPlay()
+        try Task.checkCancellation()
         try await player.play()
     }
 

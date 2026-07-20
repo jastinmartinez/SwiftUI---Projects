@@ -328,6 +328,93 @@ struct AppPlaybackCoordinationTests {
         playStartedContinuation.finish()
     }
 
+    @Test
+    func tappingDifferentTrackWhilePlayingSelectsAndPlaysTappedTrack() async {
+        let currentSong = makeSong(nativeID: "current")
+        let nextSong = makeSong(nativeID: "next")
+        let playedItemIDs = LockIsolated<[MusicItemID]>([])
+        let state = makeState(
+            song: currentSong,
+            phase: .observing(
+                makeSnapshot(song: currentSong, status: .playing)
+            )
+        )
+        let store = TestStore(initialState: state) {
+            AppFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.musicProvider.play = { itemID in
+                playedItemIDs.withValue { $0.append(itemID) }
+            }
+        }
+
+        await store.send(.search(.delegate(.songTapped(nextSong)))) {
+            $0.isPlayerPresented = true
+        }
+        await store.receive(
+            .musicPlayback(
+                .songTapped(nextSong, playbackEligibility: .eligible)
+            )
+        )
+        await store.receive(.musicPlayback(.timeline(.reset)))
+        await store.receive(
+            .musicPlayback(
+                .applySongTap(nextSong, playbackEligibility: .eligible)
+            )
+        ) {
+            $0.musicPlayback.selectedSong = nextSong
+            $0.musicPlayback.playbackEligibility = .eligible
+        }
+        await store.receive(.musicPlayback(.requestPlayback))
+        await store.receive(
+            .musicPlayback(.delegate(.playRequested(nextSong.id)))
+        ) {
+            $0.playbackCommand = PlaybackCommandFeature.State(
+                command: .play(nextSong.id),
+                requestID: UUID(0)
+            )
+        }
+        await store.receive(\.musicPlayback.playbackCommandAccepted) {
+            $0.musicPlayback.phase = .loading(
+                makeSnapshot(song: currentSong, status: .playing)
+            )
+        }
+        await store.receive(.playbackCommand(.start))
+        await store.receive(
+            .playbackCommand(
+                .execute(.play(nextSong.id), requestID: UUID(0))
+            )
+        )
+        await store.receive(
+            .playbackCommand(
+                .response(
+                    requestID: UUID(0),
+                    result: .success(.play(nextSong.id))
+                )
+            )
+        )
+        await store.receive(
+            .playbackCommand(
+                .delegate(
+                    .completed(
+                        requestID: UUID(0),
+                        result: .success(.play(nextSong.id))
+                    )
+                )
+            )
+        ) {
+            $0.playbackCommand = nil
+        }
+        await store.receive(\.musicPlayback.transportFinished) {
+            $0.musicPlayback.phase = .observing(
+                makeSnapshot(song: currentSong, status: .playing)
+            )
+        }
+
+        #expect(store.state.musicPlayback.selectedSong == nextSong)
+        #expect(playedItemIDs.value == [nextSong.id])
+    }
+
     // MARK: - Helpers
 
     private struct TransportCalls: Equatable {
@@ -405,9 +492,9 @@ struct AppPlaybackCoordinationTests {
         )
     }
 
-    private func makeSong() -> SongSummary {
+    private func makeSong(nativeID: String = "1") -> SongSummary {
         SongSummary(
-            id: .init(providerID: "fake", nativeID: "1"),
+            id: .init(providerID: "fake", nativeID: nativeID),
             title: "Song",
             artistName: "Artist",
             artworkURL: nil,
