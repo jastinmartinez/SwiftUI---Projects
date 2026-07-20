@@ -51,6 +51,8 @@ struct AppFeature {
         case setPlayerPresented(Bool)
     }
 
+    @Dependency(\.uuid) var uuid
+
     var body: some ReducerOf<Self> {
         Scope(state: \.providerConnection, action: \.providerConnection) {
             ProviderConnectionFeature()
@@ -220,7 +222,8 @@ struct AppFeature {
                     return .none
                 }
                 state.playbackCommand = PlaybackCommandFeature.State(
-                    command: command
+                    command: command,
+                    requestID: uuid()
                 )
                 return .concatenate(
                     .send(.musicPlayback(.playbackCommandAccepted)),
@@ -230,17 +233,19 @@ struct AppFeature {
             case .musicPlayback:
                 return .none
 
-            case .playbackCommand(.delegate(.succeeded(let command))):
-                guard state.playbackCommand?.command == command else {
+            case .playbackCommand(
+                .delegate(.completed(let requestID, .success))
+            ):
+                guard state.playbackCommand?.requestID == requestID else {
                     return .none
                 }
                 state.playbackCommand = nil
                 return .send(.musicPlayback(.transportFinished))
 
             case .playbackCommand(
-                .delegate(.failed(let command, let error))
+                .delegate(.completed(let requestID, .failure(let error)))
             ):
-                guard state.playbackCommand?.command == command else {
+                guard state.playbackCommand?.requestID == requestID else {
                     return .none
                 }
                 state.playbackCommand = nil

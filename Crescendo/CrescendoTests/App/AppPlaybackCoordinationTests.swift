@@ -11,17 +11,34 @@ struct AppPlaybackCoordinationTests {
         let song = makeSong()
         let calls = LockIsolated(TransportCalls())
         let command = PlaybackCommandFeature.Command.play(song.id)
+        let requestID = UUID(0)
         let store = makeStore(song: song, calls: calls)
 
         await store.send(.musicPlayback(.delegate(.playRequested(song.id)))) {
-            $0.playbackCommand = PlaybackCommandFeature.State(command: command)
+            $0.playbackCommand = PlaybackCommandFeature.State(
+                command: command,
+                requestID: requestID
+            )
         }
         await store.receive(\.musicPlayback.playbackCommandAccepted) {
             $0.musicPlayback.phase = .loading(.idle)
         }
         await store.receive(.playbackCommand(.start))
-        await store.receive(.playbackCommand(.commandSucceeded))
-        await store.receive(.playbackCommand(.delegate(.succeeded(command)))) {
+        await store.receive(
+            .playbackCommand(.execute(command, requestID: requestID))
+        )
+        await store.receive(
+            .playbackCommand(
+                .response(requestID: requestID, result: .success(command))
+            )
+        )
+        await store.receive(
+            .playbackCommand(
+                .delegate(
+                    .completed(requestID: requestID, result: .success(command))
+                )
+            )
+        ) {
             $0.playbackCommand = nil
         }
         await store.receive(\.musicPlayback.transportFinished) {
@@ -38,6 +55,7 @@ struct AppPlaybackCoordinationTests {
         let snapshot = makeSnapshot(song: song, status: .paused)
         let calls = LockIsolated(TransportCalls())
         let command = PlaybackCommandFeature.Command.resume(song.id)
+        let requestID = UUID(0)
         let store = makeStore(
             song: song,
             phase: .observing(snapshot),
@@ -45,14 +63,30 @@ struct AppPlaybackCoordinationTests {
         )
 
         await store.send(.musicPlayback(.delegate(.resumeRequested(song.id)))) {
-            $0.playbackCommand = PlaybackCommandFeature.State(command: command)
+            $0.playbackCommand = PlaybackCommandFeature.State(
+                command: command,
+                requestID: requestID
+            )
         }
         await store.receive(\.musicPlayback.playbackCommandAccepted) {
             $0.musicPlayback.phase = .loading(snapshot)
         }
         await store.receive(.playbackCommand(.start))
-        await store.receive(.playbackCommand(.commandSucceeded))
-        await store.receive(.playbackCommand(.delegate(.succeeded(command)))) {
+        await store.receive(
+            .playbackCommand(.execute(command, requestID: requestID))
+        )
+        await store.receive(
+            .playbackCommand(
+                .response(requestID: requestID, result: .success(command))
+            )
+        )
+        await store.receive(
+            .playbackCommand(
+                .delegate(
+                    .completed(requestID: requestID, result: .success(command))
+                )
+            )
+        ) {
             $0.playbackCommand = nil
         }
         await store.receive(\.musicPlayback.transportFinished) {
@@ -89,6 +123,7 @@ struct AppPlaybackCoordinationTests {
                 }
             }
         )
+        let requestID = UUID(0)
         let delegate: MusicPlaybackFeature.Delegate =
             switch command {
             case .play(let itemID):
@@ -98,15 +133,29 @@ struct AppPlaybackCoordinationTests {
             }
 
         await store.send(.musicPlayback(.delegate(delegate))) {
-            $0.playbackCommand = PlaybackCommandFeature.State(command: command)
+            $0.playbackCommand = PlaybackCommandFeature.State(
+                command: command,
+                requestID: requestID
+            )
         }
         await store.receive(\.musicPlayback.playbackCommandAccepted) {
             $0.musicPlayback.phase = .loading(initialSnapshot)
         }
         await store.receive(.playbackCommand(.start))
-        await store.receive(.playbackCommand(.commandFailed(.network)))
         await store.receive(
-            .playbackCommand(.delegate(.failed(command, .network)))
+            .playbackCommand(.execute(command, requestID: requestID))
+        )
+        await store.receive(
+            .playbackCommand(
+                .response(requestID: requestID, result: .failure(.network))
+            )
+        )
+        await store.receive(
+            .playbackCommand(
+                .delegate(
+                    .completed(requestID: requestID, result: .failure(.network))
+                )
+            )
         ) {
             $0.playbackCommand = nil
         }
@@ -132,7 +181,10 @@ struct AppPlaybackCoordinationTests {
         let state = makeState(
             song: song,
             phase: .loading(.idle),
-            playbackCommand: PlaybackCommandFeature.State(command: command)
+            playbackCommand: PlaybackCommandFeature.State(
+                command: command,
+                requestID: UUID(0)
+            )
         )
         let store = TestStore(initialState: state) {
             AppFeature()
@@ -153,11 +205,14 @@ struct AppPlaybackCoordinationTests {
         let song = makeSong()
         let activeCommand = PlaybackCommandFeature.Command.play(song.id)
         let staleCommand = PlaybackCommandFeature.Command.resume(song.id)
+        let activeRequestID = UUID(0)
+        let staleRequestID = UUID(1)
         let state = makeState(
             song: song,
             phase: .loading(.idle),
             playbackCommand: PlaybackCommandFeature.State(
-                command: activeCommand
+                command: activeCommand,
+                requestID: activeRequestID
             )
         )
         let store = TestStore(initialState: state) {
@@ -165,10 +220,24 @@ struct AppPlaybackCoordinationTests {
         }
 
         await store.send(
-            .playbackCommand(.delegate(.succeeded(staleCommand)))
+            .playbackCommand(
+                .delegate(
+                    .completed(
+                        requestID: staleRequestID,
+                        result: .success(staleCommand)
+                    )
+                )
+            )
         )
         await store.send(
-            .playbackCommand(.delegate(.failed(staleCommand, .network)))
+            .playbackCommand(
+                .delegate(
+                    .completed(
+                        requestID: staleRequestID,
+                        result: .failure(.network)
+                    )
+                )
+            )
         )
 
         #expect(store.state == state)
@@ -181,6 +250,7 @@ struct AppPlaybackCoordinationTests {
         let (playStarted, playStartedContinuation) = AsyncStream<Void>.makeStream()
         let (finishPlay, finishPlayContinuation) = AsyncStream<Void>.makeStream()
         let command = PlaybackCommandFeature.Command.play(song.id)
+        let requestID = UUID(0)
         let store = makeStore(song: song) {
             $0.musicProvider.play = { _ in
                 playStartedContinuation.yield()
@@ -189,12 +259,18 @@ struct AppPlaybackCoordinationTests {
         }
 
         await store.send(.musicPlayback(.delegate(.playRequested(song.id)))) {
-            $0.playbackCommand = PlaybackCommandFeature.State(command: command)
+            $0.playbackCommand = PlaybackCommandFeature.State(
+                command: command,
+                requestID: requestID
+            )
         }
         await store.receive(\.musicPlayback.playbackCommandAccepted) {
             $0.musicPlayback.phase = .loading(.idle)
         }
         await store.receive(.playbackCommand(.start))
+        await store.receive(
+            .playbackCommand(.execute(command, requestID: requestID))
+        )
 
         var playStartedIterator = playStarted.makeAsyncIterator()
         _ = await playStartedIterator.next()
@@ -204,8 +280,18 @@ struct AppPlaybackCoordinationTests {
 
         finishPlayContinuation.yield()
         finishPlayContinuation.finish()
-        await store.receive(.playbackCommand(.commandSucceeded))
-        await store.receive(.playbackCommand(.delegate(.succeeded(command)))) {
+        await store.receive(
+            .playbackCommand(
+                .response(requestID: requestID, result: .success(command))
+            )
+        )
+        await store.receive(
+            .playbackCommand(
+                .delegate(
+                    .completed(requestID: requestID, result: .success(command))
+                )
+            )
+        ) {
             $0.playbackCommand = nil
         }
         await store.receive(\.musicPlayback.transportFinished) {
@@ -230,6 +316,7 @@ struct AppPlaybackCoordinationTests {
         TestStore(initialState: makeState(song: song, phase: phase)) {
             AppFeature()
         } withDependencies: {
+            $0.uuid = .incrementing
             $0.musicProvider.play = { itemID in
                 calls?.withValue { $0.playedItemIDs.append(itemID) }
             }

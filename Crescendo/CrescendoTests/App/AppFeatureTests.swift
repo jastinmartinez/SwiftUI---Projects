@@ -314,16 +314,36 @@ struct AppFeatureTests {
             .musicPlayback(.delegate(.playRequested(song.id)))
         ) {
             $0.playbackCommand = PlaybackCommandFeature.State(
-                command: .play(song.id)
+                command: .play(song.id),
+                requestID: UUID(0)
             )
         }
         await store.receive(\.musicPlayback.playbackCommandAccepted) {
             $0.musicPlayback.phase = .loading(.idle)
         }
         await store.receive(.playbackCommand(.start))
-        await store.receive(.playbackCommand(.commandSucceeded))
         await store.receive(
-            .playbackCommand(.delegate(.succeeded(.play(song.id))))
+            .playbackCommand(
+                .execute(.play(song.id), requestID: UUID(0))
+            )
+        )
+        await store.receive(
+            .playbackCommand(
+                .response(
+                    requestID: UUID(0),
+                    result: .success(.play(song.id))
+                )
+            )
+        )
+        await store.receive(
+            .playbackCommand(
+                .delegate(
+                    .completed(
+                        requestID: UUID(0),
+                        result: .success(.play(song.id))
+                    )
+                )
+            )
         ) {
             $0.playbackCommand = nil
         }

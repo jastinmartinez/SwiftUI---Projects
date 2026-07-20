@@ -12,7 +12,8 @@ struct PlaybackCommandFeatureTests {
         let playedItemIDs = LockIsolated<[MusicItemID]>([])
         let resumeCallCount = LockIsolated(0)
         let command = PlaybackCommandFeature.Command.play(itemID)
-        let store = makeStore(command: command) {
+        let requestID = UUID(0)
+        let store = makeStore(command: command, requestID: requestID) {
             $0.musicProvider.play = { receivedItemID in
                 playedItemIDs.withValue { $0.append(receivedItemID) }
             }
@@ -22,8 +23,13 @@ struct PlaybackCommandFeatureTests {
         }
 
         await store.send(.start)
-        await store.receive(.commandSucceeded)
-        await store.receive(.delegate(.succeeded(command)))
+        await store.receive(.execute(command, requestID: requestID))
+        await store.receive(
+            .response(requestID: requestID, result: .success(command))
+        )
+        await store.receive(
+            .delegate(.completed(requestID: requestID, result: .success(command)))
+        )
 
         #expect(playedItemIDs.value == [itemID])
         #expect(resumeCallCount.value == 0)
@@ -35,7 +41,8 @@ struct PlaybackCommandFeatureTests {
         let playedItemIDs = LockIsolated<[MusicItemID]>([])
         let resumeCallCount = LockIsolated(0)
         let command = PlaybackCommandFeature.Command.resume(itemID)
-        let store = makeStore(command: command) {
+        let requestID = UUID(0)
+        let store = makeStore(command: command, requestID: requestID) {
             $0.musicProvider.play = { receivedItemID in
                 playedItemIDs.withValue { $0.append(receivedItemID) }
             }
@@ -45,8 +52,13 @@ struct PlaybackCommandFeatureTests {
         }
 
         await store.send(.start)
-        await store.receive(.commandSucceeded)
-        await store.receive(.delegate(.succeeded(command)))
+        await store.receive(.execute(command, requestID: requestID))
+        await store.receive(
+            .response(requestID: requestID, result: .success(command))
+        )
+        await store.receive(
+            .delegate(.completed(requestID: requestID, result: .success(command)))
+        )
 
         #expect(playedItemIDs.value.isEmpty)
         #expect(resumeCallCount.value == 1)
@@ -63,7 +75,8 @@ struct PlaybackCommandFeatureTests {
     func providerFailurePreservesTypedErrorAndCommand(
         command: PlaybackCommandFeature.Command
     ) async {
-        let store = makeStore(command: command) {
+        let requestID = UUID(0)
+        let store = makeStore(command: command, requestID: requestID) {
             $0.musicProvider.play = { _ in
                 throw MusicProviderError.network
             }
@@ -73,8 +86,13 @@ struct PlaybackCommandFeatureTests {
         }
 
         await store.send(.start)
-        await store.receive(.commandFailed(.network))
-        await store.receive(.delegate(.failed(command, .network)))
+        await store.receive(.execute(command, requestID: requestID))
+        await store.receive(
+            .response(requestID: requestID, result: .failure(.network))
+        )
+        await store.receive(
+            .delegate(.completed(requestID: requestID, result: .failure(.network)))
+        )
     }
 
     @Test(arguments: [
@@ -88,7 +106,8 @@ struct PlaybackCommandFeatureTests {
     func unknownFailureMapsToPlaybackFailed(
         command: PlaybackCommandFeature.Command
     ) async {
-        let store = makeStore(command: command) {
+        let requestID = UUID(0)
+        let store = makeStore(command: command, requestID: requestID) {
             $0.musicProvider.play = { _ in
                 throw TestError()
             }
@@ -98,18 +117,90 @@ struct PlaybackCommandFeatureTests {
         }
 
         await store.send(.start)
-        await store.receive(.commandFailed(.playbackFailed))
-        await store.receive(.delegate(.failed(command, .playbackFailed)))
+        await store.receive(.execute(command, requestID: requestID))
+        await store.receive(
+            .response(requestID: requestID, result: .failure(.playbackFailed))
+        )
+        await store.receive(
+            .delegate(
+                .completed(
+                    requestID: requestID,
+                    result: .failure(.playbackFailed)
+                )
+            )
+        )
+    }
+
+    @Test
+    func replacementCancelsFirstCommandAndCompletesLatestRequest() async {
+        let firstItemID = makeItemID(nativeID: "first")
+        let latestItemID = makeItemID(nativeID: "latest")
+        let firstCancellationObserved = LockIsolated(false)
+        let (firstStarted, firstStartedContinuation) = AsyncStream<Void>.makeStream()
+        let store = makeStore(
+            command: .play(firstItemID),
+            requestID: UUID(0)
+        ) {
+            $0.musicProvider.play = { itemID in
+                if itemID == firstItemID {
+                    firstStartedContinuation.yield()
+                    do {
+                        try await Task.sleep(for: .seconds(60))
+                    } catch is CancellationError {
+                        firstCancellationObserved.withValue { $0 = true }
+                        throw CancellationError()
+                    }
+                }
+            }
+        }
+
+        await store.send(.start)
+        await store.receive(
+            .execute(.play(firstItemID), requestID: UUID(0))
+        )
+        var iterator = firstStarted.makeAsyncIterator()
+        _ = await iterator.next()
+
+        await store.send(
+            .replace(.play(latestItemID), requestID: UUID(1))
+        )
+        await store.receive(
+            .execute(.play(latestItemID), requestID: UUID(1))
+        ) {
+            $0.command = .play(latestItemID)
+            $0.requestID = UUID(1)
+        }
+        await store.receive(
+            .response(
+                requestID: UUID(1),
+                result: .success(.play(latestItemID))
+            )
+        )
+        await store.receive(
+            .delegate(
+                .completed(
+                    requestID: UUID(1),
+                    result: .success(.play(latestItemID))
+                )
+            )
+        )
+
+        #expect(firstCancellationObserved.value)
+        firstStartedContinuation.finish()
     }
 
     // MARK: - Helpers
 
     private func makeStore(
         command: PlaybackCommandFeature.Command,
+        requestID: UUID = UUID(0),
         configureDependencies: (inout DependencyValues) -> Void
     ) -> TestStoreOf<PlaybackCommandFeature> {
         TestStore(
-            initialState: PlaybackCommandFeature.State(command: command)
+            initialState: PlaybackCommandFeature.State(
+                command: command,
+                requestID: requestID
+            )
         ) {
             PlaybackCommandFeature()
         } withDependencies: {
@@ -117,8 +208,8 @@ struct PlaybackCommandFeatureTests {
         }
     }
 
-    private func makeItemID() -> MusicItemID {
-        MusicItemID(providerID: "fake", nativeID: "song-1")
+    private func makeItemID(nativeID: String = "song-1") -> MusicItemID {
+        MusicItemID(providerID: "fake", nativeID: nativeID)
     }
 
     private struct TestError: Error {}

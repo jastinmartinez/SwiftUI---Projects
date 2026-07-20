@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Foundation
 import Testing
 
 @testable import Crescendo
@@ -33,6 +34,7 @@ struct NowPlayingBarPresentationTests {
         let store = Store(initialState: makeState(song: song, status: .paused)) {
             AppFeature()
         } withDependencies: {
+            $0.uuid = .incrementing
             $0.musicProvider.play = { _ in
                 playCallCount.withValue { $0 += 1 }
             }
@@ -51,7 +53,10 @@ struct NowPlayingBarPresentationTests {
         _ = await resumeStartedIterator.next()
         #expect(
             store.playbackCommand
-                == PlaybackCommandFeature.State(command: .resume(song.id))
+                == PlaybackCommandFeature.State(
+                    command: .resume(song.id),
+                    requestID: UUID(0)
+                )
         )
         #expect(store.musicPlayback.selectedSong == song)
         #expect(playCallCount.value == 0)

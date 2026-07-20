@@ -1,11 +1,13 @@
 import ComposableArchitecture
+import Foundation
 
 /// Owns one accepted provider playback command.
 @Reducer
 struct PlaybackCommandFeature {
     @ObservableState
     struct State: Equatable {
-        let command: Command
+        var command: Command
+        var requestID: UUID
     }
 
     enum Command: Equatable {
@@ -14,15 +16,25 @@ struct PlaybackCommandFeature {
     }
 
     enum Delegate: Equatable {
-        case succeeded(Command)
-        case failed(Command, MusicProviderError)
+        case completed(
+            requestID: UUID,
+            result: Result<Command, MusicProviderError>
+        )
     }
 
     enum Action: Equatable {
         case start
-        case commandSucceeded
-        case commandFailed(MusicProviderError)
+        case replace(Command, requestID: UUID)
+        case execute(Command, requestID: UUID)
+        case response(
+            requestID: UUID,
+            result: Result<Command, MusicProviderError>
+        )
         case delegate(Delegate)
+    }
+
+    private enum CancelID {
+        case command
     }
 
     @Dependency(\.musicProvider) var musicProvider
@@ -31,7 +43,16 @@ struct PlaybackCommandFeature {
         Reduce { state, action in
             switch action {
             case .start:
-                let command = state.command
+                return .send(
+                    .execute(state.command, requestID: state.requestID)
+                )
+
+            case .replace(let command, let requestID):
+                return .send(.execute(command, requestID: requestID))
+
+            case .execute(let command, let requestID):
+                state.command = command
+                state.requestID = requestID
                 return .run { send in
                     do {
                         switch command {
@@ -40,19 +61,42 @@ struct PlaybackCommandFeature {
                         case .resume:
                             try await musicProvider.resume()
                         }
-                        await send(.commandSucceeded)
+                        try Task.checkCancellation()
+                        await send(
+                            .response(
+                                requestID: requestID,
+                                result: .success(command)
+                            )
+                        )
+                    } catch is CancellationError {
+                        return
                     } catch let error as MusicProviderError {
-                        await send(.commandFailed(error))
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .response(
+                                requestID: requestID,
+                                result: .failure(error)
+                            )
+                        )
                     } catch {
-                        await send(.commandFailed(.playbackFailed))
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .response(
+                                requestID: requestID,
+                                result: .failure(.playbackFailed)
+                            )
+                        )
                     }
                 }
+                .cancellable(id: CancelID.command, cancelInFlight: true)
 
-            case .commandSucceeded:
-                return .send(.delegate(.succeeded(state.command)))
-
-            case .commandFailed(let error):
-                return .send(.delegate(.failed(state.command, error)))
+            case .response(let requestID, let result):
+                guard requestID == state.requestID else {
+                    return .none
+                }
+                return .send(
+                    .delegate(.completed(requestID: requestID, result: result))
+                )
 
             case .delegate:
                 return .none

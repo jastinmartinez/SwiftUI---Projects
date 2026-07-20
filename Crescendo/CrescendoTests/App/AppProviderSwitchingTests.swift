@@ -217,7 +217,10 @@ struct AppProviderSwitchingTests {
         command: PlaybackCommandFeature.Command
     ) async {
         let state = makeState(
-            playbackCommand: PlaybackCommandFeature.State(command: command)
+            playbackCommand: PlaybackCommandFeature.State(
+                command: command,
+                requestID: UUID(0)
+            )
         )
         let store = makeStore(state: state)
 

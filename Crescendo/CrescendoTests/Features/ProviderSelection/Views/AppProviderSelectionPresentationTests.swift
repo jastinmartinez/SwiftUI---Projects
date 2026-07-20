@@ -102,7 +102,8 @@ struct AppProviderSelectionPresentationTests {
             makeStore(
                 connection: connectedConnection,
                 playbackCommand: PlaybackCommandFeature.State(
-                    command: command
+                    command: command,
+                    requestID: UUID(0)
                 )
             )
         )
