@@ -192,7 +192,9 @@ struct AppFeature {
                 else {
                     return .none
                 }
-                state.isPlayerPresented = true
+                if state.musicPlayback.selectedSong == nil {
+                    state.isPlayerPresented = true
+                }
                 return .send(
                     .musicPlayback(
                         .songTapped(

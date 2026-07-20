@@ -348,9 +348,7 @@ struct AppPlaybackCoordinationTests {
             }
         }
 
-        await store.send(.search(.delegate(.songTapped(nextSong)))) {
-            $0.isPlayerPresented = true
-        }
+        await store.send(.search(.delegate(.songTapped(nextSong))))
         await store.receive(
             .musicPlayback(
                 .songTapped(nextSong, playbackEligibility: .eligible)

@@ -363,8 +363,10 @@ struct AppFeatureTests {
         #expect(playedItemIDs.value.isEmpty)
     }
 
-    @Test
-    func selectedSongUsesConnectionPlaybackEligibility() async {
+    @Test(arguments: [false, true])
+    func selectedSongUsesConnectionPlaybackEligibilityWithoutChangingPresentation(
+        isPlayerPresented: Bool
+    ) async {
         let song = makeSong()
         let previousSong = makeSong(nativeID: "previous")
         let connectionAccess = makeAccess(
@@ -392,13 +394,12 @@ struct AppFeatureTests {
                 timeline: MusicPlaybackTimelineFeature.State(
                     interaction: .dragging(position: 18)
                 )
-            )
+            ),
+            isPlayerPresented: isPlayerPresented
         )
         let store = makeStore(state: state)
 
-        await store.send(.search(.delegate(.songTapped(song)))) {
-            $0.isPlayerPresented = true
-        }
+        await store.send(.search(.delegate(.songTapped(song))))
         await store.receive(
             .musicPlayback(
                 .songTapped(song, playbackEligibility: .eligible)
