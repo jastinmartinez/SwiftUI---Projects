@@ -254,6 +254,115 @@ struct AppFeatureTests {
         }
     }
 
+    @Test(arguments: [
+        ProviderConnection.disconnected,
+        .connecting(providerID: .appleMusic, requestID: UUID(0)),
+        .denied(providerID: .appleMusic),
+        .restricted(providerID: .appleMusic),
+        .failed(providerID: .appleMusic),
+        .connected(
+            providerID: .appleMusic,
+            access: MusicProviderAccess(
+                authorization: .notDetermined,
+                playbackEligibility: .eligible
+            )
+        ),
+        .connected(
+            providerID: .appleMusic,
+            access: MusicProviderAccess(
+                authorization: .denied,
+                playbackEligibility: .eligible
+            )
+        ),
+        .connected(
+            providerID: .appleMusic,
+            access: MusicProviderAccess(
+                authorization: .restricted,
+                playbackEligibility: .eligible
+            )
+        ),
+    ])
+    func unavailableProviderStateRejectsCompletedSearchSongTap(
+        connection: ProviderConnection
+    ) async {
+        let song = makeSong()
+        let access = makeAccess(
+            authorization: .authorized,
+            playbackEligibility: .eligible
+        )
+        let state = makeState(
+            connection: connection,
+            search: SearchFeature.State(
+                query: song.title,
+                phase: .loaded([song]),
+                providerAccess: access
+            )
+        )
+        let playedItemIDs = LockIsolated<[MusicItemID]>([])
+        let store = makeStore(
+            state: state,
+            play: { itemID in
+                playedItemIDs.withValue { $0.append(itemID) }
+            }
+        )
+
+        await store.send(.search(.delegate(.songTapped(song))))
+
+        #expect(store.state == state)
+        #expect(playedItemIDs.value.isEmpty)
+    }
+
+    @Test
+    func authorizedIneligibleConnectionSelectsSongWithoutStartingTransport()
+        async
+    {
+        let song = makeSong()
+        let access = makeAccess(
+            authorization: .authorized,
+            playbackEligibility: .ineligible
+        )
+        let state = makeState(
+            connection: .connected(
+                providerID: .appleMusic,
+                access: access
+            ),
+            search: SearchFeature.State(
+                query: song.title,
+                phase: .loaded([song]),
+                providerAccess: access
+            )
+        )
+        let playedItemIDs = LockIsolated<[MusicItemID]>([])
+        let store = makeStore(
+            state: state,
+            play: { itemID in
+                playedItemIDs.withValue { $0.append(itemID) }
+            }
+        )
+
+        await store.send(.search(.delegate(.songTapped(song)))) {
+            $0.isPlayerPresented = true
+        }
+        await store.receive(
+            .musicPlayback(
+                .songTapped(song, playbackEligibility: .ineligible)
+            )
+        )
+        await store.receive(.musicPlayback(.timeline(.reset)))
+        await store.receive(
+            .musicPlayback(
+                .applySongTap(song, playbackEligibility: .ineligible)
+            )
+        ) {
+            $0.musicPlayback.selectedSong = song
+            $0.musicPlayback.playbackEligibility = .ineligible
+        }
+        await store.receive(.musicPlayback(.requestPlayback))
+
+        #expect(store.state.playbackCommand == nil)
+        #expect(playedItemIDs.value.isEmpty)
+    }
+
     @Test
     func selectedSongUsesConnectionPlaybackEligibility() async {
         let song = makeSong()
@@ -372,6 +481,7 @@ struct AppFeatureTests {
                 playbackEligibility: .unknown
             )
         },
+        play: @escaping @Sendable (MusicItemID) async throws -> Void = { _ in },
         seek: @escaping @Sendable (TimeInterval) async throws -> Void = { _ in }
     ) -> TestStoreOf<AppFeature> {
         TestStore(initialState: state ?? makeState()) {
@@ -379,7 +489,7 @@ struct AppFeatureTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.musicProvider.currentAccess = currentAccess
-            $0.musicProvider.play = { _ in }
+            $0.musicProvider.play = play
             $0.musicProvider.seek = seek
         }
     }

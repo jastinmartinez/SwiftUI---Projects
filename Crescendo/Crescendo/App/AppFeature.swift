@@ -185,21 +185,19 @@ struct AppFeature {
                 return .none
 
             case .search(.delegate(.songTapped(let song))):
-                guard state.providerSwitch == nil else {
+                guard state.providerSwitch == nil,
+                    case .connected(_, let access) =
+                        state.providerConnection.connection,
+                    access.authorization == .authorized
+                else {
                     return .none
                 }
-                let playbackEligibility =
-                    state
-                    .providerConnection
-                    .connection
-                    .access?
-                    .playbackEligibility ?? .unknown
                 state.isPlayerPresented = true
                 return .send(
                     .musicPlayback(
                         .songTapped(
                             song,
-                            playbackEligibility: playbackEligibility
+                            playbackEligibility: access.playbackEligibility
                         )
                     )
                 )
