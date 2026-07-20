@@ -215,15 +215,26 @@ struct AppFeature {
                 case .resumeRequested(let itemID):
                     command = .resume(itemID)
                 }
-                guard state.playbackCommand == nil,
-                    state.providerSwitch == nil,
+                guard state.providerSwitch == nil,
                     state.providerConnection.connection.access != nil
                 else {
                     return .none
                 }
+
+                let requestID = uuid()
+                if state.playbackCommand != nil {
+                    return .concatenate(
+                        .send(
+                            .playbackCommand(
+                                .replace(command, requestID: requestID)
+                            )
+                        ),
+                        .send(.musicPlayback(.playbackCommandAccepted))
+                    )
+                }
                 state.playbackCommand = PlaybackCommandFeature.State(
                     command: command,
-                    requestID: uuid()
+                    requestID: requestID
                 )
                 return .concatenate(
                     .send(.musicPlayback(.playbackCommandAccepted)),

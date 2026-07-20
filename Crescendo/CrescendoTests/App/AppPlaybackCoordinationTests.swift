@@ -167,46 +167,74 @@ struct AppPlaybackCoordinationTests {
         }
     }
 
-    @Test(arguments: [
-        PlaybackCommandFeature.Command.play(
-            MusicItemID(providerID: "fake", nativeID: "1")
-        ),
-        .resume(MusicItemID(providerID: "fake", nativeID: "1")),
-    ])
-    func activeCommandRejectsDuplicatePlayAndResumeRequests(
-        command: PlaybackCommandFeature.Command
-    ) async {
+    @Test
+    func activeCommandIsReplacedByLatestPlaybackRequest() async {
         let song = makeSong()
-        let otherItemID = MusicItemID(providerID: "fake", nativeID: "2")
+        let firstCommand = PlaybackCommandFeature.Command.play(song.id)
+        let latestItemID = MusicItemID(providerID: "fake", nativeID: "2")
         let state = makeState(
             song: song,
             phase: .loading(.idle),
             playbackCommand: PlaybackCommandFeature.State(
-                command: command,
-                requestID: UUID(0)
+                command: firstCommand,
+                requestID: UUID(99)
             )
         )
         let store = TestStore(initialState: state) {
             AppFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.musicProvider.play = { _ in }
         }
 
         await store.send(
-            .musicPlayback(.delegate(.playRequested(otherItemID)))
+            .musicPlayback(.delegate(.playRequested(latestItemID)))
         )
-        await store.send(
-            .musicPlayback(.delegate(.resumeRequested(otherItemID)))
+        await store.receive(
+            .playbackCommand(
+                .replace(.play(latestItemID), requestID: UUID(0))
+            )
         )
-
-        #expect(store.state == state)
+        await store.receive(\.musicPlayback.playbackCommandAccepted)
+        await store.receive(
+            .playbackCommand(
+                .execute(.play(latestItemID), requestID: UUID(0))
+            )
+        ) {
+            $0.playbackCommand?.command = .play(latestItemID)
+            $0.playbackCommand?.requestID = UUID(0)
+        }
+        await store.receive(
+            .playbackCommand(
+                .response(
+                    requestID: UUID(0),
+                    result: .success(.play(latestItemID))
+                )
+            )
+        )
+        await store.receive(
+            .playbackCommand(
+                .delegate(
+                    .completed(
+                        requestID: UUID(0),
+                        result: .success(.play(latestItemID))
+                    )
+                )
+            )
+        ) {
+            $0.playbackCommand = nil
+        }
+        await store.receive(\.musicPlayback.transportFinished) {
+            $0.musicPlayback.phase = .observing(.idle)
+        }
     }
 
     @Test
-    func staleDelegatesDoNotClearACommandWithDifferentIntent() async {
+    func staleDelegatesDoNotClearACommandWithDifferentRequestID() async {
         let song = makeSong()
         let activeCommand = PlaybackCommandFeature.Command.play(song.id)
-        let staleCommand = PlaybackCommandFeature.Command.resume(song.id)
-        let activeRequestID = UUID(0)
-        let staleRequestID = UUID(1)
+        let activeRequestID = UUID(1)
+        let staleRequestID = UUID(0)
         let state = makeState(
             song: song,
             phase: .loading(.idle),
@@ -224,7 +252,7 @@ struct AppPlaybackCoordinationTests {
                 .delegate(
                     .completed(
                         requestID: staleRequestID,
-                        result: .success(staleCommand)
+                        result: .success(activeCommand)
                     )
                 )
             )
