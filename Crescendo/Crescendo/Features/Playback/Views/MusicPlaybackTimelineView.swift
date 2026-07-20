@@ -18,8 +18,8 @@ struct MusicPlaybackTimelineView: View {
                     model.onDragEnded()
                 }
             )
-            .accessibilityLabel(model.accessibilityLabel)
-            .accessibilityValue(model.accessibilityValue)
+            .accessibilityLabel(model.strings.accessibilityLabel)
+            .accessibilityValue(model.strings.accessibilityValue)
 
             HStack {
                 Text(model.elapsedTimeText)
@@ -38,18 +38,13 @@ extension MusicPlaybackTimelineView {
         let range: ClosedRange<TimeInterval>
         let elapsedTimeText: String
         let durationText: String
+        let strings: Strings
         let onPositionChanged: (TimeInterval) -> Void
         let onDragEnded: () -> Void
 
-        var accessibilityLabel: String {
-            Locs.MusicPlayback.position
-        }
-
-        var accessibilityValue: String {
-            Locs.MusicPlayback.positionValue(
-                elapsedTime: elapsedTimeText,
-                durationTime: durationText
-            )
+        struct Strings {
+            let accessibilityLabel: String
+            let accessibilityValue: String
         }
     }
 }
@@ -61,6 +56,7 @@ extension MusicPlaybackTimelineView.Model {
         snapshot: MusicPlaybackSnapshot,
         timeline: MusicPlaybackTimelineFeature.State,
         supportsSeeking: Bool,
+        strings: (_ elapsedTime: String, _ durationTime: String) -> Strings,
         onPositionChanged: @escaping (TimeInterval) -> Void,
         onDragEnded: @escaping () -> Void
     ) -> Self? {
@@ -75,11 +71,14 @@ extension MusicPlaybackTimelineView.Model {
             currentPosition = position
         }
         let position = min(max(currentPosition, 0), duration)
+        let elapsedTimeText = position.musicDurationText
+        let durationText = duration.musicDurationText
         return Self(
             position: position,
             range: 0...duration,
-            elapsedTimeText: position.musicDurationText,
-            durationText: duration.musicDurationText,
+            elapsedTimeText: elapsedTimeText,
+            durationText: durationText,
+            strings: strings(elapsedTimeText, durationText),
             onPositionChanged: onPositionChanged,
             onDragEnded: onDragEnded
         )

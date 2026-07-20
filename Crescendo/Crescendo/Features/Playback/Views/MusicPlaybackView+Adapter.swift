@@ -32,6 +32,12 @@ extension MusicPlaybackView.Model {
             snapshot: snapshot,
             timeline: store.timeline,
             supportsSeeking: store.capabilities.supportsSeeking,
+            strings: { elapsedTime, durationTime in
+                .localized(
+                    elapsedTime: elapsedTime,
+                    durationTime: durationTime
+                )
+            },
             onPositionChanged: {
                 store.send(.timeline(.positionChanged($0)))
             },
@@ -51,6 +57,21 @@ extension MusicPlaybackView.Model {
             timeline: timeline,
             controls: MusicPlaybackControlsView.Model(store),
             eligibility: PlaybackEligibilityNoticeView.Model(store)
+        )
+    }
+}
+
+extension MusicPlaybackTimelineView.Model.Strings {
+    static func localized(
+        elapsedTime: String,
+        durationTime: String
+    ) -> Self {
+        Self(
+            accessibilityLabel: Locs.MusicPlayback.position,
+            accessibilityValue: Locs.MusicPlayback.positionValue(
+                elapsedTime: elapsedTime,
+                durationTime: durationTime
+            )
         )
     }
 }

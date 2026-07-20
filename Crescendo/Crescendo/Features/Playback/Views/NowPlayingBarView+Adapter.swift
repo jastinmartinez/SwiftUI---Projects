@@ -18,6 +18,12 @@ extension NowPlayingBarView.Model {
                 snapshot: snapshot,
                 timeline: store.musicPlayback.timeline,
                 supportsSeeking: store.musicPlayback.capabilities.supportsSeeking,
+                strings: { elapsedTime, durationTime in
+                    .localized(
+                        elapsedTime: elapsedTime,
+                        durationTime: durationTime
+                    )
+                },
                 onPositionChanged: {
                     store.send(.musicPlayback(.timeline(.positionChanged($0))))
                 },

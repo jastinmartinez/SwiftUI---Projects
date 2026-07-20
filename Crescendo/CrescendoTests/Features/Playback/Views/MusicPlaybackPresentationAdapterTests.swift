@@ -84,8 +84,33 @@ struct MusicPlaybackPresentationAdapterTests {
             MusicPlaybackView.Model(store, providerName: nil).timeline
         )
 
-        #expect(model.accessibilityLabel == Locs.MusicPlayback.position)
-        #expect(model.accessibilityValue == "0:43 of 3:35")
+        #expect(model.strings.accessibilityLabel == Locs.MusicPlayback.position)
+        #expect(model.strings.accessibilityValue == "0:43 of 3:35")
+    }
+
+    @Test
+    func timelineFactoryUsesInjectedAccessibilityStrings() throws {
+        let model = try #require(
+            MusicPlaybackTimelineView.Model.make(
+                duration: 215,
+                snapshot: makeSnapshot(status: .playing, currentTime: 43),
+                timeline: MusicPlaybackTimelineFeature.State(
+                    interaction: .idle
+                ),
+                supportsSeeking: true,
+                strings: { elapsedTime, durationTime in
+                    MusicPlaybackTimelineView.Model.Strings(
+                        accessibilityLabel: "Custom position",
+                        accessibilityValue: "\(elapsedTime) elapsed from \(durationTime)"
+                    )
+                },
+                onPositionChanged: { _ in },
+                onDragEnded: {}
+            )
+        )
+
+        #expect(model.strings.accessibilityLabel == "Custom position")
+        #expect(model.strings.accessibilityValue == "0:43 elapsed from 3:35")
     }
 
     @Test
@@ -254,6 +279,7 @@ struct MusicPlaybackPresentationAdapterTests {
                 snapshot: snapshot,
                 timeline: timelineState,
                 supportsSeeking: true,
+                strings: makeTimelineStrings(),
                 onPositionChanged: { _ in },
                 onDragEnded: {}
             )
@@ -264,6 +290,7 @@ struct MusicPlaybackPresentationAdapterTests {
                 snapshot: snapshot,
                 timeline: timelineState,
                 supportsSeeking: true,
+                strings: makeTimelineStrings(),
                 onPositionChanged: { _ in },
                 onDragEnded: {}
             )
@@ -289,6 +316,7 @@ struct MusicPlaybackPresentationAdapterTests {
             snapshot: snapshot,
             timeline: timelineState,
             supportsSeeking: false,
+            strings: makeTimelineStrings(),
             onPositionChanged: { _ in },
             onDragEnded: {}
         )
@@ -297,6 +325,7 @@ struct MusicPlaybackPresentationAdapterTests {
             snapshot: snapshot,
             timeline: timelineState,
             supportsSeeking: true,
+            strings: makeTimelineStrings(),
             onPositionChanged: { _ in },
             onDragEnded: {}
         )
@@ -305,6 +334,7 @@ struct MusicPlaybackPresentationAdapterTests {
             snapshot: snapshot,
             timeline: timelineState,
             supportsSeeking: true,
+            strings: makeTimelineStrings(),
             onPositionChanged: { _ in },
             onDragEnded: {}
         )
@@ -325,6 +355,7 @@ struct MusicPlaybackPresentationAdapterTests {
                 snapshot: makeSnapshot(status: .playing, currentTime: 43),
                 timeline: MusicPlaybackTimelineFeature.State(interaction: .idle),
                 supportsSeeking: true,
+                strings: makeTimelineStrings(),
                 onPositionChanged: { position in
                     positions.withValue { $0.append(position) }
                 },
@@ -624,6 +655,18 @@ struct MusicPlaybackPresentationAdapterTests {
             supportsSeeking: true,
             supportsQueueReplacement: false
         )
+    }
+
+    private func makeTimelineStrings() -> (
+        _ elapsedTime: String,
+        _ durationTime: String
+    ) -> MusicPlaybackTimelineView.Model.Strings {
+        { elapsedTime, durationTime in
+            MusicPlaybackTimelineView.Model.Strings(
+                accessibilityLabel: "Position",
+                accessibilityValue: "\(elapsedTime) of \(durationTime)"
+            )
+        }
     }
 
     private func makeSong(duration: TimeInterval? = nil) -> SongSummary {
