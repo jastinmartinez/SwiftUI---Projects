@@ -2,28 +2,49 @@ import ComposableArchitecture
 import Foundation
 
 /// Exposes provider-neutral music operations to application features.
-@DependencyClient
 struct MusicProviderClient: Sendable {
-    var currentAccess: @Sendable () async -> MusicProviderAccess = {
-        .init(authorization: .notDetermined, playbackEligibility: .unknown)
-    }
-    var requestAccess: @Sendable () async -> MusicProviderAccess = {
-        .init(authorization: .notDetermined, playbackEligibility: .unknown)
-    }
+    var currentAccess: @Sendable () async -> MusicProviderAccess
+    var requestAccess: @Sendable () async -> MusicProviderAccess
     var search: @Sendable (_ query: String, _ limit: Int) async throws -> [SongSummary]
     var play: @Sendable (_ itemID: MusicItemID) async throws -> Void
     var resume: @Sendable () async throws -> Void
     var pause: @Sendable () async throws -> Void
     var stop: @Sendable () async throws -> Void
     var seek: @Sendable (_ time: TimeInterval) async throws -> Void
-    var playbackSnapshots: @Sendable () async -> AsyncStream<MusicPlaybackSnapshot> = {
-        AsyncStream { $0.finish() }
-    }
+    var playbackSnapshots: @Sendable () async -> AsyncStream<MusicPlaybackSnapshot>
 }
 
 extension MusicProviderClient: DependencyKey {
     static let liveValue = MusicProviderClient.appleMusic
-    static let testValue = MusicProviderClient()
+    static let testValue = MusicProviderClient(
+        currentAccess: {
+            fatalError("MusicProviderClient.currentAccess is unimplemented")
+        },
+        requestAccess: {
+            fatalError("MusicProviderClient.requestAccess is unimplemented")
+        },
+        search: { _, _ in
+            fatalError("MusicProviderClient.search is unimplemented")
+        },
+        play: { _ in
+            fatalError("MusicProviderClient.play is unimplemented")
+        },
+        resume: {
+            fatalError("MusicProviderClient.resume is unimplemented")
+        },
+        pause: {
+            fatalError("MusicProviderClient.pause is unimplemented")
+        },
+        stop: {
+            fatalError("MusicProviderClient.stop is unimplemented")
+        },
+        seek: { _ in
+            fatalError("MusicProviderClient.seek is unimplemented")
+        },
+        playbackSnapshots: {
+            fatalError("MusicProviderClient.playbackSnapshots is unimplemented")
+        }
+    )
 }
 
 extension DependencyValues {
