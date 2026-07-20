@@ -16,35 +16,6 @@ struct MusicProviderClient: Sendable {
 
 extension MusicProviderClient: DependencyKey {
     static let liveValue = MusicProviderClient.appleMusic
-    static let testValue = MusicProviderClient(
-        currentAccess: {
-            fatalError("MusicProviderClient.currentAccess is unimplemented")
-        },
-        requestAccess: {
-            fatalError("MusicProviderClient.requestAccess is unimplemented")
-        },
-        search: { _, _ in
-            fatalError("MusicProviderClient.search is unimplemented")
-        },
-        play: { _ in
-            fatalError("MusicProviderClient.play is unimplemented")
-        },
-        resume: {
-            fatalError("MusicProviderClient.resume is unimplemented")
-        },
-        pause: {
-            fatalError("MusicProviderClient.pause is unimplemented")
-        },
-        stop: {
-            fatalError("MusicProviderClient.stop is unimplemented")
-        },
-        seek: { _ in
-            fatalError("MusicProviderClient.seek is unimplemented")
-        },
-        playbackSnapshots: {
-            fatalError("MusicProviderClient.playbackSnapshots is unimplemented")
-        }
-    )
 }
 
 extension DependencyValues {
