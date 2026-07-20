@@ -4,10 +4,12 @@ Crescendo is an iOS 18 application that keeps music-provider details behind app-
 
 ## Project structure
 
-- `Crescendo/App/` contains the root reducer, root view, and parent coordination.
-- `Crescendo/Domain/` contains provider-neutral music values.
-- `Crescendo/Localization/` contains typed access to localized strings.
-- `Crescendo/Providers/` contains provider implementations and SDK mapping.
+- `Crescendo/App/` contains composition and root coordination.
+- `Crescendo/Features/` contains Search, Playback, and Provider Selection reducers and presentation.
+- `Crescendo/Clients/` defines provider-neutral operation interfaces.
+- `Crescendo/Domain/` contains provider-neutral business values.
+- `Crescendo/Providers/` contains concrete integrations and SDK mapping.
+- `Crescendo/Shared/` contains cross-feature Formatting, Localization, and Presentation.
 - `CrescendoTests/` mirrors production responsibilities with focused tests.
 
 ## Project generation
