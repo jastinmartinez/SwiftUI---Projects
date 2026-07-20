@@ -11,7 +11,10 @@ struct ProviderSwitchFeatureTests {
         let pauseCount = LockIsolated(0)
         let store = makeStore(pause: { pauseCount.withValue { $0 += 1 } })
 
-        await store.send(.start) {
+        await store.send(.start)
+        await store.receive(
+            .beginPause(targetProviderID: "future", requestID: UUID(0))
+        ) {
             $0.phase = .pausing(targetProviderID: "future", requestID: UUID(0))
         }
         await store.receive(.pauseSucceeded(requestID: UUID(0)))
@@ -24,7 +27,10 @@ struct ProviderSwitchFeatureTests {
     func pauseFailureDelegatesFailure() async {
         let store = makeStore(pause: { throw MusicProviderError.playbackFailed })
 
-        await store.send(.start) {
+        await store.send(.start)
+        await store.receive(
+            .beginPause(targetProviderID: "future", requestID: UUID(0))
+        ) {
             $0.phase = .pausing(targetProviderID: "future", requestID: UUID(0))
         }
         await store.receive(.pauseFailed(requestID: UUID(0)))
@@ -47,13 +53,19 @@ struct ProviderSwitchFeatureTests {
             }
         })
 
-        await store.send(.start) {
+        await store.send(.start)
+        await store.receive(
+            .beginPause(targetProviderID: "future", requestID: UUID(0))
+        ) {
             $0.phase = .pausing(targetProviderID: "future", requestID: UUID(0))
         }
         var firstPauseStartedIterator = firstPauseStarted.makeAsyncIterator()
         _ = await firstPauseStartedIterator.next()
 
-        await store.send(.targetChanged("third")) {
+        await store.send(.targetChanged("third"))
+        await store.receive(
+            .beginPause(targetProviderID: "third", requestID: UUID(1))
+        ) {
             $0.phase = .pausing(targetProviderID: "third", requestID: UUID(1))
         }
         await store.receive(.pauseSucceeded(requestID: UUID(1)))
@@ -71,7 +83,10 @@ struct ProviderSwitchFeatureTests {
             try await Task.sleep(for: .seconds(60))
         })
 
-        await store.send(.start) {
+        await store.send(.start)
+        await store.receive(
+            .beginPause(targetProviderID: "future", requestID: UUID(0))
+        ) {
             $0.phase = .pausing(targetProviderID: "future", requestID: UUID(0))
         }
         var pauseStartedIterator = pauseStarted.makeAsyncIterator()
@@ -96,7 +111,10 @@ struct ProviderSwitchFeatureTests {
             try await Task.sleep(for: .seconds(60))
         })
 
-        await store.send(.start) {
+        await store.send(.start)
+        await store.receive(
+            .beginPause(targetProviderID: "future", requestID: UUID(0))
+        ) {
             $0.phase = .pausing(targetProviderID: "future", requestID: UUID(0))
         }
         var pauseStartedIterator = pauseStarted.makeAsyncIterator()

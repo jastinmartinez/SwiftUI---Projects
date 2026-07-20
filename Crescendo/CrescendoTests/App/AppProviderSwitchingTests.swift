@@ -16,7 +16,12 @@ struct AppProviderSwitchingTests {
                 phase: .ready(targetProviderID: "future")
             )
         }
-        await store.receive(.providerSwitch(.start)) {
+        await store.receive(.providerSwitch(.start))
+        await store.receive(
+            .providerSwitch(
+                .beginPause(targetProviderID: "future", requestID: UUID(0))
+            )
+        ) {
             $0.providerSwitch?.phase = .pausing(
                 targetProviderID: "future",
                 requestID: UUID(0)
@@ -65,7 +70,12 @@ struct AppProviderSwitchingTests {
         )
 
         await store.send(.providerSelected("third"))
-        await store.receive(.providerSwitch(.targetChanged("third"))) {
+        await store.receive(.providerSwitch(.targetChanged("third")))
+        await store.receive(
+            .providerSwitch(
+                .beginPause(targetProviderID: "third", requestID: UUID(0))
+            )
+        ) {
             $0.providerSwitch?.phase = .pausing(
                 targetProviderID: "third",
                 requestID: UUID(0)

@@ -31,6 +31,7 @@ struct ProviderSwitchFeature {
     enum Action: Equatable {
         case start
         case targetChanged(ProviderID)
+        case beginPause(targetProviderID: ProviderID, requestID: UUID)
         case cancel
         case pauseSucceeded(requestID: UUID)
         case pauseFailed(requestID: UUID)
@@ -48,13 +49,40 @@ struct ProviderSwitchFeature {
         Reduce { state, action in
             switch action {
             case .start:
-                return beginPause(&state, targetProviderID: state.phase.targetProviderID)
+                return .send(
+                    .beginPause(
+                        targetProviderID: state.phase.targetProviderID,
+                        requestID: uuid()
+                    )
+                )
 
             case .targetChanged(let targetProviderID):
                 guard state.phase.targetProviderID != targetProviderID else {
                     return .none
                 }
-                return beginPause(&state, targetProviderID: targetProviderID)
+                return .send(
+                    .beginPause(
+                        targetProviderID: targetProviderID,
+                        requestID: uuid()
+                    )
+                )
+
+            case .beginPause(let targetProviderID, let requestID):
+                state.phase = .pausing(
+                    targetProviderID: targetProviderID,
+                    requestID: requestID
+                )
+                return .run { send in
+                    do {
+                        try await musicProvider.pause()
+                        guard !Task.isCancelled else { return }
+                        await send(.pauseSucceeded(requestID: requestID))
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        await send(.pauseFailed(requestID: requestID))
+                    }
+                }
+                .cancellable(id: CancelID.pause, cancelInFlight: true)
 
             case .cancel:
                 return .concatenate(
@@ -80,27 +108,5 @@ struct ProviderSwitchFeature {
                 return .none
             }
         }
-    }
-
-    private func beginPause(
-        _ state: inout State,
-        targetProviderID: ProviderID
-    ) -> Effect<Action> {
-        let requestID = uuid()
-        state.phase = .pausing(
-            targetProviderID: targetProviderID,
-            requestID: requestID
-        )
-        return .run { send in
-            do {
-                try await musicProvider.pause()
-                guard !Task.isCancelled else { return }
-                await send(.pauseSucceeded(requestID: requestID))
-            } catch {
-                guard !Task.isCancelled else { return }
-                await send(.pauseFailed(requestID: requestID))
-            }
-        }
-        .cancellable(id: CancelID.pause, cancelInFlight: true)
     }
 }
