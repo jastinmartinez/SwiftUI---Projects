@@ -300,7 +300,7 @@ struct AppFeatureTests {
         }
         await store.receive(
             .musicPlayback(
-                .applySongSelection(
+                .applySongTap(
                     song,
                     playbackEligibility: .eligible
                 )
@@ -308,6 +308,27 @@ struct AppFeatureTests {
         ) {
             $0.musicPlayback.selectedSong = song
             $0.musicPlayback.playbackEligibility = .eligible
+        }
+        await store.receive(.musicPlayback(.requestPlayback))
+        await store.receive(
+            .musicPlayback(.delegate(.playRequested(song.id)))
+        ) {
+            $0.playbackCommand = PlaybackCommandFeature.State(
+                command: .play(song.id)
+            )
+        }
+        await store.receive(\.musicPlayback.playbackCommandAccepted) {
+            $0.musicPlayback.phase = .loading(.idle)
+        }
+        await store.receive(.playbackCommand(.start))
+        await store.receive(.playbackCommand(.commandSucceeded))
+        await store.receive(
+            .playbackCommand(.delegate(.succeeded(.play(song.id))))
+        ) {
+            $0.playbackCommand = nil
+        }
+        await store.receive(\.musicPlayback.transportFinished) {
+            $0.musicPlayback.phase = .observing(.idle)
         }
     }
 
@@ -338,6 +359,7 @@ struct AppFeatureTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.musicProvider.currentAccess = currentAccess
+            $0.musicProvider.play = { _ in }
             $0.musicProvider.seek = seek
         }
     }

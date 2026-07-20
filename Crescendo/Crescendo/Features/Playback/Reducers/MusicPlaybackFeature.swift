@@ -60,11 +60,12 @@ struct MusicPlaybackFeature {
             SongSummary,
             playbackEligibility: CatalogPlaybackEligibility
         )
-        case applySongSelection(
+        case applySongTap(
             SongSummary,
             playbackEligibility: CatalogPlaybackEligibility
         )
         case playTapped
+        case requestPlayback
         case playbackCommandAccepted
         case delegate(Delegate)
         case pauseTapped
@@ -105,31 +106,39 @@ struct MusicPlaybackFeature {
                     return .concatenate(
                         .send(.timeline(.reset)),
                         .send(
-                            .applySongSelection(
+                            .applySongTap(
                                 song,
                                 playbackEligibility: playbackEligibility
                             )
                         )
                     )
                 }
-                state.selectedSong = song
-                state.playbackEligibility = playbackEligibility
-                return .none
+                return .send(
+                    .applySongTap(
+                        song,
+                        playbackEligibility: playbackEligibility
+                    )
+                )
 
-            case .applySongSelection(let song, let playbackEligibility):
+            case .applySongTap(let song, let playbackEligibility):
                 state.selectedSong = song
                 state.playbackEligibility = playbackEligibility
-                return .none
+                return .send(.requestPlayback)
 
             case .playTapped:
+                return .send(.requestPlayback)
+
+            case .requestPlayback:
                 guard let itemID = state.selectedSong?.id,
                     state.playbackEligibility == .eligible,
                     state.capabilities.supportsEmbeddedPlayback
                 else { return .none }
-                let shouldResume =
-                    state.phase.snapshot.currentItem?.id == itemID
-                    && state.phase.snapshot.status == .paused
-                if shouldResume {
+                let snapshot = state.phase.snapshot
+                let isCurrentItem = snapshot.currentItem?.id == itemID
+                if isCurrentItem, snapshot.status == .playing {
+                    return .none
+                }
+                if isCurrentItem, snapshot.status == .paused {
                     return .send(.delegate(.resumeRequested(itemID)))
                 }
                 guard state.capabilities.supportsQueueReplacement else {

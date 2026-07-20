@@ -57,6 +57,7 @@ struct MusicPlaybackFeatureTests {
 
         await store.send(.task)
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
         await store.receive(.delegate(.playRequested(song.id)))
         await store.send(.playbackCommandAccepted) {
             $0.phase = .loading(.idle)
@@ -82,6 +83,7 @@ struct MusicPlaybackFeatureTests {
         }
 
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
         await store.receive(.delegate(.resumeRequested(song.id)))
         await store.send(.playbackCommandAccepted) {
             $0.phase = .loading(latestSnapshot)
@@ -113,6 +115,7 @@ struct MusicPlaybackFeatureTests {
         }
 
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
         await store.receive(.delegate(.playRequested(song.id)))
 
         #expect(playCallCount.value == 0)
@@ -137,6 +140,7 @@ struct MusicPlaybackFeatureTests {
         }
 
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
         await store.receive(.delegate(.resumeRequested(song.id)))
 
         #expect(playCallCount.value == 0)
@@ -154,6 +158,7 @@ struct MusicPlaybackFeatureTests {
 
         #expect(store.state.canPlaySelectedSong)
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
         await store.receive(.delegate(.resumeRequested(song.id)))
     }
 
@@ -166,6 +171,7 @@ struct MusicPlaybackFeatureTests {
 
         #expect(!store.state.canPlaySelectedSong)
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
     }
 
     @Test
@@ -177,6 +183,7 @@ struct MusicPlaybackFeatureTests {
         )
 
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
         await store.receive(.delegate(.playRequested(song.id)))
     }
 
@@ -192,6 +199,7 @@ struct MusicPlaybackFeatureTests {
         )
 
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
         await store.receive(.delegate(.playRequested(selectedSong.id)))
     }
 
@@ -201,6 +209,7 @@ struct MusicPlaybackFeatureTests {
         let store = makeStore(song: song)
 
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
         await store.receive(.delegate(.playRequested(song.id)))
     }
 
@@ -237,6 +246,7 @@ struct MusicPlaybackFeatureTests {
 
         #expect(!store.state.canPlaySelectedSong)
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
     }
 
     @Test
@@ -254,6 +264,7 @@ struct MusicPlaybackFeatureTests {
 
         #expect(!store.state.canPlaySelectedSong)
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
     }
 
     @Test
@@ -262,6 +273,7 @@ struct MusicPlaybackFeatureTests {
 
         #expect(!store.state.canPlaySelectedSong)
         await store.send(.playTapped)
+        await store.receive(.requestPlayback)
     }
 
     @Test
@@ -296,7 +308,7 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test
-    func differentSongSelectionResetsTimelineInteraction() async {
+    func tappingDifferentSongResetsTimelineInteraction() async {
         let suspendedSeek = SuspendedSeekProbe()
         let selectedSong = makeSong()
         let nextSong = makeSong(nativeID: "2")
@@ -318,7 +330,7 @@ struct MusicPlaybackFeatureTests {
         #expect(store.state.selectedSong == selectedSong)
 
         await store.receive(
-            .applySongSelection(
+            .applySongTap(
                 nextSong,
                 playbackEligibility: .ineligible
             )
@@ -326,6 +338,7 @@ struct MusicPlaybackFeatureTests {
             $0.selectedSong = nextSong
             $0.playbackEligibility = .ineligible
         }
+        await store.receive(.requestPlayback)
 
         suspendedSeek.fail(with: .network)
         await store.finish()
@@ -334,7 +347,7 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test
-    func sameSongSelectionPreservesTimelineInteraction() async {
+    func tappingSameSongPreservesTimelineInteraction() async {
         let suspendedSeek = SuspendedSeekProbe()
         let song = makeSong()
         let store = makeStore(song: song) {
@@ -344,9 +357,13 @@ struct MusicPlaybackFeatureTests {
 
         await store.send(
             .songTapped(song, playbackEligibility: .ineligible)
+        )
+        await store.receive(
+            .applySongTap(song, playbackEligibility: .ineligible)
         ) {
             $0.playbackEligibility = .ineligible
         }
+        await store.receive(.requestPlayback)
         #expect(!suspendedSeek.cancellationObserved.value)
 
         await store.send(.timeline(.reset)) {
@@ -436,6 +453,109 @@ struct MusicPlaybackFeatureTests {
         }
 
         #expect(store.state.selectedSong == song)
+    }
+
+    @Test
+    func tappingDifferentEligibleSongSelectsAndRequestsPlay() async {
+        let currentSong = makeSong(nativeID: "current")
+        let nextSong = makeSong(nativeID: "next")
+        let store = makeStore(
+            song: currentSong,
+            phase: .observing(
+                makeSnapshot(song: currentSong, status: .playing)
+            ),
+            timelineInteraction: .dragging(position: 12)
+        )
+
+        await store.send(
+            .songTapped(nextSong, playbackEligibility: .eligible)
+        )
+        await store.receive(.timeline(.reset)) {
+            $0.timeline.interaction = .idle
+        }
+        await store.receive(
+            .applySongTap(nextSong, playbackEligibility: .eligible)
+        ) {
+            $0.selectedSong = nextSong
+            $0.playbackEligibility = .eligible
+        }
+        await store.receive(.requestPlayback)
+        await store.receive(.delegate(.playRequested(nextSong.id)))
+    }
+
+    @Test
+    func tappingSamePausedSongRequestsResume() async {
+        let song = makeSong()
+        let store = makeStore(
+            song: song,
+            phase: .observing(makeSnapshot(song: song, status: .paused))
+        )
+
+        await store.send(.songTapped(song, playbackEligibility: .eligible))
+        await store.receive(
+            .applySongTap(song, playbackEligibility: .eligible)
+        )
+        await store.receive(.requestPlayback)
+        await store.receive(.delegate(.resumeRequested(song.id)))
+    }
+
+    @Test
+    func tappingSamePlayingSongDoesNotRestart() async {
+        let song = makeSong()
+        let state = MusicPlaybackFeature.State(
+            selectedSong: song,
+            phase: .observing(makeSnapshot(song: song, status: .playing)),
+            playbackEligibility: .eligible,
+            capabilities: .allEnabled,
+            timeline: .init(interaction: .idle)
+        )
+        let store = makeStore(
+            song: song,
+            phase: state.phase
+        )
+
+        await store.send(.songTapped(song, playbackEligibility: .eligible))
+        await store.receive(
+            .applySongTap(song, playbackEligibility: .eligible)
+        )
+        await store.receive(.requestPlayback)
+
+        #expect(store.state == state)
+    }
+
+    @Test
+    func tappingSameStoppedSongRequestsPlayFromZero() async {
+        let song = makeSong()
+        let store = makeStore(
+            song: song,
+            phase: .observing(makeSnapshot(song: song, status: .stopped))
+        )
+
+        await store.send(.songTapped(song, playbackEligibility: .eligible))
+        await store.receive(
+            .applySongTap(song, playbackEligibility: .eligible)
+        )
+        await store.receive(.requestPlayback)
+        await store.receive(.delegate(.playRequested(song.id)))
+    }
+
+    @Test
+    func tappingIneligibleSongSelectsWithoutPlaybackRequest() async {
+        let currentSong = makeSong(nativeID: "current")
+        let nextSong = makeSong(nativeID: "next")
+        let store = makeStore(song: currentSong)
+
+        await store.send(
+            .songTapped(nextSong, playbackEligibility: .ineligible)
+        )
+        await store.receive(.timeline(.reset))
+        await store.receive(
+            .applySongTap(nextSong, playbackEligibility: .ineligible)
+        ) {
+            $0.selectedSong = nextSong
+            $0.playbackEligibility = .ineligible
+        }
+        await store.receive(.requestPlayback)
     }
 
     // MARK: - Helpers
