@@ -189,6 +189,32 @@ struct PlaybackCommandFeatureTests {
         firstStartedContinuation.finish()
     }
 
+    @Test
+    func staleResponsesDoNotDelegateOrChangeTheLatestRequest() async {
+        let staleCommand = PlaybackCommandFeature.Command.play(
+            makeItemID(nativeID: "stale-song")
+        )
+        let latestCommand = PlaybackCommandFeature.Command.resume(
+            makeItemID(nativeID: "latest-song")
+        )
+        let latestState = PlaybackCommandFeature.State(
+            command: latestCommand,
+            requestID: UUID(1)
+        )
+        let store = TestStore(initialState: latestState) {
+            PlaybackCommandFeature()
+        }
+
+        await store.send(
+            .response(requestID: UUID(0), result: .success(staleCommand))
+        )
+        await store.send(
+            .response(requestID: UUID(0), result: .failure(.network))
+        )
+
+        #expect(store.state == latestState)
+    }
+
     // MARK: - Helpers
 
     private func makeStore(
