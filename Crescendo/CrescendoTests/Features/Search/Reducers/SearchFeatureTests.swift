@@ -135,7 +135,7 @@ struct SearchFeatureTests {
     }
 
     @Test
-    func tappingLoadedResultDelegatesSelectedSong() async {
+    func tappingLoadedResultDelegatesSongTap() async {
         let song = makeSong()
         let store = TestStore(
             initialState: makeState(
@@ -151,7 +151,7 @@ struct SearchFeatureTests {
         }
 
         await store.send(.resultTapped(song.id))
-        await store.receive(.delegate(.songSelected(song)))
+        await store.receive(.delegate(.songTapped(song)))
     }
 
     // MARK: - Helpers

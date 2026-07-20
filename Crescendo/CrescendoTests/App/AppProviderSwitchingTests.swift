@@ -246,6 +246,25 @@ struct AppProviderSwitchingTests {
         #expect(store.state == state)
     }
 
+    @Test
+    func searchResultTapIsRejectedDuringProviderSwitch() async {
+        let song = makeSong(nativeID: "next")
+        let state = makeState(
+            providerSwitch: ProviderSwitchFeature.State(
+                sourceProviderID: .appleMusic,
+                phase: .pausing(
+                    targetProviderID: "future",
+                    requestID: UUID(0)
+                )
+            )
+        )
+        let store = makeStore(state: state)
+
+        await store.send(.search(.delegate(.songTapped(song))))
+
+        #expect(store.state == state)
+    }
+
     // MARK: - Helpers
 
     private var futureCapabilities: MusicProviderCapabilities {
@@ -336,9 +355,9 @@ struct AppProviderSwitchingTests {
         )
     }
 
-    private func makeSong() -> SongSummary {
+    private func makeSong(nativeID: String = "selected") -> SongSummary {
         SongSummary(
-            id: .init(providerID: .appleMusic, nativeID: "selected"),
+            id: .init(providerID: .appleMusic, nativeID: nativeID),
             title: "Selected song",
             artistName: "Artist",
             artworkURL: nil,

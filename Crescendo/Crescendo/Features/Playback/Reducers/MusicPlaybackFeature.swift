@@ -56,7 +56,7 @@ struct MusicPlaybackFeature {
 
     enum Action: Equatable {
         case task
-        case songSelected(
+        case songTapped(
             SongSummary,
             playbackEligibility: CatalogPlaybackEligibility
         )
@@ -99,7 +99,7 @@ struct MusicPlaybackFeature {
                     cancelInFlight: true
                 )
 
-            case .songSelected(let song, let playbackEligibility):
+            case .songTapped(let song, let playbackEligibility):
                 let isDifferentSong = state.selectedSong?.id != song.id
                 if isDifferentSong {
                     return .concatenate(

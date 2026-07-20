@@ -287,12 +287,12 @@ struct AppFeatureTests {
         )
         let store = makeStore(state: state)
 
-        await store.send(.search(.delegate(.songSelected(song)))) {
+        await store.send(.search(.delegate(.songTapped(song)))) {
             $0.isPlayerPresented = true
         }
         await store.receive(
             .musicPlayback(
-                .songSelected(song, playbackEligibility: .eligible)
+                .songTapped(song, playbackEligibility: .eligible)
             )
         )
         await store.receive(.musicPlayback(.timeline(.reset))) {

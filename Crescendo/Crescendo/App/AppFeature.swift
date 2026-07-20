@@ -182,7 +182,10 @@ struct AppFeature {
             case .providerConnection:
                 return .none
 
-            case .search(.delegate(.songSelected(let song))):
+            case .search(.delegate(.songTapped(let song))):
+                guard state.providerSwitch == nil else {
+                    return .none
+                }
                 let playbackEligibility =
                     state
                     .providerConnection
@@ -192,7 +195,7 @@ struct AppFeature {
                 state.isPlayerPresented = true
                 return .send(
                     .musicPlayback(
-                        .songSelected(
+                        .songTapped(
                             song,
                             playbackEligibility: playbackEligibility
                         )

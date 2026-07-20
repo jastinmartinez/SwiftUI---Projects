@@ -306,7 +306,7 @@ struct MusicPlaybackFeatureTests {
         await startSuspendedSeek(suspendedSeek, on: store)
 
         await store.send(
-            .songSelected(
+            .songTapped(
                 nextSong,
                 playbackEligibility: .ineligible
             )
@@ -343,7 +343,7 @@ struct MusicPlaybackFeatureTests {
         await startSuspendedSeek(suspendedSeek, on: store)
 
         await store.send(
-            .songSelected(song, playbackEligibility: .ineligible)
+            .songTapped(song, playbackEligibility: .ineligible)
         ) {
             $0.playbackEligibility = .ineligible
         }

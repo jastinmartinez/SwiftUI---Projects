@@ -20,7 +20,7 @@ struct SearchFeature {
 
     /// Events emitted after search state validates a presentation action.
     enum Delegate: Equatable {
-        case songSelected(SongSummary)
+        case songTapped(SongSummary)
     }
 
     enum Action: Equatable {
@@ -72,7 +72,7 @@ struct SearchFeature {
                 guard case .loaded(let songs) = state.phase,
                     let song = songs.first(where: { $0.id == songID })
                 else { return .none }
-                return .send(.delegate(.songSelected(song)))
+                return .send(.delegate(.songTapped(song)))
 
             case .delegate:
                 return .none
