@@ -6,6 +6,26 @@ import Testing
 
 @MainActor
 struct AppProviderSelectionPresentationTests {
+    @Test
+    func modelAcceptsAdapterProjectedProviderPresentation() {
+        let model = ProviderSelectionView.Model(
+            status: .disconnected,
+            activeProviderName: "Active Provider",
+            connectedProviderName: "Connected Provider",
+            collapsedIcon: .generic,
+            collapsedLabel: "Collapsed",
+            accessibilityValue: "Accessible Provider Status",
+            menuTitle: "Providers",
+            providerRows: [],
+            recoveryAction: nil,
+            isSelectionEnabled: true
+        )
+
+        #expect(model.activeProviderName == "Active Provider")
+        #expect(model.connectedProviderName == "Connected Provider")
+        #expect(model.accessibilityValue == "Accessible Provider Status")
+    }
+
     @Test(arguments: [
         (
             ProviderConnection.disconnected,

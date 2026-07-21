@@ -8,6 +8,7 @@ extension ProviderSelectionView.Model {
             for: state.connection,
             providers: state.providers
         )
+        let collapsedLabel = Self.collapsedLabel(for: status)
         let isSelectionEnabled =
             store.providerSwitch == nil
             && store.playback.pendingOperation == nil
@@ -15,8 +16,11 @@ extension ProviderSelectionView.Model {
 
         self.init(
             status: status,
+            activeProviderName: Self.activeProviderName(for: status),
+            connectedProviderName: Self.connectedProviderName(for: status),
             collapsedIcon: Self.collapsedIcon(for: status),
-            collapsedLabel: Self.collapsedLabel(for: status),
+            collapsedLabel: collapsedLabel,
+            accessibilityValue: collapsedLabel,
             menuTitle: Locs.ProviderSelection.menuTitle,
             providerRows: state.providers.map { provider in
                 ProviderRow(
@@ -34,6 +38,24 @@ extension ProviderSelectionView.Model {
     }
 
     // MARK: - Presentation
+
+    private static func activeProviderName(for status: Status) -> String? {
+        switch status {
+        case .disconnected:
+            nil
+        case .connecting(let providerName),
+            .connected(let providerName),
+            .needsAccess(let providerName),
+            .restricted(let providerName),
+            .failed(let providerName):
+            providerName
+        }
+    }
+
+    private static func connectedProviderName(for status: Status) -> String? {
+        guard case .connected(let providerName) = status else { return nil }
+        return providerName
+    }
 
     private static func status(
         for connection: ProviderConnection,

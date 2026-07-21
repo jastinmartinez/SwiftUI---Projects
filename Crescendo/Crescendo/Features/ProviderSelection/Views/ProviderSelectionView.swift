@@ -117,52 +117,38 @@ extension ProviderSelectionView {
         }
 
         let status: Status
+        let activeProviderName: String?
+        let connectedProviderName: String?
         let collapsedIcon: Icon
         let collapsedLabel: String
+        let accessibilityValue: String
         let menuTitle: String
         let providerRows: [ProviderRow]
         let recoveryAction: RecoveryAction?
         let isSelectionEnabled: Bool
 
-        var activeProviderName: String? {
-            switch status {
-            case .disconnected:
-                nil
-            case .connecting(let providerName),
-                .connected(let providerName),
-                .needsAccess(let providerName),
-                .restricted(let providerName),
-                .failed(let providerName):
-                providerName
-            }
-        }
-
-        var connectedProviderName: String? {
-            guard case .connected(let providerName) = status else { return nil }
-            return providerName
-        }
-
-        var accessibilityValue: String {
-            collapsedLabel
-        }
-
         init(
             status: Status,
+            activeProviderName: String?,
+            connectedProviderName: String?,
             collapsedIcon: Icon,
             collapsedLabel: String,
+            accessibilityValue: String,
             menuTitle: String,
             providerRows: [ProviderRow],
             recoveryAction: RecoveryAction?,
             isSelectionEnabled: Bool
         ) {
             self.status = status
+            self.activeProviderName = activeProviderName
+            self.connectedProviderName = connectedProviderName
             self.collapsedIcon = collapsedIcon
             self.collapsedLabel = collapsedLabel
+            self.accessibilityValue = accessibilityValue
             self.menuTitle = menuTitle
             self.providerRows = providerRows
             self.recoveryAction = recoveryAction
             self.isSelectionEnabled = isSelectionEnabled
         }
-
     }
 }

@@ -279,8 +279,11 @@ struct SearchPresentationAdapterTests {
 
         return ProviderSelectionView.Model(
             status: .connected(providerName: provider.name),
+            activeProviderName: provider.name,
+            connectedProviderName: provider.name,
             collapsedIcon: .appleMusic,
             collapsedLabel: provider.name,
+            accessibilityValue: provider.name,
             menuTitle: Locs.ProviderSelection.menuTitle,
             providerRows: [
                 .init(
