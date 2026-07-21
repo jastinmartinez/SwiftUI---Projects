@@ -115,10 +115,10 @@ struct AppPlaybackCoordinationTests {
             song: song,
             phase: .observing(initialSnapshot),
             configureDependencies: {
-                $0.musicProvider.play = { _ in
+                $0.playbackControl.play = { _ in
                     throw MusicProviderError.network
                 }
-                $0.musicProvider.resume = {
+                $0.playbackControl.resume = {
                     throw MusicProviderError.network
                 }
             }
@@ -184,7 +184,7 @@ struct AppPlaybackCoordinationTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.play = { _ in }
+            $0.playbackControl.play = { _ in }
         }
 
         await store.send(
@@ -280,7 +280,7 @@ struct AppPlaybackCoordinationTests {
         let command = PlaybackCommandFeature.Command.play(song.id)
         let requestID = UUID(0)
         let store = makeStore(song: song) {
-            $0.musicProvider.play = { _ in
+            $0.playbackControl.play = { _ in
                 playStartedContinuation.yield()
                 for await _ in finishPlay { break }
             }
@@ -343,7 +343,7 @@ struct AppPlaybackCoordinationTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.play = { itemID in
+            $0.playbackControl.play = { itemID in
                 playedItemIDs.withValue { $0.append(itemID) }
             }
         }
@@ -430,10 +430,10 @@ struct AppPlaybackCoordinationTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.play = { itemID in
+            $0.playbackControl.play = { itemID in
                 calls?.withValue { $0.playedItemIDs.append(itemID) }
             }
-            $0.musicProvider.resume = {
+            $0.playbackControl.resume = {
                 calls?.withValue { $0.resumeCallCount += 1 }
             }
             configureDependencies(&$0)

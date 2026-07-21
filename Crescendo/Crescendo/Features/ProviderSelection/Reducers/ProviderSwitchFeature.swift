@@ -43,7 +43,7 @@ struct ProviderSwitchFeature {
     }
 
     @Dependency(\.uuid) var uuid
-    @Dependency(\.musicProvider) var musicProvider
+    @Dependency(\.playbackControl) var playbackControl
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -74,7 +74,7 @@ struct ProviderSwitchFeature {
                 )
                 return .run { send in
                     do {
-                        try await musicProvider.pause()
+                        try await playbackControl.pause()
                         guard !Task.isCancelled else { return }
                         await send(.pauseSucceeded(requestID: requestID))
                     } catch {

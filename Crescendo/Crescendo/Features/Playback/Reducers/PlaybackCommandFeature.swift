@@ -37,7 +37,7 @@ struct PlaybackCommandFeature {
         case command
     }
 
-    @Dependency(\.musicProvider) var musicProvider
+    @Dependency(\.playbackControl) var playbackControl
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -57,9 +57,9 @@ struct PlaybackCommandFeature {
                     do {
                         switch command {
                         case .play(let itemID):
-                            try await musicProvider.play(itemID)
+                            try await playbackControl.play(itemID)
                         case .resume:
-                            try await musicProvider.resume()
+                            try await playbackControl.resume()
                         }
                         try Task.checkCancellation()
                         await send(

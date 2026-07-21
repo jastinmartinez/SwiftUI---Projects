@@ -153,7 +153,7 @@ struct ProviderSwitchFeatureTests {
             ProviderSwitchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.pause = pause
+            $0.playbackControl.pause = pause
         }
     }
 }

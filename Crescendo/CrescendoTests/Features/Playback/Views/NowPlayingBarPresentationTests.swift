@@ -13,7 +13,7 @@ struct NowPlayingBarPresentationTests {
         let store = Store(initialState: makeState(song: song, status: .playing)) {
             AppFeature()
         } withDependencies: {
-            $0.musicProvider.pause = { pauseCalledContinuation.yield() }
+            $0.playbackControl.pause = { pauseCalledContinuation.yield() }
         }
         let model = NowPlayingBarView.Model(store, song: song)
         #expect(model.isPlaying)
@@ -35,10 +35,10 @@ struct NowPlayingBarPresentationTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.play = { _ in
+            $0.playbackControl.play = { _ in
                 playCallCount.withValue { $0 += 1 }
             }
-            $0.musicProvider.resume = {
+            $0.playbackControl.resume = {
                 resumeCallCount.withValue { $0 += 1 }
                 resumeStartedContinuation.yield()
                 for await _ in finishResume { break }

@@ -15,7 +15,7 @@ struct MusicPlaybackFeatureTests {
             currentTime: 12
         )
         let store = makeStore(song: song) {
-            $0.musicProvider.playbackSnapshots = {
+            $0.playbackObservation.playbackSnapshots = {
                 AsyncStream { continuation in
                     continuation.yield(snapshot)
                     continuation.finish()
@@ -52,7 +52,7 @@ struct MusicPlaybackFeatureTests {
         let (snapshots, continuation) = AsyncStream<MusicPlaybackSnapshot>.makeStream()
         let song = makeSong()
         let store = makeStore(song: song) {
-            $0.musicProvider.playbackSnapshots = { snapshots }
+            $0.playbackObservation.playbackSnapshots = { snapshots }
         }
 
         await store.send(.task)
@@ -109,7 +109,7 @@ struct MusicPlaybackFeatureTests {
         let playCallCount = LockIsolated(0)
         let song = makeSong()
         let store = makeStore(song: song) {
-            $0.musicProvider.play = { _ in
+            $0.playbackControl.play = { _ in
                 playCallCount.withValue { $0 += 1 }
             }
         }
@@ -131,10 +131,10 @@ struct MusicPlaybackFeatureTests {
             song: song,
             phase: .observing(makeSnapshot(song: song, status: .paused))
         ) {
-            $0.musicProvider.play = { _ in
+            $0.playbackControl.play = { _ in
                 playCallCount.withValue { $0 += 1 }
             }
-            $0.musicProvider.resume = {
+            $0.playbackControl.resume = {
                 resumeCallCount.withValue { $0 += 1 }
             }
         }
@@ -280,7 +280,7 @@ struct MusicPlaybackFeatureTests {
     func pauseForwardsToTheProvider() async {
         let pauseCallCount = LockIsolated(0)
         let store = makeStore(song: makeSong()) {
-            $0.musicProvider.pause = {
+            $0.playbackControl.pause = {
                 pauseCallCount.withValue { $0 += 1 }
             }
         }
@@ -295,7 +295,7 @@ struct MusicPlaybackFeatureTests {
     func stopForwardsToTheProvider() async {
         let stopCallCount = LockIsolated(0)
         let store = makeStore(song: makeSong()) {
-            $0.musicProvider.stop = {
+            $0.playbackControl.stop = {
                 stopCallCount.withValue { $0 += 1 }
             }
         }
@@ -313,7 +313,7 @@ struct MusicPlaybackFeatureTests {
         let selectedSong = makeSong()
         let nextSong = makeSong(nativeID: "2")
         let store = makeStore(song: selectedSong) {
-            $0.musicProvider.seek = suspendedSeek.callAsFunction
+            $0.playbackControl.seek = suspendedSeek.callAsFunction
         }
         await startSuspendedSeek(suspendedSeek, on: store)
 
@@ -351,7 +351,7 @@ struct MusicPlaybackFeatureTests {
         let suspendedSeek = SuspendedSeekProbe()
         let song = makeSong()
         let store = makeStore(song: song) {
-            $0.musicProvider.seek = suspendedSeek.callAsFunction
+            $0.playbackControl.seek = suspendedSeek.callAsFunction
         }
         await startSuspendedSeek(suspendedSeek, on: store)
 
@@ -378,8 +378,8 @@ struct MusicPlaybackFeatureTests {
         let suspendedSeek = SuspendedSeekProbe()
         let stopObservedCancellation = LockIsolated(false)
         let store = makeStore(song: makeSong()) {
-            $0.musicProvider.seek = suspendedSeek.callAsFunction
-            $0.musicProvider.stop = {
+            $0.playbackControl.seek = suspendedSeek.callAsFunction
+            $0.playbackControl.stop = {
                 stopObservedCancellation.withValue {
                     $0 = suspendedSeek.cancellationObserved.value
                 }

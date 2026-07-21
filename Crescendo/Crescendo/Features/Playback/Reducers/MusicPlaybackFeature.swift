@@ -80,7 +80,8 @@ struct MusicPlaybackFeature {
         case playbackObservation
     }
 
-    @Dependency(\.musicProvider) var musicProvider
+    @Dependency(\.playbackControl) var playbackControl
+    @Dependency(\.playbackObservation) var playbackObservation
 
     var body: some ReducerOf<Self> {
         Scope(state: \.timeline, action: \.timeline) {
@@ -90,7 +91,7 @@ struct MusicPlaybackFeature {
             switch action {
             case .task:
                 return .run { send in
-                    let snapshots = await musicProvider.playbackSnapshots()
+                    let snapshots = await playbackObservation.playbackSnapshots()
                     for await snapshot in snapshots {
                         await send(.snapshotReceived(snapshot))
                     }
@@ -156,7 +157,7 @@ struct MusicPlaybackFeature {
             case .pauseTapped:
                 state.phase = .observing(state.phase.snapshot)
                 return transportEffect {
-                    try await musicProvider.pause()
+                    try await playbackControl.pause()
                 }
 
             case .stopTapped:
@@ -164,7 +165,7 @@ struct MusicPlaybackFeature {
                 return .concatenate(
                     .send(.timeline(.reset)),
                     transportEffect {
-                        try await musicProvider.stop()
+                        try await playbackControl.stop()
                     }
                 )
 

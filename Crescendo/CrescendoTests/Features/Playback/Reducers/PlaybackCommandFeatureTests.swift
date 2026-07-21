@@ -14,10 +14,10 @@ struct PlaybackCommandFeatureTests {
         let command = PlaybackCommandFeature.Command.play(itemID)
         let requestID = UUID(0)
         let store = makeStore(command: command, requestID: requestID) {
-            $0.musicProvider.play = { receivedItemID in
+            $0.playbackControl.play = { receivedItemID in
                 playedItemIDs.withValue { $0.append(receivedItemID) }
             }
-            $0.musicProvider.resume = {
+            $0.playbackControl.resume = {
                 resumeCallCount.withValue { $0 += 1 }
             }
         }
@@ -43,10 +43,10 @@ struct PlaybackCommandFeatureTests {
         let command = PlaybackCommandFeature.Command.resume(itemID)
         let requestID = UUID(0)
         let store = makeStore(command: command, requestID: requestID) {
-            $0.musicProvider.play = { receivedItemID in
+            $0.playbackControl.play = { receivedItemID in
                 playedItemIDs.withValue { $0.append(receivedItemID) }
             }
-            $0.musicProvider.resume = {
+            $0.playbackControl.resume = {
                 resumeCallCount.withValue { $0 += 1 }
             }
         }
@@ -77,10 +77,10 @@ struct PlaybackCommandFeatureTests {
     ) async {
         let requestID = UUID(0)
         let store = makeStore(command: command, requestID: requestID) {
-            $0.musicProvider.play = { _ in
+            $0.playbackControl.play = { _ in
                 throw MusicProviderError.network
             }
-            $0.musicProvider.resume = {
+            $0.playbackControl.resume = {
                 throw MusicProviderError.network
             }
         }
@@ -108,10 +108,10 @@ struct PlaybackCommandFeatureTests {
     ) async {
         let requestID = UUID(0)
         let store = makeStore(command: command, requestID: requestID) {
-            $0.musicProvider.play = { _ in
+            $0.playbackControl.play = { _ in
                 throw TestError()
             }
-            $0.musicProvider.resume = {
+            $0.playbackControl.resume = {
                 throw TestError()
             }
         }
@@ -141,7 +141,7 @@ struct PlaybackCommandFeatureTests {
             command: .play(firstItemID),
             requestID: UUID(0)
         ) {
-            $0.musicProvider.play = { itemID in
+            $0.playbackControl.play = { itemID in
                 if itemID == firstItemID {
                     firstStartedContinuation.yield()
                     do {

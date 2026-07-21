@@ -158,7 +158,7 @@ struct MusicPlaybackTimelineFeatureTests {
             MusicPlaybackTimelineFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.seek = { position in
+            $0.playbackControl.seek = { position in
                 seekPositions.withValue { $0.append(position) }
                 if let seekOperation {
                     try await seekOperation(position)

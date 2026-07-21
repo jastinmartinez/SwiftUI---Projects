@@ -490,8 +490,8 @@ struct AppFeatureTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerAccess.currentAccess = currentAccess
-            $0.musicProvider.play = play
-            $0.musicProvider.seek = seek
+            $0.playbackControl.play = play
+            $0.playbackControl.seek = seek
         }
     }
 

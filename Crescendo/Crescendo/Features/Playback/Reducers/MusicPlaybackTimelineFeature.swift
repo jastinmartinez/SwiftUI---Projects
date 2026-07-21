@@ -32,7 +32,7 @@ struct MusicPlaybackTimelineFeature {
         case seek
     }
 
-    @Dependency(\.musicProvider) var musicProvider
+    @Dependency(\.playbackControl) var playbackControl
     @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
@@ -53,7 +53,7 @@ struct MusicPlaybackTimelineFeature {
                 )
                 return .run { send in
                     do {
-                        try await musicProvider.seek(position)
+                        try await playbackControl.seek(position)
                         await send(.seekSucceeded(requestID: requestID))
                     } catch let error as MusicProviderError {
                         await send(
