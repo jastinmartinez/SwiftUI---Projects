@@ -30,6 +30,8 @@ struct SearchResultListView: View {
                 Color(uiColor: .secondarySystemGroupedBackground),
                 in: RoundedRectangle(cornerRadius: 24)
             )
+
+            SearchPaginationFooterView(model: model.footer)
         }
     }
 }
@@ -38,6 +40,7 @@ extension SearchResultListView {
     struct Model {
         let summary: String
         let rows: [SongRowView.Model]
+        let footer: SearchPaginationFooterView.Model
         let onSongTapped: (MusicItemID) -> Void
     }
 }

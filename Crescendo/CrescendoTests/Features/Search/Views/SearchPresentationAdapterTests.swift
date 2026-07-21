@@ -37,21 +37,31 @@ struct SearchPresentationAdapterTests {
             providerName: nil
         )
 
-        #expect(model.content == .requiresProvider)
+        guard case .requiresProvider = model.content else {
+            Issue.record("Expected provider connection content")
+            return
+        }
     }
 
     @Test
-    func requiresProviderTakesPrecedenceOverSearchPhase() {
+    func requiresProviderTakesPrecedenceOverSearchStatus() {
         let model = SearchResultsView.Model(
             makeStore(
                 query: "vela",
-                status: loadedStatus(songs: [makeSong()]),
+                status: loadedStatus(
+                    songs: [makeSong()],
+                    nextCursor: nil,
+                    paginationStatus: .idle
+                ),
                 providerAccess: nil
             ),
             providerName: nil
         )
 
-        #expect(model.content == .requiresProvider)
+        guard case .requiresProvider = model.content else {
+            Issue.record("Expected provider connection content")
+            return
+        }
     }
 
     @Test
@@ -59,7 +69,11 @@ struct SearchPresentationAdapterTests {
         let song = makeSong()
         let store = makeStore(
             query: "result",
-            status: loadedStatus(songs: [song]),
+            status: loadedStatus(
+                songs: [song],
+                nextCursor: SearchCursor(value: "next"),
+                paginationStatus: .idle
+            ),
             providerAccess: makeAccess(
                 authorization: .authorized,
                 playbackEligibility: .eligible
@@ -76,20 +90,116 @@ struct SearchPresentationAdapterTests {
             )
         ]
 
+        guard case .results(let summary, let rows, let footer) = model.content else {
+            Issue.record("Expected loaded results")
+            return
+        }
+
+        #expect(summary == "1 song · Apple Music")
+        #expect(rows == expectedRows)
+        #expect(footer.content == .ready(triggerID: "next"))
         #expect(
-            model.content
-                == .results(
-                    summary: "1 song · Apple Music",
-                    rows: expectedRows
+            footer.strings
+                == SearchPaginationFooterView.Model.Strings(
+                    loading: "Loading more songs",
+                    failure: "More songs couldn’t be loaded.",
+                    retry: "Retry"
                 )
         )
+    }
+
+    @Test
+    func loadedPaginationMapsFooterPresentation() throws {
+        let cursor = SearchCursor(value: "next")
+        let hidden = makeResultsModel(
+            nextCursor: nil,
+            paginationStatus: .idle
+        )
+        let ready = makeResultsModel(
+            nextCursor: cursor,
+            paginationStatus: .idle
+        )
+        let loading = makeResultsModel(
+            nextCursor: cursor,
+            paginationStatus: .loading(requestID: UUID(0))
+        )
+        let failed = makeResultsModel(
+            nextCursor: cursor,
+            paginationStatus: .failed(.network)
+        )
+
+        #expect(try footer(from: hidden).content == .hidden)
+        #expect(
+            try footer(from: ready).content
+                == .ready(triggerID: cursor.value)
+        )
+        #expect(try footer(from: loading).content == .loading)
+        #expect(try footer(from: failed).content == .failed)
+    }
+
+    @Test(arguments: [
+        SearchPaginationFeature.Status.idle,
+        .failed(.network),
+    ])
+    func footerCallbackStartsTheExpectedPageRequest(
+        paginationStatus: SearchPaginationFeature.Status
+    ) throws {
+        let store = Store(
+            initialState: SearchFeature.State(
+                query: "result",
+                status: loadedStatus(
+                    songs: [makeSong()],
+                    nextCursor: SearchCursor(value: "next"),
+                    paginationStatus: paginationStatus
+                ),
+                providerAccess: makeAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            )
+        ) {
+            SearchFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.providerSearch.search = { _, _ in
+                Issue.record("A footer event must not start a new search")
+                return SearchPage(songs: [], nextCursor: nil)
+            }
+            $0.providerSearch.nextSearchPage = { _, _ in
+                try await Task.never()
+            }
+        }
+        let model = SearchResultsView.Model(
+            store,
+            providerName: "Apple Music"
+        )
+        let footer = try footer(from: model)
+
+        switch paginationStatus {
+        case .idle:
+            footer.onLoadNextPage()
+        case .failed:
+            footer.onRetry()
+        case .loading:
+            Issue.record("This test covers only actionable footer states")
+        }
+
+        guard case .loaded(let pagination) = store.status else {
+            Issue.record("Expected loaded pagination state")
+            return
+        }
+        #expect(pagination.status == .loading(requestID: UUID(0)))
     }
 
     @Test
     func ineligibleAccessStillShowsSubscriptionNoticeForResults() {
         let store = makeStore(
             query: "result",
-            status: loadedStatus(songs: [makeSong()]),
+            status: loadedStatus(
+                songs: [makeSong()],
+                nextCursor: nil,
+                paginationStatus: .idle
+            ),
             providerAccess: makeAccess(
                 authorization: .authorized,
                 playbackEligibility: .ineligible
@@ -120,14 +230,48 @@ struct SearchPresentationAdapterTests {
         }
     }
 
-    private func loadedStatus(songs: [SongSummary]) -> SearchFeature.Status {
+    private func loadedStatus(
+        songs: [SongSummary],
+        nextCursor: SearchCursor?,
+        paginationStatus: SearchPaginationFeature.Status
+    ) -> SearchFeature.Status {
         .loaded(
             SearchPaginationFeature.State(
                 songs: .init(uniqueElements: songs),
-                nextCursor: nil,
-                status: .idle
+                nextCursor: nextCursor,
+                status: paginationStatus
             )
         )
+    }
+
+    private func makeResultsModel(
+        nextCursor: SearchCursor?,
+        paginationStatus: SearchPaginationFeature.Status
+    ) -> SearchResultsView.Model {
+        SearchResultsView.Model(
+            makeStore(
+                query: "result",
+                status: loadedStatus(
+                    songs: [makeSong()],
+                    nextCursor: nextCursor,
+                    paginationStatus: paginationStatus
+                ),
+                providerAccess: makeAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            ),
+            providerName: "Apple Music"
+        )
+    }
+
+    private func footer(
+        from model: SearchResultsView.Model
+    ) throws -> SearchPaginationFooterView.Model {
+        guard case .results(_, _, let footer) = model.content else {
+            throw TestFailure.expectedLoadedResults
+        }
+        return footer
     }
 
     private func makeProviderSelection() -> ProviderSelectionView.Model {
@@ -172,4 +316,8 @@ struct SearchPresentationAdapterTests {
             duration: 215
         )
     }
+}
+
+private enum TestFailure: Error {
+    case expectedLoadedResults
 }

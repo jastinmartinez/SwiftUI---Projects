@@ -8,25 +8,55 @@ extension SearchResultsView.Model {
         if store.providerAccess == nil {
             content = .requiresProvider
         } else {
-            content =
-                switch store.status {
+            switch store.status {
+            case .idle:
+                content = .idle
+
+            case .searching:
+                content = .loading
+
+            case .loaded(let pagination) where pagination.songs.isEmpty:
+                content = .empty(query: store.query)
+
+            case .loaded(let pagination):
+                let footerContent: SearchPaginationFooterView.Model.Content
+                switch pagination.status {
                 case .idle:
-                    .idle
-                case .searching:
-                    .loading
-                case .loaded(let pagination) where pagination.songs.isEmpty:
-                    .empty(query: store.query)
-                case .loaded(let pagination):
-                    .results(
-                        summary: Locs.Search.resultsSummary(
-                            count: pagination.songs.count,
-                            providerName: providerName
-                        ),
-                        rows: pagination.songs.map(SongRowView.Model.init)
-                    )
+                    footerContent =
+                        pagination.nextCursor.map {
+                            .ready(triggerID: $0.value)
+                        } ?? .hidden
+                case .loading:
+                    footerContent = .loading
                 case .failed:
-                    .failed
+                    footerContent = .failed
                 }
+
+                content = .results(
+                    summary: Locs.Search.resultsSummary(
+                        count: pagination.songs.count,
+                        providerName: providerName
+                    ),
+                    rows: pagination.songs.map(SongRowView.Model.init),
+                    footer: SearchPaginationFooterView.Model(
+                        content: footerContent,
+                        strings: .init(
+                            loading: Locs.Search.loadingMore,
+                            failure: Locs.Search.loadMoreFailed,
+                            retry: Locs.Common.retry
+                        ),
+                        onLoadNextPage: {
+                            store.send(.pagination(.nextPageRequested))
+                        },
+                        onRetry: {
+                            store.send(.pagination(.retryButtonTapped))
+                        }
+                    )
+                )
+
+            case .failed:
+                content = .failed
+            }
         }
 
         self.init(

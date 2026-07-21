@@ -18,16 +18,41 @@ struct SearchResultsView: View {
             ProgressView(Locs.Search.searching)
         case .empty(let query):
             ContentUnavailableView.search(text: query)
-        case .results(let summary, let rows):
+        case .results(let summary, let rows, let footer):
             SearchResultListView(
                 model: .init(
                     summary: summary,
                     rows: rows,
+                    footer: footer,
                     onSongTapped: model.onSongTapped
                 )
             )
         case .failed:
             Button(Locs.Common.retry, action: model.onRetry)
         }
+    }
+}
+
+extension SearchResultsView {
+    /// The immutable presentation contract for mutually exclusive search content.
+    struct Model {
+        let content: Content
+        let onRetry: () -> Void
+        let onSongTapped: (MusicItemID) -> Void
+    }
+}
+
+extension SearchResultsView.Model {
+    enum Content {
+        case idle
+        case requiresProvider
+        case loading
+        case empty(query: String)
+        case results(
+            summary: String,
+            rows: [SongRowView.Model],
+            footer: SearchPaginationFooterView.Model
+        )
+        case failed
     }
 }

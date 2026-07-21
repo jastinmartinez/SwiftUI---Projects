@@ -19,6 +19,8 @@ extension Locs {
         static let prompt = String(localized: "search.prompt")
         static let emptyTitle = String(localized: "search.empty_title")
         static let searching = String(localized: "search.searching")
+        static let loadingMore = String(localized: "search.loading_more")
+        static let loadMoreFailed = String(localized: "search.load_more_failed")
         static let requiresProviderTitle = String(
             localized: "search.requires_provider.title"
         )

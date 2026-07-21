@@ -331,6 +331,26 @@
         }
       }
     },
+    "search.load_more_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More songs couldn’t be loaded."
+          }
+        }
+      }
+    },
+    "search.loading_more" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading more songs"
+          }
+        }
+      }
+    },
     "search.prompt" : {
       "localizations" : {
         "en" : {
