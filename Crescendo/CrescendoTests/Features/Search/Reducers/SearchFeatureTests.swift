@@ -20,7 +20,7 @@ struct SearchFeatureTests {
         let store = TestStore(
             initialState: makeState(
                 query: "result",
-                phase: .idle,
+                status: .idle,
                 providerAccess: access
             )
         ) {
@@ -39,10 +39,14 @@ struct SearchFeatureTests {
         }
 
         await store.send(.submitButtonTapped) {
-            $0.phase = .loading(requestID: UUID(0))
+            $0.status = .searching(requestID: UUID(0))
         }
         await store.receive(.searchResponse(UUID(0), .success(page))) {
-            $0.phase = .loaded([song])
+            $0.status = loadedStatus(
+                songs: page.songs,
+                nextCursor: page.nextCursor,
+                paginationStatus: .idle
+            )
         }
     }
 
@@ -57,7 +61,7 @@ struct SearchFeatureTests {
         let store = TestStore(
             initialState: makeState(
                 query: "result",
-                phase: .idle,
+                status: .idle,
                 providerAccess: access
             )
         ) {
@@ -72,10 +76,14 @@ struct SearchFeatureTests {
         }
 
         await store.send(.submitButtonTapped) {
-            $0.phase = .loading(requestID: UUID(0))
+            $0.status = .searching(requestID: UUID(0))
         }
         await store.receive(.searchResponse(UUID(0), .success(page))) {
-            $0.phase = .loaded([song])
+            $0.status = loadedStatus(
+                songs: page.songs,
+                nextCursor: page.nextCursor,
+                paginationStatus: .idle
+            )
         }
 
         #expect(store.state.providerAccess == access)
@@ -95,7 +103,11 @@ struct SearchFeatureTests {
         for providerAccess in cases {
             let state = makeState(
                 query: "result",
-                phase: .loaded([song]),
+                status: loadedStatus(
+                    songs: [song],
+                    nextCursor: nil,
+                    paginationStatus: .idle
+                ),
                 providerAccess: providerAccess
             )
             let store = TestStore(initialState: state) {
@@ -125,7 +137,7 @@ struct SearchFeatureTests {
         let store = TestStore(
             initialState: makeState(
                 query: "old",
-                phase: .idle,
+                status: .idle,
                 providerAccess: access
             )
         ) {
@@ -142,11 +154,11 @@ struct SearchFeatureTests {
         }
 
         await store.send(.submitButtonTapped) {
-            $0.phase = .loading(requestID: UUID(0))
+            $0.status = .searching(requestID: UUID(0))
         }
         await store.send(.queryChanged("new")) {
             $0.query = "new"
-            $0.phase = .idle
+            $0.status = .idle
         }
         await store.send(
             .searchResponse(
@@ -159,10 +171,15 @@ struct SearchFeatureTests {
     @Test
     func tappingLoadedResultDelegatesSongTap() async {
         let song = makeSong()
+        let secondSong = makeSong(nativeID: "2")
         let store = TestStore(
             initialState: makeState(
                 query: "result",
-                phase: .loaded([song]),
+                status: loadedStatus(
+                    songs: [song, secondSong],
+                    nextCursor: nil,
+                    paginationStatus: .idle
+                ),
                 providerAccess: makeAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
@@ -173,20 +190,83 @@ struct SearchFeatureTests {
         }
 
         await store.send(.resultTapped(song.id))
-        await store.receive(.delegate(.songTapped(song)))
+        await store.receive(
+            .delegate(
+                .songTapped(
+                    song,
+                    loadedResults: [song, secondSong]
+                )
+            )
+        )
+    }
+
+    @Test
+    func queryChangeCancelsAnUnresolvedContinuationRequest() async {
+        let song = makeSong()
+        let store = TestStore(
+            initialState: makeState(
+                query: "old",
+                status: loadedStatus(
+                    songs: [song],
+                    nextCursor: SearchCursor(value: "page-2"),
+                    paginationStatus: .idle
+                ),
+                providerAccess: makeAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            )
+        ) {
+            SearchFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.providerSearch.search = { _, _ in
+                Issue.record("Pagination must not start a new search")
+                return SearchPage(songs: [], nextCursor: nil)
+            }
+            $0.providerSearch.nextSearchPage = { _, _ in
+                try await Task.never()
+            }
+        }
+
+        await store.send(.pagination(.nextPageRequested)) {
+            $0.status = loadedStatus(
+                songs: [song],
+                nextCursor: SearchCursor(value: "page-2"),
+                paginationStatus: .loading(requestID: UUID(0))
+            )
+        }
+        await store.send(.queryChanged("new")) {
+            $0.query = "new"
+            $0.status = .idle
+        }
     }
 
     // MARK: - Helpers
 
     private func makeState(
         query: String,
-        phase: SearchFeature.Phase,
+        status: SearchFeature.Status,
         providerAccess: MusicProviderAccess?
     ) -> SearchFeature.State {
         SearchFeature.State(
             query: query,
-            phase: phase,
+            status: status,
             providerAccess: providerAccess
+        )
+    }
+
+    private func loadedStatus(
+        songs: [SongSummary],
+        nextCursor: SearchCursor?,
+        paginationStatus: SearchPaginationFeature.Status
+    ) -> SearchFeature.Status {
+        .loaded(
+            SearchPaginationFeature.State(
+                songs: .init(uniqueElements: songs),
+                nextCursor: nextCursor,
+                status: paginationStatus
+            )
         )
     }
 
@@ -200,9 +280,9 @@ struct SearchFeatureTests {
         )
     }
 
-    private func makeSong() -> SongSummary {
+    private func makeSong(nativeID: String = "1") -> SongSummary {
         SongSummary(
-            id: .init(providerID: "fake", nativeID: "1"),
+            id: .init(providerID: "fake", nativeID: nativeID),
             title: "Result",
             artistName: "Artist",
             artworkURL: nil,

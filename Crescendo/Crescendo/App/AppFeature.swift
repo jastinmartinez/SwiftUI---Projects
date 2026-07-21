@@ -140,6 +140,7 @@ struct AppFeature {
                     return .none
                 }
                 return .concatenate(
+                    .send(.search(.cancel)),
                     .send(.musicPlayback(.timeline(.reset))),
                     .send(.replaceProviderOwnedState(provider.id))
                 )
@@ -154,7 +155,7 @@ struct AppFeature {
                 }
                 state.search = SearchFeature.State(
                     query: "",
-                    phase: .idle,
+                    status: .idle,
                     providerAccess: nil
                 )
                 state.musicPlayback = MusicPlaybackFeature.State(
@@ -184,7 +185,11 @@ struct AppFeature {
             case .providerConnection:
                 return .none
 
-            case .search(.delegate(.songTapped(let song))):
+            case .search(
+                .delegate(
+                    .songTapped(let song, loadedResults: _)
+                )
+            ):
                 guard state.providerSwitch == nil,
                     case .connected(_, let access) =
                         state.providerConnection.connection,

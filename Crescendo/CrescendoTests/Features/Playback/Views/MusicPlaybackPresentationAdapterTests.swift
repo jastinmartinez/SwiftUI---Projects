@@ -600,7 +600,7 @@ struct MusicPlaybackPresentationAdapterTests {
                 ),
                 search: SearchFeature.State(
                     query: "",
-                    phase: .idle,
+                    status: .idle,
                     providerAccess: MusicProviderAccess(
                         authorization: .authorized,
                         playbackEligibility: .eligible

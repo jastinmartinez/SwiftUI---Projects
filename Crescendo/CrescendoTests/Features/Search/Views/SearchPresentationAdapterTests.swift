@@ -13,15 +13,15 @@ struct SearchPresentationAdapterTests {
             playbackEligibility: .eligible
         )
         let enabledModel = SearchHeaderView.Model(
-            makeStore(query: " vela ", phase: .idle, providerAccess: access),
+            makeStore(query: " vela ", status: .idle, providerAccess: access),
             providerSelection: makeProviderSelection()
         )
         let emptyQueryModel = SearchHeaderView.Model(
-            makeStore(query: "   ", phase: .idle, providerAccess: access),
+            makeStore(query: "   ", status: .idle, providerAccess: access),
             providerSelection: makeProviderSelection()
         )
         let disconnectedModel = SearchHeaderView.Model(
-            makeStore(query: "vela", phase: .idle, providerAccess: nil),
+            makeStore(query: "vela", status: .idle, providerAccess: nil),
             providerSelection: makeProviderSelection()
         )
 
@@ -33,7 +33,7 @@ struct SearchPresentationAdapterTests {
     @Test
     func disconnectedProviderShowsRequiresProviderContent() {
         let model = SearchResultsView.Model(
-            makeStore(query: "vela", phase: .failed, providerAccess: nil),
+            makeStore(query: "vela", status: .failed(.network), providerAccess: nil),
             providerName: nil
         )
 
@@ -43,7 +43,11 @@ struct SearchPresentationAdapterTests {
     @Test
     func requiresProviderTakesPrecedenceOverSearchPhase() {
         let model = SearchResultsView.Model(
-            makeStore(query: "vela", phase: .loaded([makeSong()]), providerAccess: nil),
+            makeStore(
+                query: "vela",
+                status: loadedStatus(songs: [makeSong()]),
+                providerAccess: nil
+            ),
             providerName: nil
         )
 
@@ -55,7 +59,7 @@ struct SearchPresentationAdapterTests {
         let song = makeSong()
         let store = makeStore(
             query: "result",
-            phase: .loaded([song]),
+            status: loadedStatus(songs: [song]),
             providerAccess: makeAccess(
                 authorization: .authorized,
                 playbackEligibility: .eligible
@@ -85,7 +89,7 @@ struct SearchPresentationAdapterTests {
     func ineligibleAccessStillShowsSubscriptionNoticeForResults() {
         let store = makeStore(
             query: "result",
-            phase: .loaded([makeSong()]),
+            status: loadedStatus(songs: [makeSong()]),
             providerAccess: makeAccess(
                 authorization: .authorized,
                 playbackEligibility: .ineligible
@@ -102,18 +106,28 @@ struct SearchPresentationAdapterTests {
 
     private func makeStore(
         query: String,
-        phase: SearchFeature.Phase,
+        status: SearchFeature.Status,
         providerAccess: MusicProviderAccess?
     ) -> StoreOf<SearchFeature> {
         Store(
             initialState: SearchFeature.State(
                 query: query,
-                phase: phase,
+                status: status,
                 providerAccess: providerAccess
             )
         ) {
             SearchFeature()
         }
+    }
+
+    private func loadedStatus(songs: [SongSummary]) -> SearchFeature.Status {
+        .loaded(
+            SearchPaginationFeature.State(
+                songs: .init(uniqueElements: songs),
+                nextCursor: nil,
+                status: .idle
+            )
+        )
     }
 
     private func makeProviderSelection() -> ProviderSelectionView.Model {

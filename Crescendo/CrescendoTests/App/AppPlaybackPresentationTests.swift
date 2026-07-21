@@ -41,7 +41,13 @@ struct AppPlaybackPresentationTests {
             ),
             search: SearchFeature.State(
                 query: "",
-                phase: .loaded([song]),
+                status: .loaded(
+                    SearchPaginationFeature.State(
+                        songs: [song],
+                        nextCursor: nil,
+                        status: .idle
+                    )
+                ),
                 providerAccess: MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible

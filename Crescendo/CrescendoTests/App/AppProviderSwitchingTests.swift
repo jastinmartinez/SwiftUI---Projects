@@ -124,11 +124,14 @@ struct AppProviderSwitchingTests {
             )
         )
         await store.receive(.resetProviderOwnedState("future"))
+        await store.receive(.search(.cancel)) {
+            $0.search.status = .idle
+        }
         await store.receive(.musicPlayback(.timeline(.reset)))
         await store.receive(.replaceProviderOwnedState("future")) {
             $0.search = SearchFeature.State(
                 query: "",
-                phase: .idle,
+                status: .idle,
                 providerAccess: nil
             )
             $0.musicPlayback = MusicPlaybackFeature.State(
@@ -263,7 +266,11 @@ struct AppProviderSwitchingTests {
         )
         let store = makeStore(state: state)
 
-        await store.send(.search(.delegate(.songTapped(song))))
+        await store.send(
+            .search(
+                .delegate(.songTapped(song, loadedResults: [song]))
+            )
+        )
 
         #expect(store.state == state)
     }
@@ -320,7 +327,13 @@ struct AppProviderSwitchingTests {
             ),
             search: SearchFeature.State(
                 query: "Selected song",
-                phase: .loaded([makeSong()]),
+                status: .loaded(
+                    SearchPaginationFeature.State(
+                        songs: [makeSong()],
+                        nextCursor: nil,
+                        status: .idle
+                    )
+                ),
                 providerAccess: MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible

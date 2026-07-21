@@ -45,6 +45,7 @@ struct AppFeatureTests {
             )
         )
         await store.receive(.resetProviderOwnedState(.appleMusic))
+        await store.receive(.search(.cancel))
         await store.receive(.musicPlayback(.timeline(.reset)))
         await store.receive(.replaceProviderOwnedState(.appleMusic))
         await store.receive(
@@ -99,7 +100,7 @@ struct AppFeatureTests {
             ),
             search: SearchFeature.State(
                 query: "Selected song",
-                phase: .loaded([song]),
+                status: loadedStatus(songs: [song]),
                 providerAccess: makeAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
@@ -139,6 +140,9 @@ struct AppFeatureTests {
             )
         )
         await store.receive(.resetProviderOwnedState(futureProvider.id))
+        await store.receive(.search(.cancel)) {
+            $0.search.status = .idle
+        }
         await store.receive(.musicPlayback(.timeline(.reset))) {
             $0.musicPlayback.timeline.interaction = .idle
         }
@@ -148,7 +152,7 @@ struct AppFeatureTests {
         await store.receive(.replaceProviderOwnedState(futureProvider.id)) {
             $0.search = SearchFeature.State(
                 query: "",
-                phase: .idle,
+                status: .idle,
                 providerAccess: nil
             )
             $0.musicPlayback = MusicPlaybackFeature.State(
@@ -239,7 +243,7 @@ struct AppFeatureTests {
             connection: connection,
             search: SearchFeature.State(
                 query: "result",
-                phase: .loaded([makeSong()]),
+                status: loadedStatus(songs: [makeSong()]),
                 providerAccess: staleAccess
             )
         )
@@ -294,7 +298,7 @@ struct AppFeatureTests {
             connection: connection,
             search: SearchFeature.State(
                 query: song.title,
-                phase: .loaded([song]),
+                status: loadedStatus(songs: [song]),
                 providerAccess: access
             )
         )
@@ -306,7 +310,11 @@ struct AppFeatureTests {
             }
         )
 
-        await store.send(.search(.delegate(.songTapped(song))))
+        await store.send(
+            .search(
+                .delegate(.songTapped(song, loadedResults: [song]))
+            )
+        )
 
         #expect(store.state == state)
         #expect(playedItemIDs.value.isEmpty)
@@ -328,7 +336,7 @@ struct AppFeatureTests {
             ),
             search: SearchFeature.State(
                 query: song.title,
-                phase: .loaded([song]),
+                status: loadedStatus(songs: [song]),
                 providerAccess: access
             )
         )
@@ -340,7 +348,11 @@ struct AppFeatureTests {
             }
         )
 
-        await store.send(.search(.delegate(.songTapped(song)))) {
+        await store.send(
+            .search(
+                .delegate(.songTapped(song, loadedResults: [song]))
+            )
+        ) {
             $0.isPlayerPresented = true
         }
         await store.receive(
@@ -380,7 +392,7 @@ struct AppFeatureTests {
             ),
             search: SearchFeature.State(
                 query: "Selected song",
-                phase: .loaded([song]),
+                status: loadedStatus(songs: [song]),
                 providerAccess: makeAccess(
                     authorization: .authorized,
                     playbackEligibility: .ineligible
@@ -399,7 +411,11 @@ struct AppFeatureTests {
         )
         let store = makeStore(state: state)
 
-        await store.send(.search(.delegate(.songTapped(song))))
+        await store.send(
+            .search(
+                .delegate(.songTapped(song, loadedResults: [song]))
+            )
+        )
         await store.receive(
             .musicPlayback(
                 .songTapped(song, playbackEligibility: .eligible)
@@ -528,7 +544,7 @@ struct AppFeatureTests {
             search: search
                 ?? SearchFeature.State(
                     query: "",
-                    phase: .idle,
+                    status: .idle,
                     providerAccess: nil
                 ),
             musicPlayback: musicPlayback
@@ -567,6 +583,16 @@ struct AppFeatureTests {
         MusicProviderAccess(
             authorization: authorization,
             playbackEligibility: playbackEligibility
+        )
+    }
+
+    private func loadedStatus(songs: [SongSummary]) -> SearchFeature.Status {
+        .loaded(
+            SearchPaginationFeature.State(
+                songs: .init(uniqueElements: songs),
+                nextCursor: nil,
+                status: .idle
+            )
         )
     }
 

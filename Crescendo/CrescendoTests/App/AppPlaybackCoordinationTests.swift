@@ -348,7 +348,13 @@ struct AppPlaybackCoordinationTests {
             }
         }
 
-        await store.send(.search(.delegate(.songTapped(nextSong))))
+        await store.send(
+            .search(
+                .delegate(
+                    .songTapped(nextSong, loadedResults: [nextSong])
+                )
+            )
+        )
         await store.receive(
             .musicPlayback(
                 .songTapped(nextSong, playbackEligibility: .eligible)
@@ -458,7 +464,7 @@ struct AppPlaybackCoordinationTests {
             ),
             search: SearchFeature.State(
                 query: "",
-                phase: .idle,
+                status: .idle,
                 providerAccess: MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible

@@ -9,20 +9,20 @@ extension SearchResultsView.Model {
             content = .requiresProvider
         } else {
             content =
-                switch store.phase {
+                switch store.status {
                 case .idle:
                     .idle
-                case .loading:
+                case .searching:
                     .loading
-                case .loaded(let songs) where songs.isEmpty:
+                case .loaded(let pagination) where pagination.songs.isEmpty:
                     .empty(query: store.query)
-                case .loaded(let songs):
+                case .loaded(let pagination):
                     .results(
                         summary: Locs.Search.resultsSummary(
-                            count: songs.count,
+                            count: pagination.songs.count,
                             providerName: providerName
                         ),
-                        rows: songs.map(SongRowView.Model.init)
+                        rows: pagination.songs.map(SongRowView.Model.init)
                     )
                 case .failed:
                     .failed
