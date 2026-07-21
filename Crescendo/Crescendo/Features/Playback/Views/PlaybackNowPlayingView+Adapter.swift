@@ -11,8 +11,7 @@ extension PlaybackNowPlayingView.Model {
             artistName: song.artistName,
             artworkURL: song.artworkURL,
             isPlaying: isPlaying,
-            isPlayEnabled: store.playback.capabilities.supportsEmbeddedPlayback
-                && store.playback.pendingOperation == nil,
+            isPlayEnabled: store.playback.canRequestPlayPause,
             timeline: PlaybackTimelineView.Model.make(
                 duration: song.duration,
                 timeline: store.playback.timeline,
@@ -31,9 +30,7 @@ extension PlaybackNowPlayingView.Model {
                 }
             ),
             onOpenPlayer: { store.send(.setPlayerPresented(true)) },
-            onTogglePlayPause: {
-                store.send(.playback(isPlaying ? .pauseTapped : .playTapped))
-            }
+            onTogglePlayPause: { store.send(.playback(.playPauseTapped)) }
         )
     }
 }

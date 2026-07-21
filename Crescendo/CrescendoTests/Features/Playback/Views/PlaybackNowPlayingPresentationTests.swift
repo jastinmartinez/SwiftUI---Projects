@@ -13,6 +13,7 @@ struct PlaybackNowPlayingPresentationTests {
         let store = Store(initialState: makeState(song: song, status: .playing)) {
             AppFeature()
         } withDependencies: {
+            $0.uuid = .incrementing
             $0.playbackControl.pause = { pauseCalledContinuation.yield() }
         }
         let model = PlaybackNowPlayingView.Model(store, song: song)
@@ -22,6 +23,22 @@ struct PlaybackNowPlayingPresentationTests {
 
         var pauseCalledIterator = pauseCalled.makeAsyncIterator()
         _ = await pauseCalledIterator.next()
+    }
+
+    @Test
+    func barToggleProjectsParentOperationPermission() {
+        let song = makeSong()
+        var state = makeState(song: song, status: .playing)
+        state.playback.pendingOperation = .statusChange(
+            .init(requestID: UUID(0), target: .paused)
+        )
+        let store = Store(initialState: state) {
+            AppFeature()
+        }
+
+        let model = PlaybackNowPlayingView.Model(store, song: song)
+
+        #expect(!model.isPlayEnabled)
     }
 
     @Test

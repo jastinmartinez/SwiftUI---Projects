@@ -18,12 +18,24 @@ struct PlaybackFeature {
 
     enum PendingOperation: Equatable {
         case queueReplacement(PendingQueueReplacement)
+        case statusChange(PendingStatusChange)
     }
 
     struct PendingQueueReplacement: Equatable {
         let requestID: UUID
         let songs: IdentifiedArrayOf<SongSummary>
         let startingItemID: MusicItemID
+    }
+
+    struct PendingStatusChange: Equatable {
+        let requestID: UUID
+        let target: Target
+
+        enum Target: Equatable {
+            case playing
+            case paused
+            case stopped
+        }
     }
 
     enum Action: Equatable {
@@ -45,11 +57,17 @@ struct PlaybackFeature {
             error: MusicProviderError
         )
         case cancelPendingOperation
-        case playTapped
-        case pauseTapped
+        case playPauseTapped
         case stopTapped
-        case transportFinished
-        case transportFailed(MusicProviderError)
+        case performStatusChange(
+            requestID: UUID,
+            target: PendingStatusChange.Target
+        )
+        case statusChangeSucceeded(requestID: UUID)
+        case statusChangeFailed(
+            requestID: UUID,
+            error: MusicProviderError
+        )
         case snapshotReceived(PlaybackSnapshot)
         case queue(PlaybackQueueFeature.Action)
         case timeline(PlaybackTimelineFeature.Action)
@@ -58,7 +76,6 @@ struct PlaybackFeature {
     private enum CancelID {
         case playbackObservation
         case queueReplacement
-        case transport
     }
 
     @Dependency(\.playbackControl) var playbackControl
@@ -204,58 +221,101 @@ struct PlaybackFeature {
                 state.pendingOperation = nil
                 return .cancel(id: CancelID.queueReplacement)
 
-            case .playTapped:
-                guard state.status == .paused,
-                    state.queue.currentItem != nil
-                else { return .none }
+            case .playPauseTapped:
+                guard state.canRequestPlayPause else { return .none }
+                let target: PendingStatusChange.Target =
+                    state.status == .playing ? .paused : .playing
+                let requestID = uuid()
+                state.pendingOperation = .statusChange(
+                    PendingStatusChange(requestID: requestID, target: target)
+                )
                 state.failure = nil
-                return .run { send in
-                    do {
-                        try await playbackControl.resume()
-                        await send(.transportFinished)
-                    } catch let error as MusicProviderError {
-                        await send(.transportFailed(error))
-                    } catch {
-                        await send(.transportFailed(.playbackFailed))
-                    }
-                }
-                .cancellable(id: CancelID.transport, cancelInFlight: true)
-
-            case .pauseTapped:
-                state.failure = nil
-                return .run { send in
-                    do {
-                        try await playbackControl.pause()
-                        await send(.transportFinished)
-                    } catch let error as MusicProviderError {
-                        await send(.transportFailed(error))
-                    } catch {
-                        await send(.transportFailed(.playbackFailed))
-                    }
-                }
-                .cancellable(id: CancelID.transport, cancelInFlight: true)
-
-            case .stopTapped:
-                state.failure = nil
-                return .concatenate(
-                    .send(.timeline(.reset)),
-                    .run { send in
-                        do {
-                            try await playbackControl.stop()
-                            await send(.transportFinished)
-                        } catch let error as MusicProviderError {
-                            await send(.transportFailed(error))
-                        } catch {
-                            await send(.transportFailed(.playbackFailed))
-                        }
-                    }
-                    .cancellable(id: CancelID.transport, cancelInFlight: true)
+                return .send(
+                    .performStatusChange(
+                        requestID: requestID,
+                        target: target
+                    )
                 )
 
-            case .transportFinished:
-                return .none
+            case .stopTapped:
+                guard state.canRequestStop else { return .none }
+                let requestID = uuid()
+                state.pendingOperation = .statusChange(
+                    PendingStatusChange(requestID: requestID, target: .stopped)
+                )
+                state.failure = nil
+                return .send(
+                    .performStatusChange(
+                        requestID: requestID,
+                        target: .stopped
+                    )
+                )
 
-            case .transportFailed(let error):
+            case .performStatusChange(let requestID, let target):
+                return .run { send in
+                    do {
+                        switch target {
+                        case .playing:
+                            try await playbackControl.resume()
+                        case .paused:
+                            try await playbackControl.pause()
+                        case .stopped:
+                            try await playbackControl.stop()
+                        }
+                        try Task.checkCancellation()
+                        await send(.statusChangeSucceeded(requestID: requestID))
+                    } catch is CancellationError {
+                        return
+                    } catch let error as MusicProviderError {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .statusChangeFailed(
+                                requestID: requestID,
+                                error: error
+                            )
+                        )
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .statusChangeFailed(
+                                requestID: requestID,
+                                error: .playbackFailed
+                            )
+                        )
+                    }
+                }
+                .cancellable(
+                    id: CancelID.queueReplacement,
+                    cancelInFlight: true
+                )
+
+            case .statusChangeSucceeded(let requestID):
+                guard
+                    case .statusChange(let change) = state.pendingOperation,
+                    change.requestID == requestID
+                else { return .none }
+
+                state.pendingOperation = nil
+                state.failure = nil
+                switch change.target {
+                case .playing:
+                    state.status = .playing
+                    return .none
+                case .paused:
+                    state.status = .paused
+                    return .none
+                case .stopped:
+                    state.status = .stopped
+                    return .send(.timeline(.reset))
+                }
+
+            case .statusChangeFailed(let requestID, let error):
+                guard
+                    case .statusChange(let change) = state.pendingOperation,
+                    change.requestID == requestID
+                else { return .none }
+
+                state.pendingOperation = nil
                 state.failure = error
                 return .none
 
@@ -288,6 +348,48 @@ struct PlaybackFeature {
                     )
                 }
 
+                if case .statusChange(let change) = state.pendingOperation {
+                    let matchesTarget: Bool
+                    switch change.target {
+                    case .playing:
+                        matchesTarget = snapshot.status == .playing
+                    case .paused:
+                        matchesTarget = snapshot.status == .paused
+                    case .stopped:
+                        matchesTarget = snapshot.status == .stopped
+                    }
+                    if matchesTarget {
+                        state.pendingOperation = nil
+                        state.failure = nil
+                        if change.target == .stopped {
+                            return .concatenate(
+                                .cancel(id: CancelID.queueReplacement),
+                                .send(.timeline(.reset)),
+                                .send(
+                                    .queue(
+                                        .currentItemObserved(
+                                            snapshot.currentItemID
+                                        )
+                                    )
+                                )
+                            )
+                        }
+                        return .concatenate(
+                            .cancel(id: CancelID.queueReplacement),
+                            .send(
+                                .queue(
+                                    .currentItemObserved(snapshot.currentItemID)
+                                )
+                            ),
+                            .send(
+                                .timeline(
+                                    .positionObserved(snapshot.currentTime)
+                                )
+                            )
+                        )
+                    }
+                }
+
                 return .concatenate(
                     .send(
                         .queue(
@@ -308,6 +410,26 @@ struct PlaybackFeature {
             case .queue, .timeline:
                 return .none
             }
+        }
+    }
+}
+
+extension PlaybackFeature.State {
+    var canRequestPlayPause: Bool {
+        !queue.songs.isEmpty
+            && capabilities.supportsEmbeddedPlayback
+            && pendingOperation == nil
+    }
+
+    var canRequestStop: Bool {
+        guard capabilities.supportsEmbeddedPlayback else { return false }
+        switch pendingOperation {
+        case .queueReplacement:
+            return true
+        case .statusChange:
+            return false
+        case nil:
+            return !queue.songs.isEmpty && status != .stopped
         }
     }
 }

@@ -194,10 +194,38 @@ struct PlaybackPresentationAdapterTests {
             actions.value == [
                 .timeline(.positionChanged(30)),
                 .timeline(.dragEnded),
-                .pauseTapped,
+                .playPauseTapped,
                 .stopTapped,
             ]
         )
+    }
+
+    @Test
+    func controlsProjectReducerOwnedPermissions() {
+        let song = makeSong()
+        let songs = IdentifiedArray(uniqueElements: [song])
+        let store = makePlaybackStore(
+            song: song,
+            status: .playing,
+            pendingOperation: .statusChange(
+                .init(requestID: UUID(0), target: .paused)
+            )
+        )
+        let model = PlaybackView.Model(store, providerName: nil)
+
+        #expect(!model.controls.isPrimaryEnabled)
+        #expect(!model.controls.isStopEnabled)
+
+        let replacingStore = makePlaybackStore(
+            song: nil,
+            status: .stopped,
+            pendingOperation: .queueReplacement(
+                .init(requestID: UUID(0), songs: songs, startingItemID: song.id)
+            )
+        )
+        let replacingModel = PlaybackView.Model(replacingStore, providerName: nil)
+        #expect(!replacingModel.controls.isPrimaryEnabled)
+        #expect(replacingModel.controls.isStopEnabled)
     }
 
     @Test(arguments: [
