@@ -1,15 +1,10 @@
 import ComposableArchitecture
 
-/// Exposes provider-neutral catalog-search capabilities without retaining pagination state.
+/// Fetches provider-neutral search pages without retaining pagination state.
 struct ProviderSearchClient: Sendable {
-    var search:
+    var searchPage:
         @Sendable (
-            _ query: String,
-            _ limit: Int
-        ) async throws -> SearchPage
-    var nextSearchPage:
-        @Sendable (
-            _ cursor: SearchCursor,
+            _ request: SearchPageRequest,
             _ limit: Int
         ) async throws -> SearchPage
 }

@@ -161,12 +161,12 @@ struct SearchPresentationAdapterTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.search = { _, _ in
-                Issue.record("A footer event must not start a new search")
-                return SearchPage(songs: [], nextCursor: nil)
-            }
-            $0.providerSearch.nextSearchPage = { _, _ in
-                try await Task.never()
+            $0.providerSearch.searchPage = { request, _ in
+                #expect(
+                    request
+                        == .continuation(SearchCursor(value: "next"))
+                )
+                return try await Task.never()
             }
         }
         let model = SearchResultsView.Model(

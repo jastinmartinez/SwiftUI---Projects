@@ -33,9 +33,15 @@ struct FakeMusicProviderTests {
         )
         let client = await fake.searchClient()
 
-        let firstPage = try await client.search("test", 2)
+        let firstPage = try await client.searchPage(
+            .initial(query: "test"),
+            2
+        )
         let cursor = try #require(firstPage.nextCursor)
-        let continuation = try await client.nextSearchPage(cursor, 2)
+        let continuation = try await client.searchPage(
+            .continuation(cursor),
+            2
+        )
 
         #expect(firstPage.songs.map(\.id) == Array(songs.prefix(2)).map(\.id))
         #expect(

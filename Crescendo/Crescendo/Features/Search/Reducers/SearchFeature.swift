@@ -79,7 +79,10 @@ struct SearchFeature {
                 state.status = .searching(requestID: requestID)
                 return .run { send in
                     do {
-                        let page = try await providerSearch.search(query, 20)
+                        let page = try await providerSearch.searchPage(
+                            .initial(query: query),
+                            20
+                        )
                         await send(.searchResponse(requestID, .success(page)))
                     } catch let error as MusicProviderError {
                         await send(.searchResponse(requestID, .failure(error)))

@@ -27,14 +27,10 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.search = { query, limit in
-                #expect(query == "result")
+            $0.providerSearch.searchPage = { request, limit in
+                #expect(request == .initial(query: "result"))
                 #expect(limit == 20)
                 return page
-            }
-            $0.providerSearch.nextSearchPage = { _, _ in
-                Issue.record("The initial search must not request a continuation page")
-                return SearchPage(songs: [], nextCursor: nil)
             }
         }
 
@@ -71,10 +67,9 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.search = { _, _ in page }
-            $0.providerSearch.nextSearchPage = { _, _ in
-                Issue.record("The initial search must not request a continuation page")
-                return SearchPage(songs: [], nextCursor: nil)
+            $0.providerSearch.searchPage = { request, _ in
+                #expect(request == .initial(query: "result"))
+                return page
             }
         }
 
@@ -119,12 +114,8 @@ struct SearchFeatureTests {
             let store = TestStore(initialState: state) {
                 SearchFeature()
             } withDependencies: {
-                $0.providerSearch.search = { _, _ in
+                $0.providerSearch.searchPage = { _, _ in
                     Issue.record("Search must not run without authorized access")
-                    return SearchPage(songs: [], nextCursor: nil)
-                }
-                $0.providerSearch.nextSearchPage = { _, _ in
-                    Issue.record("Pagination must not run without authorized access")
                     return SearchPage(songs: [], nextCursor: nil)
                 }
             }
@@ -150,12 +141,9 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.search = { _, _ in
-                try await Task.never()
-            }
-            $0.providerSearch.nextSearchPage = { _, _ in
-                Issue.record("The initial search must not request a continuation page")
-                return SearchPage(songs: [], nextCursor: nil)
+            $0.providerSearch.searchPage = { request, _ in
+                #expect(request == .initial(query: "old"))
+                return try await Task.never()
             }
         }
 
@@ -231,19 +219,19 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.search = { _, _ in
-                Issue.record("Pagination must not start a new search")
-                return SearchPage(songs: [], nextCursor: nil)
-            }
-            $0.providerSearch.nextSearchPage = { _, _ in
-                try await Task.never()
+            $0.providerSearch.searchPage = { request, _ in
+                #expect(
+                    request
+                        == .continuation(SearchCursor(value: "page-2"))
+                )
+                return try await Task.never()
             }
         }
 
         await store.send(.pagination(.nextPageRequested))
         await store.receive(
             .pagination(
-                .startNextPage(
+                .continueSearch(
                     cursor: SearchCursor(value: "page-2"),
                     requestID: UUID(0)
                 )

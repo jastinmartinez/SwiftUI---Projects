@@ -26,7 +26,7 @@ struct SearchPaginationFeatureTests {
 
         await store.send(.nextPageRequested)
         await store.receive(
-            .startNextPage(cursor: cursor, requestID: UUID(0))
+            .continueSearch(cursor: cursor, requestID: UUID(0))
         ) {
             $0.status = .loading(requestID: UUID(0))
         }
@@ -49,11 +49,7 @@ struct SearchPaginationFeatureTests {
         let store = TestStore(initialState: state) {
             SearchPaginationFeature()
         } withDependencies: {
-            $0.providerSearch.search = { _, _ in
-                Issue.record("Pagination must not start a new search")
-                return SearchPage(songs: [], nextCursor: nil)
-            }
-            $0.providerSearch.nextSearchPage = { _, _ in
+            $0.providerSearch.searchPage = { _, _ in
                 Issue.record("An exhausted search must not request another page")
                 return SearchPage(songs: [], nextCursor: nil)
             }
@@ -74,11 +70,7 @@ struct SearchPaginationFeatureTests {
         let store = TestStore(initialState: state) {
             SearchPaginationFeature()
         } withDependencies: {
-            $0.providerSearch.search = { _, _ in
-                Issue.record("Pagination must not start a new search")
-                return SearchPage(songs: [], nextCursor: nil)
-            }
-            $0.providerSearch.nextSearchPage = { _, _ in
+            $0.providerSearch.searchPage = { _, _ in
                 Issue.record("An unresolved request must reject duplicate work")
                 return SearchPage(songs: [], nextCursor: nil)
             }
@@ -113,7 +105,7 @@ struct SearchPaginationFeatureTests {
         }
         await store.send(.retryButtonTapped)
         await store.receive(
-            .startNextPage(cursor: cursor, requestID: UUID(0))
+            .continueSearch(cursor: cursor, requestID: UUID(0))
         ) {
             $0.status = .loading(requestID: UUID(0))
         }
@@ -137,18 +129,18 @@ struct SearchPaginationFeatureTests {
             SearchPaginationFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.search = { _, _ in
-                Issue.record("Pagination must not start a new search")
-                return SearchPage(songs: [], nextCursor: nil)
-            }
-            $0.providerSearch.nextSearchPage = { _, _ in
-                try await Task.never()
+            $0.providerSearch.searchPage = { request, _ in
+                #expect(
+                    request
+                        == .continuation(SearchCursor(value: "page-2"))
+                )
+                return try await Task.never()
             }
         }
 
         await store.send(.nextPageRequested)
         await store.receive(
-            .startNextPage(
+            .continueSearch(
                 cursor: SearchCursor(value: "page-2"),
                 requestID: UUID(0)
             )
@@ -178,12 +170,12 @@ struct SearchPaginationFeatureTests {
             SearchPaginationFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.search = { _, _ in
-                Issue.record("Pagination must not start a new search")
-                return SearchPage(songs: [], nextCursor: nil)
-            }
-            $0.providerSearch.nextSearchPage = { receivedCursor, limit in
-                #expect(receivedCursor == nextCursor)
+            $0.providerSearch.searchPage = { request, limit in
+                guard let nextCursor else {
+                    Issue.record("Pagination requires a continuation cursor")
+                    return SearchPage(songs: [], nextCursor: nil)
+                }
+                #expect(request == .continuation(nextCursor))
                 #expect(limit == 20)
                 return nextPage
             }

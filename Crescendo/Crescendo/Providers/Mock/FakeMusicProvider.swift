@@ -30,18 +30,20 @@ actor FakeMusicProvider {
 
     func searchClient() -> ProviderSearchClient {
         ProviderSearchClient(
-            search: { [weak self] _, limit in
-                await self?.searchPage(offset: 0, limit: limit)
-                    ?? SearchPage(songs: [], nextCursor: nil)
-            },
-            nextSearchPage: { [weak self] cursor, limit in
+            searchPage: { [weak self] request, limit in
                 guard let self else { throw MusicProviderError.unavailable }
-                let offset = try JSONDecoder().decode(
-                    SearchOffset.self,
-                    from: Data(cursor.value.utf8)
-                )
+                let offset: Int
+                switch request {
+                case .initial:
+                    offset = 0
+                case .continuation(let cursor):
+                    offset = try JSONDecoder().decode(
+                        SearchOffset.self,
+                        from: Data(cursor.value.utf8)
+                    ).value
+                }
                 return await self.searchPage(
-                    offset: offset.value,
+                    offset: offset,
                     limit: limit
                 )
             }

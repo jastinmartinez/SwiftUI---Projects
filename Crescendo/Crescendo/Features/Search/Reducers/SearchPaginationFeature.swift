@@ -22,7 +22,7 @@ struct SearchPaginationFeature {
         case nextPageRequested
         case retryButtonTapped
         case cancel
-        case startNextPage(cursor: SearchCursor, requestID: UUID)
+        case continueSearch(cursor: SearchCursor, requestID: UUID)
         case searchPageResponse(
             UUID,
             Result<SearchPage, MusicProviderError>
@@ -45,7 +45,7 @@ struct SearchPaginationFeature {
 
                 let requestID = uuid()
                 return .send(
-                    .startNextPage(cursor: cursor, requestID: requestID)
+                    .continueSearch(cursor: cursor, requestID: requestID)
                 )
 
             case .retryButtonTapped:
@@ -54,15 +54,15 @@ struct SearchPaginationFeature {
 
                 let requestID = uuid()
                 return .send(
-                    .startNextPage(cursor: cursor, requestID: requestID)
+                    .continueSearch(cursor: cursor, requestID: requestID)
                 )
 
-            case .startNextPage(let cursor, let requestID):
+            case .continueSearch(let cursor, let requestID):
                 state.status = .loading(requestID: requestID)
                 return .run { send in
                     do {
-                        let page = try await providerSearch.nextSearchPage(
-                            cursor,
+                        let page = try await providerSearch.searchPage(
+                            .continuation(cursor),
                             20
                         )
                         await send(

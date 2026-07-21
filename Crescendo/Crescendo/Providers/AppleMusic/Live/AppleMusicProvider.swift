@@ -29,24 +29,25 @@ actor AppleMusicProvider {
         return await accessSnapshot(for: authorizationStatus)
     }
 
-    /// Searches the first catalog page and caches native and app-owned values for this session.
-    func search(_ query: String, limit: Int) async throws -> SearchPage {
-        try await search(query, limit: limit, offset: 0)
-    }
-
-    /// Searches the page represented by provider-private continuation data.
-    func nextSearchPage(
-        _ cursor: SearchCursor,
+    /// Begins or continues a catalog search and caches its provider-neutral results.
+    func searchPage(
+        _ request: SearchPageRequest,
         limit: Int
     ) async throws -> SearchPage {
-        let appleMusicCursor = try AppleMusicSearchCursor(
-            searchCursor: cursor
-        )
-        return try await search(
-            appleMusicCursor.query,
-            limit: limit,
-            offset: appleMusicCursor.offset
-        )
+        switch request {
+        case .initial(let query):
+            return try await search(query, limit: limit, offset: 0)
+
+        case .continuation(let cursor):
+            let appleMusicCursor = try AppleMusicSearchCursor(
+                searchCursor: cursor
+            )
+            return try await search(
+                appleMusicCursor.query,
+                limit: limit,
+                offset: appleMusicCursor.offset
+            )
+        }
     }
 
     /// Searches one catalog page and updates the session caches used by playback.
