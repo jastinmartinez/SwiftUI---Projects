@@ -22,6 +22,7 @@ struct SearchPaginationFeature {
         case nextPageRequested
         case retryButtonTapped
         case cancel
+        case startNextPage(cursor: SearchCursor, requestID: UUID)
         case searchPageResponse(
             UUID,
             Result<SearchPage, MusicProviderError>
@@ -43,10 +44,8 @@ struct SearchPaginationFeature {
                 guard let cursor = state.nextCursor else { return .none }
 
                 let requestID = uuid()
-                state.status = .loading(requestID: requestID)
-                return nextPageEffect(
-                    cursor: cursor,
-                    requestID: requestID
+                return .send(
+                    .startNextPage(cursor: cursor, requestID: requestID)
                 )
 
             case .retryButtonTapped:
@@ -54,11 +53,32 @@ struct SearchPaginationFeature {
                 guard let cursor = state.nextCursor else { return .none }
 
                 let requestID = uuid()
-                state.status = .loading(requestID: requestID)
-                return nextPageEffect(
-                    cursor: cursor,
-                    requestID: requestID
+                return .send(
+                    .startNextPage(cursor: cursor, requestID: requestID)
                 )
+
+            case .startNextPage(let cursor, let requestID):
+                state.status = .loading(requestID: requestID)
+                return .run { send in
+                    do {
+                        let page = try await providerSearch.nextSearchPage(
+                            cursor,
+                            20
+                        )
+                        await send(
+                            .searchPageResponse(requestID, .success(page))
+                        )
+                    } catch let error as MusicProviderError {
+                        await send(
+                            .searchPageResponse(requestID, .failure(error))
+                        )
+                    } catch {
+                        await send(
+                            .searchPageResponse(requestID, .failure(.network))
+                        )
+                    }
+                }
+                .cancellable(id: CancelID.nextPage, cancelInFlight: true)
 
             case .cancel:
                 state.status = .idle
@@ -85,22 +105,5 @@ struct SearchPaginationFeature {
                 return .none
             }
         }
-    }
-
-    private func nextPageEffect(
-        cursor: SearchCursor,
-        requestID: UUID
-    ) -> Effect<Action> {
-        .run { send in
-            do {
-                let page = try await providerSearch.nextSearchPage(cursor, 20)
-                await send(.searchPageResponse(requestID, .success(page)))
-            } catch let error as MusicProviderError {
-                await send(.searchPageResponse(requestID, .failure(error)))
-            } catch {
-                await send(.searchPageResponse(requestID, .failure(.network)))
-            }
-        }
-        .cancellable(id: CancelID.nextPage, cancelInFlight: true)
     }
 }

@@ -24,7 +24,10 @@ struct SearchPaginationFeatureTests {
             nextPage: page
         )
 
-        await store.send(.nextPageRequested) {
+        await store.send(.nextPageRequested)
+        await store.receive(
+            .startNextPage(cursor: cursor, requestID: UUID(0))
+        ) {
             $0.status = .loading(requestID: UUID(0))
         }
         await store.receive(
@@ -108,7 +111,10 @@ struct SearchPaginationFeatureTests {
         ) {
             $0.status = .failed(.network)
         }
-        await store.send(.retryButtonTapped) {
+        await store.send(.retryButtonTapped)
+        await store.receive(
+            .startNextPage(cursor: cursor, requestID: UUID(0))
+        ) {
             $0.status = .loading(requestID: UUID(0))
         }
         await store.receive(
@@ -140,7 +146,13 @@ struct SearchPaginationFeatureTests {
             }
         }
 
-        await store.send(.nextPageRequested) {
+        await store.send(.nextPageRequested)
+        await store.receive(
+            .startNextPage(
+                cursor: SearchCursor(value: "page-2"),
+                requestID: UUID(0)
+            )
+        ) {
             $0.status = .loading(requestID: UUID(0))
         }
         await store.send(.cancel) {

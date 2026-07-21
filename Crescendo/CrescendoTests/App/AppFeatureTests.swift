@@ -45,7 +45,7 @@ struct AppFeatureTests {
             )
         )
         await store.receive(.resetProviderOwnedState(.appleMusic))
-        await store.receive(.search(.cancel))
+        await store.receive(.search(.cancelSearch))
         await store.receive(.musicPlayback(.timeline(.reset)))
         await store.receive(.replaceProviderOwnedState(.appleMusic))
         await store.receive(
@@ -140,7 +140,7 @@ struct AppFeatureTests {
             )
         )
         await store.receive(.resetProviderOwnedState(futureProvider.id))
-        await store.receive(.search(.cancel)) {
+        await store.receive(.search(.cancelSearch)) {
             $0.search.status = .idle
         }
         await store.receive(.musicPlayback(.timeline(.reset))) {

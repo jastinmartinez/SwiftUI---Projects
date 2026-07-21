@@ -140,7 +140,7 @@ struct AppFeature {
                     return .none
                 }
                 return .concatenate(
-                    .send(.search(.cancel)),
+                    .send(.search(.cancelSearch)),
                     .send(.musicPlayback(.timeline(.reset))),
                     .send(.replaceProviderOwnedState(provider.id))
                 )

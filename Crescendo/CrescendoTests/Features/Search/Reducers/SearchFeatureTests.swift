@@ -240,7 +240,15 @@ struct SearchFeatureTests {
             }
         }
 
-        await store.send(.pagination(.nextPageRequested)) {
+        await store.send(.pagination(.nextPageRequested))
+        await store.receive(
+            .pagination(
+                .startNextPage(
+                    cursor: SearchCursor(value: "page-2"),
+                    requestID: UUID(0)
+                )
+            )
+        ) {
             $0.status = loadedStatus(
                 songs: [song],
                 nextCursor: SearchCursor(value: "page-2"),

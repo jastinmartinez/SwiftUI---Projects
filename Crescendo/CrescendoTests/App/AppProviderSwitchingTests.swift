@@ -124,7 +124,7 @@ struct AppProviderSwitchingTests {
             )
         )
         await store.receive(.resetProviderOwnedState("future"))
-        await store.receive(.search(.cancel)) {
+        await store.receive(.search(.cancelSearch)) {
             $0.search.status = .idle
         }
         await store.receive(.musicPlayback(.timeline(.reset)))
