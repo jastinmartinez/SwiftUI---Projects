@@ -10,7 +10,7 @@ struct AppPlaybackCoordinationTests {
     func playRequestCallsOnlyPlayAndClearsMatchingCommandOnSuccess() async {
         let song = makeSong()
         let calls = LockIsolated(TransportCalls())
-        let command = PlaybackCommandFeature.Command.play(song.id)
+        let command = makePlayCommand(song.id)
         let requestID = UUID(0)
         let store = makeStore(song: song, calls: calls)
 
@@ -45,7 +45,7 @@ struct AppPlaybackCoordinationTests {
             $0.playback.phase = .observing(.idle)
         }
 
-        #expect(calls.value.playedItemIDs == [song.id])
+        #expect(calls.value.startingItemIDs == [song.id])
         #expect(calls.value.resumeCallCount == 0)
     }
 
@@ -93,13 +93,14 @@ struct AppPlaybackCoordinationTests {
             $0.playback.phase = .observing(snapshot)
         }
 
-        #expect(calls.value.playedItemIDs.isEmpty)
+        #expect(calls.value.startingItemIDs.isEmpty)
         #expect(calls.value.resumeCallCount == 1)
     }
 
     @Test(arguments: [
         PlaybackCommandFeature.Command.play(
-            MusicItemID(providerID: "fake", nativeID: "1")
+            itemIDs: [MusicItemID(providerID: "fake", nativeID: "1")],
+            startingItemID: MusicItemID(providerID: "fake", nativeID: "1")
         ),
         .resume(MusicItemID(providerID: "fake", nativeID: "1")),
     ])
@@ -115,7 +116,7 @@ struct AppPlaybackCoordinationTests {
             song: song,
             phase: .observing(initialSnapshot),
             configureDependencies: {
-                $0.playbackControl.play = { _ in
+                $0.playbackControl.playQueue = { _, _ in
                     throw MusicProviderError.network
                 }
                 $0.playbackControl.resume = {
@@ -126,8 +127,8 @@ struct AppPlaybackCoordinationTests {
         let requestID = UUID(0)
         let delegate: PlaybackFeature.Delegate =
             switch command {
-            case .play(let itemID):
-                .playRequested(itemID)
+            case .play(_, let startingItemID):
+                .playRequested(startingItemID)
             case .resume(let itemID):
                 .resumeRequested(itemID)
             }
@@ -170,8 +171,9 @@ struct AppPlaybackCoordinationTests {
     @Test
     func activeCommandIsReplacedByLatestPlaybackRequest() async {
         let song = makeSong()
-        let firstCommand = PlaybackCommandFeature.Command.play(song.id)
+        let firstCommand = makePlayCommand(song.id)
         let latestItemID = MusicItemID(providerID: "fake", nativeID: "2")
+        let latestCommand = makePlayCommand(latestItemID)
         let state = makeState(
             song: song,
             phase: .loading(.idle),
@@ -184,7 +186,7 @@ struct AppPlaybackCoordinationTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.playbackControl.play = { _ in }
+            $0.playbackControl.playQueue = { _, _ in }
         }
 
         await store.send(
@@ -192,23 +194,23 @@ struct AppPlaybackCoordinationTests {
         )
         await store.receive(
             .playbackCommand(
-                .replace(.play(latestItemID), requestID: UUID(0))
+                .replace(latestCommand, requestID: UUID(0))
             )
         )
         await store.receive(\.playback.playbackCommandAccepted)
         await store.receive(
             .playbackCommand(
-                .execute(.play(latestItemID), requestID: UUID(0))
+                .execute(latestCommand, requestID: UUID(0))
             )
         ) {
-            $0.playbackCommand?.command = .play(latestItemID)
+            $0.playbackCommand?.command = latestCommand
             $0.playbackCommand?.requestID = UUID(0)
         }
         await store.receive(
             .playbackCommand(
                 .response(
                     requestID: UUID(0),
-                    result: .success(.play(latestItemID))
+                    result: .success(latestCommand)
                 )
             )
         )
@@ -217,7 +219,7 @@ struct AppPlaybackCoordinationTests {
                 .delegate(
                     .completed(
                         requestID: UUID(0),
-                        result: .success(.play(latestItemID))
+                        result: .success(latestCommand)
                     )
                 )
             )
@@ -232,7 +234,7 @@ struct AppPlaybackCoordinationTests {
     @Test
     func staleDelegatesDoNotClearACommandWithDifferentRequestID() async {
         let song = makeSong()
-        let activeCommand = PlaybackCommandFeature.Command.play(song.id)
+        let activeCommand = makePlayCommand(song.id)
         let activeRequestID = UUID(1)
         let staleRequestID = UUID(0)
         let state = makeState(
@@ -277,10 +279,10 @@ struct AppPlaybackCoordinationTests {
         let latestSnapshot = makeSnapshot(song: song, status: .paused)
         let (playStarted, playStartedContinuation) = AsyncStream<Void>.makeStream()
         let (finishPlay, finishPlayContinuation) = AsyncStream<Void>.makeStream()
-        let command = PlaybackCommandFeature.Command.play(song.id)
+        let command = makePlayCommand(song.id)
         let requestID = UUID(0)
         let store = makeStore(song: song) {
-            $0.playbackControl.play = { _ in
+            $0.playbackControl.playQueue = { _, _ in
                 playStartedContinuation.yield()
                 for await _ in finishPlay { break }
             }
@@ -343,10 +345,11 @@ struct AppPlaybackCoordinationTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.playbackControl.play = { itemID in
-                playedItemIDs.withValue { $0.append(itemID) }
+            $0.playbackControl.playQueue = { _, startingItemID in
+                playedItemIDs.withValue { $0.append(startingItemID) }
             }
         }
+        let command = makePlayCommand(nextSong.id)
 
         await store.send(
             .search(
@@ -374,7 +377,7 @@ struct AppPlaybackCoordinationTests {
             .playback(.delegate(.playRequested(nextSong.id)))
         ) {
             $0.playbackCommand = PlaybackCommandFeature.State(
-                command: .play(nextSong.id),
+                command: command,
                 requestID: UUID(0)
             )
         }
@@ -386,14 +389,14 @@ struct AppPlaybackCoordinationTests {
         await store.receive(.playbackCommand(.start))
         await store.receive(
             .playbackCommand(
-                .execute(.play(nextSong.id), requestID: UUID(0))
+                .execute(command, requestID: UUID(0))
             )
         )
         await store.receive(
             .playbackCommand(
                 .response(
                     requestID: UUID(0),
-                    result: .success(.play(nextSong.id))
+                    result: .success(command)
                 )
             )
         )
@@ -402,7 +405,7 @@ struct AppPlaybackCoordinationTests {
                 .delegate(
                     .completed(
                         requestID: UUID(0),
-                        result: .success(.play(nextSong.id))
+                        result: .success(command)
                     )
                 )
             )
@@ -422,7 +425,7 @@ struct AppPlaybackCoordinationTests {
     // MARK: - Helpers
 
     private struct TransportCalls: Equatable {
-        var playedItemIDs: [MusicItemID] = []
+        var startingItemIDs: [MusicItemID] = []
         var resumeCallCount = 0
     }
 
@@ -436,14 +439,23 @@ struct AppPlaybackCoordinationTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.playbackControl.play = { itemID in
-                calls?.withValue { $0.playedItemIDs.append(itemID) }
+            $0.playbackControl.playQueue = { _, startingItemID in
+                calls?.withValue { $0.startingItemIDs.append(startingItemID) }
             }
             $0.playbackControl.resume = {
                 calls?.withValue { $0.resumeCallCount += 1 }
             }
             configureDependencies(&$0)
         }
+    }
+
+    private func makePlayCommand(
+        _ startingItemID: MusicItemID
+    ) -> PlaybackCommandFeature.Command {
+        .play(
+            itemIDs: [startingItemID],
+            startingItemID: startingItemID
+        )
     }
 
     private func makeState(

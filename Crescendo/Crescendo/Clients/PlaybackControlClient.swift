@@ -3,7 +3,11 @@ import Foundation
 
 /// Exposes provider-neutral playback control capabilities.
 struct PlaybackControlClient: Sendable {
-    var play: @Sendable (_ itemID: MusicItemID) async throws -> Void
+    var playQueue:
+        @Sendable (
+            _ itemIDs: [MusicItemID],
+            _ startingItemID: MusicItemID
+        ) async throws -> Void
     var resume: @Sendable () async throws -> Void
     var pause: @Sendable () async throws -> Void
     var stop: @Sendable () async throws -> Void

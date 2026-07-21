@@ -210,7 +210,13 @@ struct AppProviderSwitchingTests {
 
     @Test(arguments: [
         PlaybackCommandFeature.Command.play(
-            MusicItemID(providerID: .appleMusic, nativeID: "selected")
+            itemIDs: [
+                MusicItemID(providerID: .appleMusic, nativeID: "selected")
+            ],
+            startingItemID: MusicItemID(
+                providerID: .appleMusic,
+                nativeID: "selected"
+            )
         ),
         .resume(
             MusicItemID(providerID: .appleMusic, nativeID: "selected")

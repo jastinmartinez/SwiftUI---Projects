@@ -9,6 +9,8 @@ actor FakeMusicProvider {
     private let configuredAccess: MusicProviderAccess
     private let configuredResults: [SongSummary]
     private var playbackSnapshot = PlaybackSnapshot.idle
+    private var queueItemIDs: [MusicItemID] = []
+    private var queueStartingIndex: Int?
 
     init(access: MusicProviderAccess, searchResults: [SongSummary]) {
         self.configuredAccess = access
@@ -52,15 +54,22 @@ actor FakeMusicProvider {
 
     func playbackControlClient() -> PlaybackControlClient {
         PlaybackControlClient(
-            play: { [weak self] itemID in
+            playQueue: { [weak self] itemIDs, startingItemID in
                 guard let self else { throw MusicProviderError.unavailable }
-                await self.startPlayback(itemID: itemID)
+                try await self.startPlayback(
+                    itemIDs: itemIDs,
+                    startingItemID: startingItemID
+                )
             },
             resume: { [weak self] in await self?.setStatus(.playing) },
             pause: { [weak self] in await self?.setStatus(.paused) },
             stop: { [weak self] in await self?.stopPlayback() },
             seek: { [weak self] time in await self?.setTime(time) }
         )
+    }
+
+    func queuedItemIDs() -> [MusicItemID] {
+        queueItemIDs
     }
 
     func playbackObservationClient() -> PlaybackObservationClient {
@@ -75,9 +84,23 @@ actor FakeMusicProvider {
         )
     }
 
-    private func startPlayback(itemID: MusicItemID) {
+    private func startPlayback(
+        itemIDs: [MusicItemID],
+        startingItemID: MusicItemID
+    ) throws {
+        let cachedItemIDs = Set(configuredResults.map(\.id))
+        guard !itemIDs.isEmpty,
+            itemIDs.allSatisfy({ $0.providerID == startingItemID.providerID }),
+            itemIDs.allSatisfy(cachedItemIDs.contains),
+            let startingIndex = itemIDs.firstIndex(of: startingItemID)
+        else {
+            throw MusicProviderError.unavailable
+        }
+
+        queueItemIDs = itemIDs
+        queueStartingIndex = startingIndex
         playbackSnapshot = PlaybackSnapshot(
-            currentItemID: itemID,
+            currentItemID: itemIDs[startingIndex],
             status: .playing,
             currentTime: 0,
             playbackRate: .normal,

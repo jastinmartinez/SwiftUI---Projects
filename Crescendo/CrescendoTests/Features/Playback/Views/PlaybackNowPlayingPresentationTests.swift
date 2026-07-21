@@ -35,7 +35,7 @@ struct PlaybackNowPlayingPresentationTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.playbackControl.play = { _ in
+            $0.playbackControl.playQueue = { _, _ in
                 playCallCount.withValue { $0 += 1 }
             }
             $0.playbackControl.resume = {

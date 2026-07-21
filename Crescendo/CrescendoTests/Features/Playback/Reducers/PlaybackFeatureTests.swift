@@ -121,7 +121,7 @@ struct PlaybackFeatureTests {
         let playCallCount = LockIsolated(0)
         let song = makeSong()
         let store = makeStore(song: song) {
-            $0.playbackControl.play = { _ in
+            $0.playbackControl.playQueue = { _, _ in
                 playCallCount.withValue { $0 += 1 }
             }
         }
@@ -143,7 +143,7 @@ struct PlaybackFeatureTests {
             song: song,
             phase: .observing(makeSnapshot(song: song, status: .paused))
         ) {
-            $0.playbackControl.play = { _ in
+            $0.playbackControl.playQueue = { _, _ in
                 playCallCount.withValue { $0 += 1 }
             }
             $0.playbackControl.resume = {

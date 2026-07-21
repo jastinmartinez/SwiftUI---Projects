@@ -216,7 +216,10 @@ struct AppFeature {
                 let command: PlaybackCommandFeature.Command
                 switch delegate {
                 case .playRequested(let itemID):
-                    command = .play(itemID)
+                    command = .play(
+                        itemIDs: [itemID],
+                        startingItemID: itemID
+                    )
                 case .resumeRequested(let itemID):
                     command = .resume(itemID)
                 }

@@ -11,7 +11,10 @@ struct PlaybackCommandFeature {
     }
 
     enum Command: Equatable {
-        case play(MusicItemID)
+        case play(
+            itemIDs: [MusicItemID],
+            startingItemID: MusicItemID
+        )
         case resume(MusicItemID)
     }
 
@@ -56,8 +59,11 @@ struct PlaybackCommandFeature {
                 return .run { send in
                     do {
                         switch command {
-                        case .play(let itemID):
-                            try await playbackControl.play(itemID)
+                        case .play(let itemIDs, let startingItemID):
+                            try await playbackControl.playQueue(
+                                itemIDs,
+                                startingItemID
+                            )
                         case .resume:
                             try await playbackControl.resume()
                         }

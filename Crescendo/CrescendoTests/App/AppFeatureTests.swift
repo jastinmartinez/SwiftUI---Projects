@@ -308,8 +308,8 @@ struct AppFeatureTests {
         let playedItemIDs = LockIsolated<[MusicItemID]>([])
         let store = makeStore(
             state: state,
-            play: { itemID in
-                playedItemIDs.withValue { $0.append(itemID) }
+            playQueue: { _, startingItemID in
+                playedItemIDs.withValue { $0.append(startingItemID) }
             }
         )
 
@@ -346,8 +346,8 @@ struct AppFeatureTests {
         let playedItemIDs = LockIsolated<[MusicItemID]>([])
         let store = makeStore(
             state: state,
-            play: { itemID in
-                playedItemIDs.withValue { $0.append(itemID) }
+            playQueue: { _, startingItemID in
+                playedItemIDs.withValue { $0.append(startingItemID) }
             }
         )
 
@@ -412,6 +412,10 @@ struct AppFeatureTests {
             ),
             isPlayerPresented: isPlayerPresented
         )
+        let command = PlaybackCommandFeature.Command.play(
+            itemIDs: [song.id],
+            startingItemID: song.id
+        )
         let store = makeStore(state: state)
 
         await store.send(
@@ -443,7 +447,7 @@ struct AppFeatureTests {
             .playback(.delegate(.playRequested(song.id)))
         ) {
             $0.playbackCommand = PlaybackCommandFeature.State(
-                command: .play(song.id),
+                command: command,
                 requestID: UUID(0)
             )
         }
@@ -453,14 +457,14 @@ struct AppFeatureTests {
         await store.receive(.playbackCommand(.start))
         await store.receive(
             .playbackCommand(
-                .execute(.play(song.id), requestID: UUID(0))
+                .execute(command, requestID: UUID(0))
             )
         )
         await store.receive(
             .playbackCommand(
                 .response(
                     requestID: UUID(0),
-                    result: .success(.play(song.id))
+                    result: .success(command)
                 )
             )
         )
@@ -469,7 +473,7 @@ struct AppFeatureTests {
                 .delegate(
                     .completed(
                         requestID: UUID(0),
-                        result: .success(.play(song.id))
+                        result: .success(command)
                     )
                 )
             )
@@ -501,7 +505,11 @@ struct AppFeatureTests {
                 playbackEligibility: .unknown
             )
         },
-        play: @escaping @Sendable (MusicItemID) async throws -> Void = { _ in },
+        playQueue:
+            @escaping @Sendable (
+                [MusicItemID],
+                MusicItemID
+            ) async throws -> Void = { _, _ in },
         seek: @escaping @Sendable (TimeInterval) async throws -> Void = { _ in }
     ) -> TestStoreOf<AppFeature> {
         TestStore(initialState: state ?? makeState()) {
@@ -509,7 +517,7 @@ struct AppFeatureTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerAccess.currentAccess = currentAccess
-            $0.playbackControl.play = play
+            $0.playbackControl.playQueue = playQueue
             $0.playbackControl.seek = seek
         }
     }

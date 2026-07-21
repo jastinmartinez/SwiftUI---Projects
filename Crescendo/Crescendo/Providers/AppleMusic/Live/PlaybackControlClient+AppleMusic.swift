@@ -7,7 +7,7 @@ extension PlaybackControlClient: DependencyKey {
 extension PlaybackControlClient {
     static func appleMusic(_ provider: AppleMusicProvider) -> Self {
         Self(
-            play: { try await provider.play($0) },
+            playQueue: { try await provider.playQueue(itemIDs: $0, startingItemID: $1) },
             resume: { try await provider.resume() },
             pause: { await provider.pause() },
             stop: { await provider.stop() },

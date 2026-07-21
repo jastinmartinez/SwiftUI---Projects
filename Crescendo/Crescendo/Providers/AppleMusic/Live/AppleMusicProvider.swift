@@ -92,17 +92,33 @@ actor AppleMusicProvider {
         )
     }
 
-    /// Replaces the application queue with one cached song, prepares it, and begins playback.
-    func play(_ itemID: MusicItemID) async throws {
-        guard itemID.providerID == Self.providerID else {
-            throw MusicProviderError.unavailable
-        }
-        guard let song = songsByNativeID[itemID.nativeID] else {
+    /// Replaces the application queue with cached songs and begins at the requested item.
+    func playQueue(
+        itemIDs: [MusicItemID],
+        startingItemID: MusicItemID
+    ) async throws {
+        guard !itemIDs.isEmpty,
+            itemIDs.allSatisfy({ $0.providerID == Self.providerID }),
+            let startingIndex = itemIDs.firstIndex(of: startingItemID)
+        else {
             throw MusicProviderError.unavailable
         }
 
+        var songs: [Song] = []
+        songs.reserveCapacity(itemIDs.count)
+        for itemID in itemIDs {
+            guard let song = songsByNativeID[itemID.nativeID] else {
+                throw MusicProviderError.unavailable
+            }
+            songs.append(song)
+        }
+
+        let startingSong = songs[startingIndex]
         try Task.checkCancellation()
-        player.queue = [song]
+        player.queue = ApplicationMusicPlayer.Queue(
+            for: songs,
+            startingAt: startingSong
+        )
         try await player.prepareToPlay()
         try Task.checkCancellation()
         try await player.play()
