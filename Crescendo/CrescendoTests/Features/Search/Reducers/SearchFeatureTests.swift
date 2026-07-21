@@ -38,7 +38,10 @@ struct SearchFeatureTests {
             }
         }
 
-        await store.send(.submitButtonTapped) {
+        await store.send(.submitButtonTapped)
+        await store.receive(
+            .startSearch(query: "result", requestID: UUID(0))
+        ) {
             $0.status = .searching(requestID: UUID(0))
         }
         await store.receive(.searchResponse(UUID(0), .success(page))) {
@@ -75,7 +78,10 @@ struct SearchFeatureTests {
             }
         }
 
-        await store.send(.submitButtonTapped) {
+        await store.send(.submitButtonTapped)
+        await store.receive(
+            .startSearch(query: "result", requestID: UUID(0))
+        ) {
             $0.status = .searching(requestID: UUID(0))
         }
         await store.receive(.searchResponse(UUID(0), .success(page))) {
@@ -153,11 +159,16 @@ struct SearchFeatureTests {
             }
         }
 
-        await store.send(.submitButtonTapped) {
+        await store.send(.submitButtonTapped)
+        await store.receive(
+            .startSearch(query: "old", requestID: UUID(0))
+        ) {
             $0.status = .searching(requestID: UUID(0))
         }
         await store.send(.queryChanged("new")) {
             $0.query = "new"
+        }
+        await store.receive(.cancelSearch) {
             $0.status = .idle
         }
         await store.send(
@@ -238,6 +249,8 @@ struct SearchFeatureTests {
         }
         await store.send(.queryChanged("new")) {
             $0.query = "new"
+        }
+        await store.receive(.cancelSearch) {
             $0.status = .idle
         }
     }

@@ -49,6 +49,8 @@ struct SearchFeature {
         case submitButtonTapped
         case retryButtonTapped
         case cancel
+        case startSearch(query: String, requestID: UUID)
+        case cancelSearch
         case resultTapped(MusicItemID)
         case pagination(SearchPaginationFeature.Action)
         case delegate(Delegate)
@@ -65,12 +67,10 @@ struct SearchFeature {
             switch action {
             case .queryChanged(let query):
                 state.query = query
-                state.status = .idle
-                return cancelSearchEffects()
+                return .send(.cancelSearch)
 
             case .cancel:
-                state.status = .idle
-                return cancelSearchEffects()
+                return .send(.cancelSearch)
 
             case .submitButtonTapped, .retryButtonTapped:
                 guard state.providerAccess?.authorization == .authorized else {
@@ -78,12 +78,33 @@ struct SearchFeature {
                 }
                 let query = state.query.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !query.isEmpty else {
-                    state.status = .idle
-                    return cancelSearchEffects()
+                    return .send(.cancelSearch)
                 }
                 let requestID = uuid()
+                return .send(
+                    .startSearch(query: query, requestID: requestID)
+                )
+
+            case .startSearch(let query, let requestID):
                 state.status = .searching(requestID: requestID)
-                return firstPageEffect(query: query, requestID: requestID)
+                return .run { send in
+                    do {
+                        let page = try await providerSearch.search(query, 20)
+                        await send(.searchResponse(requestID, .success(page)))
+                    } catch let error as MusicProviderError {
+                        await send(.searchResponse(requestID, .failure(error)))
+                    } catch {
+                        await send(.searchResponse(requestID, .failure(.network)))
+                    }
+                }
+                .cancellable(id: CancelID.search, cancelInFlight: true)
+
+            case .cancelSearch:
+                state.status = .idle
+                return .merge(
+                    .cancel(id: CancelID.search),
+                    .cancel(id: SearchPaginationFeature.CancelID.nextPage)
+                )
 
             case .resultTapped(let songID):
                 guard case .loaded(let pagination) = state.status,
@@ -125,29 +146,5 @@ struct SearchFeature {
         .ifLet(\.pagination, action: \.pagination) {
             SearchPaginationFeature()
         }
-    }
-
-    private func firstPageEffect(
-        query: String,
-        requestID: UUID
-    ) -> Effect<Action> {
-        .run { send in
-            do {
-                let page = try await providerSearch.search(query, 20)
-                await send(.searchResponse(requestID, .success(page)))
-            } catch let error as MusicProviderError {
-                await send(.searchResponse(requestID, .failure(error)))
-            } catch {
-                await send(.searchResponse(requestID, .failure(.network)))
-            }
-        }
-        .cancellable(id: CancelID.search, cancelInFlight: true)
-    }
-
-    private func cancelSearchEffects() -> Effect<Action> {
-        .merge(
-            .cancel(id: CancelID.search),
-            .cancel(id: SearchPaginationFeature.CancelID.nextPage)
-        )
     }
 }
