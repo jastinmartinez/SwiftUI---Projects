@@ -342,10 +342,13 @@ struct AppProviderSwitchingTests {
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: makeSong(),
                 phase: .observing(
-                    MusicPlaybackSnapshot(
-                        currentItem: makeSong(),
+                    PlaybackSnapshot(
+                        currentItemID: makeSong().id,
                         status: .playing,
-                        currentTime: 42
+                        currentTime: 42,
+                        playbackRate: .normal,
+                        repeatMode: .off,
+                        shuffleMode: .off
                     )
                 ),
                 playbackEligibility: .eligible,

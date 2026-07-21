@@ -193,10 +193,13 @@ struct MusicPlaybackPresentationAdapterTests {
             makeMusicPlaybackStore(
                 selectedSong: song,
                 phase: .observing(
-                    MusicPlaybackSnapshot(
-                        currentItem: song,
+                    PlaybackSnapshot(
+                        currentItemID: song.id,
                         status: .paused,
-                        currentTime: 43
+                        currentTime: 43,
+                        playbackRate: .normal,
+                        repeatMode: .off,
+                        shuffleMode: .off
                     )
                 ),
                 playbackEligibility: .eligible,
@@ -490,7 +493,7 @@ struct MusicPlaybackPresentationAdapterTests {
 
     @Test
     func statusTextUsesExactApprovedWords() {
-        let cases: [(MusicPlaybackStatus, String)] = [
+        let cases: [(PlaybackStatus, String)] = [
             (.playing, "Playing"),
             (.paused, "Paused"),
             (.stopped, "Stopped"),
@@ -559,7 +562,7 @@ struct MusicPlaybackPresentationAdapterTests {
     }
 
     private func makeActionRecordingPlaybackStore(
-        status: MusicPlaybackStatus,
+        status: PlaybackStatus,
         actions: LockIsolated<[MusicPlaybackFeature.Action]>
     ) -> StoreOf<MusicPlaybackFeature> {
         Store(
@@ -627,13 +630,16 @@ struct MusicPlaybackPresentationAdapterTests {
     }
 
     private func makeSnapshot(
-        status: MusicPlaybackStatus,
+        status: PlaybackStatus,
         currentTime: TimeInterval
-    ) -> MusicPlaybackSnapshot {
-        MusicPlaybackSnapshot(
-            currentItem: nil,
+    ) -> PlaybackSnapshot {
+        PlaybackSnapshot(
+            currentItemID: nil,
             status: status,
-            currentTime: currentTime
+            currentTime: currentTime,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
         )
     }
 

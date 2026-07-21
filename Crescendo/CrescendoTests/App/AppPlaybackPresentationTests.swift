@@ -14,10 +14,13 @@ struct AppPlaybackPresentationTests {
             artworkURL: nil,
             duration: nil
         )
-        let snapshot = MusicPlaybackSnapshot(
-            currentItem: song,
+        let snapshot = PlaybackSnapshot(
+            currentItemID: song.id,
             status: .paused,
-            currentTime: 42
+            currentTime: 42,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
         )
         let musicPlayback = MusicPlaybackFeature.State(
             selectedSong: song,

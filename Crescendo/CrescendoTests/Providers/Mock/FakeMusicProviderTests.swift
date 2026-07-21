@@ -53,16 +53,21 @@ struct FakeMusicProviderTests {
 
     @Test
     func playStartsAtTimeZero() async throws {
+        let itemID = MusicItemID(providerID: "fake", nativeID: "1")
         let fake = makeFakeProvider()
         let playbackControl = await fake.playbackControlClient()
         let playbackObservation = await fake.playbackObservationClient()
 
         try await playbackControl.seek(42)
-        try await playbackControl.play(.init(providerID: "fake", nativeID: "1"))
+        try await playbackControl.play(itemID)
         let playbackSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
+        #expect(playbackSnapshot?.currentItemID == itemID)
         #expect(playbackSnapshot?.status == .playing)
         #expect(playbackSnapshot?.currentTime == 0)
+        #expect(playbackSnapshot?.playbackRate == .normal)
+        #expect(playbackSnapshot?.repeatMode == .off)
+        #expect(playbackSnapshot?.shuffleMode == .off)
     }
 
     @Test
@@ -123,7 +128,7 @@ struct FakeMusicProviderTests {
 
     private func nextPlaybackSnapshot(
         from playbackObservation: PlaybackObservationClient
-    ) async -> MusicPlaybackSnapshot? {
+    ) async -> PlaybackSnapshot? {
         let snapshots = await playbackObservation.playbackSnapshots()
         var iterator = snapshots.makeAsyncIterator()
         return await iterator.next()

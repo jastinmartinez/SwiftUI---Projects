@@ -53,7 +53,7 @@ extension MusicPlaybackTimelineView.Model {
     /// Builds the shared interactive timeline model for any player surface.
     static func make(
         duration: TimeInterval?,
-        snapshot: MusicPlaybackSnapshot,
+        snapshot: PlaybackSnapshot,
         timeline: MusicPlaybackTimelineFeature.State,
         supportsSeeking: Bool,
         strings: (_ elapsedTime: String, _ durationTime: String) -> Strings,

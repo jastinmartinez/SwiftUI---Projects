@@ -8,7 +8,7 @@ actor FakeMusicProvider {
 
     private let configuredAccess: MusicProviderAccess
     private let configuredResults: [SongSummary]
-    private var playbackSnapshot = MusicPlaybackSnapshot.idle
+    private var playbackSnapshot = PlaybackSnapshot.idle
 
     init(access: MusicProviderAccess, searchResults: [SongSummary]) {
         self.configuredAccess = access
@@ -52,9 +52,9 @@ actor FakeMusicProvider {
 
     func playbackControlClient() -> PlaybackControlClient {
         PlaybackControlClient(
-            play: { [weak self] _ in
+            play: { [weak self] itemID in
                 guard let self else { throw MusicProviderError.unavailable }
-                await self.startPlayback()
+                await self.startPlayback(itemID: itemID)
             },
             resume: { [weak self] in await self?.setStatus(.playing) },
             pause: { [weak self] in await self?.setStatus(.paused) },
@@ -75,9 +75,15 @@ actor FakeMusicProvider {
         )
     }
 
-    private func startPlayback() {
-        playbackSnapshot.status = .playing
-        playbackSnapshot.currentTime = 0
+    private func startPlayback(itemID: MusicItemID) {
+        playbackSnapshot = PlaybackSnapshot(
+            currentItemID: itemID,
+            status: .playing,
+            currentTime: 0,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
+        )
     }
 
     private func searchPage(offset: Int, limit: Int) -> SearchPage {
@@ -99,16 +105,36 @@ actor FakeMusicProvider {
         return SearchPage(songs: songs, nextCursor: nextCursor)
     }
 
-    private func setStatus(_ status: MusicPlaybackStatus) {
-        playbackSnapshot.status = status
+    private func setStatus(_ status: PlaybackStatus) {
+        playbackSnapshot = PlaybackSnapshot(
+            currentItemID: playbackSnapshot.currentItemID,
+            status: status,
+            currentTime: playbackSnapshot.currentTime,
+            playbackRate: playbackSnapshot.playbackRate,
+            repeatMode: playbackSnapshot.repeatMode,
+            shuffleMode: playbackSnapshot.shuffleMode
+        )
     }
 
     private func stopPlayback() {
-        playbackSnapshot.status = .stopped
-        playbackSnapshot.currentTime = 0
+        playbackSnapshot = PlaybackSnapshot(
+            currentItemID: playbackSnapshot.currentItemID,
+            status: .stopped,
+            currentTime: 0,
+            playbackRate: playbackSnapshot.playbackRate,
+            repeatMode: playbackSnapshot.repeatMode,
+            shuffleMode: playbackSnapshot.shuffleMode
+        )
     }
 
     private func setTime(_ time: TimeInterval) {
-        playbackSnapshot.currentTime = time
+        playbackSnapshot = PlaybackSnapshot(
+            currentItemID: playbackSnapshot.currentItemID,
+            status: playbackSnapshot.status,
+            currentTime: time,
+            playbackRate: playbackSnapshot.playbackRate,
+            repeatMode: playbackSnapshot.repeatMode,
+            shuffleMode: playbackSnapshot.shuffleMode
+        )
     }
 }

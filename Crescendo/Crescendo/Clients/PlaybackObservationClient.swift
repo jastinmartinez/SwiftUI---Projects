@@ -2,7 +2,7 @@ import ComposableArchitecture
 
 /// Exposes provider-confirmed playback observations.
 struct PlaybackObservationClient: Sendable {
-    var playbackSnapshots: @Sendable () async -> AsyncStream<MusicPlaybackSnapshot>
+    var playbackSnapshots: @Sendable () async -> AsyncStream<PlaybackSnapshot>
 }
 
 extension DependencyValues {

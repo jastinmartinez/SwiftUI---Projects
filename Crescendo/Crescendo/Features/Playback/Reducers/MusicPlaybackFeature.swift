@@ -20,7 +20,7 @@ struct MusicPlaybackFeature {
                 return false
             }
             let shouldResume =
-                phase.snapshot.currentItem?.id == itemID
+                phase.snapshot.currentItemID == itemID
                 && phase.snapshot.status == .paused
             return shouldResume || capabilities.supportsQueueReplacement
         }
@@ -28,17 +28,17 @@ struct MusicPlaybackFeature {
 
     enum Phase: Equatable {
         /// Accepts provider observations as the current playback snapshot.
-        case observing(MusicPlaybackSnapshot)
+        case observing(PlaybackSnapshot)
         /// Retains the latest observation while a Play command is in flight.
-        case loading(MusicPlaybackSnapshot)
+        case loading(PlaybackSnapshot)
         /// Retains both the command failure and the latest provider observation.
         case failed(
             MusicProviderError,
-            lastSnapshot: MusicPlaybackSnapshot
+            lastSnapshot: PlaybackSnapshot
         )
 
         /// Returns the most recent provider observation without discarding the active case.
-        var snapshot: MusicPlaybackSnapshot {
+        var snapshot: PlaybackSnapshot {
             switch self {
             case .observing(let snapshot), .loading(let snapshot):
                 snapshot
@@ -73,7 +73,7 @@ struct MusicPlaybackFeature {
         case timeline(MusicPlaybackTimelineFeature.Action)
         case transportFinished
         case transportFailed(MusicProviderError)
-        case snapshotReceived(MusicPlaybackSnapshot)
+        case snapshotReceived(PlaybackSnapshot)
     }
 
     enum CancelID {
@@ -135,7 +135,7 @@ struct MusicPlaybackFeature {
                     state.capabilities.supportsEmbeddedPlayback
                 else { return .none }
                 let snapshot = state.phase.snapshot
-                let isCurrentItem = snapshot.currentItem?.id == itemID
+                let isCurrentItem = snapshot.currentItemID == itemID
                 if isCurrentItem, snapshot.status == .playing {
                     return .none
                 }

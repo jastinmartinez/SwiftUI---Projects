@@ -9,10 +9,13 @@ struct MusicPlaybackFeatureTests {
     @Test
     func taskConsumesPlaybackSnapshots() async {
         let song = makeSong()
-        let snapshot = MusicPlaybackSnapshot(
-            currentItem: song,
+        let snapshot = PlaybackSnapshot(
+            currentItemID: song.id,
             status: .playing,
-            currentTime: 12
+            currentTime: 12,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
         )
         let store = makeStore(song: song) {
             $0.playbackObservation.playbackSnapshots = {
@@ -32,10 +35,13 @@ struct MusicPlaybackFeatureTests {
     @Test
     func pollingSnapshotDoesNotFinishLoadingCommand() async {
         let song = makeSong()
-        let snapshot = MusicPlaybackSnapshot(
-            currentItem: song,
+        let snapshot = PlaybackSnapshot(
+            currentItemID: song.id,
             status: .playing,
-            currentTime: 1
+            currentTime: 1,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
         )
         let store = makeStore(
             song: song,
@@ -49,7 +55,7 @@ struct MusicPlaybackFeatureTests {
 
     @Test
     func pollingSnapshotPreservesFailureUntilNextPlaybackAttempt() async {
-        let (snapshots, continuation) = AsyncStream<MusicPlaybackSnapshot>.makeStream()
+        let (snapshots, continuation) = AsyncStream<PlaybackSnapshot>.makeStream()
         let song = makeSong()
         let store = makeStore(song: song) {
             $0.playbackObservation.playbackSnapshots = { snapshots }
@@ -69,10 +75,13 @@ struct MusicPlaybackFeatureTests {
             )
         }
 
-        let latestSnapshot = MusicPlaybackSnapshot(
-            currentItem: song,
+        let latestSnapshot = PlaybackSnapshot(
+            currentItemID: song.id,
             status: .paused,
-            currentTime: 4
+            currentTime: 4,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
         )
         continuation.yield(latestSnapshot)
         await store.receive(.snapshotReceived(latestSnapshot)) {
@@ -92,10 +101,13 @@ struct MusicPlaybackFeatureTests {
             $0.phase = .observing(latestSnapshot)
         }
 
-        let playingSnapshot = MusicPlaybackSnapshot(
-            currentItem: song,
+        let playingSnapshot = PlaybackSnapshot(
+            currentItemID: song.id,
             status: .playing,
-            currentTime: 1
+            currentTime: 1,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
         )
         continuation.yield(playingSnapshot)
         continuation.finish()
@@ -225,10 +237,13 @@ struct MusicPlaybackFeatureTests {
     @Test
     func receivedSnapshotReplacesObservedPlaybackState() async {
         let song = makeSong()
-        let snapshot = MusicPlaybackSnapshot(
-            currentItem: song,
+        let snapshot = PlaybackSnapshot(
+            currentItemID: song.id,
             status: .playing,
-            currentTime: 12
+            currentTime: 12,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
         )
         let store = makeStore(song: song)
 
@@ -604,12 +619,15 @@ struct MusicPlaybackFeatureTests {
 
     private func makeSnapshot(
         song: SongSummary,
-        status: MusicPlaybackStatus
-    ) -> MusicPlaybackSnapshot {
-        MusicPlaybackSnapshot(
-            currentItem: song,
+        status: PlaybackStatus
+    ) -> PlaybackSnapshot {
+        PlaybackSnapshot(
+            currentItemID: song.id,
             status: status,
-            currentTime: 42
+            currentTime: 42,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
         )
     }
 

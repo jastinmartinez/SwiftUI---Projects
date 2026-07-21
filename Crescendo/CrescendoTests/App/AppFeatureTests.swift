@@ -109,10 +109,13 @@ struct AppFeatureTests {
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: song,
                 phase: .observing(
-                    MusicPlaybackSnapshot(
-                        currentItem: song,
+                    PlaybackSnapshot(
+                        currentItemID: song.id,
                         status: .playing,
-                        currentTime: 42
+                        currentTime: 42,
+                        playbackRate: .normal,
+                        repeatMode: .off,
+                        shuffleMode: .off
                     )
                 ),
                 playbackEligibility: .eligible,

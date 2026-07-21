@@ -487,12 +487,15 @@ struct AppPlaybackCoordinationTests {
 
     private func makeSnapshot(
         song: SongSummary,
-        status: MusicPlaybackStatus
-    ) -> MusicPlaybackSnapshot {
-        MusicPlaybackSnapshot(
-            currentItem: song,
+        status: PlaybackStatus
+    ) -> PlaybackSnapshot {
+        PlaybackSnapshot(
+            currentItemID: song.id,
             status: status,
-            currentTime: 42
+            currentTime: 42,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
         )
     }
 

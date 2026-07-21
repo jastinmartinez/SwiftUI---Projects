@@ -71,7 +71,7 @@ struct NowPlayingBarPresentationTests {
 
     private func makeState(
         song: SongSummary,
-        status: MusicPlaybackStatus
+        status: PlaybackStatus
     ) -> AppFeature.State {
         AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
@@ -101,10 +101,13 @@ struct NowPlayingBarPresentationTests {
             musicPlayback: MusicPlaybackFeature.State(
                 selectedSong: song,
                 phase: .observing(
-                    MusicPlaybackSnapshot(
-                        currentItem: song,
+                    PlaybackSnapshot(
+                        currentItemID: song.id,
                         status: status,
-                        currentTime: 0
+                        currentTime: 0,
+                        playbackRate: .normal,
+                        repeatMode: .off,
+                        shuffleMode: .off
                     )
                 ),
                 playbackEligibility: .eligible,

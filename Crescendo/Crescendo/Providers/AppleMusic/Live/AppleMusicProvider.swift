@@ -8,14 +8,16 @@ actor AppleMusicProvider {
 
     private let player = ApplicationMusicPlayer.shared
     private var songsByNativeID: [String: Song] = [:]
-    private var summariesByNativeID: [String: SongSummary] = [:]
 
-    /// Resolves the player's current queue entry back to provider-neutral metadata.
-    private var currentSongSummary: SongSummary? {
+    /// Resolves the player's current queue entry into provider-neutral identity.
+    private var currentItemID: MusicItemID? {
         guard let nativeID = player.queue.currentEntry?.item?.id.rawValue else {
             return nil
         }
-        return summariesByNativeID[nativeID]
+        return MusicItemID(
+            providerID: Self.providerID,
+            nativeID: nativeID
+        )
     }
 
     /// Returns the current authorization and catalog-playback access snapshot.
@@ -71,7 +73,6 @@ actor AppleMusicProvider {
                 duration: appleMusicSong.duration
             )
             songsByNativeID[nativeID] = appleMusicSong
-            summariesByNativeID[nativeID] = songSummary
             return songSummary
         }
 
@@ -129,7 +130,7 @@ actor AppleMusicProvider {
     }
 
     /// Polls the application player and yields provider-neutral playback snapshots.
-    func playbackSnapshots() -> AsyncStream<MusicPlaybackSnapshot> {
+    func playbackSnapshots() -> AsyncStream<PlaybackSnapshot> {
         AsyncStream { continuation in
             let observationTask = Task { [weak self] in
                 guard let self else {
@@ -183,7 +184,7 @@ actor AppleMusicProvider {
     }
 
     /// Reads the player as the transport source of truth and normalizes its state.
-    private func playbackSnapshot() -> MusicPlaybackSnapshot {
+    private func playbackSnapshot() -> PlaybackSnapshot {
         let appleMusicStatus: AppleMusicPlaybackStatus
         switch player.state.playbackStatus {
         case .playing, .seekingForward, .seekingBackward:
@@ -204,10 +205,13 @@ actor AppleMusicProvider {
         } else {
             currentTime = max(0, player.playbackTime)
         }
-        return MusicPlaybackSnapshot(
-            currentItem: currentSongSummary,
-            status: MusicPlaybackStatus(appleMusicStatus),
-            currentTime: currentTime
+        return PlaybackSnapshot(
+            currentItemID: currentItemID,
+            status: PlaybackStatus(appleMusicStatus),
+            currentTime: currentTime,
+            playbackRate: PlaybackRate(value: player.state.playbackRate),
+            repeatMode: PlaybackRepeatMode(player.state.repeatMode),
+            shuffleMode: PlaybackShuffleMode(player.state.shuffleMode)
         )
     }
 }
