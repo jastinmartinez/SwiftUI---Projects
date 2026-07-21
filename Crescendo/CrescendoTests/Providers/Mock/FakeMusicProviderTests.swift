@@ -4,32 +4,45 @@ import Testing
 
 struct FakeMusicProviderTests {
     @Test
-    func fakeReturnsConfiguredAccessAndResults() async throws {
-        let expectedSong = SongSummary(
-            id: .init(providerID: "fake", nativeID: "1"),
-            title: "Test Song",
-            artistName: "Test Artist",
-            artworkURL: nil,
-            duration: nil
-        )
+    func fakeReturnsConfiguredAccess() async {
         let expectedAccess = MusicProviderAccess(
             authorization: .authorized,
             playbackEligibility: .eligible
         )
         let fake = FakeMusicProvider(
             access: expectedAccess,
-            searchResults: [expectedSong]
+            searchResults: []
         )
         let accessClient = await fake.accessClient()
-        let searchClient = await fake.searchClient()
         let currentAccess = await accessClient.currentAccess()
         let requestedAccess = await accessClient.requestAccess()
-        let searchPage = try await searchClient.search("test", 20)
 
         #expect(currentAccess == expectedAccess)
         #expect(requestedAccess == expectedAccess)
-        #expect(searchPage.songs == [expectedSong])
-        #expect(searchPage.nextCursor == nil)
+    }
+
+    @Test
+    func searchClientPaginatesConfiguredResults() async throws {
+        let songs = (1...4).map { makeSong(nativeID: String($0)) }
+        let fake = FakeMusicProvider(
+            access: .init(
+                authorization: .authorized,
+                playbackEligibility: .eligible
+            ),
+            searchResults: songs
+        )
+        let client = await fake.searchClient()
+
+        let firstPage = try await client.search("test", 2)
+        let cursor = try #require(firstPage.nextCursor)
+        let continuation = try await client.nextSearchPage(cursor, 2)
+
+        #expect(firstPage.songs.map(\.id) == Array(songs.prefix(2)).map(\.id))
+        #expect(
+            continuation.songs.map(\.id)
+                == Array(songs.dropFirst(2).prefix(2)).map(\.id)
+        )
+        #expect(continuation.nextCursor == nil)
     }
 
     @Test
@@ -89,6 +102,16 @@ struct FakeMusicProviderTests {
         FakeMusicProvider(
             access: .init(authorization: .authorized, playbackEligibility: .eligible),
             searchResults: []
+        )
+    }
+
+    private func makeSong(nativeID: String) -> SongSummary {
+        SongSummary(
+            id: .init(providerID: "fake", nativeID: nativeID),
+            title: "Song \(nativeID)",
+            artistName: "Artist",
+            artworkURL: nil,
+            duration: nil
         )
     }
 

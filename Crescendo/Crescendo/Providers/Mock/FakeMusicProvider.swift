@@ -2,6 +2,10 @@ import Foundation
 
 /// Provides deterministic in-memory music behavior for tests and previews.
 actor FakeMusicProvider {
+    private struct SearchOffset: Codable {
+        let value: Int
+    }
+
     private let configuredAccess: MusicProviderAccess
     private let configuredResults: [SongSummary]
     private var playbackSnapshot = MusicPlaybackSnapshot.idle
@@ -27,13 +31,19 @@ actor FakeMusicProvider {
     func searchClient() -> ProviderSearchClient {
         ProviderSearchClient(
             search: { [weak self] _, limit in
-                SearchPage(
-                    songs: Array((self?.configuredResults ?? []).prefix(limit)),
-                    nextCursor: nil
-                )
+                await self?.searchPage(offset: 0, limit: limit)
+                    ?? SearchPage(songs: [], nextCursor: nil)
             },
-            nextSearchPage: { _, _ in
-                throw MusicProviderError.unavailable
+            nextSearchPage: { [weak self] cursor, limit in
+                guard let self else { throw MusicProviderError.unavailable }
+                let offset = try JSONDecoder().decode(
+                    SearchOffset.self,
+                    from: Data(cursor.value.utf8)
+                )
+                return await self.searchPage(
+                    offset: offset.value,
+                    limit: limit
+                )
             }
         )
     }
@@ -66,6 +76,25 @@ actor FakeMusicProvider {
     private func startPlayback() {
         playbackSnapshot.status = .playing
         playbackSnapshot.currentTime = 0
+    }
+
+    private func searchPage(offset: Int, limit: Int) -> SearchPage {
+        let songs = Array(
+            configuredResults.dropFirst(offset).prefix(limit)
+        )
+        let nextOffset = offset + songs.count
+        let nextCursor: SearchCursor?
+        if nextOffset < configuredResults.count,
+            let data = try? JSONEncoder().encode(
+                SearchOffset(value: nextOffset)
+            ),
+            let value = String(data: data, encoding: .utf8)
+        {
+            nextCursor = SearchCursor(value: value)
+        } else {
+            nextCursor = nil
+        }
+        return SearchPage(songs: songs, nextCursor: nextCursor)
     }
 
     private func setStatus(_ status: MusicPlaybackStatus) {
