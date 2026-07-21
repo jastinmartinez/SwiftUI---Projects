@@ -7,599 +7,405 @@ import Testing
 @MainActor
 struct PlaybackFeatureTests {
     @Test
-    func taskConsumesPlaybackSnapshots() async {
-        let song = makeSong()
-        let snapshot = PlaybackSnapshot(
-            currentItemID: song.id,
-            status: .playing,
-            currentTime: 12,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
-        )
-        let store = makeStore(song: song) {
-            $0.playbackObservation.playbackSnapshots = {
-                AsyncStream { continuation in
-                    continuation.yield(snapshot)
-                    continuation.finish()
+    func selectionFreezesLoadedOrderAndReplacesQueueFromTappedItem() async {
+        let songs = makeSongs()
+        let loadedResults = IdentifiedArray(uniqueElements: songs)
+        let calls = LockIsolated<[PlaybackQueueCall]>([])
+        let store = makeStore {
+            $0.playbackControl.playQueue = { itemIDs, startingItemID in
+                calls.withValue {
+                    $0.append(
+                        PlaybackQueueCall(
+                            itemIDs: itemIDs,
+                            startingItemID: startingItemID
+                        )
+                    )
                 }
             }
         }
 
-        await store.send(.task)
-        await store.receive(.snapshotReceived(snapshot)) {
-            $0.phase = .observing(snapshot)
-        }
-    }
-
-    @Test
-    func pollingSnapshotDoesNotFinishLoadingCommand() async {
-        let song = makeSong()
-        let snapshot = PlaybackSnapshot(
-            currentItemID: song.id,
-            status: .playing,
-            currentTime: 1,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
-        )
-        let store = makeStore(
-            song: song,
-            phase: .loading(.idle)
-        )
-
-        await store.send(.snapshotReceived(snapshot)) {
-            $0.phase = .loading(snapshot)
-        }
-    }
-
-    @Test
-    func pollingSnapshotPreservesFailureUntilNextPlaybackAttempt() async {
-        let (snapshots, continuation) = AsyncStream<PlaybackSnapshot>.makeStream()
-        let song = makeSong()
-        let store = makeStore(song: song) {
-            $0.playbackObservation.playbackSnapshots = { snapshots }
-        }
-
-        await store.send(.task)
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.playRequested(song.id)))
-        await store.send(.playbackCommandAccepted) {
-            $0.phase = .loading(.idle)
-        }
-        await store.send(.transportFailed(.playbackFailed)) {
-            $0.phase = .failed(
-                .playbackFailed,
-                lastSnapshot: .idle
+        await store.send(
+            .selectionReceived(
+                songs[1],
+                loadedResults: loadedResults,
+                providerID: providerID,
+                playbackEligibility: .eligible
             )
-        }
-
-        let latestSnapshot = PlaybackSnapshot(
-            currentItemID: song.id,
-            status: .paused,
-            currentTime: 4,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
-        )
-        continuation.yield(latestSnapshot)
-        await store.receive(.snapshotReceived(latestSnapshot)) {
-            $0.phase = .failed(
-                .playbackFailed,
-                lastSnapshot: latestSnapshot
-            )
-        }
-
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.resumeRequested(song.id)))
-        await store.send(.playbackCommandAccepted) {
-            $0.phase = .loading(latestSnapshot)
-        }
-        await store.send(.transportFinished) {
-            $0.phase = .observing(latestSnapshot)
-        }
-
-        let playingSnapshot = PlaybackSnapshot(
-            currentItemID: song.id,
-            status: .playing,
-            currentTime: 1,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
-        )
-        continuation.yield(playingSnapshot)
-        continuation.finish()
-        await store.receive(.snapshotReceived(playingSnapshot)) {
-            $0.phase = .observing(playingSnapshot)
-        }
-    }
-
-    @Test
-    func eligiblePlayDelegatesWithoutCallingProvider() async {
-        let playCallCount = LockIsolated(0)
-        let song = makeSong()
-        let store = makeStore(song: song) {
-            $0.playbackControl.playQueue = { _, _ in
-                playCallCount.withValue { $0 += 1 }
-            }
-        }
-
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.playRequested(song.id)))
-
-        #expect(playCallCount.value == 0)
-        #expect(store.state.phase == .observing(.idle))
-    }
-
-    @Test
-    func pausedCurrentSongDelegatesResumeWithoutCallingProvider() async {
-        let song = makeSong()
-        let playCallCount = LockIsolated(0)
-        let resumeCallCount = LockIsolated(0)
-        let store = makeStore(
-            song: song,
-            phase: .observing(makeSnapshot(song: song, status: .paused))
         ) {
-            $0.playbackControl.playQueue = { _, _ in
-                playCallCount.withValue { $0 += 1 }
-            }
-            $0.playbackControl.resume = {
-                resumeCallCount.withValue { $0 += 1 }
-            }
+            $0.pendingOperation = .queueReplacement(
+                .init(
+                    requestID: UUID(0),
+                    songs: loadedResults,
+                    startingItemID: songs[1].id
+                )
+            )
+            $0.playbackEligibility = .eligible
+            $0.failure = nil
         }
-
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.resumeRequested(song.id)))
-
-        #expect(playCallCount.value == 0)
-        #expect(resumeCallCount.value == 0)
-    }
-
-    @Test
-    func pausedCurrentSongCanResumeWithoutQueueReplacement() async {
-        let song = makeSong()
-        let store = makeStore(
-            song: song,
-            phase: .observing(makeSnapshot(song: song, status: .paused)),
-            capabilities: makeResumeOnlyCapabilities()
-        )
-
-        #expect(store.state.canPlaySelectedSong)
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.resumeRequested(song.id)))
-    }
-
-    @Test
-    func idleSongCannotPlayWithoutQueueReplacement() async {
-        let store = makeStore(
-            song: makeSong(),
-            capabilities: makeResumeOnlyCapabilities()
-        )
-
-        #expect(!store.state.canPlaySelectedSong)
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-    }
-
-    @Test
-    func stoppedCurrentSongDelegatesPlay() async {
-        let song = makeSong()
-        let store = makeStore(
-            song: song,
-            phase: .observing(makeSnapshot(song: song, status: .stopped))
-        )
-
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.playRequested(song.id)))
-    }
-
-    @Test
-    func pausedDifferentSongDelegatesPlay() async {
-        let selectedSong = makeSong()
-        let currentSong = makeSong(nativeID: "2")
-        let store = makeStore(
-            song: selectedSong,
-            phase: .observing(
-                makeSnapshot(song: currentSong, status: .paused)
+        await store.receive(
+            .performQueueReplacement(
+                requestID: UUID(0),
+                itemIDs: Array(loadedResults.ids),
+                startingItemID: songs[1].id
             )
         )
-
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.playRequested(selectedSong.id)))
-    }
-
-    @Test
-    func idleSnapshotDelegatesPlay() async {
-        let song = makeSong()
-        let store = makeStore(song: song)
-
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.playRequested(song.id)))
-    }
-
-    @Test
-    func parentAcceptanceMovesMusicToLoading() async {
-        let store = makeStore(song: makeSong())
-
-        await store.send(.playbackCommandAccepted) {
-            $0.phase = .loading(.idle)
+        await store.receive(.queueReplacementSucceeded(requestID: UUID(0))) {
+            $0.pendingOperation = nil
+            $0.status = .playing
         }
-    }
-
-    @Test
-    func receivedSnapshotReplacesObservedPlaybackState() async {
-        let song = makeSong()
-        let snapshot = PlaybackSnapshot(
-            currentItemID: song.id,
-            status: .playing,
-            currentTime: 12,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
-        )
-        let store = makeStore(song: song)
-
-        await store.send(.snapshotReceived(snapshot)) {
-            $0.phase = .observing(snapshot)
+        await store.receive(
+            .queue(.replace(loadedResults, startingAt: songs[1].id))
+        ) {
+            $0.queue.songs = loadedResults
+            $0.queue.currentItemID = songs[1].id
         }
-    }
-
-    @Test
-    func ineligibleAccountDoesNotDelegatePlayback() async {
-        let store = makeStore(
-            song: makeSong(),
-            playbackEligibility: .ineligible
-        )
-
-        #expect(!store.state.canPlaySelectedSong)
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-    }
-
-    @Test
-    func unsupportedPlaybackDoesNotDelegatePlayback() async {
-        let capabilities = MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: false,
-            supportsSeeking: true,
-            supportsQueueReplacement: true
-        )
-        let store = makeStore(
-            song: makeSong(),
-            capabilities: capabilities
-        )
-
-        #expect(!store.state.canPlaySelectedSong)
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-    }
-
-    @Test
-    func missingSelectionDoesNotDelegatePlayback() async {
-        let store = makeStore(song: nil)
-
-        #expect(!store.state.canPlaySelectedSong)
-        await store.send(.playTapped)
-        await store.receive(.requestPlayback)
-    }
-
-    @Test
-    func pauseForwardsToTheProvider() async {
-        let pauseCallCount = LockIsolated(0)
-        let store = makeStore(song: makeSong()) {
-            $0.playbackControl.pause = {
-                pauseCallCount.withValue { $0 += 1 }
-            }
-        }
-
-        await store.send(.pauseTapped)
-        await store.receive(.transportFinished)
-
-        #expect(pauseCallCount.value == 1)
-    }
-
-    @Test
-    func stopForwardsToTheProvider() async {
-        let stopCallCount = LockIsolated(0)
-        let store = makeStore(song: makeSong()) {
-            $0.playbackControl.stop = {
-                stopCallCount.withValue { $0 += 1 }
-            }
-        }
-
-        await store.send(.stopTapped)
         await store.receive(.timeline(.reset))
-        await store.receive(.transportFinished)
 
-        #expect(stopCallCount.value == 1)
-    }
-
-    @Test
-    func tappingDifferentSongResetsTimelineInteraction() async {
-        let suspendedSeek = SuspendedSeekProbe()
-        let selectedSong = makeSong()
-        let nextSong = makeSong(nativeID: "2")
-        let store = makeStore(song: selectedSong) {
-            $0.playbackControl.seek = suspendedSeek.callAsFunction
-        }
-        await startSuspendedSeek(suspendedSeek, on: store)
-
-        await store.send(
-            .songTapped(
-                nextSong,
-                playbackEligibility: .ineligible
-            )
+        #expect(
+            calls.value
+                == [
+                    PlaybackQueueCall(
+                        itemIDs: Array(loadedResults.ids),
+                        startingItemID: songs[1].id
+                    )
+                ]
         )
-        await store.receive(.timeline(.reset)) {
-            $0.timeline.interaction = .idle
-        }
-        #expect(suspendedSeek.cancellationObserved.value)
-        #expect(store.state.selectedSong == selectedSong)
-
-        await store.receive(
-            .applySongTap(
-                nextSong,
-                playbackEligibility: .ineligible
-            )
-        ) {
-            $0.selectedSong = nextSong
-            $0.playbackEligibility = .ineligible
-        }
-        await store.receive(.requestPlayback)
-
-        suspendedSeek.fail(with: .network)
-        await store.finish()
-        #expect(store.state.selectedSong == nextSong)
-        #expect(store.state.timeline.interaction == .idle)
     }
 
     @Test
-    func tappingSameSongPreservesTimelineInteraction() async {
-        let suspendedSeek = SuspendedSeekProbe()
-        let song = makeSong()
-        let store = makeStore(song: song) {
-            $0.playbackControl.seek = suspendedSeek.callAsFunction
-        }
-        await startSuspendedSeek(suspendedSeek, on: store)
-
-        await store.send(
-            .songTapped(song, playbackEligibility: .ineligible)
-        )
-        await store.receive(
-            .applySongTap(song, playbackEligibility: .ineligible)
-        ) {
-            $0.playbackEligibility = .ineligible
-        }
-        await store.receive(.requestPlayback)
-        #expect(!suspendedSeek.cancellationObserved.value)
-
-        await store.send(.timeline(.reset)) {
-            $0.timeline.interaction = .idle
-        }
-        suspendedSeek.succeed()
-        await store.finish()
-    }
-
-    @Test
-    func stopResetsTimelineInteraction() async {
-        let suspendedSeek = SuspendedSeekProbe()
-        let stopObservedCancellation = LockIsolated(false)
-        let store = makeStore(song: makeSong()) {
-            $0.playbackControl.seek = suspendedSeek.callAsFunction
-            $0.playbackControl.stop = {
-                stopObservedCancellation.withValue {
-                    $0 = suspendedSeek.cancellationObserved.value
-                }
-            }
-        }
-        await startSuspendedSeek(suspendedSeek, on: store)
-
-        await store.send(.stopTapped)
-        await store.receive(.timeline(.reset)) {
-            $0.timeline.interaction = .idle
-        }
-        #expect(suspendedSeek.cancellationObserved.value)
-        await store.receive(.transportFinished)
-
-        suspendedSeek.succeed()
-        await store.finish()
-        #expect(stopObservedCancellation.value)
-        #expect(store.state.timeline.interaction == .idle)
-    }
-
-    @Test
-    func timelineFailurePreservesLatestSnapshot() async {
-        let song = makeSong()
-        let snapshot = makeSnapshot(song: song, status: .playing)
+    func pendingSelectionDoesNotReplaceConfirmedQueue() async {
+        let confirmedSongs = makeSongs(prefix: "confirmed")
+        let confirmedQueue = IdentifiedArray(uniqueElements: confirmedSongs)
+        let nextSongs = makeSongs(prefix: "next")
+        let nextResults = IdentifiedArray(uniqueElements: nextSongs)
+        let probe = SuspendedQueueReplacementProbe()
         let store = makeStore(
-            song: song,
-            phase: .observing(snapshot)
-        )
-
-        await store.send(
-            .timeline(.delegate(.transportFailed(.network)))
-        ) {
-            $0.phase = .failed(.network, lastSnapshot: snapshot)
-        }
-    }
-
-    @Test(arguments: [
-        PlaybackTimelineFeature.Interaction.dragging(position: 30),
-        .seeking(requestID: UUID(0), position: 30),
-    ])
-    func snapshotDuringInteractionPreservesTimelineInteraction(
-        interaction: PlaybackTimelineFeature.Interaction
-    ) async {
-        let song = makeSong()
-        let snapshot = makeSnapshot(song: song, status: .playing)
-        let store = makeStore(
-            song: song,
-            timelineInteraction: interaction
-        )
-
-        await store.send(.snapshotReceived(snapshot)) {
-            $0.phase = .observing(snapshot)
-        }
-
-        #expect(store.state.timeline.interaction == interaction)
-    }
-
-    @Test
-    func acceptedPlayFailureRetainsSelection() async {
-        let song = makeSong()
-        let store = makeStore(song: song)
-
-        await store.send(.playbackCommandAccepted) {
-            $0.phase = .loading(.idle)
-        }
-        await store.send(.transportFailed(.playbackFailed)) {
-            $0.phase = .failed(
-                .playbackFailed,
-                lastSnapshot: .idle
-            )
-        }
-
-        #expect(store.state.selectedSong == song)
-    }
-
-    @Test
-    func tappingDifferentEligibleSongSelectsAndRequestsPlay() async {
-        let currentSong = makeSong(nativeID: "current")
-        let nextSong = makeSong(nativeID: "next")
-        let store = makeStore(
-            song: currentSong,
-            phase: .observing(
-                makeSnapshot(song: currentSong, status: .playing)
+            queue: PlaybackQueueFeature.State(
+                songs: confirmedQueue,
+                currentItemID: confirmedSongs[0].id
             ),
-            timelineInteraction: .dragging(position: 12)
-        )
+            status: .playing
+        ) {
+            $0.playbackControl.playQueue = probe.callAsFunction
+        }
 
         await store.send(
-            .songTapped(nextSong, playbackEligibility: .eligible)
-        )
-        await store.receive(.timeline(.reset)) {
-            $0.timeline.interaction = .idle
-        }
-        await store.receive(
-            .applySongTap(nextSong, playbackEligibility: .eligible)
+            .selectionReceived(
+                nextSongs[1],
+                loadedResults: nextResults,
+                providerID: providerID,
+                playbackEligibility: .eligible
+            )
         ) {
-            $0.selectedSong = nextSong
+            $0.pendingOperation = .queueReplacement(
+                .init(
+                    requestID: UUID(0),
+                    songs: nextResults,
+                    startingItemID: nextSongs[1].id
+                )
+            )
             $0.playbackEligibility = .eligible
         }
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.playRequested(nextSong.id)))
-    }
-
-    @Test
-    func tappingSamePausedSongRequestsResume() async {
-        let song = makeSong()
-        let store = makeStore(
-            song: song,
-            phase: .observing(makeSnapshot(song: song, status: .paused))
-        )
-
-        await store.send(.songTapped(song, playbackEligibility: .eligible))
         await store.receive(
-            .applySongTap(song, playbackEligibility: .eligible)
+            .performQueueReplacement(
+                requestID: UUID(0),
+                itemIDs: Array(nextResults.ids),
+                startingItemID: nextSongs[1].id
+            )
         )
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.resumeRequested(song.id)))
+        await probe.waitUntilStarted()
+
+        #expect(store.state.queue.songs == confirmedQueue)
+        #expect(store.state.queue.currentItem == confirmedSongs[0])
+
+        await store.send(.cancelPendingOperation) {
+            $0.pendingOperation = nil
+        }
+        probe.succeed()
+        await store.finish()
     }
 
     @Test
-    func tappingSamePlayingSongDoesNotRestart() async {
-        let song = makeSong()
-        let state = PlaybackFeature.State(
-            selectedSong: song,
-            queue: PlaybackQueueFeature.State(
-                songs: [],
-                currentItemID: nil
-            ),
-            phase: .observing(makeSnapshot(song: song, status: .playing)),
-            playbackEligibility: .eligible,
-            capabilities: .allEnabled,
-            timeline: .init(interaction: .idle)
-        )
-        let store = makeStore(
-            song: song,
-            phase: state.phase
-        )
-
-        await store.send(.songTapped(song, playbackEligibility: .eligible))
-        await store.receive(
-            .applySongTap(song, playbackEligibility: .eligible)
-        )
-        await store.receive(.requestPlayback)
-
-        #expect(store.state == state)
-    }
-
-    @Test
-    func tappingSameStoppedSongRequestsPlayFromZero() async {
-        let song = makeSong()
-        let store = makeStore(
-            song: song,
-            phase: .observing(makeSnapshot(song: song, status: .stopped))
-        )
-
-        await store.send(.songTapped(song, playbackEligibility: .eligible))
-        await store.receive(
-            .applySongTap(song, playbackEligibility: .eligible)
-        )
-        await store.receive(.requestPlayback)
-        await store.receive(.delegate(.playRequested(song.id)))
-    }
-
-    @Test
-    func tappingIneligibleSongSelectsWithoutPlaybackRequest() async {
-        let currentSong = makeSong(nativeID: "current")
-        let nextSong = makeSong(nativeID: "next")
-        let store = makeStore(song: currentSong)
+    func newerSelectionWinsAndStaleSuccessCannotPromoteItsQueue() async {
+        let firstSongs = makeSongs(prefix: "first")
+        let firstQueue = IdentifiedArray(uniqueElements: firstSongs)
+        let secondSongs = makeSongs(prefix: "second")
+        let secondQueue = IdentifiedArray(uniqueElements: secondSongs)
+        let store = makeStore {
+            $0.playbackControl.playQueue = { _, _ in
+                try await Task.sleep(for: .seconds(60))
+            }
+        }
 
         await store.send(
-            .songTapped(nextSong, playbackEligibility: .ineligible)
-        )
-        await store.receive(.timeline(.reset))
-        await store.receive(
-            .applySongTap(nextSong, playbackEligibility: .ineligible)
+            .selectionReceived(
+                firstSongs[0],
+                loadedResults: firstQueue,
+                providerID: providerID,
+                playbackEligibility: .eligible
+            )
         ) {
-            $0.selectedSong = nextSong
-            $0.playbackEligibility = .ineligible
+            $0.pendingOperation = .queueReplacement(
+                .init(
+                    requestID: UUID(0),
+                    songs: firstQueue,
+                    startingItemID: firstSongs[0].id
+                )
+            )
+            $0.playbackEligibility = .eligible
         }
-        await store.receive(.requestPlayback)
+        await store.receive(
+            .performQueueReplacement(
+                requestID: UUID(0),
+                itemIDs: Array(firstQueue.ids),
+                startingItemID: firstSongs[0].id
+            )
+        )
+        await store.send(
+            .selectionReceived(
+                secondSongs[1],
+                loadedResults: secondQueue,
+                providerID: providerID,
+                playbackEligibility: .eligible
+            )
+        ) {
+            $0.pendingOperation = .queueReplacement(
+                .init(
+                    requestID: UUID(1),
+                    songs: secondQueue,
+                    startingItemID: secondSongs[1].id
+                )
+            )
+        }
+        await store.receive(
+            .performQueueReplacement(
+                requestID: UUID(1),
+                itemIDs: Array(secondQueue.ids),
+                startingItemID: secondSongs[1].id
+            )
+        )
+        await store.send(.queueReplacementSucceeded(requestID: UUID(0)))
+        await store.send(.queueReplacementSucceeded(requestID: UUID(1))) {
+            $0.pendingOperation = nil
+            $0.status = .playing
+        }
+        await store.receive(
+            .queue(.replace(secondQueue, startingAt: secondSongs[1].id))
+        ) {
+            $0.queue.songs = secondQueue
+            $0.queue.currentItemID = secondSongs[1].id
+        }
+        await store.receive(.timeline(.reset))
+        await store.send(.cancelPendingOperation)
+    }
+
+    @Test
+    func failedReplacementPreservesConfirmedPlaybackTruth() async {
+        let songs = makeSongs(prefix: "confirmed")
+        let queue = IdentifiedArray(uniqueElements: songs)
+        let replacementSongs = makeSongs(prefix: "replacement")
+        let replacementQueue = IdentifiedArray(uniqueElements: replacementSongs)
+        let timeline = PlaybackTimelineFeature.State(
+            confirmedPosition: 42,
+            interaction: .dragging(position: 50)
+        )
+        let store = makeStore(
+            queue: .init(songs: queue, currentItemID: songs[1].id),
+            status: .paused,
+            failure: .network,
+            timeline: timeline,
+            pendingOperation: .queueReplacement(
+                .init(
+                    requestID: UUID(0),
+                    songs: replacementQueue,
+                    startingItemID: replacementSongs[0].id
+                )
+            )
+        )
+
+        await store.send(
+            .queueReplacementFailed(
+                requestID: UUID(0),
+                error: .playbackFailed
+            )
+        ) {
+            $0.pendingOperation = nil
+            $0.failure = .playbackFailed
+        }
+
+        #expect(store.state.queue == .init(songs: queue, currentItemID: songs[1].id))
+        #expect(store.state.status == .paused)
+        #expect(store.state.timeline == timeline)
+    }
+
+    @Test
+    func invalidSelectionsNeverCallQueueReplacement() async {
+        let calls = LockIsolated(0)
+        let songs = makeSongs()
+        let queue = IdentifiedArray(uniqueElements: songs)
+        let anotherProviderSongs = [
+            songs[0],
+            makeSong(providerID: "other", nativeID: "other"),
+        ]
+        let store = makeStore {
+            $0.playbackControl.playQueue = { _, _ in
+                calls.withValue { $0 += 1 }
+            }
+        }
+
+        await store.send(
+            .selectionReceived(
+                makeSong(nativeID: "missing"),
+                loadedResults: queue,
+                providerID: providerID,
+                playbackEligibility: .eligible
+            )
+        )
+        await store.send(
+            .selectionReceived(
+                songs[0],
+                loadedResults: IdentifiedArray(uniqueElements: anotherProviderSongs),
+                providerID: providerID,
+                playbackEligibility: .eligible
+            )
+        )
+        await store.send(
+            .selectionReceived(
+                songs[0],
+                loadedResults: queue,
+                providerID: "other",
+                playbackEligibility: .eligible
+            )
+        )
+        await store.send(
+            .selectionReceived(
+                songs[0],
+                loadedResults: queue,
+                providerID: providerID,
+                playbackEligibility: .ineligible
+            )
+        ) {
+            $0.playbackEligibility = .ineligible
+            $0.failure = nil
+        }
+
+        let unsupportedStore = makeStore(
+            capabilities: MusicProviderCapabilities(
+                supportsCatalogSearch: true,
+                supportsEmbeddedPlayback: true,
+                supportsSeeking: true,
+                supportsQueueReplacement: false
+            )
+        ) {
+            $0.playbackControl.playQueue = { _, _ in
+                calls.withValue { $0 += 1 }
+            }
+        }
+        await unsupportedStore.send(
+            .selectionReceived(
+                songs[0],
+                loadedResults: queue,
+                providerID: providerID,
+                playbackEligibility: .eligible
+            )
+        )
+
+        #expect(calls.value == 0)
+    }
+
+    @Test
+    func unknownSnapshotItemDoesNotReplaceConfirmedMetadata() async {
+        let songs = makeSongs()
+        let queue = IdentifiedArray(uniqueElements: songs)
+        let unknownID = MusicItemID(providerID: providerID, nativeID: "unknown")
+        let snapshot = makeSnapshot(
+            itemID: unknownID,
+            status: .playing,
+            currentTime: 12
+        )
+        let store = makeStore(
+            queue: .init(songs: queue, currentItemID: songs[0].id)
+        )
+
+        await store.send(.snapshotReceived(snapshot)) {
+            $0.status = .playing
+        }
+        await store.receive(.queue(.currentItemObserved(unknownID)))
+        await store.receive(.timeline(.positionObserved(12))) {
+            $0.timeline.confirmedPosition = 12
+        }
+
+        #expect(store.state.queue.currentItem == songs[0])
+    }
+
+    @Test
+    func matchingPlayingSnapshotConfirmsPendingQueueBeforeStaleResponse() async {
+        let songs = makeSongs()
+        let queue = IdentifiedArray(uniqueElements: songs)
+        let pending = PlaybackFeature.PendingQueueReplacement(
+            requestID: UUID(0),
+            songs: queue,
+            startingItemID: songs[1].id
+        )
+        let snapshot = makeSnapshot(
+            itemID: songs[1].id,
+            status: .playing,
+            currentTime: 7
+        )
+        let store = makeStore(
+            pendingOperation: .queueReplacement(pending)
+        )
+
+        await store.send(.snapshotReceived(snapshot)) {
+            $0.pendingOperation = nil
+            $0.status = .playing
+            $0.failure = nil
+        }
+        await store.receive(
+            .queue(.replace(queue, startingAt: songs[1].id))
+        ) {
+            $0.queue.songs = queue
+            $0.queue.currentItemID = songs[1].id
+        }
+        await store.receive(.timeline(.reset))
+        await store.receive(.timeline(.positionObserved(7))) {
+            $0.timeline.confirmedPosition = 7
+        }
+        await store.send(.queueReplacementSucceeded(requestID: UUID(0)))
+
+        #expect(store.state.queue.currentItem == songs[1])
     }
 
     // MARK: - Helpers
 
+    private let providerID = ProviderID(rawValue: "fake")
+
     private func makeStore(
-        song: SongSummary?,
-        phase: PlaybackFeature.Phase = .observing(.idle),
-        playbackEligibility: CatalogPlaybackEligibility = .eligible,
+        queue: PlaybackQueueFeature.State = .init(
+            songs: [],
+            currentItemID: nil
+        ),
+        status: PlaybackStatus = .idle,
+        failure: MusicProviderError? = nil,
+        playbackEligibility: CatalogPlaybackEligibility = .unknown,
         capabilities: MusicProviderCapabilities = .allEnabled,
-        timelineInteraction: PlaybackTimelineFeature.Interaction = .idle,
+        timeline: PlaybackTimelineFeature.State = .init(
+            confirmedPosition: 0,
+            interaction: .idle
+        ),
+        pendingOperation: PlaybackFeature.PendingOperation? = nil,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
     ) -> TestStoreOf<PlaybackFeature> {
         TestStore(
             initialState: PlaybackFeature.State(
-                selectedSong: song,
-                queue: PlaybackQueueFeature.State(
-                    songs: [],
-                    currentItemID: nil
-                ),
-                phase: phase,
+                providerID: providerID,
+                queue: queue,
+                status: status,
+                failure: failure,
                 playbackEligibility: playbackEligibility,
                 capabilities: capabilities,
-                timeline: PlaybackTimelineFeature.State(
-                    interaction: timelineInteraction
-                )
+                timeline: timeline,
+                pendingOperation: pendingOperation
             )
         ) {
             PlaybackFeature()
@@ -609,52 +415,79 @@ struct PlaybackFeatureTests {
         }
     }
 
-    private func startSuspendedSeek(
-        _ suspendedSeek: SuspendedSeekProbe,
-        on store: TestStoreOf<PlaybackFeature>
-    ) async {
-        await store.send(.timeline(.positionChanged(30))) {
-            $0.timeline.interaction = .dragging(position: 30)
-        }
-        await store.send(.timeline(.dragEnded)) {
-            $0.timeline.interaction = .seeking(
-                requestID: UUID(0),
-                position: 30
-            )
-        }
-        await suspendedSeek.waitUntilStarted()
+    private func makeSongs(prefix: String = "song") -> [SongSummary] {
+        [
+            makeSong(nativeID: "\(prefix)-1"),
+            makeSong(nativeID: "\(prefix)-2"),
+            makeSong(nativeID: "\(prefix)-3"),
+        ]
+    }
+
+    private func makeSong(
+        providerID: ProviderID = "fake",
+        nativeID: String
+    ) -> SongSummary {
+        SongSummary(
+            id: MusicItemID(providerID: providerID, nativeID: nativeID),
+            title: nativeID,
+            artistName: "Artist",
+            artworkURL: nil,
+            duration: 180
+        )
     }
 
     private func makeSnapshot(
-        song: SongSummary,
-        status: PlaybackStatus
+        itemID: MusicItemID?,
+        status: PlaybackStatus,
+        currentTime: TimeInterval
     ) -> PlaybackSnapshot {
         PlaybackSnapshot(
-            currentItemID: song.id,
+            currentItemID: itemID,
             status: status,
-            currentTime: 42,
+            currentTime: currentTime,
             playbackRate: .normal,
             repeatMode: .off,
             shuffleMode: .off
         )
     }
+}
 
-    private func makeResumeOnlyCapabilities() -> MusicProviderCapabilities {
-        MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: true,
-            supportsQueueReplacement: false
-        )
+private struct PlaybackQueueCall: Equatable {
+    let itemIDs: [MusicItemID]
+    let startingItemID: MusicItemID
+}
+
+private struct SuspendedQueueReplacementProbe: Sendable {
+    private let started: AsyncStream<Void>
+    private let startedContinuation: AsyncStream<Void>.Continuation
+    private let pendingContinuation =
+        LockIsolated<CheckedContinuation<Void, any Error>?>(nil)
+
+    init() {
+        (started, startedContinuation) = AsyncStream<Void>.makeStream()
     }
 
-    private func makeSong(nativeID: String = "1") -> SongSummary {
-        SongSummary(
-            id: .init(providerID: "fake", nativeID: nativeID),
-            title: "Song",
-            artistName: "Artist",
-            artworkURL: nil,
-            duration: nil
-        )
+    func callAsFunction(
+        _ itemIDs: [MusicItemID],
+        _ startingItemID: MusicItemID
+    ) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            pendingContinuation.withValue { $0 = continuation }
+            startedContinuation.yield()
+        }
+    }
+
+    func waitUntilStarted() async {
+        var iterator = started.makeAsyncIterator()
+        _ = await iterator.next()
+        startedContinuation.finish()
+    }
+
+    func succeed() {
+        pendingContinuation.withValue { pendingContinuation in
+            let continuation = pendingContinuation
+            pendingContinuation = nil
+            continuation?.resume(returning: ())
+        }
     }
 }

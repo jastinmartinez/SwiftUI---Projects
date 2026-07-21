@@ -11,7 +11,6 @@ struct AppFeature {
         var playback: PlaybackFeature.State
         var isPlayerPresented: Bool
         var providerSwitch: ProviderSwitchFeature.State?
-        var playbackCommand: PlaybackCommandFeature.State?
 
         var requiresProviderSelection: Bool {
             providerConnection.connection == .disconnected
@@ -26,15 +25,13 @@ struct AppFeature {
             search: SearchFeature.State,
             playback: PlaybackFeature.State,
             isPlayerPresented: Bool,
-            providerSwitch: ProviderSwitchFeature.State?,
-            playbackCommand: PlaybackCommandFeature.State?
+            providerSwitch: ProviderSwitchFeature.State?
         ) {
             self.providerConnection = providerConnection
             self.search = search
             self.playback = playback
             self.isPlayerPresented = isPlayerPresented
             self.providerSwitch = providerSwitch
-            self.playbackCommand = playbackCommand
         }
     }
 
@@ -47,11 +44,8 @@ struct AppFeature {
         case providerSwitch(ProviderSwitchFeature.Action)
         case search(SearchFeature.Action)
         case playback(PlaybackFeature.Action)
-        case playbackCommand(PlaybackCommandFeature.Action)
         case setPlayerPresented(Bool)
     }
-
-    @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
         Scope(state: \.providerConnection, action: \.providerConnection) {
@@ -69,7 +63,7 @@ struct AppFeature {
                 return .none
 
             case .providerSelected(let providerID):
-                guard state.playbackCommand == nil else {
+                guard state.playback.pendingOperation == nil else {
                     return .none
                 }
                 guard
@@ -141,6 +135,7 @@ struct AppFeature {
                 }
                 return .concatenate(
                     .send(.search(.cancelSearch)),
+                    .send(.playback(.cancelPendingOperation)),
                     .send(.playback(.timeline(.reset))),
                     .send(.replaceProviderOwnedState(provider.id))
                 )
@@ -159,17 +154,20 @@ struct AppFeature {
                     providerAccess: nil
                 )
                 state.playback = PlaybackFeature.State(
-                    selectedSong: nil,
+                    providerID: providerID,
                     queue: PlaybackQueueFeature.State(
                         songs: [],
                         currentItemID: nil
                     ),
-                    phase: .observing(.idle),
+                    status: .idle,
+                    failure: nil,
                     playbackEligibility: .unknown,
                     capabilities: provider.musicCapabilities,
                     timeline: PlaybackTimelineFeature.State(
+                        confirmedPosition: 0,
                         interaction: .idle
-                    )
+                    ),
+                    pendingOperation: nil
                 )
                 state.isPlayerPresented = false
                 return .none
@@ -191,99 +189,37 @@ struct AppFeature {
 
             case .search(
                 .delegate(
-                    .songTapped(let song, loadedResults: _)
+                    .songTapped(let song, let loadedResults)
                 )
             ):
                 guard state.providerSwitch == nil,
-                    case .connected(_, let access) =
+                    case .connected(let providerID, let access) =
                         state.providerConnection.connection,
                     access.authorization == .authorized
                 else {
                     return .none
                 }
-                if state.playback.selectedSong == nil {
+                if state.playback.queue.songs.isEmpty {
                     state.isPlayerPresented = true
                 }
                 return .send(
                     .playback(
-                        .songTapped(
+                        .selectionReceived(
                             song,
+                            loadedResults: loadedResults,
+                            providerID: providerID,
                             playbackEligibility: access.playbackEligibility
                         )
                     )
                 )
 
-            case .search:
-                return .none
-
-            case .playback(.delegate(let delegate)):
-                let command: PlaybackCommandFeature.Command
-                switch delegate {
-                case .playRequested(let itemID):
-                    command = .play(
-                        itemIDs: [itemID],
-                        startingItemID: itemID
-                    )
-                case .resumeRequested(let itemID):
-                    command = .resume(itemID)
-                }
-                guard state.providerSwitch == nil,
-                    state.providerConnection.connection.access != nil
-                else {
-                    return .none
-                }
-
-                let requestID = uuid()
-                if state.playbackCommand != nil {
-                    return .concatenate(
-                        .send(
-                            .playbackCommand(
-                                .replace(command, requestID: requestID)
-                            )
-                        ),
-                        .send(.playback(.playbackCommandAccepted))
-                    )
-                }
-                state.playbackCommand = PlaybackCommandFeature.State(
-                    command: command,
-                    requestID: requestID
-                )
-                return .concatenate(
-                    .send(.playback(.playbackCommandAccepted)),
-                    .send(.playbackCommand(.start))
-                )
-
-            case .playback:
-                return .none
-
-            case .playbackCommand(
-                .delegate(.completed(let requestID, .success))
-            ):
-                guard state.playbackCommand?.requestID == requestID else {
-                    return .none
-                }
-                state.playbackCommand = nil
-                return .send(.playback(.transportFinished))
-
-            case .playbackCommand(
-                .delegate(.completed(let requestID, .failure(let error)))
-            ):
-                guard state.playbackCommand?.requestID == requestID else {
-                    return .none
-                }
-                state.playbackCommand = nil
-                return .send(.playback(.transportFailed(error)))
-
-            case .playbackCommand:
+            case .search, .playback:
                 return .none
 
             case .setPlayerPresented(let isPresented):
                 state.isPlayerPresented = isPresented
                 return .none
             }
-        }
-        .ifLet(\.playbackCommand, action: \.playbackCommand) {
-            PlaybackCommandFeature()
         }
         .ifLet(\.providerSwitch, action: \.providerSwitch) {
             ProviderSwitchFeature()

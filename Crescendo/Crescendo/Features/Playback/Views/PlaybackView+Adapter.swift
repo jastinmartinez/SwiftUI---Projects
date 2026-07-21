@@ -5,17 +5,15 @@ extension PlaybackView.Model {
     /// Adapts reducer-owned playback state and actions into presentation values.
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>, providerName: String?) {
-        let snapshot = store.phase.snapshot
         let statusText: String
-        switch store.phase {
-        case .loading:
+        if store.pendingOperation != nil {
             statusText = Locs.Playback.Status.loading
-        case .failed(.unavailable, _):
+        } else if store.failure == .unavailable {
             statusText = Locs.Playback.Status.unavailable
-        case .failed:
+        } else if store.failure != nil {
             statusText = Locs.Playback.Status.failed
-        case .observing:
-            switch snapshot.status {
+        } else {
+            switch store.status {
             case .idle:
                 statusText = Locs.Playback.Status.idle
             case .playing:
@@ -27,9 +25,10 @@ extension PlaybackView.Model {
             }
         }
 
+        let song = store.queue.currentItem
+
         let timeline = PlaybackTimelineView.Model.make(
-            duration: store.selectedSong?.duration,
-            snapshot: snapshot,
+            duration: song?.duration,
             timeline: store.timeline,
             supportsSeeking: store.capabilities.supportsSeeking,
             strings: { elapsedTime, durationTime in
@@ -47,10 +46,10 @@ extension PlaybackView.Model {
         )
 
         self.init(
-            artworkURL: store.selectedSong?.artworkURL,
+            artworkURL: song?.artworkURL,
             metadata: PlaybackMetadataView.Model(
-                title: store.selectedSong?.title ?? Locs.Playback.noSelection,
-                artistName: store.selectedSong?.artistName,
+                title: song?.title ?? Locs.Playback.noSelection,
+                artistName: song?.artistName,
                 providerAttribution: providerName.map(Locs.Playback.playingFrom),
                 statusText: statusText
             ),

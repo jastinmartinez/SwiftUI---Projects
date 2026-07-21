@@ -4,18 +4,17 @@ extension PlaybackNowPlayingView.Model {
     /// Adapts the selected song and playback state into the compact player presentation.
     @MainActor
     init(_ store: StoreOf<AppFeature>, song: SongSummary) {
-        let snapshot = store.playback.phase.snapshot
-        let isPlaying = snapshot.status == .playing
+        let isPlaying = store.playback.status == .playing
 
         self.init(
             title: song.title,
             artistName: song.artistName,
             artworkURL: song.artworkURL,
             isPlaying: isPlaying,
-            isPlayEnabled: store.playback.canPlaySelectedSong,
+            isPlayEnabled: store.playback.capabilities.supportsEmbeddedPlayback
+                && store.playback.pendingOperation == nil,
             timeline: PlaybackTimelineView.Model.make(
                 duration: song.duration,
-                snapshot: snapshot,
                 timeline: store.playback.timeline,
                 supportsSeeking: store.playback.capabilities.supportsSeeking,
                 strings: { elapsedTime, durationTime in

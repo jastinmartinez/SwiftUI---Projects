@@ -4,19 +4,21 @@ extension PlaybackControlsView.Model {
     /// Adapts playback state and transport actions into the controls presentation.
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>) {
-        let isPlaying = store.phase.snapshot.status == .playing
+        let isPlaying = store.status == .playing
         let primaryAction: PrimaryAction = isPlaying ? .pause : .play
         let isStopEnabled: Bool
-        switch store.phase.snapshot.status {
+        switch store.status {
         case .playing, .paused:
-            isStopEnabled = true
+            isStopEnabled = store.pendingOperation == nil
         case .idle, .stopped:
             isStopEnabled = false
         }
 
         self.init(
             primaryAction: primaryAction,
-            isPrimaryEnabled: isPlaying || store.canPlaySelectedSong,
+            isPrimaryEnabled: store.queue.currentItem != nil
+                && store.capabilities.supportsEmbeddedPlayback
+                && store.pendingOperation == nil,
             isStopEnabled: isStopEnabled,
             onPrimaryAction: {
                 switch primaryAction {

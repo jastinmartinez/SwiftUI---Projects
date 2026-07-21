@@ -23,7 +23,7 @@ struct SearchFeature {
     enum Delegate: Equatable {
         case songTapped(
             SongSummary,
-            loadedResults: [SongSummary]
+            loadedResults: IdentifiedArrayOf<SongSummary>
         )
     }
 
@@ -107,7 +107,7 @@ struct SearchFeature {
                     .delegate(
                         .songTapped(
                             song,
-                            loadedResults: Array(pagination.songs)
+                            loadedResults: pagination.songs
                         )
                     )
                 )

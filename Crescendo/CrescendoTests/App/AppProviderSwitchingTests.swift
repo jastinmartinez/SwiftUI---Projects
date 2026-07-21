@@ -127,7 +127,10 @@ struct AppProviderSwitchingTests {
         await store.receive(.search(.cancelSearch)) {
             $0.search.status = .idle
         }
-        await store.receive(.playback(.timeline(.reset)))
+        await store.receive(.playback(.cancelPendingOperation))
+        await store.receive(.playback(.timeline(.reset))) {
+            $0.playback.timeline.confirmedPosition = 0
+        }
         await store.receive(.replaceProviderOwnedState("future")) {
             $0.search = SearchFeature.State(
                 query: "",
@@ -135,17 +138,20 @@ struct AppProviderSwitchingTests {
                 providerAccess: nil
             )
             $0.playback = PlaybackFeature.State(
-                selectedSong: nil,
+                providerID: "future",
                 queue: PlaybackQueueFeature.State(
                     songs: [],
                     currentItemID: nil
                 ),
-                phase: .observing(.idle),
+                status: .idle,
+                failure: nil,
                 playbackEligibility: .unknown,
                 capabilities: futureCapabilities,
                 timeline: PlaybackTimelineFeature.State(
+                    confirmedPosition: 0,
                     interaction: .idle
-                )
+                ),
+                pendingOperation: nil
             )
             $0.isPlayerPresented = false
         }
@@ -212,52 +218,22 @@ struct AppProviderSwitchingTests {
         #expect(store.state.providerConnection == state.providerConnection)
     }
 
-    @Test(arguments: [
-        PlaybackCommandFeature.Command.play(
-            itemIDs: [
-                MusicItemID(providerID: .appleMusic, nativeID: "selected")
-            ],
-            startingItemID: MusicItemID(
-                providerID: .appleMusic,
-                nativeID: "selected"
-            )
-        ),
-        .resume(
-            MusicItemID(providerID: .appleMusic, nativeID: "selected")
-        ),
-    ])
-    func providerSelectionIsRejectedDuringPlaybackCommand(
-        command: PlaybackCommandFeature.Command
-    ) async {
-        let state = makeState(
-            playbackCommand: PlaybackCommandFeature.State(
-                command: command,
-                requestID: UUID(0)
-            )
-        )
-        let store = makeStore(state: state)
-
-        await store.send(.providerSelected("future"))
-
-        #expect(store.state == state)
-    }
-
     @Test
-    func playbackCommandIsRejectedDuringProviderSwitch() async {
+    func providerSelectionIsRejectedDuringPlaybackOperation() async {
         let song = makeSong()
+        let songs = IdentifiedArray(uniqueElements: [song])
         let state = makeState(
-            providerSwitch: ProviderSwitchFeature.State(
-                sourceProviderID: .appleMusic,
-                phase: .pausing(
-                    targetProviderID: "future",
-                    requestID: UUID(0)
+            pendingOperation: .queueReplacement(
+                PlaybackFeature.PendingQueueReplacement(
+                    requestID: UUID(0),
+                    songs: songs,
+                    startingItemID: song.id
                 )
             )
         )
         let store = makeStore(state: state)
 
-        await store.send(.playback(.delegate(.playRequested(song.id))))
-        await store.send(.playback(.delegate(.resumeRequested(song.id))))
+        await store.send(.providerSelected("future"))
 
         #expect(store.state == state)
     }
@@ -278,7 +254,12 @@ struct AppProviderSwitchingTests {
 
         await store.send(
             .search(
-                .delegate(.songTapped(song, loadedResults: [song]))
+                .delegate(
+                    .songTapped(
+                        song,
+                        loadedResults: IdentifiedArray(uniqueElements: [song])
+                    )
+                )
             )
         )
 
@@ -315,9 +296,11 @@ struct AppProviderSwitchingTests {
 
     private func makeState(
         providerSwitch: ProviderSwitchFeature.State? = nil,
-        playbackCommand: PlaybackCommandFeature.State? = nil
+        pendingOperation: PlaybackFeature.PendingOperation? = nil
     ) -> AppFeature.State {
-        AppFeature.State(
+        let song = makeSong()
+        let queue = IdentifiedArray(uniqueElements: [song])
+        return AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
                 providers: [
                     .appleMusic,
@@ -350,30 +333,23 @@ struct AppProviderSwitchingTests {
                 )
             ),
             playback: PlaybackFeature.State(
-                selectedSong: makeSong(),
+                providerID: .appleMusic,
                 queue: PlaybackQueueFeature.State(
-                    songs: [],
-                    currentItemID: nil
+                    songs: queue,
+                    currentItemID: song.id
                 ),
-                phase: .observing(
-                    PlaybackSnapshot(
-                        currentItemID: makeSong().id,
-                        status: .playing,
-                        currentTime: 42,
-                        playbackRate: .normal,
-                        repeatMode: .off,
-                        shuffleMode: .off
-                    )
-                ),
+                status: .playing,
+                failure: nil,
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
                 timeline: PlaybackTimelineFeature.State(
+                    confirmedPosition: 42,
                     interaction: .idle
-                )
+                ),
+                pendingOperation: pendingOperation
             ),
             isPlayerPresented: true,
-            providerSwitch: providerSwitch,
-            playbackCommand: playbackCommand
+            providerSwitch: providerSwitch
         )
     }
 

@@ -87,29 +87,25 @@ struct AppProviderSelectionPresentationTests {
         #expect(model.providerRows[0].isSelected)
     }
 
-    @Test(arguments: [
-        PlaybackCommandFeature.Command.play(
-            itemIDs: [
-                MusicItemID(providerID: .appleMusic, nativeID: "selected")
-            ],
-            startingItemID: MusicItemID(
-                providerID: .appleMusic,
-                nativeID: "selected"
-            )
-        ),
-        .resume(
-            MusicItemID(providerID: .appleMusic, nativeID: "selected")
-        ),
-    ])
-    func playbackCommandDisablesProviderSelection(
-        command: PlaybackCommandFeature.Command
-    ) {
+    @Test
+    func playbackOperationDisablesProviderSelection() {
+        let song = SongSummary(
+            id: .init(providerID: .appleMusic, nativeID: "selected"),
+            title: "Selected",
+            artistName: "Artist",
+            artworkURL: nil,
+            duration: nil
+        )
+        let songs = IdentifiedArray(uniqueElements: [song])
         let model = ProviderSelectionView.Model(
             makeStore(
                 connection: connectedConnection,
-                playbackCommand: PlaybackCommandFeature.State(
-                    command: command,
-                    requestID: UUID(0)
+                pendingOperation: .queueReplacement(
+                    .init(
+                        requestID: UUID(0),
+                        songs: songs,
+                        startingItemID: song.id
+                    )
                 )
             )
         )
@@ -164,7 +160,7 @@ struct AppProviderSelectionPresentationTests {
 
     private func makeStore(
         connection: ProviderConnection,
-        playbackCommand: PlaybackCommandFeature.State? = nil,
+        pendingOperation: PlaybackFeature.PendingOperation? = nil,
         actions: LockIsolated<[AppFeature.Action]>? = nil
     ) -> StoreOf<AppFeature> {
         Store(
@@ -179,21 +175,23 @@ struct AppProviderSelectionPresentationTests {
                     providerAccess: nil
                 ),
                 playback: PlaybackFeature.State(
-                    selectedSong: nil,
+                    providerID: connection.providerID,
                     queue: PlaybackQueueFeature.State(
                         songs: [],
                         currentItemID: nil
                     ),
-                    phase: .observing(.idle),
+                    status: .idle,
+                    failure: nil,
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled,
                     timeline: PlaybackTimelineFeature.State(
+                        confirmedPosition: 0,
                         interaction: .idle
-                    )
+                    ),
+                    pendingOperation: pendingOperation
                 ),
                 isPlayerPresented: false,
-                providerSwitch: nil,
-                playbackCommand: playbackCommand
+                providerSwitch: nil
             )
         ) {
             Reduce { _, action in

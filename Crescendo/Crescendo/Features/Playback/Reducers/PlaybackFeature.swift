@@ -1,89 +1,69 @@
 import ComposableArchitecture
 import Foundation
 
-/// Owns persistent music selection, playback state, and provider-neutral commands.
+/// Owns confirmed playback state and coordinates playback-domain workflows.
 @Reducer
 struct PlaybackFeature {
     @ObservableState
     struct State: Equatable {
-        var selectedSong: SongSummary?
+        var providerID: ProviderID?
         var queue: PlaybackQueueFeature.State
-        var phase: Phase
+        var status: PlaybackStatus
+        var failure: MusicProviderError?
         var playbackEligibility: CatalogPlaybackEligibility
         var capabilities: MusicProviderCapabilities
         var timeline: PlaybackTimelineFeature.State
-
-        var canPlaySelectedSong: Bool {
-            guard let itemID = selectedSong?.id,
-                playbackEligibility == .eligible,
-                capabilities.supportsEmbeddedPlayback
-            else {
-                return false
-            }
-            let shouldResume =
-                phase.snapshot.currentItemID == itemID
-                && phase.snapshot.status == .paused
-            return shouldResume || capabilities.supportsQueueReplacement
-        }
+        var pendingOperation: PendingOperation?
     }
 
-    enum Phase: Equatable {
-        /// Accepts provider observations as the current playback snapshot.
-        case observing(PlaybackSnapshot)
-        /// Retains the latest observation while a Play command is in flight.
-        case loading(PlaybackSnapshot)
-        /// Retains both the command failure and the latest provider observation.
-        case failed(
-            MusicProviderError,
-            lastSnapshot: PlaybackSnapshot
-        )
-
-        /// Returns the most recent provider observation without discarding the active case.
-        var snapshot: PlaybackSnapshot {
-            switch self {
-            case .observing(let snapshot), .loading(let snapshot):
-                snapshot
-            case .failed(_, let lastSnapshot):
-                lastSnapshot
-            }
-        }
+    enum PendingOperation: Equatable {
+        case queueReplacement(PendingQueueReplacement)
     }
 
-    /// Events emitted after validating child-owned playback intent.
-    enum Delegate: Equatable {
-        case playRequested(MusicItemID)
-        case resumeRequested(MusicItemID)
+    struct PendingQueueReplacement: Equatable {
+        let requestID: UUID
+        let songs: IdentifiedArrayOf<SongSummary>
+        let startingItemID: MusicItemID
     }
 
     enum Action: Equatable {
         case task
-        case songTapped(
+        case selectionReceived(
             SongSummary,
+            loadedResults: IdentifiedArrayOf<SongSummary>,
+            providerID: ProviderID,
             playbackEligibility: CatalogPlaybackEligibility
         )
-        case applySongTap(
-            SongSummary,
-            playbackEligibility: CatalogPlaybackEligibility
+        case performQueueReplacement(
+            requestID: UUID,
+            itemIDs: [MusicItemID],
+            startingItemID: MusicItemID
         )
+        case queueReplacementSucceeded(requestID: UUID)
+        case queueReplacementFailed(
+            requestID: UUID,
+            error: MusicProviderError
+        )
+        case cancelPendingOperation
         case playTapped
-        case requestPlayback
-        case playbackCommandAccepted
-        case delegate(Delegate)
         case pauseTapped
         case stopTapped
-        case queue(PlaybackQueueFeature.Action)
-        case timeline(PlaybackTimelineFeature.Action)
         case transportFinished
         case transportFailed(MusicProviderError)
         case snapshotReceived(PlaybackSnapshot)
+        case queue(PlaybackQueueFeature.Action)
+        case timeline(PlaybackTimelineFeature.Action)
     }
 
-    enum CancelID {
+    private enum CancelID {
         case playbackObservation
+        case queueReplacement
+        case transport
     }
 
     @Dependency(\.playbackControl) var playbackControl
     @Dependency(\.playbackObservation) var playbackObservation
+    @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
         Scope(state: \.queue, action: \.queue) {
@@ -106,130 +86,227 @@ struct PlaybackFeature {
                     cancelInFlight: true
                 )
 
-            case .songTapped(let song, let playbackEligibility):
-                let isDifferentSong = state.selectedSong?.id != song.id
-                if isDifferentSong {
+            case .selectionReceived(
+                let song,
+                let loadedResults,
+                let providerID,
+                let playbackEligibility
+            ):
+                guard state.providerID == providerID,
+                    playbackEligibility == .eligible,
+                    state.capabilities.supportsEmbeddedPlayback,
+                    state.capabilities.supportsQueueReplacement,
+                    loadedResults[id: song.id] != nil,
+                    loadedResults.allSatisfy({ $0.id.providerID == providerID })
+                else {
+                    if state.providerID == providerID,
+                        playbackEligibility != .eligible,
+                        state.queue.songs.isEmpty
+                    {
+                        state.playbackEligibility = playbackEligibility
+                        state.failure = nil
+                    }
+                    return .none
+                }
+
+                let requestID = uuid()
+                state.pendingOperation = .queueReplacement(
+                    PendingQueueReplacement(
+                        requestID: requestID,
+                        songs: loadedResults,
+                        startingItemID: song.id
+                    )
+                )
+                state.playbackEligibility = .eligible
+                state.failure = nil
+                return .send(
+                    .performQueueReplacement(
+                        requestID: requestID,
+                        itemIDs: Array(loadedResults.ids),
+                        startingItemID: song.id
+                    )
+                )
+
+            case .performQueueReplacement(
+                let requestID,
+                let itemIDs,
+                let startingItemID
+            ):
+                return .run { send in
+                    do {
+                        try await playbackControl.playQueue(
+                            itemIDs,
+                            startingItemID
+                        )
+                        try Task.checkCancellation()
+                        await send(
+                            .queueReplacementSucceeded(requestID: requestID)
+                        )
+                    } catch is CancellationError {
+                        return
+                    } catch let error as MusicProviderError {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .queueReplacementFailed(
+                                requestID: requestID,
+                                error: error
+                            )
+                        )
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .queueReplacementFailed(
+                                requestID: requestID,
+                                error: .playbackFailed
+                            )
+                        )
+                    }
+                }
+                .cancellable(
+                    id: CancelID.queueReplacement,
+                    cancelInFlight: true
+                )
+
+            case .queueReplacementSucceeded(let requestID):
+                guard
+                    case .queueReplacement(let replacement) =
+                        state.pendingOperation,
+                    replacement.requestID == requestID
+                else { return .none }
+
+                state.pendingOperation = nil
+                state.status = .playing
+                state.failure = nil
+                return .concatenate(
+                    .send(
+                        .queue(
+                            .replace(
+                                replacement.songs,
+                                startingAt: replacement.startingItemID
+                            )
+                        )
+                    ),
+                    .send(.timeline(.reset))
+                )
+
+            case .queueReplacementFailed(let requestID, let error):
+                guard
+                    case .queueReplacement(let replacement) =
+                        state.pendingOperation,
+                    replacement.requestID == requestID
+                else { return .none }
+
+                state.pendingOperation = nil
+                state.failure = error
+                return .none
+
+            case .cancelPendingOperation:
+                state.pendingOperation = nil
+                return .cancel(id: CancelID.queueReplacement)
+
+            case .playTapped:
+                guard state.status == .paused,
+                    state.queue.currentItem != nil
+                else { return .none }
+                state.failure = nil
+                return .run { send in
+                    do {
+                        try await playbackControl.resume()
+                        await send(.transportFinished)
+                    } catch let error as MusicProviderError {
+                        await send(.transportFailed(error))
+                    } catch {
+                        await send(.transportFailed(.playbackFailed))
+                    }
+                }
+                .cancellable(id: CancelID.transport, cancelInFlight: true)
+
+            case .pauseTapped:
+                state.failure = nil
+                return .run { send in
+                    do {
+                        try await playbackControl.pause()
+                        await send(.transportFinished)
+                    } catch let error as MusicProviderError {
+                        await send(.transportFailed(error))
+                    } catch {
+                        await send(.transportFailed(.playbackFailed))
+                    }
+                }
+                .cancellable(id: CancelID.transport, cancelInFlight: true)
+
+            case .stopTapped:
+                state.failure = nil
+                return .concatenate(
+                    .send(.timeline(.reset)),
+                    .run { send in
+                        do {
+                            try await playbackControl.stop()
+                            await send(.transportFinished)
+                        } catch let error as MusicProviderError {
+                            await send(.transportFailed(error))
+                        } catch {
+                            await send(.transportFailed(.playbackFailed))
+                        }
+                    }
+                    .cancellable(id: CancelID.transport, cancelInFlight: true)
+                )
+
+            case .transportFinished:
+                return .none
+
+            case .transportFailed(let error):
+                state.failure = error
+                return .none
+
+            case .snapshotReceived(let snapshot):
+                state.status = snapshot.status
+
+                if case .queueReplacement(let replacement) =
+                    state.pendingOperation,
+                    snapshot.status == .playing,
+                    snapshot.currentItemID == replacement.startingItemID
+                {
+                    state.pendingOperation = nil
+                    state.failure = nil
                     return .concatenate(
+                        .cancel(id: CancelID.queueReplacement),
+                        .send(
+                            .queue(
+                                .replace(
+                                    replacement.songs,
+                                    startingAt: replacement.startingItemID
+                                )
+                            )
+                        ),
                         .send(.timeline(.reset)),
                         .send(
-                            .applySongTap(
-                                song,
-                                playbackEligibility: playbackEligibility
+                            .timeline(
+                                .positionObserved(snapshot.currentTime)
                             )
                         )
                     )
                 }
-                return .send(
-                    .applySongTap(
-                        song,
-                        playbackEligibility: playbackEligibility
+
+                return .concatenate(
+                    .send(
+                        .queue(
+                            .currentItemObserved(snapshot.currentItemID)
+                        )
+                    ),
+                    .send(
+                        .timeline(
+                            .positionObserved(snapshot.currentTime)
+                        )
                     )
                 )
-
-            case .applySongTap(let song, let playbackEligibility):
-                state.selectedSong = song
-                state.playbackEligibility = playbackEligibility
-                return .send(.requestPlayback)
-
-            case .playTapped:
-                return .send(.requestPlayback)
-
-            case .requestPlayback:
-                guard let itemID = state.selectedSong?.id,
-                    state.playbackEligibility == .eligible,
-                    state.capabilities.supportsEmbeddedPlayback
-                else { return .none }
-                let snapshot = state.phase.snapshot
-                let isCurrentItem = snapshot.currentItemID == itemID
-                if isCurrentItem, snapshot.status == .playing {
-                    return .none
-                }
-                if isCurrentItem, snapshot.status == .paused {
-                    return .send(.delegate(.resumeRequested(itemID)))
-                }
-                guard state.capabilities.supportsQueueReplacement else {
-                    return .none
-                }
-                return .send(.delegate(.playRequested(itemID)))
-
-            case .playbackCommandAccepted:
-                state.phase = .loading(state.phase.snapshot)
-                return .none
-
-            case .delegate:
-                return .none
-
-            case .pauseTapped:
-                state.phase = .observing(state.phase.snapshot)
-                return transportEffect {
-                    try await playbackControl.pause()
-                }
-
-            case .stopTapped:
-                state.phase = .observing(state.phase.snapshot)
-                return .concatenate(
-                    .send(.timeline(.reset)),
-                    transportEffect {
-                        try await playbackControl.stop()
-                    }
-                )
-
-            case .queue:
-                return .none
 
             case .timeline(.delegate(.transportFailed(let error))):
-                state.phase = .failed(
-                    error,
-                    lastSnapshot: state.phase.snapshot
-                )
+                state.failure = error
                 return .none
 
-            case .timeline:
+            case .queue, .timeline:
                 return .none
-
-            case .transportFinished:
-                guard case .loading(let snapshot) = state.phase else {
-                    return .none
-                }
-                state.phase = .observing(snapshot)
-                return .none
-
-            case .transportFailed(let error):
-                state.phase = .failed(
-                    error,
-                    lastSnapshot: state.phase.snapshot
-                )
-                return .none
-
-            case .snapshotReceived(let snapshot):
-                switch state.phase {
-                case .observing:
-                    state.phase = .observing(snapshot)
-                case .loading:
-                    state.phase = .loading(snapshot)
-                case .failed(let error, _):
-                    state.phase = .failed(
-                        error,
-                        lastSnapshot: snapshot
-                    )
-                }
-                return .none
-            }
-        }
-    }
-
-    /// Converts one provider command into normalized reducer completion or failure actions.
-    private func transportEffect(
-        _ operation: @escaping @Sendable () async throws -> Void
-    ) -> Effect<Action> {
-        .run { send in
-            do {
-                try await operation()
-                await send(.transportFinished)
-            } catch let error as MusicProviderError {
-                await send(.transportFailed(error))
-            } catch {
-                await send(.transportFailed(.playbackFailed))
             }
         }
     }

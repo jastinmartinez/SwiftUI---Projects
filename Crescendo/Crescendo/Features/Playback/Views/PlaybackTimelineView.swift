@@ -53,7 +53,6 @@ extension PlaybackTimelineView.Model {
     /// Builds the shared interactive timeline model for any player surface.
     static func make(
         duration: TimeInterval?,
-        snapshot: PlaybackSnapshot,
         timeline: PlaybackTimelineFeature.State,
         supportsSeeking: Bool,
         strings: (_ elapsedTime: String, _ durationTime: String) -> Strings,
@@ -66,7 +65,7 @@ extension PlaybackTimelineView.Model {
         let currentPosition: TimeInterval
         switch timeline.interaction {
         case .idle:
-            currentPosition = snapshot.currentTime
+            currentPosition = timeline.confirmedPosition
         case .dragging(let position), .seeking(_, let position):
             currentPosition = position
         }

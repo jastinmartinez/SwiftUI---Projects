@@ -21,21 +21,23 @@ struct CrescendoApp: App {
                     providerAccess: nil
                 ),
                 playback: PlaybackFeature.State(
-                    selectedSong: nil,
+                    providerID: nil,
                     queue: PlaybackQueueFeature.State(
                         songs: [],
                         currentItemID: nil
                     ),
-                    phase: .observing(.idle),
+                    status: .idle,
+                    failure: nil,
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled,
                     timeline: PlaybackTimelineFeature.State(
+                        confirmedPosition: 0,
                         interaction: .idle
-                    )
+                    ),
+                    pendingOperation: nil
                 ),
                 isPlayerPresented: false,
-                providerSwitch: nil,
-                playbackCommand: nil
+                providerSwitch: nil
             )
         ) {
             AppFeature()

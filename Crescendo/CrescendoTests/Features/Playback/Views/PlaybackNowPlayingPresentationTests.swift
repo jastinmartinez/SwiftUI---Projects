@@ -51,14 +51,7 @@ struct PlaybackNowPlayingPresentationTests {
 
         var resumeStartedIterator = resumeStarted.makeAsyncIterator()
         _ = await resumeStartedIterator.next()
-        #expect(
-            store.playbackCommand
-                == PlaybackCommandFeature.State(
-                    command: .resume(song.id),
-                    requestID: UUID(0)
-                )
-        )
-        #expect(store.playback.selectedSong == song)
+        #expect(store.playback.queue.currentItem == song)
         #expect(playCallCount.value == 0)
         #expect(resumeCallCount.value == 1)
 
@@ -73,7 +66,8 @@ struct PlaybackNowPlayingPresentationTests {
         song: SongSummary,
         status: PlaybackStatus
     ) -> AppFeature.State {
-        AppFeature.State(
+        let queue = IdentifiedArray(uniqueElements: [song])
+        return AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
                 providers: [.appleMusic],
                 connection: .connected(
@@ -99,30 +93,23 @@ struct PlaybackNowPlayingPresentationTests {
                 )
             ),
             playback: PlaybackFeature.State(
-                selectedSong: song,
+                providerID: song.id.providerID,
                 queue: PlaybackQueueFeature.State(
-                    songs: [],
-                    currentItemID: nil
+                    songs: queue,
+                    currentItemID: song.id
                 ),
-                phase: .observing(
-                    PlaybackSnapshot(
-                        currentItemID: song.id,
-                        status: status,
-                        currentTime: 0,
-                        playbackRate: .normal,
-                        repeatMode: .off,
-                        shuffleMode: .off
-                    )
-                ),
+                status: status,
+                failure: nil,
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
                 timeline: PlaybackTimelineFeature.State(
+                    confirmedPosition: 0,
                     interaction: .idle
-                )
+                ),
+                pendingOperation: nil
             ),
             isPlayerPresented: false,
-            providerSwitch: nil,
-            playbackCommand: nil
+            providerSwitch: nil
         )
     }
 

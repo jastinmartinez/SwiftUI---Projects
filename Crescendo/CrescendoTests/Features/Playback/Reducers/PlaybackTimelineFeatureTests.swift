@@ -7,6 +7,22 @@ import Testing
 @MainActor
 struct PlaybackTimelineFeatureTests {
     @Test
+    func observedPositionUpdatesConfirmedTimeWithoutEndingInteraction() async {
+        let store = makeStore(
+            interaction: .dragging(position: 20)
+        )
+
+        await store.send(.positionObserved(12)) {
+            $0.confirmedPosition = 12
+        }
+        await store.send(.positionObserved(-1)) {
+            $0.confirmedPosition = 0
+        }
+
+        #expect(store.state.interaction == .dragging(position: 20))
+    }
+
+    @Test
     func positionChangesReplaceDraftWithoutSeeking() async {
         let seekPositions = LockIsolated<[TimeInterval]>([])
         let store = makeStore(seekPositions: seekPositions)
@@ -131,7 +147,11 @@ struct PlaybackTimelineFeatureTests {
         }
         await suspendedSeek.waitUntilStarted()
 
+        await store.send(.positionObserved(42)) {
+            $0.confirmedPosition = 42
+        }
         await store.send(.reset) {
+            $0.confirmedPosition = 0
             $0.interaction = .idle
         }
         #expect(suspendedSeek.cancellationObserved.value)
@@ -152,6 +172,7 @@ struct PlaybackTimelineFeatureTests {
     ) -> TestStoreOf<PlaybackTimelineFeature> {
         TestStore(
             initialState: PlaybackTimelineFeature.State(
+                confirmedPosition: 0,
                 interaction: interaction
             )
         ) {

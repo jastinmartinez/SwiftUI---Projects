@@ -14,26 +14,22 @@ struct AppPlaybackPresentationTests {
             artworkURL: nil,
             duration: nil
         )
-        let snapshot = PlaybackSnapshot(
-            currentItemID: song.id,
-            status: .paused,
-            currentTime: 42,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
-        )
+        let queue = IdentifiedArray(uniqueElements: [song])
         let playback = PlaybackFeature.State(
-            selectedSong: song,
+            providerID: "fake",
             queue: PlaybackQueueFeature.State(
-                songs: [],
-                currentItemID: nil
+                songs: queue,
+                currentItemID: song.id
             ),
-            phase: .failed(.playbackFailed, lastSnapshot: snapshot),
+            status: .paused,
+            failure: .playbackFailed,
             playbackEligibility: .eligible,
             capabilities: .allEnabled,
             timeline: PlaybackTimelineFeature.State(
+                confirmedPosition: 42,
                 interaction: .idle
-            )
+            ),
+            pendingOperation: nil
         )
         let state = AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
@@ -62,8 +58,7 @@ struct AppPlaybackPresentationTests {
             ),
             playback: playback,
             isPlayerPresented: true,
-            providerSwitch: nil,
-            playbackCommand: nil
+            providerSwitch: nil
         )
         let store = TestStore(initialState: state) { AppFeature() }
 

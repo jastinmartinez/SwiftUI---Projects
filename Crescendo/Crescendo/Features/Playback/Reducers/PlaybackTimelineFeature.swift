@@ -6,6 +6,7 @@ import Foundation
 struct PlaybackTimelineFeature {
     @ObservableState
     struct State: Equatable {
+        var confirmedPosition: TimeInterval
         var interaction: Interaction
     }
 
@@ -16,6 +17,7 @@ struct PlaybackTimelineFeature {
     }
 
     enum Action: Equatable {
+        case positionObserved(TimeInterval)
         case positionChanged(TimeInterval)
         case dragEnded
         case reset
@@ -38,6 +40,10 @@ struct PlaybackTimelineFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
+            case .positionObserved(let position):
+                state.confirmedPosition = max(position, 0)
+                return .none
+
             case .positionChanged(let position):
                 state.interaction = .dragging(position: position)
                 return .cancel(id: CancelID.seek)
@@ -71,6 +77,7 @@ struct PlaybackTimelineFeature {
                 .cancellable(id: CancelID.seek, cancelInFlight: true)
 
             case .reset:
+                state.confirmedPosition = 0
                 state.interaction = .idle
                 return .cancel(id: CancelID.seek)
 

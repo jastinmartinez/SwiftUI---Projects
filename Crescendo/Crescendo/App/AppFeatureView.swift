@@ -13,7 +13,7 @@ struct AppFeatureView: View {
             providerSelection: providerSelection
         )
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let song = store.playback.selectedSong {
+            if let song = store.playback.queue.currentItem {
                 PlaybackNowPlayingView(model: .init(store, song: song))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
