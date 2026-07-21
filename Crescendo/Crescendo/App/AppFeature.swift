@@ -19,20 +19,6 @@ struct AppFeature {
         var activeProvider: ProviderDescriptor? {
             providerConnection.activeProvider
         }
-
-        init(
-            providerConnection: ProviderConnectionFeature.State,
-            search: SearchFeature.State,
-            playback: PlaybackFeature.State,
-            isPlayerPresented: Bool,
-            providerSwitch: ProviderSwitchFeature.State?
-        ) {
-            self.providerConnection = providerConnection
-            self.search = search
-            self.playback = playback
-            self.isPlayerPresented = isPlayerPresented
-            self.providerSwitch = providerSwitch
-        }
     }
 
     enum Action: Equatable {
