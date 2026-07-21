@@ -17,22 +17,6 @@ struct SearchFeature {
         var query: String
         var status: Status
         var providerAccess: MusicProviderAccess?
-
-        var pagination: SearchPaginationFeature.State? {
-            get {
-                guard case .loaded(let pagination) = status else { return nil }
-                return pagination
-            }
-            set {
-                guard let newValue else {
-                    if case .loaded = status {
-                        status = .idle
-                    }
-                    return
-                }
-                status = .loaded(newValue)
-            }
-        }
     }
 
     /// Events emitted after search state validates a presentation action.
@@ -63,6 +47,12 @@ struct SearchFeature {
     @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
+        Scope(state: \.status, action: \.pagination) {
+            EmptyReducer<Status, SearchPaginationFeature.Action>()
+                .ifCaseLet(\.loaded, action: \.self) {
+                    SearchPaginationFeature()
+                }
+        }
         Reduce { state, action in
             switch action {
             case .queryChanged(let query):
@@ -142,9 +132,6 @@ struct SearchFeature {
                 state.status = .failed(error)
                 return .none
             }
-        }
-        .ifLet(\.pagination, action: \.pagination) {
-            SearchPaginationFeature()
         }
     }
 }

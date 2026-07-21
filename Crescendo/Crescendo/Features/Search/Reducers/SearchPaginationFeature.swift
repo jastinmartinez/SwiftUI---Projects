@@ -17,6 +17,7 @@ struct SearchPaginationFeature {
         case failed(MusicProviderError)
     }
 
+    @CasePathable
     enum Action: Equatable {
         case nextPageRequested
         case retryButtonTapped
