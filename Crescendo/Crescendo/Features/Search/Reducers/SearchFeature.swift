@@ -34,7 +34,7 @@ struct SearchFeature {
 
     enum CancelID { case search }
 
-    @Dependency(\.musicProvider) var musicProvider
+    @Dependency(\.providerSearch) var providerSearch
     @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
@@ -58,7 +58,7 @@ struct SearchFeature {
                 state.phase = .loading(requestID: requestID)
                 return .run { send in
                     do {
-                        let songs = try await musicProvider.search(query, 20)
+                        let songs = try await providerSearch.search(query, 20)
                         await send(.searchResponse(requestID, .success(songs)))
                     } catch let error as MusicProviderError {
                         await send(.searchResponse(requestID, .failure(error)))

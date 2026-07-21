@@ -7,6 +7,8 @@ struct CrescendoApp: App {
     let store: StoreOf<AppFeature>
 
     init() {
+        let appleMusicProvider = AppleMusicProvider()
+
         self.store = Store(
             initialState: AppFeature.State(
                 providerConnection: ProviderConnectionFeature.State(
@@ -33,6 +35,10 @@ struct CrescendoApp: App {
             )
         ) {
             AppFeature()
+        } withDependencies: {
+            $0.providerAccess = .appleMusic(appleMusicProvider)
+            $0.providerSearch = .appleMusic(appleMusicProvider)
+            $0.musicProvider = .appleMusic(appleMusicProvider)
         }
     }
 

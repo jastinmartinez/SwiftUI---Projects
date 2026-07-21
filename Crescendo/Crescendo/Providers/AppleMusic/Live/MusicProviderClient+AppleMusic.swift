@@ -1,42 +1,40 @@
 import ComposableArchitecture
 
 extension MusicProviderClient: DependencyKey {
-    static let liveValue = MusicProviderClient.appleMusic
+    static let liveValue = Self.appleMusic(AppleMusicProvider())
 }
 
 extension MusicProviderClient {
     /// Connects provider-neutral operations to one session-scoped Apple Music provider.
-    static let appleMusic: MusicProviderClient = {
-        let appleMusicProvider = AppleMusicProvider()
-
-        return MusicProviderClient(
+    static func appleMusic(_ provider: AppleMusicProvider) -> Self {
+        Self(
             currentAccess: {
-                await appleMusicProvider.currentAccess()
+                await provider.currentAccess()
             },
             requestAccess: {
-                await appleMusicProvider.requestAccess()
+                await provider.requestAccess()
             },
             search: { query, limit in
-                try await appleMusicProvider.search(query, limit: limit)
+                try await provider.search(query, limit: limit)
             },
             play: { itemID in
-                try await appleMusicProvider.play(itemID)
+                try await provider.play(itemID)
             },
             resume: {
-                try await appleMusicProvider.resume()
+                try await provider.resume()
             },
             pause: {
-                await appleMusicProvider.pause()
+                await provider.pause()
             },
             stop: {
-                await appleMusicProvider.stop()
+                await provider.stop()
             },
             seek: { time in
-                await appleMusicProvider.seek(to: time)
+                await provider.seek(to: time)
             },
             playbackSnapshots: {
-                await appleMusicProvider.playbackSnapshots()
+                await provider.playbackSnapshots()
             }
         )
-    }()
+    }
 }

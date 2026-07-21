@@ -489,7 +489,7 @@ struct AppFeatureTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.currentAccess = currentAccess
+            $0.providerAccess.currentAccess = currentAccess
             $0.musicProvider.play = play
             $0.musicProvider.seek = seek
         }

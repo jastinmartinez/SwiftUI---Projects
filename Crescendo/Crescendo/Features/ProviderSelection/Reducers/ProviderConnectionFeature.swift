@@ -56,7 +56,7 @@ struct ProviderConnectionFeature {
     }
 
     @Dependency(\.uuid) var uuid
-    @Dependency(\.musicProvider) var musicProvider
+    @Dependency(\.providerAccess) var providerAccess
     @Dependency(\.openURL) var openURL
 
     var body: some ReducerOf<Self> {
@@ -90,7 +90,7 @@ struct ProviderConnectionFeature {
                         )
                     ),
                     .run { send in
-                        let access = await musicProvider.currentAccess()
+                        let access = await providerAccess.currentAccess()
                         await send(
                             .currentAccessResponse(
                                 requestID: requestID,
@@ -141,7 +141,7 @@ struct ProviderConnectionFeature {
                 }
 
                 return .run { send in
-                    let requestedAccess = await musicProvider.requestAccess()
+                    let requestedAccess = await providerAccess.requestAccess()
                     await send(
                         .requestedAccessResponse(
                             requestID: requestID,

@@ -287,7 +287,7 @@ struct AppProviderSwitchingTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.musicProvider.pause = { try await Task.sleep(for: .seconds(60)) }
-            $0.musicProvider.currentAccess = {
+            $0.providerAccess.currentAccess = {
                 return MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible

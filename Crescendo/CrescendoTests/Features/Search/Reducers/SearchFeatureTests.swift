@@ -23,15 +23,7 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.currentAccess = {
-                Issue.record("Search must not read current access")
-                return access
-            }
-            $0.musicProvider.requestAccess = {
-                Issue.record("Search must not request access")
-                return access
-            }
-            $0.musicProvider.search = { _, _ in [song] }
+            $0.providerSearch.search = { _, _ in [song] }
         }
 
         await store.send(.submitButtonTapped) {
@@ -59,7 +51,7 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.search = { _, _ in [song] }
+            $0.providerSearch.search = { _, _ in [song] }
         }
 
         await store.send(.submitButtonTapped) {
@@ -92,7 +84,7 @@ struct SearchFeatureTests {
             let store = TestStore(initialState: state) {
                 SearchFeature()
             } withDependencies: {
-                $0.musicProvider.search = { _, _ in
+                $0.providerSearch.search = { _, _ in
                     Issue.record("Search must not run without authorized access")
                     return []
                 }
@@ -119,7 +111,7 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.musicProvider.search = { _, _ in
+            $0.providerSearch.search = { _, _ in
                 try await Task.never()
             }
         }
