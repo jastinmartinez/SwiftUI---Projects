@@ -14,7 +14,7 @@ struct SearchResultListView: View {
             VStack(spacing: 0) {
                 ForEach(model.rows) { row in
                     Button {
-                        model.onSongTapped(row.songID)
+                        model.onSongTapped(row.id)
                     } label: {
                         SongRowView(model: row)
                     }

@@ -82,7 +82,7 @@ struct SearchPresentationAdapterTests {
         let model = SearchResultsView.Model(store, providerName: "Apple Music")
         let expectedRows = [
             SongRowView.Model(
-                songID: song.id,
+                id: song.id,
                 title: "Result",
                 artistName: "Artist",
                 artworkURL: song.artworkURL,
