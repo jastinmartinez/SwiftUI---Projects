@@ -1,33 +1,33 @@
 import ComposableArchitecture
 import Foundation
 
-extension MusicPlaybackView.Model {
+extension PlaybackView.Model {
     /// Adapts reducer-owned playback state and actions into presentation values.
     @MainActor
-    init(_ store: StoreOf<MusicPlaybackFeature>, providerName: String?) {
+    init(_ store: StoreOf<PlaybackFeature>, providerName: String?) {
         let snapshot = store.phase.snapshot
         let statusText: String
         switch store.phase {
         case .loading:
-            statusText = Locs.MusicPlayback.Status.loading
+            statusText = Locs.Playback.Status.loading
         case .failed(.unavailable, _):
-            statusText = Locs.MusicPlayback.Status.unavailable
+            statusText = Locs.Playback.Status.unavailable
         case .failed:
-            statusText = Locs.MusicPlayback.Status.failed
+            statusText = Locs.Playback.Status.failed
         case .observing:
             switch snapshot.status {
             case .idle:
-                statusText = Locs.MusicPlayback.Status.idle
+                statusText = Locs.Playback.Status.idle
             case .playing:
-                statusText = Locs.MusicPlayback.Status.playing
+                statusText = Locs.Playback.Status.playing
             case .paused:
-                statusText = Locs.MusicPlayback.Status.paused
+                statusText = Locs.Playback.Status.paused
             case .stopped:
-                statusText = Locs.MusicPlayback.Status.stopped
+                statusText = Locs.Playback.Status.stopped
             }
         }
 
-        let timeline = MusicPlaybackTimelineView.Model.make(
+        let timeline = PlaybackTimelineView.Model.make(
             duration: store.selectedSong?.duration,
             snapshot: snapshot,
             timeline: store.timeline,
@@ -48,27 +48,27 @@ extension MusicPlaybackView.Model {
 
         self.init(
             artworkURL: store.selectedSong?.artworkURL,
-            metadata: MusicPlaybackMetadataView.Model(
-                title: store.selectedSong?.title ?? Locs.MusicPlayback.noSelection,
+            metadata: PlaybackMetadataView.Model(
+                title: store.selectedSong?.title ?? Locs.Playback.noSelection,
                 artistName: store.selectedSong?.artistName,
-                providerAttribution: providerName.map(Locs.MusicPlayback.playingFrom),
+                providerAttribution: providerName.map(Locs.Playback.playingFrom),
                 statusText: statusText
             ),
             timeline: timeline,
-            controls: MusicPlaybackControlsView.Model(store),
+            controls: PlaybackControlsView.Model(store),
             eligibility: PlaybackEligibilityNoticeView.Model(store)
         )
     }
 }
 
-extension MusicPlaybackTimelineView.Model.Strings {
+extension PlaybackTimelineView.Model.Strings {
     static func localized(
         elapsedTime: String,
         durationTime: String
     ) -> Self {
         Self(
-            accessibilityLabel: Locs.MusicPlayback.position,
-            accessibilityValue: Locs.MusicPlayback.positionValue(
+            accessibilityLabel: Locs.Playback.position,
+            accessibilityValue: Locs.Playback.positionValue(
                 elapsedTime: elapsedTime,
                 durationTime: durationTime
             )

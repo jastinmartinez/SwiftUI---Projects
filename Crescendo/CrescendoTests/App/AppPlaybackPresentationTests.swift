@@ -22,12 +22,12 @@ struct AppPlaybackPresentationTests {
             repeatMode: .off,
             shuffleMode: .off
         )
-        let musicPlayback = MusicPlaybackFeature.State(
+        let playback = PlaybackFeature.State(
             selectedSong: song,
             phase: .failed(.playbackFailed, lastSnapshot: snapshot),
             playbackEligibility: .eligible,
             capabilities: .allEnabled,
-            timeline: MusicPlaybackTimelineFeature.State(
+            timeline: PlaybackTimelineFeature.State(
                 interaction: .idle
             )
         )
@@ -56,7 +56,7 @@ struct AppPlaybackPresentationTests {
                     playbackEligibility: .eligible
                 )
             ),
-            musicPlayback: musicPlayback,
+            playback: playback,
             isPlayerPresented: true,
             providerSwitch: nil,
             playbackCommand: nil
@@ -70,7 +70,7 @@ struct AppPlaybackPresentationTests {
             $0.isPlayerPresented = true
         }
 
-        #expect(store.state.musicPlayback == musicPlayback)
+        #expect(store.state.playback == playback)
     }
 
 }

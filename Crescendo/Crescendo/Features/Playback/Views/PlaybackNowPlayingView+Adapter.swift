@@ -1,10 +1,10 @@
 import ComposableArchitecture
 
-extension NowPlayingBarView.Model {
+extension PlaybackNowPlayingView.Model {
     /// Adapts the selected song and playback state into the compact player presentation.
     @MainActor
     init(_ store: StoreOf<AppFeature>, song: SongSummary) {
-        let snapshot = store.musicPlayback.phase.snapshot
+        let snapshot = store.playback.phase.snapshot
         let isPlaying = snapshot.status == .playing
 
         self.init(
@@ -12,12 +12,12 @@ extension NowPlayingBarView.Model {
             artistName: song.artistName,
             artworkURL: song.artworkURL,
             isPlaying: isPlaying,
-            isPlayEnabled: store.musicPlayback.canPlaySelectedSong,
-            timeline: MusicPlaybackTimelineView.Model.make(
+            isPlayEnabled: store.playback.canPlaySelectedSong,
+            timeline: PlaybackTimelineView.Model.make(
                 duration: song.duration,
                 snapshot: snapshot,
-                timeline: store.musicPlayback.timeline,
-                supportsSeeking: store.musicPlayback.capabilities.supportsSeeking,
+                timeline: store.playback.timeline,
+                supportsSeeking: store.playback.capabilities.supportsSeeking,
                 strings: { elapsedTime, durationTime in
                     .localized(
                         elapsedTime: elapsedTime,
@@ -25,15 +25,15 @@ extension NowPlayingBarView.Model {
                     )
                 },
                 onPositionChanged: {
-                    store.send(.musicPlayback(.timeline(.positionChanged($0))))
+                    store.send(.playback(.timeline(.positionChanged($0))))
                 },
                 onDragEnded: {
-                    store.send(.musicPlayback(.timeline(.dragEnded)))
+                    store.send(.playback(.timeline(.dragEnded)))
                 }
             ),
             onOpenPlayer: { store.send(.setPlayerPresented(true)) },
             onTogglePlayPause: {
-                store.send(.musicPlayback(isPlaying ? .pauseTapped : .playTapped))
+                store.send(.playback(isPlaying ? .pauseTapped : .playTapped))
             }
         )
     }

@@ -172,12 +172,12 @@ struct AppProviderSelectionPresentationTests {
                     status: .idle,
                     providerAccess: nil
                 ),
-                musicPlayback: MusicPlaybackFeature.State(
+                playback: PlaybackFeature.State(
                     selectedSong: nil,
                     phase: .observing(.idle),
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled,
-                    timeline: MusicPlaybackTimelineFeature.State(
+                    timeline: PlaybackTimelineFeature.State(
                         interaction: .idle
                     )
                 ),

@@ -55,7 +55,7 @@ extension Locs {
         )
     }
 
-    enum MusicPlayback {
+    enum Playback {
         static let noSelection = String(localized: "music_playback.no_selection")
         static let play = String(localized: "music_playback.play")
         static let pause = String(localized: "music_playback.pause")

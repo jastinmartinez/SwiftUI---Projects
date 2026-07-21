@@ -3,14 +3,14 @@ import Foundation
 
 /// Owns persistent music selection, playback state, and provider-neutral commands.
 @Reducer
-struct MusicPlaybackFeature {
+struct PlaybackFeature {
     @ObservableState
     struct State: Equatable {
         var selectedSong: SongSummary?
         var phase: Phase
         var playbackEligibility: CatalogPlaybackEligibility
         var capabilities: MusicProviderCapabilities
-        var timeline: MusicPlaybackTimelineFeature.State
+        var timeline: PlaybackTimelineFeature.State
 
         var canPlaySelectedSong: Bool {
             guard let itemID = selectedSong?.id,
@@ -70,7 +70,7 @@ struct MusicPlaybackFeature {
         case delegate(Delegate)
         case pauseTapped
         case stopTapped
-        case timeline(MusicPlaybackTimelineFeature.Action)
+        case timeline(PlaybackTimelineFeature.Action)
         case transportFinished
         case transportFailed(MusicProviderError)
         case snapshotReceived(PlaybackSnapshot)
@@ -85,7 +85,7 @@ struct MusicPlaybackFeature {
 
     var body: some ReducerOf<Self> {
         Scope(state: \.timeline, action: \.timeline) {
-            MusicPlaybackTimelineFeature()
+            PlaybackTimelineFeature()
         }
         Reduce { state, action in
             switch action {

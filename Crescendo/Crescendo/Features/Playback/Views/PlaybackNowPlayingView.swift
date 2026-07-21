@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// Presents a compact summary of the current song.
-struct NowPlayingBarView: View {
+struct PlaybackNowPlayingView: View {
     let model: Model
 
     var body: some View {
@@ -42,13 +42,13 @@ struct NowPlayingBarView: View {
                         .background(LinearGradient.crescendoSpectrum, in: Circle())
                 }
                 .accessibilityLabel(
-                    model.isPlaying ? Locs.MusicPlayback.pause : Locs.MusicPlayback.play
+                    model.isPlaying ? Locs.Playback.pause : Locs.Playback.play
                 )
                 .disabled(!model.isPlaying && !model.isPlayEnabled)
             }
 
             if let timeline = model.timeline {
-                MusicPlaybackTimelineView(model: timeline)
+                PlaybackTimelineView(model: timeline)
             }
         }
         .padding(14)
@@ -60,14 +60,14 @@ struct NowPlayingBarView: View {
     }
 }
 
-extension NowPlayingBarView {
+extension PlaybackNowPlayingView {
     struct Model {
         let title: String
         let artistName: String
         let artworkURL: URL?
         let isPlaying: Bool
         let isPlayEnabled: Bool
-        let timeline: MusicPlaybackTimelineView.Model?
+        let timeline: PlaybackTimelineView.Model?
         let onOpenPlayer: () -> Void
         let onTogglePlayPause: () -> Void
     }

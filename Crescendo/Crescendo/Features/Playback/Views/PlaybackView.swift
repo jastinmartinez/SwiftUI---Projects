@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// Renders playback presentation from explicit values and callbacks.
-struct MusicPlaybackView: View {
+struct PlaybackView: View {
     let model: Model
 
     var body: some View {
@@ -16,13 +16,13 @@ struct MusicPlaybackView: View {
                     )
                 )
 
-                MusicPlaybackMetadataView(model: model.metadata)
+                PlaybackMetadataView(model: model.metadata)
 
                 if let timeline = model.timeline {
-                    MusicPlaybackTimelineView(model: timeline)
+                    PlaybackTimelineView(model: timeline)
                 }
 
-                MusicPlaybackControlsView(model: model.controls)
+                PlaybackControlsView(model: model.controls)
                 PlaybackEligibilityNoticeView(model: model.eligibility)
             }
             .frame(maxWidth: .infinity)
@@ -33,13 +33,13 @@ struct MusicPlaybackView: View {
     }
 }
 
-extension MusicPlaybackView {
+extension PlaybackView {
     /// The immutable presentation contract for the playback screen.
     struct Model {
         let artworkURL: URL?
-        let metadata: MusicPlaybackMetadataView.Model
-        let timeline: MusicPlaybackTimelineView.Model?
-        let controls: MusicPlaybackControlsView.Model
+        let metadata: PlaybackMetadataView.Model
+        let timeline: PlaybackTimelineView.Model?
+        let controls: PlaybackControlsView.Model
         let eligibility: PlaybackEligibilityNoticeView.Model
     }
 }

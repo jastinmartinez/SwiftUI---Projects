@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// Displays duration-backed playback progress and seeking.
-struct MusicPlaybackTimelineView: View {
+struct PlaybackTimelineView: View {
     let model: Model
 
     var body: some View {
@@ -32,7 +32,7 @@ struct MusicPlaybackTimelineView: View {
     }
 }
 
-extension MusicPlaybackTimelineView {
+extension PlaybackTimelineView {
     struct Model {
         let position: TimeInterval
         let range: ClosedRange<TimeInterval>
@@ -49,12 +49,12 @@ extension MusicPlaybackTimelineView {
     }
 }
 
-extension MusicPlaybackTimelineView.Model {
+extension PlaybackTimelineView.Model {
     /// Builds the shared interactive timeline model for any player surface.
     static func make(
         duration: TimeInterval?,
         snapshot: PlaybackSnapshot,
-        timeline: MusicPlaybackTimelineFeature.State,
+        timeline: PlaybackTimelineFeature.State,
         supportsSeeking: Bool,
         strings: (_ elapsedTime: String, _ durationTime: String) -> Strings,
         onPositionChanged: @escaping (TimeInterval) -> Void,

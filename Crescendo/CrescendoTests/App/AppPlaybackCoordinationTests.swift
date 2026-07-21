@@ -14,14 +14,14 @@ struct AppPlaybackCoordinationTests {
         let requestID = UUID(0)
         let store = makeStore(song: song, calls: calls)
 
-        await store.send(.musicPlayback(.delegate(.playRequested(song.id)))) {
+        await store.send(.playback(.delegate(.playRequested(song.id)))) {
             $0.playbackCommand = PlaybackCommandFeature.State(
                 command: command,
                 requestID: requestID
             )
         }
-        await store.receive(\.musicPlayback.playbackCommandAccepted) {
-            $0.musicPlayback.phase = .loading(.idle)
+        await store.receive(\.playback.playbackCommandAccepted) {
+            $0.playback.phase = .loading(.idle)
         }
         await store.receive(.playbackCommand(.start))
         await store.receive(
@@ -41,8 +41,8 @@ struct AppPlaybackCoordinationTests {
         ) {
             $0.playbackCommand = nil
         }
-        await store.receive(\.musicPlayback.transportFinished) {
-            $0.musicPlayback.phase = .observing(.idle)
+        await store.receive(\.playback.transportFinished) {
+            $0.playback.phase = .observing(.idle)
         }
 
         #expect(calls.value.playedItemIDs == [song.id])
@@ -62,14 +62,14 @@ struct AppPlaybackCoordinationTests {
             calls: calls
         )
 
-        await store.send(.musicPlayback(.delegate(.resumeRequested(song.id)))) {
+        await store.send(.playback(.delegate(.resumeRequested(song.id)))) {
             $0.playbackCommand = PlaybackCommandFeature.State(
                 command: command,
                 requestID: requestID
             )
         }
-        await store.receive(\.musicPlayback.playbackCommandAccepted) {
-            $0.musicPlayback.phase = .loading(snapshot)
+        await store.receive(\.playback.playbackCommandAccepted) {
+            $0.playback.phase = .loading(snapshot)
         }
         await store.receive(.playbackCommand(.start))
         await store.receive(
@@ -89,8 +89,8 @@ struct AppPlaybackCoordinationTests {
         ) {
             $0.playbackCommand = nil
         }
-        await store.receive(\.musicPlayback.transportFinished) {
-            $0.musicPlayback.phase = .observing(snapshot)
+        await store.receive(\.playback.transportFinished) {
+            $0.playback.phase = .observing(snapshot)
         }
 
         #expect(calls.value.playedItemIDs.isEmpty)
@@ -124,7 +124,7 @@ struct AppPlaybackCoordinationTests {
             }
         )
         let requestID = UUID(0)
-        let delegate: MusicPlaybackFeature.Delegate =
+        let delegate: PlaybackFeature.Delegate =
             switch command {
             case .play(let itemID):
                 .playRequested(itemID)
@@ -132,14 +132,14 @@ struct AppPlaybackCoordinationTests {
                 .resumeRequested(itemID)
             }
 
-        await store.send(.musicPlayback(.delegate(delegate))) {
+        await store.send(.playback(.delegate(delegate))) {
             $0.playbackCommand = PlaybackCommandFeature.State(
                 command: command,
                 requestID: requestID
             )
         }
-        await store.receive(\.musicPlayback.playbackCommandAccepted) {
-            $0.musicPlayback.phase = .loading(initialSnapshot)
+        await store.receive(\.playback.playbackCommandAccepted) {
+            $0.playback.phase = .loading(initialSnapshot)
         }
         await store.receive(.playbackCommand(.start))
         await store.receive(
@@ -159,8 +159,8 @@ struct AppPlaybackCoordinationTests {
         ) {
             $0.playbackCommand = nil
         }
-        await store.receive(\.musicPlayback.transportFailed) {
-            $0.musicPlayback.phase = .failed(
+        await store.receive(\.playback.transportFailed) {
+            $0.playback.phase = .failed(
                 .network,
                 lastSnapshot: initialSnapshot
             )
@@ -188,14 +188,14 @@ struct AppPlaybackCoordinationTests {
         }
 
         await store.send(
-            .musicPlayback(.delegate(.playRequested(latestItemID)))
+            .playback(.delegate(.playRequested(latestItemID)))
         )
         await store.receive(
             .playbackCommand(
                 .replace(.play(latestItemID), requestID: UUID(0))
             )
         )
-        await store.receive(\.musicPlayback.playbackCommandAccepted)
+        await store.receive(\.playback.playbackCommandAccepted)
         await store.receive(
             .playbackCommand(
                 .execute(.play(latestItemID), requestID: UUID(0))
@@ -224,8 +224,8 @@ struct AppPlaybackCoordinationTests {
         ) {
             $0.playbackCommand = nil
         }
-        await store.receive(\.musicPlayback.transportFinished) {
-            $0.musicPlayback.phase = .observing(.idle)
+        await store.receive(\.playback.transportFinished) {
+            $0.playback.phase = .observing(.idle)
         }
     }
 
@@ -286,14 +286,14 @@ struct AppPlaybackCoordinationTests {
             }
         }
 
-        await store.send(.musicPlayback(.delegate(.playRequested(song.id)))) {
+        await store.send(.playback(.delegate(.playRequested(song.id)))) {
             $0.playbackCommand = PlaybackCommandFeature.State(
                 command: command,
                 requestID: requestID
             )
         }
-        await store.receive(\.musicPlayback.playbackCommandAccepted) {
-            $0.musicPlayback.phase = .loading(.idle)
+        await store.receive(\.playback.playbackCommandAccepted) {
+            $0.playback.phase = .loading(.idle)
         }
         await store.receive(.playbackCommand(.start))
         await store.receive(
@@ -302,8 +302,8 @@ struct AppPlaybackCoordinationTests {
 
         var playStartedIterator = playStarted.makeAsyncIterator()
         _ = await playStartedIterator.next()
-        await store.send(.musicPlayback(.snapshotReceived(latestSnapshot))) {
-            $0.musicPlayback.phase = .loading(latestSnapshot)
+        await store.send(.playback(.snapshotReceived(latestSnapshot))) {
+            $0.playback.phase = .loading(latestSnapshot)
         }
 
         finishPlayContinuation.yield()
@@ -322,8 +322,8 @@ struct AppPlaybackCoordinationTests {
         ) {
             $0.playbackCommand = nil
         }
-        await store.receive(\.musicPlayback.transportFinished) {
-            $0.musicPlayback.phase = .observing(latestSnapshot)
+        await store.receive(\.playback.transportFinished) {
+            $0.playback.phase = .observing(latestSnapshot)
         }
         playStartedContinuation.finish()
     }
@@ -356,30 +356,30 @@ struct AppPlaybackCoordinationTests {
             )
         )
         await store.receive(
-            .musicPlayback(
+            .playback(
                 .songTapped(nextSong, playbackEligibility: .eligible)
             )
         )
-        await store.receive(.musicPlayback(.timeline(.reset)))
+        await store.receive(.playback(.timeline(.reset)))
         await store.receive(
-            .musicPlayback(
+            .playback(
                 .applySongTap(nextSong, playbackEligibility: .eligible)
             )
         ) {
-            $0.musicPlayback.selectedSong = nextSong
-            $0.musicPlayback.playbackEligibility = .eligible
+            $0.playback.selectedSong = nextSong
+            $0.playback.playbackEligibility = .eligible
         }
-        await store.receive(.musicPlayback(.requestPlayback))
+        await store.receive(.playback(.requestPlayback))
         await store.receive(
-            .musicPlayback(.delegate(.playRequested(nextSong.id)))
+            .playback(.delegate(.playRequested(nextSong.id)))
         ) {
             $0.playbackCommand = PlaybackCommandFeature.State(
                 command: .play(nextSong.id),
                 requestID: UUID(0)
             )
         }
-        await store.receive(\.musicPlayback.playbackCommandAccepted) {
-            $0.musicPlayback.phase = .loading(
+        await store.receive(\.playback.playbackCommandAccepted) {
+            $0.playback.phase = .loading(
                 makeSnapshot(song: currentSong, status: .playing)
             )
         }
@@ -409,13 +409,13 @@ struct AppPlaybackCoordinationTests {
         ) {
             $0.playbackCommand = nil
         }
-        await store.receive(\.musicPlayback.transportFinished) {
-            $0.musicPlayback.phase = .observing(
+        await store.receive(\.playback.transportFinished) {
+            $0.playback.phase = .observing(
                 makeSnapshot(song: currentSong, status: .playing)
             )
         }
 
-        #expect(store.state.musicPlayback.selectedSong == nextSong)
+        #expect(store.state.playback.selectedSong == nextSong)
         #expect(playedItemIDs.value == [nextSong.id])
     }
 
@@ -428,7 +428,7 @@ struct AppPlaybackCoordinationTests {
 
     private func makeStore(
         song: SongSummary,
-        phase: MusicPlaybackFeature.Phase = .observing(.idle),
+        phase: PlaybackFeature.Phase = .observing(.idle),
         calls: LockIsolated<TransportCalls>? = nil,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
     ) -> TestStoreOf<AppFeature> {
@@ -448,7 +448,7 @@ struct AppPlaybackCoordinationTests {
 
     private func makeState(
         song: SongSummary,
-        phase: MusicPlaybackFeature.Phase,
+        phase: PlaybackFeature.Phase,
         playbackCommand: PlaybackCommandFeature.State? = nil
     ) -> AppFeature.State {
         AppFeature.State(
@@ -470,12 +470,12 @@ struct AppPlaybackCoordinationTests {
                     playbackEligibility: .eligible
                 )
             ),
-            musicPlayback: MusicPlaybackFeature.State(
+            playback: PlaybackFeature.State(
                 selectedSong: song,
                 phase: phase,
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
-                timeline: MusicPlaybackTimelineFeature.State(
+                timeline: PlaybackTimelineFeature.State(
                     interaction: .idle
                 )
             ),

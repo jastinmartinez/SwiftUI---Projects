@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct MusicPlaybackTimelineFeatureTests {
+struct PlaybackTimelineFeatureTests {
     @Test
     func positionChangesReplaceDraftWithoutSeeking() async {
         let seekPositions = LockIsolated<[TimeInterval]>([])
@@ -144,18 +144,18 @@ struct MusicPlaybackTimelineFeatureTests {
     // MARK: - Helpers
 
     private func makeStore(
-        interaction: MusicPlaybackTimelineFeature.Interaction = .idle,
+        interaction: PlaybackTimelineFeature.Interaction = .idle,
         seekPositions: LockIsolated<[TimeInterval]> = LockIsolated([]),
         seekError: MusicProviderError? = nil,
         finishSeek: AsyncStream<Void>? = nil,
         seekOperation: (@Sendable (TimeInterval) async throws -> Void)? = nil
-    ) -> TestStoreOf<MusicPlaybackTimelineFeature> {
+    ) -> TestStoreOf<PlaybackTimelineFeature> {
         TestStore(
-            initialState: MusicPlaybackTimelineFeature.State(
+            initialState: PlaybackTimelineFeature.State(
                 interaction: interaction
             )
         ) {
-            MusicPlaybackTimelineFeature()
+            PlaybackTimelineFeature()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackControl.seek = { position in

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Renders music transport actions from explicit values and callbacks.
-struct MusicPlaybackControlsView: View {
+struct PlaybackControlsView: View {
     let model: Model
 
     var body: some View {
@@ -28,7 +28,7 @@ struct MusicPlaybackControlsView: View {
                     )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Locs.MusicPlayback.stop)
+            .accessibilityLabel(Locs.Playback.stop)
             .disabled(!model.isStopEnabled)
         }
     }
@@ -45,14 +45,14 @@ struct MusicPlaybackControlsView: View {
     private var primaryAccessibilityLabel: String {
         switch model.primaryAction {
         case .play:
-            Locs.MusicPlayback.play
+            Locs.Playback.play
         case .pause:
-            Locs.MusicPlayback.pause
+            Locs.Playback.pause
         }
     }
 }
 
-extension MusicPlaybackControlsView {
+extension PlaybackControlsView {
     struct Model {
         enum PrimaryAction: Equatable {
             case play

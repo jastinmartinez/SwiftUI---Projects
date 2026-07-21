@@ -127,19 +127,19 @@ struct AppProviderSwitchingTests {
         await store.receive(.search(.cancelSearch)) {
             $0.search.status = .idle
         }
-        await store.receive(.musicPlayback(.timeline(.reset)))
+        await store.receive(.playback(.timeline(.reset)))
         await store.receive(.replaceProviderOwnedState("future")) {
             $0.search = SearchFeature.State(
                 query: "",
                 status: .idle,
                 providerAccess: nil
             )
-            $0.musicPlayback = MusicPlaybackFeature.State(
+            $0.playback = PlaybackFeature.State(
                 selectedSong: nil,
                 phase: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: futureCapabilities,
-                timeline: MusicPlaybackTimelineFeature.State(
+                timeline: PlaybackTimelineFeature.State(
                     interaction: .idle
                 )
             )
@@ -203,7 +203,7 @@ struct AppProviderSwitchingTests {
         }
 
         #expect(store.state.search == state.search)
-        #expect(store.state.musicPlayback == state.musicPlayback)
+        #expect(store.state.playback == state.playback)
         #expect(store.state.isPlayerPresented == state.isPlayerPresented)
         #expect(store.state.providerConnection == state.providerConnection)
     }
@@ -246,8 +246,8 @@ struct AppProviderSwitchingTests {
         )
         let store = makeStore(state: state)
 
-        await store.send(.musicPlayback(.delegate(.playRequested(song.id))))
-        await store.send(.musicPlayback(.delegate(.resumeRequested(song.id))))
+        await store.send(.playback(.delegate(.playRequested(song.id))))
+        await store.send(.playback(.delegate(.resumeRequested(song.id))))
 
         #expect(store.state == state)
     }
@@ -339,7 +339,7 @@ struct AppProviderSwitchingTests {
                     playbackEligibility: .eligible
                 )
             ),
-            musicPlayback: MusicPlaybackFeature.State(
+            playback: PlaybackFeature.State(
                 selectedSong: makeSong(),
                 phase: .observing(
                     PlaybackSnapshot(
@@ -353,7 +353,7 @@ struct AppProviderSwitchingTests {
                 ),
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
-                timeline: MusicPlaybackTimelineFeature.State(
+                timeline: PlaybackTimelineFeature.State(
                     interaction: .idle
                 )
             ),

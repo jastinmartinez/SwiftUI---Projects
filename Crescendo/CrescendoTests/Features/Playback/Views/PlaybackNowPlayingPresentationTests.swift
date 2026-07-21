@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct NowPlayingBarPresentationTests {
+struct PlaybackNowPlayingPresentationTests {
     @Test
     func barToggleWhilePlayingPausesThroughReducer() async {
         let song = makeSong()
@@ -15,7 +15,7 @@ struct NowPlayingBarPresentationTests {
         } withDependencies: {
             $0.playbackControl.pause = { pauseCalledContinuation.yield() }
         }
-        let model = NowPlayingBarView.Model(store, song: song)
+        let model = PlaybackNowPlayingView.Model(store, song: song)
         #expect(model.isPlaying)
 
         model.onTogglePlayPause()
@@ -44,7 +44,7 @@ struct NowPlayingBarPresentationTests {
                 for await _ in finishResume { break }
             }
         }
-        let model = NowPlayingBarView.Model(store, song: song)
+        let model = PlaybackNowPlayingView.Model(store, song: song)
         #expect(!model.isPlaying)
 
         model.onTogglePlayPause()
@@ -58,7 +58,7 @@ struct NowPlayingBarPresentationTests {
                     requestID: UUID(0)
                 )
         )
-        #expect(store.musicPlayback.selectedSong == song)
+        #expect(store.playback.selectedSong == song)
         #expect(playCallCount.value == 0)
         #expect(resumeCallCount.value == 1)
 
@@ -98,7 +98,7 @@ struct NowPlayingBarPresentationTests {
                     playbackEligibility: .eligible
                 )
             ),
-            musicPlayback: MusicPlaybackFeature.State(
+            playback: PlaybackFeature.State(
                 selectedSong: song,
                 phase: .observing(
                     PlaybackSnapshot(
@@ -112,7 +112,7 @@ struct NowPlayingBarPresentationTests {
                 ),
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
-                timeline: MusicPlaybackTimelineFeature.State(
+                timeline: PlaybackTimelineFeature.State(
                     interaction: .idle
                 )
             ),

@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct MusicPlaybackFeatureTests {
+struct PlaybackFeatureTests {
     @Test
     func taskConsumesPlaybackSnapshots() async {
         let song = makeSong()
@@ -432,11 +432,11 @@ struct MusicPlaybackFeatureTests {
     }
 
     @Test(arguments: [
-        MusicPlaybackTimelineFeature.Interaction.dragging(position: 30),
+        PlaybackTimelineFeature.Interaction.dragging(position: 30),
         .seeking(requestID: UUID(0), position: 30),
     ])
     func snapshotDuringInteractionPreservesTimelineInteraction(
-        interaction: MusicPlaybackTimelineFeature.Interaction
+        interaction: PlaybackTimelineFeature.Interaction
     ) async {
         let song = makeSong()
         let snapshot = makeSnapshot(song: song, status: .playing)
@@ -517,7 +517,7 @@ struct MusicPlaybackFeatureTests {
     @Test
     func tappingSamePlayingSongDoesNotRestart() async {
         let song = makeSong()
-        let state = MusicPlaybackFeature.State(
+        let state = PlaybackFeature.State(
             selectedSong: song,
             phase: .observing(makeSnapshot(song: song, status: .playing)),
             playbackEligibility: .eligible,
@@ -577,24 +577,24 @@ struct MusicPlaybackFeatureTests {
 
     private func makeStore(
         song: SongSummary?,
-        phase: MusicPlaybackFeature.Phase = .observing(.idle),
+        phase: PlaybackFeature.Phase = .observing(.idle),
         playbackEligibility: CatalogPlaybackEligibility = .eligible,
         capabilities: MusicProviderCapabilities = .allEnabled,
-        timelineInteraction: MusicPlaybackTimelineFeature.Interaction = .idle,
+        timelineInteraction: PlaybackTimelineFeature.Interaction = .idle,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
-    ) -> TestStoreOf<MusicPlaybackFeature> {
+    ) -> TestStoreOf<PlaybackFeature> {
         TestStore(
-            initialState: MusicPlaybackFeature.State(
+            initialState: PlaybackFeature.State(
                 selectedSong: song,
                 phase: phase,
                 playbackEligibility: playbackEligibility,
                 capabilities: capabilities,
-                timeline: MusicPlaybackTimelineFeature.State(
+                timeline: PlaybackTimelineFeature.State(
                     interaction: timelineInteraction
                 )
             )
         ) {
-            MusicPlaybackFeature()
+            PlaybackFeature()
         } withDependencies: {
             $0.uuid = .incrementing
             configureDependencies(&$0)
@@ -603,7 +603,7 @@ struct MusicPlaybackFeatureTests {
 
     private func startSuspendedSeek(
         _ suspendedSeek: SuspendedSeekProbe,
-        on store: TestStoreOf<MusicPlaybackFeature>
+        on store: TestStoreOf<PlaybackFeature>
     ) async {
         await store.send(.timeline(.positionChanged(30))) {
             $0.timeline.interaction = .dragging(position: 30)

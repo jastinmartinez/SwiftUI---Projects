@@ -46,7 +46,7 @@ struct AppFeatureTests {
         )
         await store.receive(.resetProviderOwnedState(.appleMusic))
         await store.receive(.search(.cancelSearch))
-        await store.receive(.musicPlayback(.timeline(.reset)))
+        await store.receive(.playback(.timeline(.reset)))
         await store.receive(.replaceProviderOwnedState(.appleMusic))
         await store.receive(
             .providerConnection(
@@ -106,7 +106,7 @@ struct AppFeatureTests {
                     playbackEligibility: .eligible
                 )
             ),
-            musicPlayback: MusicPlaybackFeature.State(
+            playback: PlaybackFeature.State(
                 selectedSong: song,
                 phase: .observing(
                     PlaybackSnapshot(
@@ -120,7 +120,7 @@ struct AppFeatureTests {
                 ),
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
-                timeline: MusicPlaybackTimelineFeature.State(
+                timeline: PlaybackTimelineFeature.State(
                     interaction: .idle
                 )
             ),
@@ -146,11 +146,11 @@ struct AppFeatureTests {
         await store.receive(.search(.cancelSearch)) {
             $0.search.status = .idle
         }
-        await store.receive(.musicPlayback(.timeline(.reset))) {
-            $0.musicPlayback.timeline.interaction = .idle
+        await store.receive(.playback(.timeline(.reset))) {
+            $0.playback.timeline.interaction = .idle
         }
         #expect(suspendedSeek.cancellationObserved.value)
-        #expect(store.state.musicPlayback.selectedSong == song)
+        #expect(store.state.playback.selectedSong == song)
 
         await store.receive(.replaceProviderOwnedState(futureProvider.id)) {
             $0.search = SearchFeature.State(
@@ -158,12 +158,12 @@ struct AppFeatureTests {
                 status: .idle,
                 providerAccess: nil
             )
-            $0.musicPlayback = MusicPlaybackFeature.State(
+            $0.playback = PlaybackFeature.State(
                 selectedSong: nil,
                 phase: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: futureProvider.musicCapabilities,
-                timeline: MusicPlaybackTimelineFeature.State(
+                timeline: PlaybackTimelineFeature.State(
                     interaction: .idle
                 )
             )
@@ -172,7 +172,7 @@ struct AppFeatureTests {
 
         suspendedSeek.fail(with: .network)
         await store.finish()
-        #expect(store.state.musicPlayback.timeline.interaction == .idle)
+        #expect(store.state.playback.timeline.interaction == .idle)
     }
 
     @Test
@@ -359,20 +359,20 @@ struct AppFeatureTests {
             $0.isPlayerPresented = true
         }
         await store.receive(
-            .musicPlayback(
+            .playback(
                 .songTapped(song, playbackEligibility: .ineligible)
             )
         )
-        await store.receive(.musicPlayback(.timeline(.reset)))
+        await store.receive(.playback(.timeline(.reset)))
         await store.receive(
-            .musicPlayback(
+            .playback(
                 .applySongTap(song, playbackEligibility: .ineligible)
             )
         ) {
-            $0.musicPlayback.selectedSong = song
-            $0.musicPlayback.playbackEligibility = .ineligible
+            $0.playback.selectedSong = song
+            $0.playback.playbackEligibility = .ineligible
         }
-        await store.receive(.musicPlayback(.requestPlayback))
+        await store.receive(.playback(.requestPlayback))
 
         #expect(store.state.playbackCommand == nil)
         #expect(playedItemIDs.value.isEmpty)
@@ -401,12 +401,12 @@ struct AppFeatureTests {
                     playbackEligibility: .ineligible
                 )
             ),
-            musicPlayback: MusicPlaybackFeature.State(
+            playback: PlaybackFeature.State(
                 selectedSong: previousSong,
                 phase: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: .allEnabled,
-                timeline: MusicPlaybackTimelineFeature.State(
+                timeline: PlaybackTimelineFeature.State(
                     interaction: .dragging(position: 18)
                 )
             ),
@@ -420,35 +420,35 @@ struct AppFeatureTests {
             )
         )
         await store.receive(
-            .musicPlayback(
+            .playback(
                 .songTapped(song, playbackEligibility: .eligible)
             )
         )
-        await store.receive(.musicPlayback(.timeline(.reset))) {
-            $0.musicPlayback.timeline.interaction = .idle
+        await store.receive(.playback(.timeline(.reset))) {
+            $0.playback.timeline.interaction = .idle
         }
         await store.receive(
-            .musicPlayback(
+            .playback(
                 .applySongTap(
                     song,
                     playbackEligibility: .eligible
                 )
             )
         ) {
-            $0.musicPlayback.selectedSong = song
-            $0.musicPlayback.playbackEligibility = .eligible
+            $0.playback.selectedSong = song
+            $0.playback.playbackEligibility = .eligible
         }
-        await store.receive(.musicPlayback(.requestPlayback))
+        await store.receive(.playback(.requestPlayback))
         await store.receive(
-            .musicPlayback(.delegate(.playRequested(song.id)))
+            .playback(.delegate(.playRequested(song.id)))
         ) {
             $0.playbackCommand = PlaybackCommandFeature.State(
                 command: .play(song.id),
                 requestID: UUID(0)
             )
         }
-        await store.receive(\.musicPlayback.playbackCommandAccepted) {
-            $0.musicPlayback.phase = .loading(.idle)
+        await store.receive(\.playback.playbackCommandAccepted) {
+            $0.playback.phase = .loading(.idle)
         }
         await store.receive(.playbackCommand(.start))
         await store.receive(
@@ -476,8 +476,8 @@ struct AppFeatureTests {
         ) {
             $0.playbackCommand = nil
         }
-        await store.receive(\.musicPlayback.transportFinished) {
-            $0.musicPlayback.phase = .observing(.idle)
+        await store.receive(\.playback.transportFinished) {
+            $0.playback.phase = .observing(.idle)
         }
     }
 
@@ -519,12 +519,12 @@ struct AppFeatureTests {
         on store: TestStoreOf<AppFeature>
     ) async {
         await store.send(
-            .musicPlayback(.timeline(.positionChanged(18)))
+            .playback(.timeline(.positionChanged(18)))
         ) {
-            $0.musicPlayback.timeline.interaction = .dragging(position: 18)
+            $0.playback.timeline.interaction = .dragging(position: 18)
         }
-        await store.send(.musicPlayback(.timeline(.dragEnded))) {
-            $0.musicPlayback.timeline.interaction = .seeking(
+        await store.send(.playback(.timeline(.dragEnded))) {
+            $0.playback.timeline.interaction = .seeking(
                 requestID: UUID(0),
                 position: 18
             )
@@ -536,7 +536,7 @@ struct AppFeatureTests {
         providers: [ProviderDescriptor] = [.appleMusic],
         connection: ProviderConnection = .disconnected,
         search: SearchFeature.State? = nil,
-        musicPlayback: MusicPlaybackFeature.State? = nil,
+        playback: PlaybackFeature.State? = nil,
         isPlayerPresented: Bool = false
     ) -> AppFeature.State {
         AppFeature.State(
@@ -550,13 +550,13 @@ struct AppFeatureTests {
                     status: .idle,
                     providerAccess: nil
                 ),
-            musicPlayback: musicPlayback
-                ?? MusicPlaybackFeature.State(
+            playback: playback
+                ?? PlaybackFeature.State(
                     selectedSong: nil,
                     phase: .observing(.idle),
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled,
-                    timeline: MusicPlaybackTimelineFeature.State(
+                    timeline: PlaybackTimelineFeature.State(
                         interaction: .idle
                     )
                 ),

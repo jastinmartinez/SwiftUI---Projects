@@ -8,7 +8,7 @@ struct AppFeature {
     struct State: Equatable {
         var providerConnection: ProviderConnectionFeature.State
         var search: SearchFeature.State
-        var musicPlayback: MusicPlaybackFeature.State
+        var playback: PlaybackFeature.State
         var isPlayerPresented: Bool
         var providerSwitch: ProviderSwitchFeature.State?
         var playbackCommand: PlaybackCommandFeature.State?
@@ -24,14 +24,14 @@ struct AppFeature {
         init(
             providerConnection: ProviderConnectionFeature.State,
             search: SearchFeature.State,
-            musicPlayback: MusicPlaybackFeature.State,
+            playback: PlaybackFeature.State,
             isPlayerPresented: Bool,
             providerSwitch: ProviderSwitchFeature.State?,
             playbackCommand: PlaybackCommandFeature.State?
         ) {
             self.providerConnection = providerConnection
             self.search = search
-            self.musicPlayback = musicPlayback
+            self.playback = playback
             self.isPlayerPresented = isPlayerPresented
             self.providerSwitch = providerSwitch
             self.playbackCommand = playbackCommand
@@ -46,7 +46,7 @@ struct AppFeature {
         case replaceProviderOwnedState(ProviderID)
         case providerSwitch(ProviderSwitchFeature.Action)
         case search(SearchFeature.Action)
-        case musicPlayback(MusicPlaybackFeature.Action)
+        case playback(PlaybackFeature.Action)
         case playbackCommand(PlaybackCommandFeature.Action)
         case setPlayerPresented(Bool)
     }
@@ -60,8 +60,8 @@ struct AppFeature {
         Scope(state: \.search, action: \.search) {
             SearchFeature()
         }
-        Scope(state: \.musicPlayback, action: \.musicPlayback) {
-            MusicPlaybackFeature()
+        Scope(state: \.playback, action: \.playback) {
+            PlaybackFeature()
         }
         Reduce { state, action in
             switch action {
@@ -141,7 +141,7 @@ struct AppFeature {
                 }
                 return .concatenate(
                     .send(.search(.cancelSearch)),
-                    .send(.musicPlayback(.timeline(.reset))),
+                    .send(.playback(.timeline(.reset))),
                     .send(.replaceProviderOwnedState(provider.id))
                 )
 
@@ -158,12 +158,12 @@ struct AppFeature {
                     status: .idle,
                     providerAccess: nil
                 )
-                state.musicPlayback = MusicPlaybackFeature.State(
+                state.playback = PlaybackFeature.State(
                     selectedSong: nil,
                     phase: .observing(.idle),
                     playbackEligibility: .unknown,
                     capabilities: provider.musicCapabilities,
-                    timeline: MusicPlaybackTimelineFeature.State(
+                    timeline: PlaybackTimelineFeature.State(
                         interaction: .idle
                     )
                 )
@@ -197,11 +197,11 @@ struct AppFeature {
                 else {
                     return .none
                 }
-                if state.musicPlayback.selectedSong == nil {
+                if state.playback.selectedSong == nil {
                     state.isPlayerPresented = true
                 }
                 return .send(
-                    .musicPlayback(
+                    .playback(
                         .songTapped(
                             song,
                             playbackEligibility: access.playbackEligibility
@@ -212,7 +212,7 @@ struct AppFeature {
             case .search:
                 return .none
 
-            case .musicPlayback(.delegate(let delegate)):
+            case .playback(.delegate(let delegate)):
                 let command: PlaybackCommandFeature.Command
                 switch delegate {
                 case .playRequested(let itemID):
@@ -234,7 +234,7 @@ struct AppFeature {
                                 .replace(command, requestID: requestID)
                             )
                         ),
-                        .send(.musicPlayback(.playbackCommandAccepted))
+                        .send(.playback(.playbackCommandAccepted))
                     )
                 }
                 state.playbackCommand = PlaybackCommandFeature.State(
@@ -242,11 +242,11 @@ struct AppFeature {
                     requestID: requestID
                 )
                 return .concatenate(
-                    .send(.musicPlayback(.playbackCommandAccepted)),
+                    .send(.playback(.playbackCommandAccepted)),
                     .send(.playbackCommand(.start))
                 )
 
-            case .musicPlayback:
+            case .playback:
                 return .none
 
             case .playbackCommand(
@@ -256,7 +256,7 @@ struct AppFeature {
                     return .none
                 }
                 state.playbackCommand = nil
-                return .send(.musicPlayback(.transportFinished))
+                return .send(.playback(.transportFinished))
 
             case .playbackCommand(
                 .delegate(.completed(let requestID, .failure(let error)))
@@ -265,7 +265,7 @@ struct AppFeature {
                     return .none
                 }
                 state.playbackCommand = nil
-                return .send(.musicPlayback(.transportFailed(error)))
+                return .send(.playback(.transportFailed(error)))
 
             case .playbackCommand:
                 return .none

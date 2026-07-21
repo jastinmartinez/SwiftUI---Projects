@@ -2,11 +2,11 @@ import ComposableArchitecture
 import SwiftUI
 
 /// Connects the playback store to its stateless presentation.
-struct MusicPlaybackFeatureView: View {
-    let store: StoreOf<MusicPlaybackFeature>
+struct PlaybackFeatureView: View {
+    let store: StoreOf<PlaybackFeature>
     let providerName: String?
 
     var body: some View {
-        MusicPlaybackView(model: .init(store, providerName: providerName))
+        PlaybackView(model: .init(store, providerName: providerName))
     }
 }

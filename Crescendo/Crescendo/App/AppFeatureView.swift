@@ -13,15 +13,15 @@ struct AppFeatureView: View {
             providerSelection: providerSelection
         )
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let song = store.musicPlayback.selectedSong {
-                NowPlayingBarView(model: .init(store, song: song))
+            if let song = store.playback.selectedSong {
+                PlaybackNowPlayingView(model: .init(store, song: song))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
             }
         }
         .task {
             await store.send(.task).finish()
-            await store.send(.musicPlayback(.task)).finish()
+            await store.send(.playback(.task)).finish()
         }
         .sheet(
             isPresented: Binding(
@@ -29,8 +29,8 @@ struct AppFeatureView: View {
                 set: { store.send(.setPlayerPresented($0)) }
             )
         ) {
-            MusicPlaybackFeatureView(
-                store: store.scope(state: \.musicPlayback, action: \.musicPlayback),
+            PlaybackFeatureView(
+                store: store.scope(state: \.playback, action: \.playback),
                 providerName: providerSelection.connectedProviderName
             )
             .presentationDetents([.large])

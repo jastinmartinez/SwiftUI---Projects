@@ -29,7 +29,7 @@ extension PlaybackEligibilityNoticeView.Model {
 
     /// Adapts player eligibility into its presentation.
     @MainActor
-    init(_ store: StoreOf<MusicPlaybackFeature>) {
+    init(_ store: StoreOf<PlaybackFeature>) {
         let presentation: Presentation =
             switch store.playbackEligibility {
             case .eligible:

@@ -3,7 +3,7 @@ import Foundation
 
 /// Owns draft timeline positions and commits one seek when dragging ends.
 @Reducer
-struct MusicPlaybackTimelineFeature {
+struct PlaybackTimelineFeature {
     @ObservableState
     struct State: Equatable {
         var interaction: Interaction

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Displays the selected song and current playback status.
-struct MusicPlaybackMetadataView: View {
+struct PlaybackMetadataView: View {
     let model: Model
 
     var body: some View {
@@ -31,7 +31,7 @@ struct MusicPlaybackMetadataView: View {
     }
 }
 
-extension MusicPlaybackMetadataView {
+extension PlaybackMetadataView {
     struct Model: Equatable {
         let title: String
         let artistName: String?
