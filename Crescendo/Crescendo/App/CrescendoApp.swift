@@ -40,7 +40,6 @@ struct CrescendoApp: App {
             $0.providerSearch = .appleMusic(appleMusicProvider)
             $0.playbackControl = .appleMusic(appleMusicProvider)
             $0.playbackObservation = .appleMusic(appleMusicProvider)
-            $0.musicProvider = .appleMusic(appleMusicProvider)
         }
     }
 

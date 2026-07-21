@@ -11,8 +11,8 @@ actor FakeMusicProvider {
         self.configuredResults = searchResults
     }
 
-    func client() -> MusicProviderClient {
-        MusicProviderClient(
+    func accessClient() -> ProviderAccessClient {
+        ProviderAccessClient(
             currentAccess: { [weak self] in
                 self?.configuredAccess
                     ?? .init(authorization: .denied, playbackEligibility: .unknown)
@@ -20,10 +20,20 @@ actor FakeMusicProvider {
             requestAccess: { [weak self] in
                 self?.configuredAccess
                     ?? .init(authorization: .denied, playbackEligibility: .unknown)
-            },
+            }
+        )
+    }
+
+    func searchClient() -> ProviderSearchClient {
+        ProviderSearchClient(
             search: { [weak self] _, limit in
                 Array((self?.configuredResults ?? []).prefix(limit))
-            },
+            }
+        )
+    }
+
+    func playbackControlClient() -> PlaybackControlClient {
+        PlaybackControlClient(
             play: { [weak self] _ in
                 guard let self else { throw MusicProviderError.unavailable }
                 await self.startPlayback()
@@ -31,7 +41,12 @@ actor FakeMusicProvider {
             resume: { [weak self] in await self?.setStatus(.playing) },
             pause: { [weak self] in await self?.setStatus(.paused) },
             stop: { [weak self] in await self?.stopPlayback() },
-            seek: { [weak self] time in await self?.setTime(time) },
+            seek: { [weak self] time in await self?.setTime(time) }
+        )
+    }
+
+    func playbackObservationClient() -> PlaybackObservationClient {
+        PlaybackObservationClient(
             playbackSnapshots: { [weak self] in
                 let currentSnapshot = await self?.playbackSnapshot ?? .idle
                 return AsyncStream { continuation in

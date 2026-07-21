@@ -20,10 +20,11 @@ struct FakeMusicProviderTests {
             access: expectedAccess,
             searchResults: [expectedSong]
         )
-        let musicProvider = await fake.client()
-        let currentAccess = await musicProvider.currentAccess()
-        let requestedAccess = await musicProvider.requestAccess()
-        let searchResults = try await musicProvider.search("test", 20)
+        let accessClient = await fake.accessClient()
+        let searchClient = await fake.searchClient()
+        let currentAccess = await accessClient.currentAccess()
+        let requestedAccess = await accessClient.requestAccess()
+        let searchResults = try await searchClient.search("test", 20)
 
         #expect(currentAccess == expectedAccess)
         #expect(requestedAccess == expectedAccess)
@@ -33,11 +34,12 @@ struct FakeMusicProviderTests {
     @Test
     func playStartsAtTimeZero() async throws {
         let fake = makeFakeProvider()
-        let musicProvider = await fake.client()
+        let playbackControl = await fake.playbackControlClient()
+        let playbackObservation = await fake.playbackObservationClient()
 
-        try await musicProvider.seek(42)
-        try await musicProvider.play(.init(providerID: "fake", nativeID: "1"))
-        let playbackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
+        try await playbackControl.seek(42)
+        try await playbackControl.play(.init(providerID: "fake", nativeID: "1"))
+        let playbackSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
         #expect(playbackSnapshot?.status == .playing)
         #expect(playbackSnapshot?.currentTime == 0)
@@ -46,13 +48,18 @@ struct FakeMusicProviderTests {
     @Test
     func resumePreservesSoughtTimeAndChangesStatusToPlaying() async throws {
         let fake = makeFakeProvider()
-        let musicProvider = await fake.client()
+        let playbackControl = await fake.playbackControlClient()
+        let playbackObservation = await fake.playbackObservationClient()
 
-        try await musicProvider.seek(42)
-        try await musicProvider.pause()
-        let pausedPlaybackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
-        try await musicProvider.resume()
-        let resumedPlaybackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
+        try await playbackControl.seek(42)
+        try await playbackControl.pause()
+        let pausedPlaybackSnapshot = await nextPlaybackSnapshot(
+            from: playbackObservation
+        )
+        try await playbackControl.resume()
+        let resumedPlaybackSnapshot = await nextPlaybackSnapshot(
+            from: playbackObservation
+        )
 
         #expect(pausedPlaybackSnapshot?.status == .paused)
         #expect(pausedPlaybackSnapshot?.currentTime == 42)
@@ -63,12 +70,13 @@ struct FakeMusicProviderTests {
     @Test
     func stopResetsPositionToZero() async throws {
         let fake = makeFakeProvider()
-        let musicProvider = await fake.client()
+        let playbackControl = await fake.playbackControlClient()
+        let playbackObservation = await fake.playbackObservationClient()
 
-        try await musicProvider.play(.init(providerID: "fake", nativeID: "1"))
-        try await musicProvider.seek(42)
-        try await musicProvider.stop()
-        let playbackSnapshot = await nextPlaybackSnapshot(from: musicProvider)
+        try await playbackControl.play(.init(providerID: "fake", nativeID: "1"))
+        try await playbackControl.seek(42)
+        try await playbackControl.stop()
+        let playbackSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
         #expect(playbackSnapshot?.status == .stopped)
         #expect(playbackSnapshot?.currentTime == 0)
@@ -84,9 +92,9 @@ struct FakeMusicProviderTests {
     }
 
     private func nextPlaybackSnapshot(
-        from musicProvider: MusicProviderClient
+        from playbackObservation: PlaybackObservationClient
     ) async -> MusicPlaybackSnapshot? {
-        let snapshots = await musicProvider.playbackSnapshots()
+        let snapshots = await playbackObservation.playbackSnapshots()
         var iterator = snapshots.makeAsyncIterator()
         return await iterator.next()
     }
