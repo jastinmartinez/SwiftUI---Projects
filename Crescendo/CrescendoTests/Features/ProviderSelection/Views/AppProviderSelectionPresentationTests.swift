@@ -208,9 +208,10 @@ struct AppProviderSelectionPresentationTests {
                         confirmedPosition: 0,
                         interaction: .idle
                     ),
-                    pendingOperation: pendingOperation
+                    pendingOperation: pendingOperation,
+                    pendingReset: nil,
+                    isPlayerPresented: false
                 ),
-                isPlayerPresented: false,
                 providerSwitch: nil
             )
         ) {

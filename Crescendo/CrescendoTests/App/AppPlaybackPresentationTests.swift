@@ -29,7 +29,9 @@ struct AppPlaybackPresentationTests {
                 confirmedPosition: 42,
                 interaction: .idle
             ),
-            pendingOperation: nil
+            pendingOperation: nil,
+            pendingReset: nil,
+            isPlayerPresented: true
         )
         let state = AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
@@ -57,16 +59,15 @@ struct AppPlaybackPresentationTests {
                 )
             ),
             playback: playback,
-            isPlayerPresented: true,
             providerSwitch: nil
         )
         let store = TestStore(initialState: state) { AppFeature() }
 
-        await store.send(.setPlayerPresented(false)) {
-            $0.isPlayerPresented = false
+        await store.send(.playback(.setPlayerPresented(false))) {
+            $0.playback.isPlayerPresented = false
         }
-        await store.send(.setPlayerPresented(true)) {
-            $0.isPlayerPresented = true
+        await store.send(.playback(.setPlayerPresented(true))) {
+            $0.playback.isPlayerPresented = true
         }
 
         #expect(store.state.playback == playback)

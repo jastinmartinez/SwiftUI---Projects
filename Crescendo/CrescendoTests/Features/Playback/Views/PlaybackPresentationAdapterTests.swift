@@ -284,7 +284,9 @@ struct PlaybackPresentationAdapterTests {
                     confirmedPosition: confirmedPosition,
                     interaction: .idle
                 ),
-                pendingOperation: pendingOperation
+                pendingOperation: pendingOperation,
+                pendingReset: nil,
+                isPlayerPresented: false
             )
         ) {
             PlaybackFeature()
@@ -308,7 +310,9 @@ struct PlaybackPresentationAdapterTests {
                     confirmedPosition: 43,
                     interaction: .idle
                 ),
-                pendingOperation: nil
+                pendingOperation: nil,
+                pendingReset: nil,
+                isPlayerPresented: false
             )
         ) {
             Reduce { _, action in

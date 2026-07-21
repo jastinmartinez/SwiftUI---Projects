@@ -11,7 +11,7 @@ struct PlaybackNowPlayingPresentationTests {
         let song = makeSong()
         let (pauseCalled, pauseCalledContinuation) = AsyncStream<Void>.makeStream()
         let store = Store(initialState: makeState(song: song, status: .playing)) {
-            AppFeature()
+            PlaybackFeature()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackControl.pause = { pauseCalledContinuation.yield() }
@@ -29,16 +29,29 @@ struct PlaybackNowPlayingPresentationTests {
     func barToggleProjectsParentOperationPermission() {
         let song = makeSong()
         var state = makeState(song: song, status: .playing)
-        state.playback.pendingOperation = .statusChange(
+        state.pendingOperation = .statusChange(
             .init(requestID: UUID(0), target: .paused)
         )
         let store = Store(initialState: state) {
-            AppFeature()
+            PlaybackFeature()
         }
 
         let model = PlaybackNowPlayingView.Model(store, song: song)
 
         #expect(!model.isPlayEnabled)
+    }
+
+    @Test
+    func barOpenRoutesPresentationThroughPlayback() {
+        let song = makeSong()
+        let store = Store(initialState: makeState(song: song, status: .playing)) {
+            PlaybackFeature()
+        }
+        let model = PlaybackNowPlayingView.Model(store, song: song)
+
+        model.onOpenPlayer()
+
+        #expect(store.isPlayerPresented)
     }
 
     @Test
@@ -49,7 +62,7 @@ struct PlaybackNowPlayingPresentationTests {
         let (resumeStarted, resumeStartedContinuation) = AsyncStream<Void>.makeStream()
         let (finishResume, finishResumeContinuation) = AsyncStream<Void>.makeStream()
         let store = Store(initialState: makeState(song: song, status: .paused)) {
-            AppFeature()
+            PlaybackFeature()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackControl.playQueue = { _, _ in
@@ -68,7 +81,7 @@ struct PlaybackNowPlayingPresentationTests {
 
         var resumeStartedIterator = resumeStarted.makeAsyncIterator()
         _ = await resumeStartedIterator.next()
-        #expect(store.playback.queue.currentItem == song)
+        #expect(store.queue.currentItem == song)
         #expect(playCallCount.value == 0)
         #expect(resumeCallCount.value == 1)
 
@@ -82,51 +95,25 @@ struct PlaybackNowPlayingPresentationTests {
     private func makeState(
         song: SongSummary,
         status: PlaybackStatus
-    ) -> AppFeature.State {
+    ) -> PlaybackFeature.State {
         let queue = IdentifiedArray(uniqueElements: [song])
-        return AppFeature.State(
-            providerConnection: ProviderConnectionFeature.State(
-                providers: [.appleMusic],
-                connection: .connected(
-                    providerID: .appleMusic,
-                    access: MusicProviderAccess(
-                        authorization: .authorized,
-                        playbackEligibility: .eligible
-                    )
-                )
+        return PlaybackFeature.State(
+            providerID: song.id.providerID,
+            queue: PlaybackQueueFeature.State(
+                songs: queue,
+                currentItemID: song.id
             ),
-            search: SearchFeature.State(
-                query: "",
-                status: .loaded(
-                    SearchPaginationFeature.State(
-                        songs: [song],
-                        nextCursor: nil,
-                        status: .idle
-                    )
-                ),
-                providerAccess: MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
-                )
+            status: status,
+            failure: nil,
+            playbackEligibility: .eligible,
+            capabilities: .allEnabled,
+            timeline: PlaybackTimelineFeature.State(
+                confirmedPosition: 0,
+                interaction: .idle
             ),
-            playback: PlaybackFeature.State(
-                providerID: song.id.providerID,
-                queue: PlaybackQueueFeature.State(
-                    songs: queue,
-                    currentItemID: song.id
-                ),
-                status: status,
-                failure: nil,
-                playbackEligibility: .eligible,
-                capabilities: .allEnabled,
-                timeline: PlaybackTimelineFeature.State(
-                    confirmedPosition: 0,
-                    interaction: .idle
-                ),
-                pendingOperation: nil
-            ),
-            isPlayerPresented: false,
-            providerSwitch: nil
+            pendingOperation: nil,
+            pendingReset: nil,
+            isPlayerPresented: false
         )
     }
 

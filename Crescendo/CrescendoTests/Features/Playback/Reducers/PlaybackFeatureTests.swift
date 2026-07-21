@@ -32,6 +32,7 @@ struct PlaybackFeatureTests {
                 playbackEligibility: .eligible
             )
         ) {
+            $0.isPlayerPresented = true
             $0.pendingOperation = .queueReplacement(
                 .init(
                     requestID: UUID(0),
@@ -145,6 +146,7 @@ struct PlaybackFeatureTests {
                 playbackEligibility: .eligible
             )
         ) {
+            $0.isPlayerPresented = true
             $0.pendingOperation = .queueReplacement(
                 .init(
                     requestID: UUID(0),
@@ -287,6 +289,7 @@ struct PlaybackFeatureTests {
         ) {
             $0.playbackEligibility = .ineligible
             $0.failure = nil
+            $0.isPlayerPresented = true
         }
 
         let unsupportedStore = makeStore(
@@ -571,6 +574,7 @@ struct PlaybackFeatureTests {
                 playbackEligibility: .eligible
             )
         ) {
+            $0.isPlayerPresented = true
             $0.pendingOperation = .queueReplacement(
                 .init(
                     requestID: UUID(0),
@@ -797,7 +801,9 @@ struct PlaybackFeatureTests {
             playbackEligibility: .eligible,
             capabilities: .allEnabled,
             timeline: .init(confirmedPosition: 0, interaction: .idle),
-            pendingOperation: nil
+            pendingOperation: nil,
+            pendingReset: nil,
+            isPlayerPresented: false
         )
         let replacing = PlaybackFeature.State(
             providerID: providerID,
@@ -809,13 +815,143 @@ struct PlaybackFeatureTests {
             timeline: .init(confirmedPosition: 0, interaction: .idle),
             pendingOperation: .queueReplacement(
                 .init(requestID: UUID(0), songs: songs, startingItemID: songs[0].id)
-            )
+            ),
+            pendingReset: nil,
+            isPlayerPresented: false
         )
 
         #expect(active.canRequestPlayPause)
         #expect(active.canRequestStop)
         #expect(!replacing.canRequestPlayPause)
         #expect(replacing.canRequestStop)
+    }
+
+    @Test
+    func oldProviderSnapshotIsIgnoredDuringResetWindow() async {
+        let pendingReset = PlaybackFeature.PendingReset(
+            requestID: UUID(0),
+            providerID: "replacement",
+            capabilities: .allEnabled
+        )
+        let store = makeStore(pendingReset: pendingReset)
+        let staleSnapshot = PlaybackSnapshot(
+            currentItemID: nil,
+            status: .playing,
+            currentTime: 99,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
+        )
+
+        await store.send(.snapshotReceived(staleSnapshot))
+
+        #expect(store.state.status == .idle)
+        #expect(store.state.timeline.confirmedPosition == 0)
+        #expect(store.state.pendingReset == pendingReset)
+    }
+
+    @Test
+    func staleApplyResetCannotFinalizeRepeatedProviderReset() async {
+        let pendingReset = PlaybackFeature.PendingReset(
+            requestID: UUID(1),
+            providerID: "replacement",
+            capabilities: .allEnabled
+        )
+        let store = makeStore(pendingReset: pendingReset)
+
+        await store.send(.applyReset(requestID: UUID(0)))
+
+        #expect(store.state.pendingReset == pendingReset)
+        #expect(store.state.providerID == providerID)
+    }
+
+    @Test
+    func resetWindowRejectsNewParentOperations() async {
+        let songs = IdentifiedArray(uniqueElements: makeSongs())
+        let pendingReset = PlaybackFeature.PendingReset(
+            requestID: UUID(0),
+            providerID: "replacement",
+            capabilities: .allEnabled
+        )
+        let store = makeStore(
+            queue: .init(songs: songs, currentItemID: songs[0].id),
+            status: .playing,
+            pendingReset: pendingReset
+        )
+
+        #expect(!store.state.canRequestPlayPause)
+        #expect(!store.state.canRequestStop)
+        await store.send(
+            .selectionReceived(
+                songs[1],
+                loadedResults: songs,
+                providerID: providerID,
+                playbackEligibility: .eligible
+            )
+        )
+
+        #expect(store.state.pendingOperation == nil)
+        #expect(store.state.pendingReset == pendingReset)
+    }
+
+    @Test
+    func resetWindowRejectsQueuedPlaybackEffects() async {
+        let songs = IdentifiedArray(uniqueElements: makeSongs())
+        let pendingOperation = PlaybackFeature.PendingOperation.statusChange(
+            .init(requestID: UUID(1), target: .paused)
+        )
+        let pendingReset = PlaybackFeature.PendingReset(
+            requestID: UUID(0),
+            providerID: "replacement",
+            capabilities: .allEnabled
+        )
+        let calls = LockIsolated(0)
+        let store = makeStore(
+            queue: .init(songs: songs, currentItemID: songs[0].id),
+            status: .playing,
+            pendingOperation: pendingOperation,
+            pendingReset: pendingReset
+        ) {
+            $0.playbackControl.pause = {
+                calls.withValue { $0 += 1 }
+            }
+        }
+
+        await store.send(
+            .performStatusChange(
+                requestID: UUID(1),
+                target: .paused
+            )
+        )
+        await Task.yield()
+
+        #expect(calls.value == 0)
+        #expect(store.state.pendingOperation == pendingOperation)
+        #expect(store.state.pendingReset == pendingReset)
+    }
+
+    @Test
+    func resetWindowRejectsIneligibleSelectionPresentation() async {
+        let songs = IdentifiedArray(uniqueElements: makeSongs())
+        let pendingReset = PlaybackFeature.PendingReset(
+            requestID: UUID(0),
+            providerID: providerID,
+            capabilities: .allEnabled
+        )
+        let store = makeStore(pendingReset: pendingReset)
+
+        await store.send(
+            .selectionReceived(
+                songs[0],
+                loadedResults: songs,
+                providerID: providerID,
+                playbackEligibility: .ineligible
+            )
+        )
+
+        #expect(store.state.playbackEligibility == .unknown)
+        #expect(!store.state.isPlayerPresented)
+        #expect(store.state.pendingReset == pendingReset)
     }
 
     // MARK: - Helpers
@@ -836,6 +972,7 @@ struct PlaybackFeatureTests {
             interaction: .idle
         ),
         pendingOperation: PlaybackFeature.PendingOperation? = nil,
+        pendingReset: PlaybackFeature.PendingReset? = nil,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
     ) -> TestStoreOf<PlaybackFeature> {
         TestStore(
@@ -847,7 +984,9 @@ struct PlaybackFeatureTests {
                 playbackEligibility: playbackEligibility,
                 capabilities: capabilities,
                 timeline: timeline,
-                pendingOperation: pendingOperation
+                pendingOperation: pendingOperation,
+                pendingReset: pendingReset,
+                isPlayerPresented: false
             )
         ) {
             PlaybackFeature()

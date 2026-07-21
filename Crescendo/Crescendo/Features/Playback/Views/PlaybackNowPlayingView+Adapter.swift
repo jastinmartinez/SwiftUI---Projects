@@ -3,19 +3,19 @@ import ComposableArchitecture
 extension PlaybackNowPlayingView.Model {
     /// Adapts the selected song and playback state into the compact player presentation.
     @MainActor
-    init(_ store: StoreOf<AppFeature>, song: SongSummary) {
-        let isPlaying = store.playback.status == .playing
+    init(_ store: StoreOf<PlaybackFeature>, song: SongSummary) {
+        let isPlaying = store.status == .playing
 
         self.init(
             title: song.title,
             artistName: song.artistName,
             artworkURL: song.artworkURL,
             isPlaying: isPlaying,
-            isPlayEnabled: store.playback.canRequestPlayPause,
+            isPlayEnabled: store.canRequestPlayPause,
             timeline: PlaybackTimelineView.Model.make(
                 duration: song.duration,
-                timeline: store.playback.timeline,
-                supportsSeeking: store.playback.capabilities.supportsSeeking,
+                timeline: store.timeline,
+                supportsSeeking: store.capabilities.supportsSeeking,
                 strings: { elapsedTime, durationTime in
                     .localized(
                         elapsedTime: elapsedTime,
@@ -23,14 +23,14 @@ extension PlaybackNowPlayingView.Model {
                     )
                 },
                 onPositionChanged: {
-                    store.send(.playback(.timeline(.positionChanged($0))))
+                    store.send(.timeline(.positionChanged($0)))
                 },
                 onDragEnded: {
-                    store.send(.playback(.timeline(.dragEnded)))
+                    store.send(.timeline(.dragEnded))
                 }
             ),
             onOpenPlayer: { store.send(.setPlayerPresented(true)) },
-            onTogglePlayPause: { store.send(.playback(.playPauseTapped)) }
+            onTogglePlayPause: { store.send(.playPauseTapped) }
         )
     }
 }

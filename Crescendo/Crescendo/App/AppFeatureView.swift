@@ -14,9 +14,14 @@ struct AppFeatureView: View {
         )
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let song = store.playback.queue.currentItem {
-                PlaybackNowPlayingView(model: .init(store, song: song))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                PlaybackNowPlayingView(
+                    model: .init(
+                        store.scope(state: \.playback, action: \.playback),
+                        song: song
+                    )
+                )
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
             }
         }
         .task {
@@ -25,8 +30,8 @@ struct AppFeatureView: View {
         }
         .sheet(
             isPresented: Binding(
-                get: { store.isPlayerPresented },
-                set: { store.send(.setPlayerPresented($0)) }
+                get: { store.playback.isPlayerPresented },
+                set: { store.send(.playback(.setPlayerPresented($0))) }
             )
         ) {
             PlaybackFeatureView(

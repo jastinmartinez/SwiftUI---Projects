@@ -24,6 +24,9 @@ struct AppFeatureTests {
         )
         let store = makeStore {
             $0.providerAccess.currentAccess = { access }
+            $0.playbackObservation.playbackSnapshots = {
+                AsyncStream { $0.finish() }
+            }
         }
 
         await store.send(.providerSelected(.appleMusic))
@@ -48,11 +51,34 @@ struct AppFeatureTests {
         )
         await store.receive(.resetProviderOwnedState(.appleMusic))
         await store.receive(.search(.cancelSearch))
-        await store.receive(.playback(.cancelPendingOperation))
-        await store.receive(.playback(.timeline(.reset)))
-        await store.receive(.replaceProviderOwnedState(.appleMusic)) {
-            $0.playback.providerID = .appleMusic
+        await store.receive(
+            .playback(
+                .reset(
+                    providerID: .appleMusic,
+                    capabilities: .allEnabled
+                )
+            )
+        ) {
+            $0.playback.pendingReset = .init(
+                requestID: UUID(1),
+                providerID: .appleMusic,
+                capabilities: .allEnabled
+            )
         }
+        await store.receive(.playback(.queue(.reset)))
+        await store.receive(.playback(.timeline(.reset)))
+        await store.receive(
+            .playback(
+                .applyReset(requestID: UUID(1))
+            )
+        ) {
+            $0.playback.providerID = .appleMusic
+            $0.playback.pendingReset = nil
+        }
+        await store.receive(
+            .playback(.delegate(.resetCompleted(.appleMusic)))
+        )
+        await store.receive(.replaceProviderOwnedState(.appleMusic))
         await store.receive(
             .providerConnection(
                 .currentAccessResponse(
@@ -90,13 +116,21 @@ struct AppFeatureTests {
         ) {
             $0.search.providerAccess = access
         }
+        await store.receive(.playback(.task))
     }
 
     @Test
-    func changedProviderConnectionResetsProviderOwnedState() async {
+    func changedProviderConnectionCancelsPlaybackAndResetsProviderOwnedState() async {
         let song = makeSong()
         let queue = IdentifiedArray(uniqueElements: [song])
         let futureProvider = makeProvider(id: "future")
+        let observationProbe = PlaybackObservationLifecycleProbe()
+        let operationProbe = AppSuspendedPlaybackOperationProbe()
+        let seekProbe = AppSuspendedPlaybackOperationProbe()
+        let pendingOperation = PlaybackFeature.PendingStatusChange(
+            requestID: UUID(0),
+            target: .paused
+        )
         let state = makeState(
             providers: [.appleMusic, futureProvider],
             connection: .connecting(
@@ -128,11 +162,37 @@ struct AppFeatureTests {
                     confirmedPosition: 42,
                     interaction: .dragging(position: 50)
                 ),
-                pendingOperation: nil
-            ),
-            isPlayerPresented: true
+                pendingOperation: .statusChange(pendingOperation),
+                pendingReset: nil,
+                isPlayerPresented: true
+            )
         )
-        let store = makeStore(state: state)
+        let store = makeStore(state: state) {
+            $0.playbackObservation.playbackSnapshots =
+                observationProbe.playbackSnapshots
+            $0.playbackControl.pause = operationProbe.callAsFunction
+            $0.playbackControl.seek = seekProbe.callAsFunction
+        }
+
+        await store.send(.playback(.task))
+        await observationProbe.waitForSubscription(1)
+        await store.send(
+            .playback(
+                .performStatusChange(
+                    requestID: pendingOperation.requestID,
+                    target: pendingOperation.target
+                )
+            )
+        )
+        await operationProbe.waitUntilStarted()
+        await store.send(.playback(.timeline(.dragEnded))) {
+            $0.playback.timeline.interaction = .seeking(
+                requestID: UUID(0),
+                position: 50
+            )
+        }
+        await seekProbe.waitUntilStarted()
+        let playbackBeforeReset = store.state.playback
 
         await store.send(
             .providerConnection(
@@ -148,32 +208,208 @@ struct AppFeatureTests {
         await store.receive(.search(.cancelSearch)) {
             $0.search.status = .idle
         }
-        await store.receive(.playback(.cancelPendingOperation))
-        await store.receive(.playback(.timeline(.reset))) {
-            $0.playback.timeline.confirmedPosition = 0
-            $0.playback.timeline.interaction = .idle
+        await store.receive(
+            .playback(
+                .reset(
+                    providerID: futureProvider.id,
+                    capabilities: futureProvider.musicCapabilities
+                )
+            )
+        ) {
+            $0.playback.pendingReset = .init(
+                requestID: UUID(1),
+                providerID: futureProvider.id,
+                capabilities: futureProvider.musicCapabilities
+            )
         }
+
+        var playbackDuringReset = playbackBeforeReset
+        playbackDuringReset.pendingReset = .init(
+            requestID: UUID(1),
+            providerID: futureProvider.id,
+            capabilities: futureProvider.musicCapabilities
+        )
+        #expect(store.state.playback == playbackDuringReset)
+
+        await observationProbe.waitForCancellation(1)
+        await operationProbe.waitUntilCancelled()
+
+        await store.receive(.playback(.queue(.reset))) {
+            $0.playback.queue = .init(songs: [], currentItemID: nil)
+        }
+        await store.receive(.playback(.timeline(.reset))) {
+            $0.playback.timeline = .init(
+                confirmedPosition: 0,
+                interaction: .idle
+            )
+        }
+        await store.receive(
+            .playback(
+                .applyReset(requestID: UUID(1))
+            )
+        ) {
+            $0.playback.providerID = futureProvider.id
+            $0.playback.status = .idle
+            $0.playback.failure = nil
+            $0.playback.playbackEligibility = .unknown
+            $0.playback.capabilities = futureProvider.musicCapabilities
+            $0.playback.pendingOperation = nil
+            $0.playback.pendingReset = nil
+            $0.playback.isPlayerPresented = false
+        }
+        await store.receive(
+            .playback(.delegate(.resetCompleted(futureProvider.id)))
+        )
         await store.receive(.replaceProviderOwnedState(futureProvider.id)) {
             $0.search = SearchFeature.State(
                 query: "",
                 status: .idle,
                 providerAccess: nil
             )
-            $0.playback = PlaybackFeature.State(
-                providerID: futureProvider.id,
-                queue: .init(songs: [], currentItemID: nil),
-                status: .idle,
-                failure: nil,
-                playbackEligibility: .unknown,
-                capabilities: futureProvider.musicCapabilities,
-                timeline: .init(
-                    confirmedPosition: 0,
-                    interaction: .idle
-                ),
-                pendingOperation: nil
-            )
-            $0.isPlayerPresented = false
         }
+        await seekProbe.waitUntilCancelled()
+
+        let access = MusicProviderAccess(
+            authorization: .authorized,
+            playbackEligibility: .eligible
+        )
+        await store.send(
+            .providerConnection(
+                .currentAccessResponse(
+                    requestID: UUID(0),
+                    providerID: futureProvider.id,
+                    access: access
+                )
+            )
+        )
+        await store.receive(
+            .providerConnection(
+                .accessResolved(
+                    requestID: UUID(0),
+                    providerID: futureProvider.id,
+                    access: access
+                )
+            )
+        ) {
+            $0.providerConnection.connection = .connected(
+                providerID: futureProvider.id,
+                access: access
+            )
+        }
+        await store.receive(
+            .providerConnection(
+                .delegate(
+                    .connectionResolved(
+                        .connected(
+                            providerID: futureProvider.id,
+                            access: access
+                        )
+                    )
+                )
+            )
+        ) {
+            $0.search.providerAccess = access
+        }
+        await store.receive(.playback(.task))
+        await observationProbe.waitForSubscription(2)
+
+        let replacementSnapshot = PlaybackSnapshot(
+            currentItemID: nil,
+            status: .playing,
+            currentTime: 27,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
+        )
+        observationProbe.yield(replacementSnapshot, toSubscription: 2)
+        await store.receive(.playback(.snapshotReceived(replacementSnapshot))) {
+            $0.playback.status = .playing
+        }
+        await store.receive(.playback(.queue(.currentItemObserved(nil))))
+        await store.receive(.playback(.timeline(.positionObserved(27)))) {
+            $0.playback.timeline.confirmedPosition = 27
+        }
+
+        observationProbe.finish(subscription: 2)
+        await observationProbe.waitForCancellation(2)
+        await store.finish()
+    }
+
+    @Test
+    func resetCompletionStartsObservationWhenReplacementConnectedFirst() async {
+        let futureProvider = makeProvider(id: "future")
+        let access = MusicProviderAccess(
+            authorization: .authorized,
+            playbackEligibility: .eligible
+        )
+        let pendingReset = PlaybackFeature.PendingReset(
+            requestID: UUID(0),
+            providerID: futureProvider.id,
+            capabilities: futureProvider.musicCapabilities
+        )
+        var playback = makeState().playback
+        playback.pendingReset = pendingReset
+        let state = makeState(
+            providers: [.appleMusic, futureProvider],
+            connection: .connected(
+                providerID: futureProvider.id,
+                access: access
+            ),
+            playback: playback
+        )
+        let observationProbe = PlaybackObservationLifecycleProbe()
+        let store = makeStore(state: state) {
+            $0.playbackObservation.playbackSnapshots =
+                observationProbe.playbackSnapshots
+        }
+
+        await store.send(
+            .playback(
+                .applyReset(requestID: UUID(0))
+            )
+        ) {
+            $0.playback.providerID = futureProvider.id
+            $0.playback.status = .idle
+            $0.playback.failure = nil
+            $0.playback.playbackEligibility = .unknown
+            $0.playback.capabilities = futureProvider.musicCapabilities
+            $0.playback.pendingOperation = nil
+            $0.playback.pendingReset = nil
+            $0.playback.isPlayerPresented = false
+        }
+        await store.receive(
+            .playback(.delegate(.resetCompleted(futureProvider.id)))
+        )
+        await store.receive(.replaceProviderOwnedState(futureProvider.id)) {
+            $0.search = SearchFeature.State(
+                query: "",
+                status: .idle,
+                providerAccess: access
+            )
+        }
+        await store.receive(.playback(.task))
+        await observationProbe.waitForSubscription(1)
+
+        let snapshot = PlaybackSnapshot(
+            currentItemID: nil,
+            status: .paused,
+            currentTime: 14,
+            playbackRate: .normal,
+            repeatMode: .off,
+            shuffleMode: .off
+        )
+        observationProbe.yield(snapshot, toSubscription: 1)
+        await store.receive(.playback(.snapshotReceived(snapshot))) {
+            $0.playback.status = .paused
+        }
+        await store.receive(.playback(.queue(.currentItemObserved(nil))))
+        await store.receive(.playback(.timeline(.positionObserved(14)))) {
+            $0.playback.timeline.confirmedPosition = 14
+        }
+
+        observationProbe.finish(subscription: 1)
+        await observationProbe.waitForCancellation(1)
+        await store.finish()
     }
 
     @Test
@@ -278,9 +514,10 @@ struct AppFeatureTests {
                         confirmedPosition: 0,
                         interaction: .idle
                     ),
-                    pendingOperation: nil
+                    pendingOperation: nil,
+                    pendingReset: nil,
+                    isPlayerPresented: isPlayerPresented
                 ),
-            isPlayerPresented: isPlayerPresented,
             providerSwitch: nil
         )
     }
@@ -306,5 +543,107 @@ struct AppFeatureTests {
             artworkURL: nil,
             duration: 180
         )
+    }
+}
+
+private struct PlaybackObservationLifecycleProbe: Sendable {
+    private let subscriptions: AsyncStream<Int>
+    private let subscriptionsContinuation: AsyncStream<Int>.Continuation
+    private let cancellations: AsyncStream<Int>
+    private let cancellationsContinuation: AsyncStream<Int>.Continuation
+    private let snapshotContinuations = LockIsolated<[AsyncStream<PlaybackSnapshot>.Continuation]>(
+        [])
+
+    init() {
+        (subscriptions, subscriptionsContinuation) = AsyncStream<Int>.makeStream()
+        (cancellations, cancellationsContinuation) = AsyncStream<Int>.makeStream()
+    }
+
+    func playbackSnapshots() async -> AsyncStream<PlaybackSnapshot> {
+        return AsyncStream { continuation in
+            let subscription = snapshotContinuations.withValue {
+                $0.append(continuation)
+                return $0.count
+            }
+            subscriptionsContinuation.yield(subscription)
+            continuation.onTermination = { _ in
+                cancellationsContinuation.yield(subscription)
+            }
+        }
+    }
+
+    func waitForSubscription(_ expectedSubscription: Int) async {
+        var iterator = subscriptions.makeAsyncIterator()
+        while let subscription = await iterator.next() {
+            if subscription == expectedSubscription { return }
+        }
+    }
+
+    func waitForCancellation(_ expectedSubscription: Int) async {
+        var iterator = cancellations.makeAsyncIterator()
+        while let subscription = await iterator.next() {
+            if subscription == expectedSubscription { return }
+        }
+    }
+
+    func yield(
+        _ snapshot: PlaybackSnapshot,
+        toSubscription subscription: Int
+    ) {
+        snapshotContinuations.value[subscription - 1].yield(snapshot)
+    }
+
+    func finish(subscription: Int) {
+        snapshotContinuations.value[subscription - 1].finish()
+    }
+}
+
+private struct AppSuspendedPlaybackOperationProbe: Sendable {
+    private let started: AsyncStream<Void>
+    private let startedContinuation: AsyncStream<Void>.Continuation
+    private let cancelled: AsyncStream<Void>
+    private let cancelledContinuation: AsyncStream<Void>.Continuation
+    private let pendingContinuation =
+        LockIsolated<CheckedContinuation<Void, any Error>?>(nil)
+
+    init() {
+        (started, startedContinuation) = AsyncStream<Void>.makeStream()
+        (cancelled, cancelledContinuation) = AsyncStream<Void>.makeStream()
+    }
+
+    func callAsFunction() async throws {
+        try await suspend()
+    }
+
+    func callAsFunction(_ position: TimeInterval) async throws {
+        try await suspend()
+    }
+
+    private func suspend() async throws {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                pendingContinuation.withValue { $0 = continuation }
+                startedContinuation.yield()
+            }
+        } onCancel: {
+            pendingContinuation.withValue { pendingContinuation in
+                let continuation = pendingContinuation
+                pendingContinuation = nil
+                continuation?.resume(throwing: CancellationError())
+            }
+            cancelledContinuation.yield()
+        }
+    }
+
+    func waitUntilStarted() async {
+        var iterator = started.makeAsyncIterator()
+        _ = await iterator.next()
+        startedContinuation.finish()
+    }
+
+    func waitUntilCancelled() async {
+        var iterator = cancelled.makeAsyncIterator()
+        _ = await iterator.next()
+        cancelledContinuation.finish()
     }
 }

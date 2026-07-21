@@ -14,6 +14,8 @@ struct PlaybackFeature {
         var capabilities: MusicProviderCapabilities
         var timeline: PlaybackTimelineFeature.State
         var pendingOperation: PendingOperation?
+        var pendingReset: PendingReset?
+        var isPlayerPresented: Bool
     }
 
     enum PendingOperation: Equatable {
@@ -38,8 +40,24 @@ struct PlaybackFeature {
         }
     }
 
+    struct PendingReset: Equatable {
+        let requestID: UUID
+        let providerID: ProviderID
+        let capabilities: MusicProviderCapabilities
+    }
+
+    enum Delegate: Equatable {
+        case resetCompleted(ProviderID)
+    }
+
     enum Action: Equatable {
         case task
+        case reset(
+            providerID: ProviderID,
+            capabilities: MusicProviderCapabilities
+        )
+        case applyReset(requestID: UUID)
+        case delegate(Delegate)
         case selectionReceived(
             SongSummary,
             loadedResults: IdentifiedArrayOf<SongSummary>,
@@ -68,6 +86,7 @@ struct PlaybackFeature {
             requestID: UUID,
             error: MusicProviderError
         )
+        case setPlayerPresented(Bool)
         case snapshotReceived(PlaybackSnapshot)
         case queue(PlaybackQueueFeature.Action)
         case timeline(PlaybackTimelineFeature.Action)
@@ -75,7 +94,7 @@ struct PlaybackFeature {
 
     private enum CancelID {
         case playbackObservation
-        case queueReplacement
+        case parentOperation
     }
 
     @Dependency(\.playbackControl) var playbackControl
@@ -92,6 +111,7 @@ struct PlaybackFeature {
         Reduce { state, action in
             switch action {
             case .task:
+                guard state.pendingReset == nil else { return .none }
                 return .run { send in
                     let snapshots = await playbackObservation.playbackSnapshots()
                     for await snapshot in snapshots {
@@ -103,29 +123,73 @@ struct PlaybackFeature {
                     cancelInFlight: true
                 )
 
+            case .reset(let providerID, let capabilities):
+                let requestID = uuid()
+                state.pendingReset = PendingReset(
+                    requestID: requestID,
+                    providerID: providerID,
+                    capabilities: capabilities
+                )
+                return .concatenate(
+                    .merge(
+                        .cancel(id: CancelID.playbackObservation),
+                        .cancel(id: CancelID.parentOperation)
+                    ),
+                    .send(.queue(.reset)),
+                    .send(.timeline(.reset)),
+                    .send(.applyReset(requestID: requestID))
+                )
+
+            case .applyReset(let requestID):
+                guard let pendingReset = state.pendingReset,
+                    pendingReset.requestID == requestID
+                else { return .none }
+
+                state.providerID = pendingReset.providerID
+                state.status = .idle
+                state.failure = nil
+                state.playbackEligibility = .unknown
+                state.capabilities = pendingReset.capabilities
+                state.pendingOperation = nil
+                state.pendingReset = nil
+                state.isPlayerPresented = false
+                return .send(
+                    .delegate(.resetCompleted(pendingReset.providerID))
+                )
+
+            case .delegate:
+                return .none
+
             case .selectionReceived(
                 let song,
                 let loadedResults,
                 let providerID,
                 let playbackEligibility
             ):
-                guard state.providerID == providerID,
+                let hasNowPlaying = !state.queue.songs.isEmpty
+                guard state.pendingReset == nil,
+                    state.providerID == providerID,
                     playbackEligibility == .eligible,
                     state.capabilities.supportsEmbeddedPlayback,
                     state.capabilities.supportsQueueReplacement,
                     loadedResults[id: song.id] != nil,
                     loadedResults.allSatisfy({ $0.id.providerID == providerID })
                 else {
-                    if state.providerID == providerID,
+                    if state.pendingReset == nil,
+                        state.providerID == providerID,
                         playbackEligibility != .eligible,
-                        state.queue.songs.isEmpty
+                        !hasNowPlaying
                     {
                         state.playbackEligibility = playbackEligibility
                         state.failure = nil
+                        state.isPlayerPresented = true
                     }
                     return .none
                 }
 
+                if !hasNowPlaying {
+                    state.isPlayerPresented = true
+                }
                 let requestID = uuid()
                 state.pendingOperation = .queueReplacement(
                     PendingQueueReplacement(
@@ -149,6 +213,11 @@ struct PlaybackFeature {
                 let itemIDs,
                 let startingItemID
             ):
+                guard state.pendingReset == nil,
+                    case .queueReplacement(let replacement) =
+                        state.pendingOperation,
+                    replacement.requestID == requestID
+                else { return .none }
                 return .run { send in
                     do {
                         try await playbackControl.playQueue(
@@ -180,7 +249,7 @@ struct PlaybackFeature {
                     }
                 }
                 .cancellable(
-                    id: CancelID.queueReplacement,
+                    id: CancelID.parentOperation,
                     cancelInFlight: true
                 )
 
@@ -219,7 +288,7 @@ struct PlaybackFeature {
 
             case .cancelPendingOperation:
                 state.pendingOperation = nil
-                return .cancel(id: CancelID.queueReplacement)
+                return .cancel(id: CancelID.parentOperation)
 
             case .playPauseTapped:
                 guard state.canRequestPlayPause else { return .none }
@@ -252,6 +321,11 @@ struct PlaybackFeature {
                 )
 
             case .performStatusChange(let requestID, let target):
+                guard state.pendingReset == nil,
+                    case .statusChange(let change) = state.pendingOperation,
+                    change.requestID == requestID,
+                    change.target == target
+                else { return .none }
                 return .run { send in
                     do {
                         switch target {
@@ -285,7 +359,7 @@ struct PlaybackFeature {
                     }
                 }
                 .cancellable(
-                    id: CancelID.queueReplacement,
+                    id: CancelID.parentOperation,
                     cancelInFlight: true
                 )
 
@@ -320,6 +394,7 @@ struct PlaybackFeature {
                 return .none
 
             case .snapshotReceived(let snapshot):
+                guard state.pendingReset == nil else { return .none }
                 state.status = snapshot.status
 
                 if case .queueReplacement(let replacement) =
@@ -330,7 +405,7 @@ struct PlaybackFeature {
                     state.pendingOperation = nil
                     state.failure = nil
                     return .concatenate(
-                        .cancel(id: CancelID.queueReplacement),
+                        .cancel(id: CancelID.parentOperation),
                         .send(
                             .queue(
                                 .replace(
@@ -363,7 +438,7 @@ struct PlaybackFeature {
                         state.failure = nil
                         if change.target == .stopped {
                             return .concatenate(
-                                .cancel(id: CancelID.queueReplacement),
+                                .cancel(id: CancelID.parentOperation),
                                 .send(.timeline(.reset)),
                                 .send(
                                     .queue(
@@ -375,7 +450,7 @@ struct PlaybackFeature {
                             )
                         }
                         return .concatenate(
-                            .cancel(id: CancelID.queueReplacement),
+                            .cancel(id: CancelID.parentOperation),
                             .send(
                                 .queue(
                                     .currentItemObserved(snapshot.currentItemID)
@@ -403,6 +478,10 @@ struct PlaybackFeature {
                     )
                 )
 
+            case .setPlayerPresented(let isPresented):
+                state.isPlayerPresented = isPresented
+                return .none
+
             case .timeline(.delegate(.transportFailed(let error))):
                 state.failure = error
                 return .none
@@ -419,10 +498,13 @@ extension PlaybackFeature.State {
         !queue.songs.isEmpty
             && capabilities.supportsEmbeddedPlayback
             && pendingOperation == nil
+            && pendingReset == nil
     }
 
     var canRequestStop: Bool {
-        guard capabilities.supportsEmbeddedPlayback else { return false }
+        guard capabilities.supportsEmbeddedPlayback,
+            pendingReset == nil
+        else { return false }
         switch pendingOperation {
         case .queueReplacement:
             return true

@@ -7,13 +7,12 @@ import Testing
 @MainActor
 struct AppPlaybackCoordinationTests {
     @Test
-    func searchSelectionRoutesExactLoadedResultsIntoPlayback() async {
+    func firstEligibleSelectionRoutesLoadedResultsAndOpensPlayer() async {
         let songs = makeSongs()
         let loadedResults = IdentifiedArray(uniqueElements: songs)
-        let calls = LockIsolated<[MusicItemID]>([])
         let store = makeStore {
-            $0.playbackControl.playQueue = { itemIDs, _ in
-                calls.withValue { $0 = itemIDs }
+            $0.playbackControl.playQueue = { _, _ in
+                try await Task.sleep(for: .seconds(60))
             }
         }
 
@@ -26,9 +25,7 @@ struct AppPlaybackCoordinationTests {
                     )
                 )
             )
-        ) {
-            $0.isPlayerPresented = true
-        }
+        )
         await store.receive(
             .playback(
                 .selectionReceived(
@@ -39,6 +36,7 @@ struct AppPlaybackCoordinationTests {
                 )
             )
         ) {
+            $0.playback.isPlayerPresented = true
             $0.playback.pendingOperation = .queueReplacement(
                 .init(
                     requestID: UUID(0),
@@ -58,32 +56,58 @@ struct AppPlaybackCoordinationTests {
                 )
             )
         )
-        await store.receive(
-            .playback(.queueReplacementSucceeded(requestID: UUID(0)))
-        ) {
+        await store.send(.playback(.cancelPendingOperation)) {
             $0.playback.pendingOperation = nil
-            $0.playback.status = .playing
         }
-        await store.receive(
-            .playback(
-                .queue(
-                    .replace(
-                        loadedResults,
-                        startingAt: songs[1].id
-                    )
-                )
-            )
-        ) {
-            $0.playback.queue.songs = loadedResults
-            $0.playback.queue.currentItemID = songs[1].id
-        }
-        await store.receive(.playback(.timeline(.reset)))
-
-        #expect(calls.value == Array(loadedResults.ids))
     }
 
     @Test
-    func laterSelectionDoesNotReopenDismissedPlayer() async {
+    func initialIneligibleSelectionOpensPlayerWithoutCallingPlayback() async {
+        let song = makeSong(nativeID: "restricted")
+        let loadedResults = IdentifiedArray(uniqueElements: [song])
+        let calls = LockIsolated(0)
+        let store = makeStore(
+            access: MusicProviderAccess(
+                authorization: .authorized,
+                playbackEligibility: .ineligible
+            )
+        ) {
+            $0.playbackControl.playQueue = { _, _ in
+                calls.withValue { $0 += 1 }
+            }
+        }
+
+        await store.send(
+            .search(
+                .delegate(
+                    .songTapped(
+                        song,
+                        loadedResults: loadedResults
+                    )
+                )
+            )
+        )
+        await store.receive(
+            .playback(
+                .selectionReceived(
+                    song,
+                    loadedResults: loadedResults,
+                    providerID: providerID,
+                    playbackEligibility: .ineligible
+                )
+            )
+        ) {
+            $0.playback.isPlayerPresented = true
+            $0.playback.playbackEligibility = .ineligible
+            $0.playback.failure = nil
+        }
+
+        #expect(calls.value == 0)
+        #expect(store.state.playback.queue.currentItem == nil)
+    }
+
+    @Test
+    func laterSelectionReplacesPlaybackWithoutReopeningDismissedPlayer() async {
         let currentSongs = makeSongs(prefix: "current")
         let currentQueue = IdentifiedArray(uniqueElements: currentSongs)
         let nextSongs = makeSongs(prefix: "next")
@@ -95,9 +119,10 @@ struct AppPlaybackCoordinationTests {
             ),
             isPlayerPresented: false
         ) {
-            $0.playbackControl.playQueue = { _, _ in }
+            $0.playbackControl.playQueue = { _, _ in
+                try await Task.sleep(for: .seconds(60))
+            }
         }
-        store.exhaustivity = .off
 
         await store.send(
             .search(
@@ -109,8 +134,160 @@ struct AppPlaybackCoordinationTests {
                 )
             )
         )
+        await store.receive(
+            .playback(
+                .selectionReceived(
+                    nextSongs[0],
+                    loadedResults: nextQueue,
+                    providerID: providerID,
+                    playbackEligibility: .eligible
+                )
+            )
+        ) {
+            $0.playback.pendingOperation = .queueReplacement(
+                .init(
+                    requestID: UUID(0),
+                    songs: nextQueue,
+                    startingItemID: nextSongs[0].id
+                )
+            )
+            $0.playback.playbackEligibility = .eligible
+            $0.playback.failure = nil
+        }
+        await store.receive(
+            .playback(
+                .performQueueReplacement(
+                    requestID: UUID(0),
+                    itemIDs: Array(nextQueue.ids),
+                    startingItemID: nextSongs[0].id
+                )
+            )
+        )
 
-        #expect(!store.state.isPlayerPresented)
+        #expect(!store.state.playback.isPlayerPresented)
+        #expect(store.state.playback.queue.songs == currentQueue)
+
+        await store.send(.playback(.cancelPendingOperation)) {
+            $0.playback.pendingOperation = nil
+        }
+    }
+
+    @Test
+    func laterPaginatedResultsAreFrozenOnlyWhenLaterSongIsTapped() async {
+        let firstPageSongs = makeSongs(prefix: "first")
+        let firstPage = IdentifiedArray(uniqueElements: firstPageSongs)
+        let laterSong = makeSong(nativeID: "later")
+        let laterSongs = firstPageSongs + [laterSong]
+        let laterResults = IdentifiedArray(uniqueElements: laterSongs)
+        let cursor = SearchCursor(value: "page-2")
+        var state = makeState(
+            playbackQueue: PlaybackQueueFeature.State(
+                songs: firstPage,
+                currentItemID: firstPageSongs[0].id
+            )
+        )
+        state.search.status = .loaded(
+            SearchPaginationFeature.State(
+                songs: firstPage,
+                nextCursor: cursor,
+                status: .idle
+            )
+        )
+        let store = makeStore(state: state) {
+            $0.providerSearch.searchPage = { request, limit in
+                #expect(request == .continuation(cursor))
+                #expect(limit == 20)
+                return SearchPage(songs: [laterSong], nextCursor: nil)
+            }
+            $0.playbackControl.playQueue = { _, _ in
+                try await Task.sleep(for: .seconds(60))
+            }
+        }
+
+        await store.send(.search(.pagination(.nextPageRequested)))
+        await store.receive(
+            .search(
+                .pagination(
+                    .continueSearch(cursor: cursor, requestID: UUID(0))
+                )
+            )
+        ) {
+            guard case .loaded(var pagination) = $0.search.status else {
+                return
+            }
+            pagination.status = .loading(requestID: UUID(0))
+            $0.search.status = .loaded(pagination)
+        }
+        await store.receive(
+            .search(
+                .pagination(
+                    .searchPageResponse(
+                        UUID(0),
+                        .success(
+                            SearchPage(songs: [laterSong], nextCursor: nil)
+                        )
+                    )
+                )
+            )
+        ) {
+            guard case .loaded(var pagination) = $0.search.status else {
+                return
+            }
+            pagination.songs.append(laterSong)
+            pagination.nextCursor = nil
+            pagination.status = .idle
+            $0.search.status = .loaded(pagination)
+        }
+
+        #expect(store.state.playback.queue.songs == firstPage)
+
+        await store.send(.search(.resultTapped(laterSong.id)))
+        await store.receive(
+            .search(.delegate(.songTapped(laterSong, loadedResults: laterResults)))
+        )
+        await store.receive(
+            .playback(
+                .selectionReceived(
+                    laterSong,
+                    loadedResults: laterResults,
+                    providerID: providerID,
+                    playbackEligibility: .eligible
+                )
+            )
+        ) {
+            $0.playback.pendingOperation = .queueReplacement(
+                .init(
+                    requestID: UUID(1),
+                    songs: laterResults,
+                    startingItemID: laterSong.id
+                )
+            )
+            $0.playback.playbackEligibility = .eligible
+            $0.playback.failure = nil
+        }
+        await store.receive(
+            .playback(
+                .performQueueReplacement(
+                    requestID: UUID(1),
+                    itemIDs: Array(laterResults.ids),
+                    startingItemID: laterSong.id
+                )
+            )
+        )
+
+        #expect(store.state.playback.queue.songs == firstPage)
+        guard
+            case .queueReplacement(let replacement) =
+                store.state.playback.pendingOperation
+        else {
+            Issue.record("Expected a pending queue replacement")
+            return
+        }
+        #expect(replacement.songs == laterResults)
+
+        await store.send(.playback(.cancelPendingOperation)) {
+            $0.playback.pendingOperation = nil
+        }
     }
 
     @Test
@@ -137,49 +314,6 @@ struct AppPlaybackCoordinationTests {
         )
 
         #expect(store.state == state)
-    }
-
-    @Test
-    func ineligibleSelectionOpensPlayerWithoutCallingPlayback() async {
-        let song = makeSong(nativeID: "restricted")
-        let loadedResults = IdentifiedArray(uniqueElements: [song])
-        let calls = LockIsolated(0)
-        let store = makeStore(
-            access: MusicProviderAccess(
-                authorization: .authorized,
-                playbackEligibility: .ineligible
-            )
-        ) {
-            $0.playbackControl.playQueue = { _, _ in
-                calls.withValue { $0 += 1 }
-            }
-        }
-
-        await store.send(
-            .search(
-                .delegate(
-                    .songTapped(
-                        song,
-                        loadedResults: loadedResults
-                    )
-                )
-            )
-        ) {
-            $0.isPlayerPresented = true
-        }
-        await store.receive(
-            .playback(
-                .selectionReceived(
-                    song,
-                    loadedResults: loadedResults,
-                    providerID: providerID,
-                    playbackEligibility: .ineligible
-                )
-            )
-        )
-
-        #expect(calls.value == 0)
-        #expect(store.state.playback.queue.currentItem == nil)
     }
 
     // MARK: - Helpers
@@ -261,9 +395,10 @@ struct AppPlaybackCoordinationTests {
                     confirmedPosition: 0,
                     interaction: .idle
                 ),
-                pendingOperation: nil
+                pendingOperation: nil,
+                pendingReset: nil,
+                isPlayerPresented: isPlayerPresented
             ),
-            isPlayerPresented: isPlayerPresented,
             providerSwitch: providerSwitch
         )
     }

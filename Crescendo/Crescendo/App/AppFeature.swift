@@ -9,7 +9,6 @@ struct AppFeature {
         var providerConnection: ProviderConnectionFeature.State
         var search: SearchFeature.State
         var playback: PlaybackFeature.State
-        var isPlayerPresented: Bool
         var providerSwitch: ProviderSwitchFeature.State?
 
         var requiresProviderSelection: Bool {
@@ -30,7 +29,6 @@ struct AppFeature {
         case providerSwitch(ProviderSwitchFeature.Action)
         case search(SearchFeature.Action)
         case playback(PlaybackFeature.Action)
-        case setPlayerPresented(Bool)
     }
 
     var body: some ReducerOf<Self> {
@@ -121,41 +119,49 @@ struct AppFeature {
                 }
                 return .concatenate(
                     .send(.search(.cancelSearch)),
-                    .send(.playback(.cancelPendingOperation)),
-                    .send(.playback(.timeline(.reset))),
-                    .send(.replaceProviderOwnedState(provider.id))
+                    .send(
+                        .playback(
+                            .reset(
+                                providerID: provider.id,
+                                capabilities: provider.musicCapabilities
+                            )
+                        )
+                    )
                 )
 
-            case .replaceProviderOwnedState(let providerID):
-                guard
-                    let provider = state.providerConnection.provider(
-                        id: providerID
+            case .playback(.delegate(.resetCompleted(let providerID))):
+                if case .connected(let connectedProviderID, let access) =
+                    state.providerConnection.connection,
+                    connectedProviderID == providerID,
+                    access.authorization == .authorized
+                {
+                    return .concatenate(
+                        .send(.replaceProviderOwnedState(providerID)),
+                        .send(.playback(.task))
                     )
+                }
+                return .send(.replaceProviderOwnedState(providerID))
+
+            case .replaceProviderOwnedState(let providerID):
+                guard state.providerConnection.provider(id: providerID) != nil
                 else {
                     return .none
+                }
+                let providerAccess: MusicProviderAccess?
+                if case .connected(let connectedProviderID, let access) =
+                    state.providerConnection.connection,
+                    connectedProviderID == providerID,
+                    access.authorization == .authorized
+                {
+                    providerAccess = access
+                } else {
+                    providerAccess = nil
                 }
                 state.search = SearchFeature.State(
                     query: "",
                     status: .idle,
-                    providerAccess: nil
+                    providerAccess: providerAccess
                 )
-                state.playback = PlaybackFeature.State(
-                    providerID: providerID,
-                    queue: PlaybackQueueFeature.State(
-                        songs: [],
-                        currentItemID: nil
-                    ),
-                    status: .idle,
-                    failure: nil,
-                    playbackEligibility: .unknown,
-                    capabilities: provider.musicCapabilities,
-                    timeline: PlaybackTimelineFeature.State(
-                        confirmedPosition: 0,
-                        interaction: .idle
-                    ),
-                    pendingOperation: nil
-                )
-                state.isPlayerPresented = false
                 return .none
 
             case .providerConnection(
@@ -165,6 +171,7 @@ struct AppFeature {
                     access.authorization == .authorized
                 {
                     state.search.providerAccess = access
+                    return .send(.playback(.task))
                 } else {
                     state.search.providerAccess = nil
                 }
@@ -185,9 +192,6 @@ struct AppFeature {
                 else {
                     return .none
                 }
-                if state.playback.queue.songs.isEmpty {
-                    state.isPlayerPresented = true
-                }
                 return .send(
                     .playback(
                         .selectionReceived(
@@ -200,10 +204,6 @@ struct AppFeature {
                 )
 
             case .search, .playback:
-                return .none
-
-            case .setPlayerPresented(let isPresented):
-                state.isPlayerPresented = isPresented
                 return .none
             }
         }

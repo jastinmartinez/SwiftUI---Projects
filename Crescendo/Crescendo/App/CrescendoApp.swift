@@ -34,9 +34,10 @@ struct CrescendoApp: App {
                         confirmedPosition: 0,
                         interaction: .idle
                     ),
-                    pendingOperation: nil
+                    pendingOperation: nil,
+                    pendingReset: nil,
+                    isPlayerPresented: false
                 ),
-                isPlayerPresented: false,
                 providerSwitch: nil
             )
         ) {
