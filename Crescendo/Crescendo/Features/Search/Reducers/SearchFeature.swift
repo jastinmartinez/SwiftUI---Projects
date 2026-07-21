@@ -29,7 +29,7 @@ struct SearchFeature {
         case retryButtonTapped
         case resultTapped(MusicItemID)
         case delegate(Delegate)
-        case searchResponse(UUID, Result<[SongSummary], MusicProviderError>)
+        case searchResponse(UUID, Result<SearchPage, MusicProviderError>)
     }
 
     enum CancelID { case search }
@@ -58,8 +58,8 @@ struct SearchFeature {
                 state.phase = .loading(requestID: requestID)
                 return .run { send in
                     do {
-                        let songs = try await providerSearch.search(query, 20)
-                        await send(.searchResponse(requestID, .success(songs)))
+                        let page = try await providerSearch.search(query, 20)
+                        await send(.searchResponse(requestID, .success(page)))
                     } catch let error as MusicProviderError {
                         await send(.searchResponse(requestID, .failure(error)))
                     } catch {
@@ -77,10 +77,10 @@ struct SearchFeature {
             case .delegate:
                 return .none
 
-            case .searchResponse(let requestID, .success(let songs)):
+            case .searchResponse(let requestID, .success(let page)):
                 let expectedPhase: Phase = .loading(requestID: requestID)
                 guard state.phase == expectedPhase else { return .none }
-                state.phase = .loaded(songs)
+                state.phase = .loaded(page.songs)
                 return .none
 
             case .searchResponse(let requestID, .failure):

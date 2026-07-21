@@ -24,11 +24,12 @@ struct FakeMusicProviderTests {
         let searchClient = await fake.searchClient()
         let currentAccess = await accessClient.currentAccess()
         let requestedAccess = await accessClient.requestAccess()
-        let searchResults = try await searchClient.search("test", 20)
+        let searchPage = try await searchClient.search("test", 20)
 
         #expect(currentAccess == expectedAccess)
         #expect(requestedAccess == expectedAccess)
-        #expect(searchResults == [expectedSong])
+        #expect(searchPage.songs == [expectedSong])
+        #expect(searchPage.nextCursor == nil)
     }
 
     @Test

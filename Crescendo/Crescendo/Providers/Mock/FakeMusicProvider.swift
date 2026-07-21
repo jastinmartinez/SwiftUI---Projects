@@ -27,7 +27,13 @@ actor FakeMusicProvider {
     func searchClient() -> ProviderSearchClient {
         ProviderSearchClient(
             search: { [weak self] _, limit in
-                Array((self?.configuredResults ?? []).prefix(limit))
+                SearchPage(
+                    songs: Array((self?.configuredResults ?? []).prefix(limit)),
+                    nextCursor: nil
+                )
+            },
+            nextSearchPage: { _, _ in
+                throw MusicProviderError.unavailable
             }
         )
     }

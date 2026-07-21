@@ -29,13 +29,38 @@ actor AppleMusicProvider {
         return await accessSnapshot(for: authorizationStatus)
     }
 
-    /// Searches at most twenty catalog songs and caches native and app-owned values for this session.
-    func search(_ query: String, limit: Int) async throws -> [SongSummary] {
+    /// Searches the first catalog page and caches native and app-owned values for this session.
+    func search(_ query: String, limit: Int) async throws -> SearchPage {
+        try await search(query, limit: limit, offset: 0)
+    }
+
+    /// Searches the page represented by provider-private continuation data.
+    func nextSearchPage(
+        _ cursor: SearchCursor,
+        limit: Int
+    ) async throws -> SearchPage {
+        let appleMusicCursor = try AppleMusicSearchCursor(
+            searchCursor: cursor
+        )
+        return try await search(
+            appleMusicCursor.query,
+            limit: limit,
+            offset: appleMusicCursor.offset
+        )
+    }
+
+    /// Searches one catalog page and updates the session caches used by playback.
+    private func search(
+        _ query: String,
+        limit: Int,
+        offset: Int
+    ) async throws -> SearchPage {
         var request = MusicCatalogSearchRequest(term: query, types: [Song.self])
         request.limit = min(limit, 20)
+        request.offset = offset
         let response = try await request.response()
 
-        return response.songs.map { appleMusicSong in
+        let summaries = response.songs.map { appleMusicSong in
             let nativeID = appleMusicSong.id.rawValue
             let songSummary = SongSummary(
                 appleMusicNativeID: nativeID,
@@ -48,6 +73,21 @@ actor AppleMusicProvider {
             summariesByNativeID[nativeID] = songSummary
             return songSummary
         }
+
+        let nextCursor: SearchCursor? =
+            if response.songs.hasNextBatch {
+                try AppleMusicSearchCursor(
+                    query: query,
+                    offset: offset + summaries.count
+                ).searchCursor()
+            } else {
+                nil
+            }
+
+        return SearchPage(
+            songs: summaries,
+            nextCursor: nextCursor
+        )
     }
 
     /// Replaces the application queue with one cached song, prepares it, and begins playback.

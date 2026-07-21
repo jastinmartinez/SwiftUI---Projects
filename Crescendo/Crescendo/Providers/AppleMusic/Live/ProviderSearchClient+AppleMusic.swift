@@ -9,6 +9,9 @@ extension ProviderSearchClient {
         Self(
             search: { query, limit in
                 try await provider.search(query, limit: limit)
+            },
+            nextSearchPage: { cursor, limit in
+                try await provider.nextSearchPage(cursor, limit: limit)
             }
         )
     }

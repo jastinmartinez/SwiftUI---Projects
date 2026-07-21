@@ -9,6 +9,10 @@ struct SearchFeatureTests {
     @Test
     func authorizedAccessSearchesImmediatelyWithoutRequestingAccess() async {
         let song = makeSong()
+        let page = SearchPage(
+            songs: [song],
+            nextCursor: SearchCursor(value: "next")
+        )
         let access = makeAccess(
             authorization: .authorized,
             playbackEligibility: .eligible
@@ -23,13 +27,21 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.search = { _, _ in [song] }
+            $0.providerSearch.search = { query, limit in
+                #expect(query == "result")
+                #expect(limit == 20)
+                return page
+            }
+            $0.providerSearch.nextSearchPage = { _, _ in
+                Issue.record("The initial search must not request a continuation page")
+                return SearchPage(songs: [], nextCursor: nil)
+            }
         }
 
         await store.send(.submitButtonTapped) {
             $0.phase = .loading(requestID: UUID(0))
         }
-        await store.receive(.searchResponse(UUID(0), .success([song]))) {
+        await store.receive(.searchResponse(UUID(0), .success(page))) {
             $0.phase = .loaded([song])
         }
     }
@@ -37,6 +49,7 @@ struct SearchFeatureTests {
     @Test
     func ineligibleAuthorizedAccessStillSearchesAndIsRetained() async {
         let song = makeSong()
+        let page = SearchPage(songs: [song], nextCursor: nil)
         let access = makeAccess(
             authorization: .authorized,
             playbackEligibility: .ineligible
@@ -51,13 +64,17 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.search = { _, _ in [song] }
+            $0.providerSearch.search = { _, _ in page }
+            $0.providerSearch.nextSearchPage = { _, _ in
+                Issue.record("The initial search must not request a continuation page")
+                return SearchPage(songs: [], nextCursor: nil)
+            }
         }
 
         await store.send(.submitButtonTapped) {
             $0.phase = .loading(requestID: UUID(0))
         }
-        await store.receive(.searchResponse(UUID(0), .success([song]))) {
+        await store.receive(.searchResponse(UUID(0), .success(page))) {
             $0.phase = .loaded([song])
         }
 
@@ -86,7 +103,11 @@ struct SearchFeatureTests {
             } withDependencies: {
                 $0.providerSearch.search = { _, _ in
                     Issue.record("Search must not run without authorized access")
-                    return []
+                    return SearchPage(songs: [], nextCursor: nil)
+                }
+                $0.providerSearch.nextSearchPage = { _, _ in
+                    Issue.record("Pagination must not run without authorized access")
+                    return SearchPage(songs: [], nextCursor: nil)
                 }
             }
 
@@ -114,6 +135,10 @@ struct SearchFeatureTests {
             $0.providerSearch.search = { _, _ in
                 try await Task.never()
             }
+            $0.providerSearch.nextSearchPage = { _, _ in
+                Issue.record("The initial search must not request a continuation page")
+                return SearchPage(songs: [], nextCursor: nil)
+            }
         }
 
         await store.send(.submitButtonTapped) {
@@ -123,7 +148,12 @@ struct SearchFeatureTests {
             $0.query = "new"
             $0.phase = .idle
         }
-        await store.send(.searchResponse(UUID(0), .success([makeSong()])))
+        await store.send(
+            .searchResponse(
+                UUID(0),
+                .success(SearchPage(songs: [makeSong()], nextCursor: nil))
+            )
+        )
     }
 
     @Test
