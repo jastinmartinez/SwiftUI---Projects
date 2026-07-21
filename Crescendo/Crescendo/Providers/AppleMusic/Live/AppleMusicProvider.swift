@@ -56,7 +56,7 @@ actor AppleMusicProvider {
         offset: Int
     ) async throws -> SearchPage {
         var request = MusicCatalogSearchRequest(term: query, types: [Song.self])
-        request.limit = min(limit, 20)
+        request.limit = limit
         request.offset = offset
         let response = try await request.response()
 
