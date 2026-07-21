@@ -221,6 +221,10 @@ struct PlaybackPresentationAdapterTests {
         let store: StoreOf<PlaybackFeature> = Store(
             initialState: PlaybackFeature.State(
                 selectedSong: makeSong(duration: 215),
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: .observing(.idle),
                 playbackEligibility: .eligible,
                 capabilities: makeCapabilities(supportsSeeking: true),
@@ -549,6 +553,10 @@ struct PlaybackPresentationAdapterTests {
         Store(
             initialState: PlaybackFeature.State(
                 selectedSong: selectedSong,
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: phase,
                 playbackEligibility: playbackEligibility,
                 capabilities: capabilities,
@@ -568,6 +576,10 @@ struct PlaybackPresentationAdapterTests {
         Store(
             initialState: PlaybackFeature.State(
                 selectedSong: makeSong(duration: 215),
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: .observing(
                     makeSnapshot(status: status, currentTime: 43)
                 ),
@@ -611,6 +623,10 @@ struct PlaybackPresentationAdapterTests {
                 ),
                 playback: PlaybackFeature.State(
                     selectedSong: song,
+                    queue: PlaybackQueueFeature.State(
+                        songs: [],
+                        currentItemID: nil
+                    ),
                     phase: .observing(
                         makeSnapshot(status: .playing, currentTime: currentTime)
                     ),

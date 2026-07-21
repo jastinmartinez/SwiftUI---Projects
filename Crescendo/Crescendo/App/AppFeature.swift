@@ -160,6 +160,10 @@ struct AppFeature {
                 )
                 state.playback = PlaybackFeature.State(
                     selectedSong: nil,
+                    queue: PlaybackQueueFeature.State(
+                        songs: [],
+                        currentItemID: nil
+                    ),
                     phase: .observing(.idle),
                     playbackEligibility: .unknown,
                     capabilities: provider.musicCapabilities,

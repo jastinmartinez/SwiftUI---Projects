@@ -100,6 +100,10 @@ struct PlaybackNowPlayingPresentationTests {
             ),
             playback: PlaybackFeature.State(
                 selectedSong: song,
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: .observing(
                     PlaybackSnapshot(
                         currentItemID: song.id,

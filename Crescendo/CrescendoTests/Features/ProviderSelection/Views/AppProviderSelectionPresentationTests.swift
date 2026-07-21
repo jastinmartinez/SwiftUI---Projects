@@ -180,6 +180,10 @@ struct AppProviderSelectionPresentationTests {
                 ),
                 playback: PlaybackFeature.State(
                     selectedSong: nil,
+                    queue: PlaybackQueueFeature.State(
+                        songs: [],
+                        currentItemID: nil
+                    ),
                     phase: .observing(.idle),
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled,

@@ -484,6 +484,10 @@ struct AppPlaybackCoordinationTests {
             ),
             playback: PlaybackFeature.State(
                 selectedSong: song,
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: phase,
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,

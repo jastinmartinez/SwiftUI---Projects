@@ -7,6 +7,7 @@ struct PlaybackFeature {
     @ObservableState
     struct State: Equatable {
         var selectedSong: SongSummary?
+        var queue: PlaybackQueueFeature.State
         var phase: Phase
         var playbackEligibility: CatalogPlaybackEligibility
         var capabilities: MusicProviderCapabilities
@@ -70,6 +71,7 @@ struct PlaybackFeature {
         case delegate(Delegate)
         case pauseTapped
         case stopTapped
+        case queue(PlaybackQueueFeature.Action)
         case timeline(PlaybackTimelineFeature.Action)
         case transportFinished
         case transportFailed(MusicProviderError)
@@ -84,6 +86,9 @@ struct PlaybackFeature {
     @Dependency(\.playbackObservation) var playbackObservation
 
     var body: some ReducerOf<Self> {
+        Scope(state: \.queue, action: \.queue) {
+            PlaybackQueueFeature()
+        }
         Scope(state: \.timeline, action: \.timeline) {
             PlaybackTimelineFeature()
         }
@@ -168,6 +173,9 @@ struct PlaybackFeature {
                         try await playbackControl.stop()
                     }
                 )
+
+            case .queue:
+                return .none
 
             case .timeline(.delegate(.transportFailed(let error))):
                 state.phase = .failed(

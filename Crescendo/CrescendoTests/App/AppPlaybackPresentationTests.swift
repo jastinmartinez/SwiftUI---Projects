@@ -24,6 +24,10 @@ struct AppPlaybackPresentationTests {
         )
         let playback = PlaybackFeature.State(
             selectedSong: song,
+            queue: PlaybackQueueFeature.State(
+                songs: [],
+                currentItemID: nil
+            ),
             phase: .failed(.playbackFailed, lastSnapshot: snapshot),
             playbackEligibility: .eligible,
             capabilities: .allEnabled,

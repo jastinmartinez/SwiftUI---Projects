@@ -108,6 +108,10 @@ struct AppFeatureTests {
             ),
             playback: PlaybackFeature.State(
                 selectedSong: song,
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: .observing(
                     PlaybackSnapshot(
                         currentItemID: song.id,
@@ -160,6 +164,10 @@ struct AppFeatureTests {
             )
             $0.playback = PlaybackFeature.State(
                 selectedSong: nil,
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: futureProvider.musicCapabilities,
@@ -403,6 +411,10 @@ struct AppFeatureTests {
             ),
             playback: PlaybackFeature.State(
                 selectedSong: previousSong,
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: .allEnabled,
@@ -561,6 +573,10 @@ struct AppFeatureTests {
             playback: playback
                 ?? PlaybackFeature.State(
                     selectedSong: nil,
+                    queue: PlaybackQueueFeature.State(
+                        songs: [],
+                        currentItemID: nil
+                    ),
                     phase: .observing(.idle),
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled,

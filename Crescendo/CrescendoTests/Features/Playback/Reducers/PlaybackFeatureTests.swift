@@ -519,6 +519,10 @@ struct PlaybackFeatureTests {
         let song = makeSong()
         let state = PlaybackFeature.State(
             selectedSong: song,
+            queue: PlaybackQueueFeature.State(
+                songs: [],
+                currentItemID: nil
+            ),
             phase: .observing(makeSnapshot(song: song, status: .playing)),
             playbackEligibility: .eligible,
             capabilities: .allEnabled,
@@ -586,6 +590,10 @@ struct PlaybackFeatureTests {
         TestStore(
             initialState: PlaybackFeature.State(
                 selectedSong: song,
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: phase,
                 playbackEligibility: playbackEligibility,
                 capabilities: capabilities,

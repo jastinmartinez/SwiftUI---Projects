@@ -136,6 +136,10 @@ struct AppProviderSwitchingTests {
             )
             $0.playback = PlaybackFeature.State(
                 selectedSong: nil,
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: .observing(.idle),
                 playbackEligibility: .unknown,
                 capabilities: futureCapabilities,
@@ -347,6 +351,10 @@ struct AppProviderSwitchingTests {
             ),
             playback: PlaybackFeature.State(
                 selectedSong: makeSong(),
+                queue: PlaybackQueueFeature.State(
+                    songs: [],
+                    currentItemID: nil
+                ),
                 phase: .observing(
                     PlaybackSnapshot(
                         currentItemID: makeSong().id,
