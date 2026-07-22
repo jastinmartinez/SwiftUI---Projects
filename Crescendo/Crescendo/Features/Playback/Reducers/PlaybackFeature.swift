@@ -406,8 +406,17 @@ struct PlaybackFeature {
                 return .send(.timeline(.positionChanged(position)))
 
             case .timelineInteractionEnded:
-                guard state.canRequestSeek else { return .none }
-                return .send(.timeline(.dragEnded))
+                guard state.canRequestSeek,
+                    let duration = state.queue.currentItem?.duration
+                else { return .none }
+                let position = min(max(state.timeline.position, 0), duration)
+                guard position != state.timeline.position else {
+                    return .send(.timeline(.dragEnded))
+                }
+                return .concatenate(
+                    .send(.timeline(.positionChanged(position))),
+                    .send(.timeline(.dragEnded))
+                )
 
             case .restartTapped:
                 guard state.canRequestSeek else { return .none }

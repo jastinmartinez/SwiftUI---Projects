@@ -965,28 +965,96 @@ struct PlaybackFeatureTests {
     }
 
     @Test
-    func discreteTimelineControlsUseTheCurrentInteractionPosition() async {
+    func timelineInteractionEndClampsTheParentDraftBeforeSeeking() async {
+        let seekPositions = LockIsolated<[TimeInterval]>([])
         let store = makeStore(
             queue: makeQueue(duration: 180),
             timeline: .init(
                 confirmedPosition: 40,
-                interaction: .seeking(requestID: UUID(9), position: 60)
+                interaction: .dragging(position: 300)
             )
         ) {
-            $0.playbackControl.seek = { _ in }
+            $0.playbackControl.seek = { position in
+                seekPositions.withValue { $0.append(position) }
+            }
         }
 
-        await store.send(.seekBackwardTapped)
-        await store.receive(.timeline(.seekRequested(45))) {
+        await store.send(.timelineInteractionEnded)
+        await store.receive(.timeline(.positionChanged(180))) {
+            $0.timeline.interaction = .dragging(position: 180)
+        }
+        await store.receive(.timeline(.dragEnded))
+        await store.receive(.timeline(.seekRequested(180))) {
             $0.timeline.interaction = .seeking(
                 requestID: UUID(0),
-                position: 45
+                position: 180
             )
         }
         await store.receive(.timeline(.seekSucceeded(requestID: UUID(0)))) {
+            $0.timeline.confirmedPosition = 180
+            $0.timeline.interaction = .idle
+        }
+
+        #expect(seekPositions.value == [180])
+    }
+
+    @Test
+    func newerDiscreteParentSeekSupersedesAnInFlightProviderSeek() async {
+        let firstSeek = SuspendedSeekProbe()
+        let replacementSeek = SuspendedSeekProbe()
+        let seekPositions = LockIsolated<[TimeInterval]>([])
+        let store = makeStore(
+            queue: makeQueue(duration: 180),
+            timeline: .init(
+                confirmedPosition: 40,
+                interaction: .dragging(position: 30)
+            )
+        ) {
+            $0.playbackControl.seek = { position in
+                seekPositions.withValue { $0.append(position) }
+                if position == 30 {
+                    try await firstSeek(position)
+                } else {
+                    try await replacementSeek(position)
+                }
+            }
+        }
+
+        await store.send(.timelineInteractionEnded)
+        await store.receive(.timeline(.dragEnded))
+        await store.receive(.timeline(.seekRequested(30))) {
+            $0.timeline.interaction = .seeking(
+                requestID: UUID(0),
+                position: 30
+            )
+        }
+        await firstSeek.waitUntilStarted()
+
+        await store.send(.seekForwardTapped)
+        await store.receive(.timeline(.seekRequested(45))) {
+            $0.timeline.interaction = .seeking(
+                requestID: UUID(1),
+                position: 45
+            )
+        }
+        #expect(firstSeek.cancellationObserved.value)
+        await replacementSeek.waitUntilStarted()
+        #expect(!replacementSeek.cancellationObserved.value)
+
+        firstSeek.succeed()
+        await store.send(.timeline(.seekSucceeded(requestID: UUID(0))))
+        #expect(
+            store.state.timeline.interaction
+                == .seeking(requestID: UUID(1), position: 45)
+        )
+
+        replacementSeek.succeed()
+        await store.receive(.timeline(.seekSucceeded(requestID: UUID(1)))) {
             $0.timeline.confirmedPosition = 45
             $0.timeline.interaction = .idle
         }
+
+        #expect(seekPositions.value == [30, 45])
     }
 
     @Test
