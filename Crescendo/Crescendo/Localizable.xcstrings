@@ -61,6 +61,16 @@
         }
       }
     },
+    "music_playback.next" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next track"
+          }
+        }
+      }
+    },
     "music_playback.no_selection" : {
       "localizations" : {
         "en" : {
@@ -117,6 +127,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ of %@"
+          }
+        }
+      }
+    },
+    "music_playback.previous" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous track"
           }
         }
       }

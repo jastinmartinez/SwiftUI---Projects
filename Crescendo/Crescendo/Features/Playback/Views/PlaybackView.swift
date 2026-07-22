@@ -22,7 +22,12 @@ struct PlaybackView: View {
                     PlaybackTimelineView(model: timeline)
                 }
 
+                if let skipControls = model.skipControls {
+                    PlaybackSkipControlsView(model: skipControls)
+                }
+
                 PlaybackControlsView(model: model.controls)
+                PlaybackUtilityControlsView(model: model.utilityControls)
                 PlaybackEligibilityNoticeView(model: model.eligibility)
             }
             .frame(maxWidth: .infinity)
@@ -39,7 +44,9 @@ extension PlaybackView {
         let artworkURL: URL?
         let metadata: PlaybackMetadataView.Model
         let timeline: PlaybackTimelineView.Model?
+        let skipControls: PlaybackSkipControlsView.Model?
         let controls: PlaybackControlsView.Model
+        let utilityControls: PlaybackUtilityControlsView.Model
         let eligibility: PlaybackEligibilityNoticeView.Model
     }
 }

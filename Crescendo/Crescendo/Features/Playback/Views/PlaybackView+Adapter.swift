@@ -36,10 +36,7 @@ extension PlaybackView.Model {
 
         let song = store.queue.currentItem
 
-        let timeline = PlaybackTimelineView.Model(
-            store,
-            showsControls: true
-        )
+        let timeline = PlaybackTimelineView.Model(store)
 
         self.init(
             artworkURL: song?.artworkURL,
@@ -50,7 +47,11 @@ extension PlaybackView.Model {
                 statusText: statusText
             ),
             timeline: timeline,
+            skipControls: timeline.map { _ in
+                PlaybackSkipControlsView.Model(store)
+            },
             controls: PlaybackControlsView.Model(store),
+            utilityControls: PlaybackUtilityControlsView.Model(store),
             eligibility: PlaybackEligibilityNoticeView.Model(store)
         )
     }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Displays playback position and optional full-player seek actions.
+/// Displays playback position without owning adjacent command rows.
 struct PlaybackTimelineView: View {
     let model: Model
 
@@ -15,20 +15,6 @@ struct PlaybackTimelineView: View {
             }
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
-
-            if !model.controls.isEmpty {
-                HStack(spacing: 28) {
-                    ForEach(model.controls) { control in
-                        Button(action: control.perform) {
-                            Image(systemName: control.systemImage)
-                        }
-                        .accessibilityLabel(control.accessibilityLabel)
-                        .disabled(!control.isEnabled)
-                    }
-                }
-                .font(.title3.weight(.semibold))
-                .buttonStyle(.plain)
-            }
         }
     }
 }
@@ -38,24 +24,5 @@ extension PlaybackTimelineView {
         let slider: PlaybackSliderView.Model
         let elapsedTimeText: String
         let durationText: String
-        let controls: [Control]
-    }
-}
-
-extension PlaybackTimelineView.Model {
-    struct Control: Identifiable {
-        let id: ID
-        let systemImage: String
-        let accessibilityLabel: String
-        let isEnabled: Bool
-        let perform: () -> Void
-    }
-}
-
-extension PlaybackTimelineView.Model.Control {
-    enum ID: Hashable {
-        case backward
-        case restart
-        case forward
     }
 }

@@ -1,26 +1,42 @@
 import ComposableArchitecture
 
 extension PlaybackControlsView.Model {
-    /// Adapts playback state and transport actions into the controls presentation.
+    /// Adapts playback state and primary-row actions into presentation values.
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>) {
-        let primaryAction: PrimaryAction
+        let primaryState: PlaybackPrimaryButtonView.Model.State
         if case .statusChange(let change) = store.pendingOperation {
             switch change.target {
             case .playing:
-                primaryAction = .pause
+                primaryState = .pause
             case .paused, .stopped:
-                primaryAction = .play
+                primaryState = .play
             }
         } else {
-            primaryAction = store.status == .playing ? .pause : .play
+            primaryState = store.status == .playing ? .pause : .play
         }
+
         self.init(
-            primaryAction: primaryAction,
-            isPrimaryEnabled: store.canRequestPlayPause,
-            isStopEnabled: store.canRequestStop,
-            onPrimaryAction: { store.send(.playPauseTapped) },
-            onStop: { store.send(.stopTapped) }
+            previous: PlaybackIconButtonView.Model(
+                systemImage: "backward.fill",
+                accessibilityLabel: Locs.Playback.previous,
+                isEnabled: store.canRequestQueueTransition,
+                perform: { store.send(.previousTapped) }
+            ),
+            primary: PlaybackPrimaryButtonView.Model(
+                state: primaryState,
+                accessibilityLabel: primaryState == .play
+                    ? Locs.Playback.play
+                    : Locs.Playback.pause,
+                isEnabled: store.canRequestPlayPause,
+                perform: { store.send(.playPauseTapped) }
+            ),
+            next: PlaybackIconButtonView.Model(
+                systemImage: "forward.fill",
+                accessibilityLabel: Locs.Playback.next,
+                isEnabled: store.canRequestQueueTransition,
+                perform: { store.send(.nextTapped) }
+            )
         )
     }
 }

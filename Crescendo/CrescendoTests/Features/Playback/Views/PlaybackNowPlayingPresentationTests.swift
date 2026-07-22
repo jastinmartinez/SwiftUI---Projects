@@ -92,7 +92,7 @@ struct PlaybackNowPlayingPresentationTests {
     }
 
     @Test
-    func compactTimelineUsesSharedSliderWithoutUtilityActions() throws {
+    func compactTimelineUsesSharedSliderAndInjectedPrimaryLabel() throws {
         let song = makeSong(duration: 180)
         let store = Store(initialState: makeState(song: song, status: .playing)) {
             PlaybackFeature()
@@ -101,7 +101,7 @@ struct PlaybackNowPlayingPresentationTests {
         let timeline = try #require(model.timeline)
 
         #expect(timeline.slider.scale == .init(range: 0...180))
-        #expect(timeline.controls.isEmpty)
+        #expect(model.playPauseAccessibilityLabel == Locs.Playback.pause)
     }
 
     // MARK: - Helpers

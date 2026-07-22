@@ -17,10 +17,10 @@ extension PlaybackNowPlayingView.Model {
             artworkURL: song.artworkURL,
             isPlaying: isPlaying,
             isPlayEnabled: store.canRequestPlayPause,
-            timeline: PlaybackTimelineView.Model(
-                store,
-                showsControls: false
-            ),
+            playPauseAccessibilityLabel: isPlaying
+                ? Locs.Playback.pause
+                : Locs.Playback.play,
+            timeline: PlaybackTimelineView.Model(store),
             onOpenPlayer: { store.send(.setPlayerPresented(true)) },
             onTogglePlayPause: { store.send(.playPauseTapped) }
         )

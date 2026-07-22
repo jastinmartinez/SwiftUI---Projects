@@ -46,9 +46,7 @@ struct PlaybackNowPlayingView: View {
                         .frame(width: 52, height: 52)
                         .background(LinearGradient.crescendoSpectrum, in: Circle())
                 }
-                .accessibilityLabel(
-                    model.isPlaying ? Locs.Playback.pause : Locs.Playback.play
-                )
+                .accessibilityLabel(model.playPauseAccessibilityLabel)
                 .disabled(!model.isPlaying && !model.isPlayEnabled)
             }
 
@@ -72,6 +70,7 @@ extension PlaybackNowPlayingView {
         let artworkURL: URL?
         let isPlaying: Bool
         let isPlayEnabled: Bool
+        let playPauseAccessibilityLabel: String
         let timeline: PlaybackTimelineView.Model?
         let onOpenPlayer: () -> Void
         let onTogglePlayPause: () -> Void

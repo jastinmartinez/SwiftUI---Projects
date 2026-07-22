@@ -59,6 +59,8 @@ extension Locs {
         static let noSelection = String(localized: "music_playback.no_selection")
         static let play = String(localized: "music_playback.play")
         static let pause = String(localized: "music_playback.pause")
+        static let previous = String(localized: "music_playback.previous")
+        static let next = String(localized: "music_playback.next")
         static let position = String(localized: "music_playback.position")
         static let stop = String(localized: "music_playback.stop")
         static let restart = String(localized: "music_playback.restart")
