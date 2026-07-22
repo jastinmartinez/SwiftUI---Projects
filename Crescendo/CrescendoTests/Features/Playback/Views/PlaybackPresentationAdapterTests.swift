@@ -253,7 +253,8 @@ struct PlaybackPresentationAdapterTests {
             supportsCatalogSearch: true,
             supportsEmbeddedPlayback: true,
             supportsSeeking: false,
-            supportsQueueReplacement: true
+            supportsQueueReplacement: true,
+            supportsQueueTransitions: true
         )
         let store = makePlaybackStore(
             song: makeSong(duration: 215),

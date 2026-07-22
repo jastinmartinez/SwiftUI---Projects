@@ -52,17 +52,17 @@ struct FakeMusicProviderTests {
     }
 
     @Test
-    func playQueuePreservesOrderAndStartsAtTheRequestedItem() async throws {
+    func queueReplacementPreservesOrderAndStartsAtTheRequestedItem() async throws {
         let songs = [
             makeSong(nativeID: "1"),
             makeSong(nativeID: "2"),
             makeSong(nativeID: "3"),
         ]
         let fake = makeFakeProvider(searchResults: songs)
-        let playbackControl = await fake.playbackControlClient()
+        let playbackQueue = await fake.playbackQueueClient()
         let playbackObservation = await fake.playbackObservationClient()
 
-        try await playbackControl.playQueue(songs.map(\.id), songs[1].id)
+        try await playbackQueue.replace(songs.map(\.id), songs[1].id)
 
         let playbackSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
         let queuedItemIDs = await fake.queuedItemIDs()
@@ -71,6 +71,55 @@ struct FakeMusicProviderTests {
         #expect(playbackSnapshot?.currentItemID == songs[1].id)
         #expect(playbackSnapshot?.status == .playing)
         #expect(playbackSnapshot?.currentTime == 0)
+    }
+
+    @Test
+    func queueTransitionsMoveTheProviderSnapshotWithoutChangingQueueOrder() async throws {
+        let songs = [
+            makeSong(nativeID: "1"),
+            makeSong(nativeID: "2"),
+            makeSong(nativeID: "3"),
+        ]
+        let fake = makeFakeProvider(searchResults: songs)
+        let playbackQueue = await fake.playbackQueueClient()
+        let playbackObservation = await fake.playbackObservationClient()
+
+        try await playbackQueue.replace(songs.map(\.id), songs[1].id)
+        try await playbackQueue.next()
+        let nextSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
+        try await playbackQueue.previous()
+        let previousSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
+
+        #expect(nextSnapshot?.currentItemID == songs[2].id)
+        #expect(nextSnapshot?.currentTime == 0)
+        #expect(previousSnapshot?.currentItemID == songs[1].id)
+        #expect(await fake.queuedItemIDs() == songs.map(\.id))
+    }
+
+    @Test(arguments: [PlaybackQueueBoundary.first, .last])
+    func queueTransitionAtBoundaryFailsWithoutChangingPlayback(
+        boundary: PlaybackQueueBoundary
+    ) async throws {
+        let songs = [makeSong(nativeID: "1"), makeSong(nativeID: "2")]
+        let fake = makeFakeProvider(searchResults: songs)
+        let playbackQueue = await fake.playbackQueueClient()
+        let playbackObservation = await fake.playbackObservationClient()
+        let startingItem = boundary == .first ? songs[0] : songs[1]
+
+        try await playbackQueue.replace(songs.map(\.id), startingItem.id)
+        let previousSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
+
+        await expectUnavailable {
+            switch boundary {
+            case .first:
+                try await playbackQueue.previous()
+            case .last:
+                try await playbackQueue.next()
+            }
+        }
+
+        let currentSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
+        #expect(currentSnapshot == previousSnapshot)
     }
 
     @Test
@@ -125,15 +174,16 @@ struct FakeMusicProviderTests {
     @Test
     func resumePreservesSoughtTimeAndChangesStatusToPlaying() async throws {
         let fake = makeFakeProvider()
-        let playbackControl = await fake.playbackControlClient()
+        let playbackTimeline = await fake.playbackTimelineClient()
+        let playbackTransport = await fake.playbackTransportClient()
         let playbackObservation = await fake.playbackObservationClient()
 
-        try await playbackControl.seek(42)
-        try await playbackControl.pause()
+        try await playbackTimeline.seek(42)
+        try await playbackTransport.pause()
         let pausedPlaybackSnapshot = await nextPlaybackSnapshot(
             from: playbackObservation
         )
-        try await playbackControl.resume()
+        try await playbackTransport.play()
         let resumedPlaybackSnapshot = await nextPlaybackSnapshot(
             from: playbackObservation
         )
@@ -147,13 +197,15 @@ struct FakeMusicProviderTests {
     @Test
     func stopResetsPositionToZero() async throws {
         let fake = makeFakeProvider()
-        let playbackControl = await fake.playbackControlClient()
+        let playbackQueue = await fake.playbackQueueClient()
+        let playbackTimeline = await fake.playbackTimelineClient()
+        let playbackTransport = await fake.playbackTransportClient()
         let playbackObservation = await fake.playbackObservationClient()
 
         let itemID = MusicItemID(providerID: "fake", nativeID: "1")
-        try await playbackControl.playQueue([itemID], itemID)
-        try await playbackControl.seek(42)
-        try await playbackControl.stop()
+        try await playbackQueue.replace([itemID], itemID)
+        try await playbackTimeline.seek(42)
+        try await playbackTransport.stop()
         let playbackSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
         #expect(playbackSnapshot?.status == .stopped)
@@ -161,6 +213,11 @@ struct FakeMusicProviderTests {
     }
 
     // MARK: - Helpers
+
+    enum PlaybackQueueBoundary {
+        case first
+        case last
+    }
 
     private func makeFakeProvider() -> FakeMusicProvider {
         makeFakeProvider(searchResults: [makeSong(nativeID: "1")])
@@ -203,17 +260,17 @@ struct FakeMusicProviderTests {
     ) async throws {
         let currentSong = try #require(configuredSongs.first)
         let fake = makeFakeProvider(searchResults: configuredSongs)
-        let playbackControl = await fake.playbackControlClient()
+        let playbackQueue = await fake.playbackQueueClient()
         let playbackObservation = await fake.playbackObservationClient()
 
-        try await playbackControl.playQueue([currentSong.id], currentSong.id)
+        try await playbackQueue.replace([currentSong.id], currentSong.id)
         let previousSnapshot = await nextPlaybackSnapshot(
             from: playbackObservation
         )
         let previousQueue = await fake.queuedItemIDs()
 
         await expectUnavailable {
-            try await playbackControl.playQueue(itemIDs, startingItemID)
+            try await playbackQueue.replace(itemIDs, startingItemID)
         }
 
         let currentSnapshot = await nextPlaybackSnapshot(

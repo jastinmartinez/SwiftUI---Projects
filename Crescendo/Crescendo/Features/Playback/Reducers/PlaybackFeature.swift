@@ -102,7 +102,8 @@ struct PlaybackFeature {
         case parentOperation
     }
 
-    @Dependency(\.playbackControl) var playbackControl
+    @Dependency(\.playbackQueue) var playbackQueue
+    @Dependency(\.playbackTransport) var playbackTransport
     @Dependency(\.playbackObservation) var playbackObservation
     @Dependency(\.uuid) var uuid
 
@@ -225,7 +226,7 @@ struct PlaybackFeature {
                 else { return .none }
                 return .run { send in
                     do {
-                        try await playbackControl.playQueue(
+                        try await playbackQueue.replace(
                             itemIDs,
                             startingItemID
                         )
@@ -341,11 +342,11 @@ struct PlaybackFeature {
                     do {
                         switch target {
                         case .playing:
-                            try await playbackControl.resume()
+                            try await playbackTransport.play()
                         case .paused:
-                            try await playbackControl.pause()
+                            try await playbackTransport.pause()
                         case .stopped:
-                            try await playbackControl.stop()
+                            try await playbackTransport.stop()
                         }
                         try Task.checkCancellation()
                         await send(.statusChangeSucceeded(requestID: requestID))

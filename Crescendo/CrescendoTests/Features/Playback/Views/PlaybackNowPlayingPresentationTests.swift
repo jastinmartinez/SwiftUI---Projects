@@ -14,7 +14,7 @@ struct PlaybackNowPlayingPresentationTests {
             PlaybackFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.playbackControl.pause = { pauseCalledContinuation.yield() }
+            $0.playbackTransport.pause = { pauseCalledContinuation.yield() }
         }
         let model = PlaybackNowPlayingView.Model(store, song: song)
         #expect(model.isPlaying)
@@ -66,10 +66,10 @@ struct PlaybackNowPlayingPresentationTests {
             PlaybackFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.playbackControl.playQueue = { _, _ in
+            $0.playbackQueue.replace = { _, _ in
                 playCallCount.withValue { $0 += 1 }
             }
-            $0.playbackControl.resume = {
+            $0.playbackTransport.play = {
                 resumeCallCount.withValue { $0 += 1 }
                 resumeStartedContinuation.yield()
                 for await _ in finishResume { break }

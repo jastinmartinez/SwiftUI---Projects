@@ -93,7 +93,7 @@ actor AppleMusicProvider {
     }
 
     /// Replaces the application queue with cached songs and begins at the requested item.
-    func playQueue(
+    func replaceQueue(
         itemIDs: [MusicItemID],
         startingItemID: MusicItemID
     ) async throws {
@@ -125,8 +125,18 @@ actor AppleMusicProvider {
     }
 
     /// Resumes the existing application-player queue without replacing its item or position.
-    func resume() async throws {
+    func play() async throws {
         try await player.play()
+    }
+
+    /// Moves playback to the previous entry in the active queue.
+    func previous() async throws {
+        try await player.skipToPreviousEntry()
+    }
+
+    /// Moves playback to the next entry in the active queue.
+    func next() async throws {
+        try await player.skipToNextEntry()
     }
 
     /// Pauses playback while preserving the current position.

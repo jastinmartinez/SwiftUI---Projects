@@ -314,7 +314,8 @@ struct AppProviderSwitchingTests {
             supportsCatalogSearch: true,
             supportsEmbeddedPlayback: true,
             supportsSeeking: false,
-            supportsQueueReplacement: true
+            supportsQueueReplacement: true,
+            supportsQueueTransitions: true
         )
     }
 
@@ -326,7 +327,7 @@ struct AppProviderSwitchingTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.playbackControl.pause = { try await Task.sleep(for: .seconds(60)) }
+            $0.playbackTransport.pause = { try await Task.sleep(for: .seconds(60)) }
             $0.providerAccess.currentAccess = {
                 return MusicProviderAccess(
                     authorization: .authorized,
@@ -337,7 +338,7 @@ struct AppProviderSwitchingTests {
                 AsyncStream { $0.finish() }
             }
             if let pause {
-                $0.playbackControl.pause = pause
+                $0.playbackTransport.pause = pause
             }
         }
     }

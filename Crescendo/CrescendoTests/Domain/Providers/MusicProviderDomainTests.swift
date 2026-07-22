@@ -9,11 +9,13 @@ struct MusicProviderDomainTests {
             supportsCatalogSearch: true,
             supportsEmbeddedPlayback: true,
             supportsSeeking: false,
-            supportsQueueReplacement: true
+            supportsQueueReplacement: true,
+            supportsQueueTransitions: false
         )
 
         #expect(capabilities.supportsCatalogSearch)
         #expect(!capabilities.supportsSeeking)
+        #expect(!capabilities.supportsQueueTransitions)
     }
 
     @Test

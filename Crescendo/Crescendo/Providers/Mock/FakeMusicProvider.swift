@@ -10,7 +10,7 @@ actor FakeMusicProvider {
     private let configuredResults: [SongSummary]
     private var playbackSnapshot = PlaybackSnapshot.idle
     private var queueItemIDs: [MusicItemID] = []
-    private var queueStartingIndex: Int?
+    private var queueCurrentIndex: Int?
 
     init(access: MusicProviderAccess, searchResults: [SongSummary]) {
         self.configuredAccess = access
@@ -52,19 +52,49 @@ actor FakeMusicProvider {
         )
     }
 
-    func playbackControlClient() -> PlaybackControlClient {
-        PlaybackControlClient(
-            playQueue: { [weak self] itemIDs, startingItemID in
+    func playbackTransportClient() -> PlaybackTransportClient {
+        PlaybackTransportClient(
+            play: { [weak self] in
                 guard let self else { throw MusicProviderError.unavailable }
-                try await self.startPlayback(
+                await self.setStatus(.playing)
+            },
+            pause: { [weak self] in
+                guard let self else { throw MusicProviderError.unavailable }
+                await self.setStatus(.paused)
+            },
+            stop: { [weak self] in
+                guard let self else { throw MusicProviderError.unavailable }
+                await self.stopPlayback()
+            }
+        )
+    }
+
+    func playbackTimelineClient() -> PlaybackTimelineClient {
+        PlaybackTimelineClient(
+            seek: { [weak self] time in
+                guard let self else { throw MusicProviderError.unavailable }
+                await self.setTime(time)
+            }
+        )
+    }
+
+    func playbackQueueClient() -> PlaybackQueueClient {
+        PlaybackQueueClient(
+            replace: { [weak self] itemIDs, startingItemID in
+                guard let self else { throw MusicProviderError.unavailable }
+                try await self.replaceQueue(
                     itemIDs: itemIDs,
                     startingItemID: startingItemID
                 )
             },
-            resume: { [weak self] in await self?.setStatus(.playing) },
-            pause: { [weak self] in await self?.setStatus(.paused) },
-            stop: { [weak self] in await self?.stopPlayback() },
-            seek: { [weak self] time in await self?.setTime(time) }
+            previous: { [weak self] in
+                guard let self else { throw MusicProviderError.unavailable }
+                try await self.moveCurrentItem(by: -1)
+            },
+            next: { [weak self] in
+                guard let self else { throw MusicProviderError.unavailable }
+                try await self.moveCurrentItem(by: 1)
+            }
         )
     }
 
@@ -84,7 +114,7 @@ actor FakeMusicProvider {
         )
     }
 
-    private func startPlayback(
+    private func replaceQueue(
         itemIDs: [MusicItemID],
         startingItemID: MusicItemID
     ) throws {
@@ -98,7 +128,7 @@ actor FakeMusicProvider {
         }
 
         queueItemIDs = itemIDs
-        queueStartingIndex = startingIndex
+        queueCurrentIndex = startingIndex
         playbackSnapshot = PlaybackSnapshot(
             currentItemID: itemIDs[startingIndex],
             status: .playing,
@@ -106,6 +136,26 @@ actor FakeMusicProvider {
             playbackRate: .normal,
             repeatMode: .off,
             shuffleMode: .off
+        )
+    }
+
+    private func moveCurrentItem(by offset: Int) throws {
+        guard let queueCurrentIndex else {
+            throw MusicProviderError.unavailable
+        }
+        let destinationIndex = queueCurrentIndex + offset
+        guard queueItemIDs.indices.contains(destinationIndex) else {
+            throw MusicProviderError.unavailable
+        }
+
+        self.queueCurrentIndex = destinationIndex
+        playbackSnapshot = PlaybackSnapshot(
+            currentItemID: queueItemIDs[destinationIndex],
+            status: playbackSnapshot.status,
+            currentTime: 0,
+            playbackRate: playbackSnapshot.playbackRate,
+            repeatMode: playbackSnapshot.repeatMode,
+            shuffleMode: playbackSnapshot.shuffleMode
         )
     }
 

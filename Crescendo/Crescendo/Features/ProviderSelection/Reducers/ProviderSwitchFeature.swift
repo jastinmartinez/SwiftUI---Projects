@@ -36,7 +36,7 @@ struct ProviderSwitchFeature {
     }
 
     @Dependency(\.uuid) var uuid
-    @Dependency(\.playbackControl) var playbackControl
+    @Dependency(\.playbackTransport) var playbackTransport
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -67,7 +67,7 @@ struct ProviderSwitchFeature {
                 )
                 return .run { send in
                     do {
-                        try await playbackControl.pause()
+                        try await playbackTransport.pause()
                         guard !Task.isCancelled else { return }
                         await send(.pauseSucceeded(requestID: requestID))
                     } catch {

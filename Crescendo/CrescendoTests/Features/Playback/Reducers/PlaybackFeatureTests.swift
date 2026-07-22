@@ -12,7 +12,7 @@ struct PlaybackFeatureTests {
         let loadedResults = IdentifiedArray(uniqueElements: songs)
         let calls = LockIsolated<[PlaybackQueueCall]>([])
         let store = makeStore {
-            $0.playbackControl.playQueue = { itemIDs, startingItemID in
+            $0.playbackQueue.replace = { itemIDs, startingItemID in
                 calls.withValue {
                     $0.append(
                         PlaybackQueueCall(
@@ -87,7 +87,7 @@ struct PlaybackFeatureTests {
             ),
             status: .playing
         ) {
-            $0.playbackControl.playQueue = probe.callAsFunction
+            $0.playbackQueue.replace = probe.callAsFunction
         }
 
         await store.send(
@@ -133,7 +133,7 @@ struct PlaybackFeatureTests {
         let secondSongs = makeSongs(prefix: "second")
         let secondQueue = IdentifiedArray(uniqueElements: secondSongs)
         let store = makeStore {
-            $0.playbackControl.playQueue = { _, _ in
+            $0.playbackQueue.replace = { _, _ in
                 try await Task.sleep(for: .seconds(60))
             }
         }
@@ -250,7 +250,7 @@ struct PlaybackFeatureTests {
             makeSong(providerID: "other", nativeID: "other"),
         ]
         let store = makeStore {
-            $0.playbackControl.playQueue = { _, _ in
+            $0.playbackQueue.replace = { _, _ in
                 calls.withValue { $0 += 1 }
             }
         }
@@ -297,10 +297,11 @@ struct PlaybackFeatureTests {
                 supportsCatalogSearch: true,
                 supportsEmbeddedPlayback: true,
                 supportsSeeking: true,
-                supportsQueueReplacement: false
+                supportsQueueReplacement: false,
+                supportsQueueTransitions: true
             )
         ) {
-            $0.playbackControl.playQueue = { _, _ in
+            $0.playbackQueue.replace = { _, _ in
                 calls.withValue { $0 += 1 }
             }
         }
@@ -390,10 +391,10 @@ struct PlaybackFeatureTests {
             ),
             status: .playing
         ) {
-            $0.playbackControl.pause = {
+            $0.playbackTransport.pause = {
                 calls.withValue { $0.append("pause") }
             }
-            $0.playbackControl.resume = {
+            $0.playbackTransport.play = {
                 calls.withValue { $0.append("resume") }
             }
         }
@@ -432,10 +433,10 @@ struct PlaybackFeatureTests {
             ),
             status: status
         ) {
-            $0.playbackControl.pause = {
+            $0.playbackTransport.pause = {
                 calls.withValue { $0.append("pause") }
             }
-            $0.playbackControl.resume = {
+            $0.playbackTransport.play = {
                 calls.withValue { $0.append("resume") }
             }
         }
@@ -496,7 +497,7 @@ struct PlaybackFeatureTests {
                 .init(requestID: UUID(99), target: .stopped)
             )
         ) {
-            $0.playbackControl.resume = {
+            $0.playbackTransport.play = {
                 calls.withValue { $0.append("resume") }
             }
         }
@@ -544,13 +545,13 @@ struct PlaybackFeatureTests {
         ) {
             switch target {
             case .playing:
-                $0.playbackControl.resume = statusProbe.callAsFunction
+                $0.playbackTransport.play = statusProbe.callAsFunction
             case .paused:
-                $0.playbackControl.pause = statusProbe.callAsFunction
+                $0.playbackTransport.pause = statusProbe.callAsFunction
             case .stopped:
-                $0.playbackControl.stop = statusProbe.callAsFunction
+                $0.playbackTransport.stop = statusProbe.callAsFunction
             }
-            $0.playbackControl.playQueue = queueProbe.callAsFunction
+            $0.playbackQueue.replace = queueProbe.callAsFunction
         }
 
         await store.send(target == .stopped ? .stopTapped : .playPauseTapped) {
@@ -604,8 +605,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             status: .playing
         ) {
-            $0.playbackControl.playQueue = queueProbe.callAsFunction
-            $0.playbackControl.stop = stopProbe.callAsFunction
+            $0.playbackQueue.replace = queueProbe.callAsFunction
+            $0.playbackTransport.stop = stopProbe.callAsFunction
         }
 
         await store.send(
@@ -825,7 +826,7 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 50)
             )
         ) {
-            $0.playbackControl.stop = {}
+            $0.playbackTransport.stop = {}
         }
 
         await store.send(.stopTapped) {
@@ -984,7 +985,7 @@ struct PlaybackFeatureTests {
             pendingOperation: pendingOperation,
             pendingReset: pendingReset
         ) {
-            $0.playbackControl.pause = {
+            $0.playbackTransport.pause = {
                 calls.withValue { $0 += 1 }
             }
         }
@@ -1046,7 +1047,7 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 300)
             )
         ) {
-            $0.playbackControl.seek = { position in
+            $0.playbackTimeline.seek = { position in
                 seekPositions.withValue { $0.append(position) }
             }
         }
@@ -1082,7 +1083,7 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 30)
             )
         ) {
-            $0.playbackControl.seek = { position in
+            $0.playbackTimeline.seek = { position in
                 seekPositions.withValue { $0.append(position) }
                 if position == 30 {
                     try await firstSeek(position)
@@ -1138,7 +1139,7 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 300)
             )
         ) {
-            $0.playbackControl.seek = { _ in }
+            $0.playbackTimeline.seek = { _ in }
         }
 
         await store.send(.seekBackwardTapped)
@@ -1161,7 +1162,7 @@ struct PlaybackFeatureTests {
             queue: makeQueue(duration: 180),
             timeline: .init(confirmedPosition: 175, interaction: .idle)
         ) {
-            $0.playbackControl.seek = { position in
+            $0.playbackTimeline.seek = { position in
                 seekPositions.withValue { $0.append(position) }
             }
         }
@@ -1200,7 +1201,8 @@ struct PlaybackFeatureTests {
             supportsCatalogSearch: capabilities.supportsCatalogSearch,
             supportsEmbeddedPlayback: capabilities.supportsEmbeddedPlayback,
             supportsSeeking: false,
-            supportsQueueReplacement: capabilities.supportsQueueReplacement
+            supportsQueueReplacement: capabilities.supportsQueueReplacement,
+            supportsQueueTransitions: capabilities.supportsQueueTransitions
         )
         let store = makeStore(
             queue: makeQueue(duration: 180),

@@ -170,8 +170,8 @@ struct AppFeatureTests {
         let store = makeStore(state: state) {
             $0.playbackObservation.playbackSnapshots =
                 observationProbe.playbackSnapshots
-            $0.playbackControl.pause = operationProbe.callAsFunction
-            $0.playbackControl.seek = seekProbe.callAsFunction
+            $0.playbackTransport.pause = operationProbe.callAsFunction
+            $0.playbackTimeline.seek = seekProbe.callAsFunction
         }
 
         await store.send(.playback(.task))
@@ -531,7 +531,8 @@ struct AppFeatureTests {
                 supportsCatalogSearch: true,
                 supportsEmbeddedPlayback: true,
                 supportsSeeking: false,
-                supportsQueueReplacement: true
+                supportsQueueReplacement: true,
+                supportsQueueTransitions: true
             )
         )
     }

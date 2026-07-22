@@ -8,6 +8,8 @@ struct MusicProviderCapabilities: Equatable, Sendable {
     let supportsSeeking: Bool
     /// Whether playback can replace the active queue.
     let supportsQueueReplacement: Bool
+    /// Whether playback can move between items in the active queue.
+    let supportsQueueTransitions: Bool
 }
 
 extension MusicProviderCapabilities {
@@ -16,6 +18,7 @@ extension MusicProviderCapabilities {
         supportsCatalogSearch: true,
         supportsEmbeddedPlayback: true,
         supportsSeeking: true,
-        supportsQueueReplacement: true
+        supportsQueueReplacement: true,
+        supportsQueueTransitions: true
     )
 }

@@ -11,7 +11,7 @@ struct AppPlaybackCoordinationTests {
         let songs = makeSongs()
         let loadedResults = IdentifiedArray(uniqueElements: songs)
         let store = makeStore {
-            $0.playbackControl.playQueue = { _, _ in
+            $0.playbackQueue.replace = { _, _ in
                 try await Task.sleep(for: .seconds(60))
             }
         }
@@ -72,7 +72,7 @@ struct AppPlaybackCoordinationTests {
                 playbackEligibility: .ineligible
             )
         ) {
-            $0.playbackControl.playQueue = { _, _ in
+            $0.playbackQueue.replace = { _, _ in
                 calls.withValue { $0 += 1 }
             }
         }
@@ -119,7 +119,7 @@ struct AppPlaybackCoordinationTests {
             ),
             isPlayerPresented: false
         ) {
-            $0.playbackControl.playQueue = { _, _ in
+            $0.playbackQueue.replace = { _, _ in
                 try await Task.sleep(for: .seconds(60))
             }
         }
@@ -199,7 +199,7 @@ struct AppPlaybackCoordinationTests {
                 #expect(limit == 20)
                 return SearchPage(songs: [laterSong], nextCursor: nil)
             }
-            $0.playbackControl.playQueue = { _, _ in
+            $0.playbackQueue.replace = { _, _ in
                 try await Task.sleep(for: .seconds(60))
             }
         }

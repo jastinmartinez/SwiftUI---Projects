@@ -35,7 +35,7 @@ struct PlaybackTimelineFeature {
         case seek
     }
 
-    @Dependency(\.playbackControl) var playbackControl
+    @Dependency(\.playbackTimeline) var playbackTimeline
     @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
@@ -64,7 +64,7 @@ struct PlaybackTimelineFeature {
                 )
                 return .run { send in
                     do {
-                        try await playbackControl.seek(position)
+                        try await playbackTimeline.seek(position)
                         try Task.checkCancellation()
                         await send(.seekSucceeded(requestID: requestID))
                     } catch is CancellationError {
