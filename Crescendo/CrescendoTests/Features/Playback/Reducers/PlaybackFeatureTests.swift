@@ -1307,9 +1307,7 @@ struct PlaybackFeatureTests {
         direction: PlaybackQueueFeature.QueueTransitionDirection
     ) async {
         let songs = makeSongs()
-        let calls = LockIsolated<[
-            PlaybackQueueFeature.QueueTransitionDirection
-        ]>([])
+        let calls = LockIsolated<[PlaybackQueueFeature.QueueTransitionDirection]>([])
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
