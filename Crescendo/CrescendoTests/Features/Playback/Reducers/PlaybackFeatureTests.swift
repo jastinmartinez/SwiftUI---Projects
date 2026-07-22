@@ -990,6 +990,31 @@ struct PlaybackFeatureTests {
     }
 
     @Test
+    func backwardSeekClampsAnOutOfRangeInteractionPositionToDuration() async {
+        let store = makeStore(
+            queue: makeQueue(duration: 180),
+            timeline: .init(
+                confirmedPosition: 40,
+                interaction: .dragging(position: 300)
+            )
+        ) {
+            $0.playbackControl.seek = { _ in }
+        }
+
+        await store.send(.seekBackwardTapped)
+        await store.receive(.timeline(.seekRequested(180))) {
+            $0.timeline.interaction = .seeking(
+                requestID: UUID(0),
+                position: 180
+            )
+        }
+        await store.receive(.timeline(.seekSucceeded(requestID: UUID(0)))) {
+            $0.timeline.confirmedPosition = 180
+            $0.timeline.interaction = .idle
+        }
+    }
+
+    @Test
     func restartAndForwardSeekClampToTimelineBounds() async {
         let seekPositions = LockIsolated<[TimeInterval]>([])
         let store = makeStore(
@@ -1040,6 +1065,47 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: makeQueue(duration: 180),
             capabilities: capabilities
+        )
+
+        await store.send(.timelinePositionChanged(30))
+        await store.send(.timelineInteractionEnded)
+        await store.send(.restartTapped)
+        await store.send(.seekBackwardTapped)
+        await store.send(.seekForwardTapped)
+    }
+
+    @Test
+    func missingDurationTimelineIntentsAreTrueNoOps() async {
+        let store = makeStore(queue: makeQueue(duration: nil))
+
+        await store.send(.timelinePositionChanged(30))
+        await store.send(.timelineInteractionEnded)
+        await store.send(.restartTapped)
+        await store.send(.seekBackwardTapped)
+        await store.send(.seekForwardTapped)
+    }
+
+    @Test
+    func nonpositiveDurationTimelineIntentsAreTrueNoOps() async {
+        let store = makeStore(queue: makeQueue(duration: 0))
+
+        await store.send(.timelinePositionChanged(30))
+        await store.send(.timelineInteractionEnded)
+        await store.send(.restartTapped)
+        await store.send(.seekBackwardTapped)
+        await store.send(.seekForwardTapped)
+    }
+
+    @Test
+    func resetWindowTimelineIntentsAreTrueNoOps() async {
+        let pendingReset = PlaybackFeature.PendingReset(
+            requestID: UUID(0),
+            providerID: "replacement",
+            capabilities: .allEnabled
+        )
+        let store = makeStore(
+            queue: makeQueue(duration: 180),
+            pendingReset: pendingReset
         )
 
         await store.send(.timelinePositionChanged(30))

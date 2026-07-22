@@ -414,8 +414,10 @@ struct PlaybackFeature {
                 return .send(.timeline(.seekRequested(0)))
 
             case .seekBackwardTapped:
-                guard state.canRequestSeek else { return .none }
-                let target = max(state.timeline.position - 15, 0)
+                guard state.canRequestSeek,
+                    let duration = state.queue.currentItem?.duration
+                else { return .none }
+                let target = min(max(state.timeline.position - 15, 0), duration)
                 return .send(.timeline(.seekRequested(target)))
 
             case .seekForwardTapped:
