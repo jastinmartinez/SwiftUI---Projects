@@ -151,8 +151,8 @@ actor AppleMusicProvider {
     }
 
     /// Resolves the native queue into the boundary information required for transitions.
-    private var currentQueuePosition: AppleMusicQueuePosition {
-        AppleMusicQueuePosition(
+    private var currentQueuePosition: PlaybackQueuePosition {
+        PlaybackQueuePosition(
             entryIDs: player.queue.entries.map(\.id),
             currentEntryID: player.queue.currentEntry?.id
         )

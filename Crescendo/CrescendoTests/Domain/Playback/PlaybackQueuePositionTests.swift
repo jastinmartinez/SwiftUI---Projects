@@ -2,7 +2,7 @@ import Testing
 
 @testable import Crescendo
 
-struct AppleMusicQueuePositionTests {
+struct PlaybackQueuePositionTests {
     @Test(arguments: [
         (PlaybackNavigationDirection.previous, false),
         (.next, true),
@@ -11,7 +11,7 @@ struct AppleMusicQueuePositionTests {
         direction: PlaybackNavigationDirection,
         expected: Bool
     ) {
-        let position = AppleMusicQueuePosition(
+        let position = PlaybackQueuePosition(
             entryIDs: ["first", "second"],
             currentEntryID: "first"
         )
@@ -27,7 +27,7 @@ struct AppleMusicQueuePositionTests {
         direction: PlaybackNavigationDirection,
         expected: Bool
     ) {
-        let position = AppleMusicQueuePosition(
+        let position = PlaybackQueuePosition(
             entryIDs: ["first", "second"],
             currentEntryID: "second"
         )
@@ -37,7 +37,7 @@ struct AppleMusicQueuePositionTests {
 
     @Test
     func unknownCurrentEntryCannotTransition() {
-        let position = AppleMusicQueuePosition(
+        let position = PlaybackQueuePosition(
             entryIDs: ["first", "second"],
             currentEntryID: "missing"
         )

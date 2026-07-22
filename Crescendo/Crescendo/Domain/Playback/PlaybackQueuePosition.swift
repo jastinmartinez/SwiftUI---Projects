@@ -1,11 +1,11 @@
-/// Represents the active position within an Apple Music queue.
-struct AppleMusicQueuePosition: Equatable {
+/// Represents the active position within a playback queue.
+struct PlaybackQueuePosition: Equatable {
     let entryIDs: [String]
     let currentEntryID: String?
 
     /// Reports whether the current entry has a neighbor in the requested direction.
     ///
-    /// - Parameter direction: The direction requested from the native queue.
+    /// - Parameter direction: The direction requested from the active queue.
     /// - Returns: `true` only when the queue can move to a different entry.
     func canTransition(_ direction: PlaybackNavigationDirection) -> Bool {
         guard let currentEntryID,
