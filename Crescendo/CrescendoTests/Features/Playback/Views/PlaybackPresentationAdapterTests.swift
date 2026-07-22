@@ -356,7 +356,8 @@ struct PlaybackPresentationAdapterTests {
                 providerID: song?.id.providerID ?? "fake",
                 queue: PlaybackQueueFeature.State(
                     songs: songs,
-                    currentItemID: song?.id
+                    currentItemID: song?.id,
+                    pendingQueueTransition: nil
                 ),
                 status: status,
                 failure: failure,
@@ -383,7 +384,11 @@ struct PlaybackPresentationAdapterTests {
         return Store(
             initialState: PlaybackFeature.State(
                 providerID: song.id.providerID,
-                queue: .init(songs: songs, currentItemID: song.id),
+                queue: .init(
+                    songs: songs,
+                    currentItemID: song.id,
+                    pendingQueueTransition: nil
+                ),
                 status: .playing,
                 failure: nil,
                 playbackEligibility: .eligible,

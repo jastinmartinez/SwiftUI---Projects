@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Foundation
 
 /// Owns the confirmed playback queue order and current item identity.
 @Reducer
@@ -7,6 +8,23 @@ struct PlaybackQueueFeature {
     struct State: Equatable {
         var songs: IdentifiedArrayOf<SongSummary>
         var currentItemID: MusicItemID?
+        var pendingQueueTransition: PendingQueueTransition?
+    }
+
+    /// Identifies one queue transition awaiting provider observation.
+    struct PendingQueueTransition: Equatable {
+        let requestID: UUID
+        let direction: QueueTransitionDirection
+    }
+
+    /// Describes provider-relative movement without predicting a queue index.
+    enum QueueTransitionDirection: Equatable, Sendable {
+        case previous
+        case next
+    }
+
+    enum Delegate: Equatable {
+        case queueTransitionFailed(MusicProviderError)
     }
 
     enum Action: Equatable {
@@ -15,8 +33,22 @@ struct PlaybackQueueFeature {
             startingAt: MusicItemID
         )
         case currentItemObserved(MusicItemID?)
+        case queueTransitionRequested(QueueTransitionDirection)
+        case queueTransitionFailed(
+            requestID: UUID,
+            error: MusicProviderError
+        )
+        case cancelQueueTransition
         case reset
+        case delegate(Delegate)
     }
+
+    private enum CancelID {
+        case queueTransition
+    }
+
+    @Dependency(\.playbackQueue) var playbackQueue
+    @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -27,18 +59,76 @@ struct PlaybackQueueFeature {
                 }
                 state.songs = songs
                 state.currentItemID = startingItemID
-                return .none
+                state.pendingQueueTransition = nil
+                return .cancel(id: CancelID.queueTransition)
 
             case .currentItemObserved(let itemID):
                 guard let itemID,
                     state.songs[id: itemID] != nil
                 else { return .none }
+                guard itemID != state.currentItemID else { return .none }
                 state.currentItemID = itemID
+                state.pendingQueueTransition = nil
                 return .none
+
+            case .queueTransitionRequested(let direction):
+                guard !state.songs.isEmpty,
+                    state.currentItemID != nil,
+                    state.pendingQueueTransition == nil
+                else { return .none }
+                let requestID = uuid()
+                state.pendingQueueTransition = PendingQueueTransition(
+                    requestID: requestID,
+                    direction: direction
+                )
+                return .run { send in
+                    do {
+                        switch direction {
+                        case .previous:
+                            try await playbackQueue.previous()
+                        case .next:
+                            try await playbackQueue.next()
+                        }
+                    } catch is CancellationError {
+                        return
+                    } catch let error as MusicProviderError {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .queueTransitionFailed(
+                                requestID: requestID,
+                                error: error
+                            )
+                        )
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .queueTransitionFailed(
+                                requestID: requestID,
+                                error: .playbackFailed
+                            )
+                        )
+                    }
+                }
+                .cancellable(id: CancelID.queueTransition)
+
+            case .queueTransitionFailed(let requestID, let error):
+                guard state.pendingQueueTransition?.requestID == requestID else {
+                    return .none
+                }
+                state.pendingQueueTransition = nil
+                return .send(.delegate(.queueTransitionFailed(error)))
+
+            case .cancelQueueTransition:
+                state.pendingQueueTransition = nil
+                return .cancel(id: CancelID.queueTransition)
 
             case .reset:
                 state.songs = []
                 state.currentItemID = nil
+                state.pendingQueueTransition = nil
+                return .cancel(id: CancelID.queueTransition)
+
+            case .delegate:
                 return .none
             }
         }

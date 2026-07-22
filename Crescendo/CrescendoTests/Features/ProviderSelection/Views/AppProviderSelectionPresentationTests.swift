@@ -198,7 +198,8 @@ struct AppProviderSelectionPresentationTests {
                     providerID: connection.providerID,
                     queue: PlaybackQueueFeature.State(
                         songs: [],
-                        currentItemID: nil
+                        currentItemID: nil,
+                        pendingQueueTransition: nil
                     ),
                     status: .idle,
                     failure: nil,

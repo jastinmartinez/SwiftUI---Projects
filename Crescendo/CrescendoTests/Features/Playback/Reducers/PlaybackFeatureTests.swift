@@ -83,7 +83,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: PlaybackQueueFeature.State(
                 songs: confirmedQueue,
-                currentItemID: confirmedSongs[0].id
+                currentItemID: confirmedSongs[0].id,
+                pendingQueueTransition: nil
             ),
             status: .playing
         ) {
@@ -212,7 +213,11 @@ struct PlaybackFeatureTests {
             interaction: .dragging(position: 50)
         )
         let store = makeStore(
-            queue: .init(songs: queue, currentItemID: songs[1].id),
+            queue: .init(
+                songs: queue,
+                currentItemID: songs[1].id,
+                pendingQueueTransition: nil
+            ),
             status: .paused,
             failure: .network,
             timeline: timeline,
@@ -235,7 +240,14 @@ struct PlaybackFeatureTests {
             $0.failure = .playbackFailed
         }
 
-        #expect(store.state.queue == .init(songs: queue, currentItemID: songs[1].id))
+        #expect(
+            store.state.queue
+                == .init(
+                    songs: queue,
+                    currentItemID: songs[1].id,
+                    pendingQueueTransition: nil
+                )
+        )
         #expect(store.state.status == .paused)
         #expect(store.state.timeline == timeline)
     }
@@ -328,7 +340,11 @@ struct PlaybackFeatureTests {
             currentTime: 12
         )
         let store = makeStore(
-            queue: .init(songs: queue, currentItemID: songs[0].id)
+            queue: .init(
+                songs: queue,
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
+            )
         )
 
         await store.send(.snapshotReceived(snapshot)) {
@@ -387,7 +403,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: .playing
         ) {
@@ -429,7 +446,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: status
         ) {
@@ -472,7 +490,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: .playing,
             pendingOperation: .statusChange(pending)
@@ -490,7 +509,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: .playing,
             pendingOperation: .statusChange(
@@ -539,7 +559,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: status
         ) {
@@ -673,7 +694,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: .playing,
             pendingOperation: .statusChange(pending)
@@ -714,7 +736,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: .playing,
             timeline: .init(confirmedPosition: 4, interaction: .idle),
@@ -751,7 +774,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: .playing,
             timeline: .init(confirmedPosition: 42, interaction: .dragging(position: 50)),
@@ -794,7 +818,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: .paused,
             timeline: timeline,
@@ -818,7 +843,8 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
-                currentItemID: songs[0].id
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
             ),
             status: .playing,
             timeline: .init(
@@ -868,7 +894,11 @@ struct PlaybackFeatureTests {
         let songs = IdentifiedArray(uniqueElements: makeSongs())
         let active = PlaybackFeature.State(
             providerID: providerID,
-            queue: .init(songs: songs, currentItemID: songs[0].id),
+            queue: .init(
+                songs: songs,
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
+            ),
             status: .playing,
             failure: nil,
             playbackEligibility: .eligible,
@@ -880,7 +910,11 @@ struct PlaybackFeatureTests {
         )
         let replacing = PlaybackFeature.State(
             providerID: providerID,
-            queue: .init(songs: [], currentItemID: nil),
+            queue: .init(
+                songs: [],
+                currentItemID: nil,
+                pendingQueueTransition: nil
+            ),
             status: .stopped,
             failure: nil,
             playbackEligibility: .eligible,
@@ -947,7 +981,11 @@ struct PlaybackFeatureTests {
             capabilities: .allEnabled
         )
         let store = makeStore(
-            queue: .init(songs: songs, currentItemID: songs[0].id),
+            queue: .init(
+                songs: songs,
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
+            ),
             status: .playing,
             pendingReset: pendingReset
         )
@@ -980,7 +1018,11 @@ struct PlaybackFeatureTests {
         )
         let calls = LockIsolated(0)
         let store = makeStore(
-            queue: .init(songs: songs, currentItemID: songs[0].id),
+            queue: .init(
+                songs: songs,
+                currentItemID: songs[0].id,
+                pendingQueueTransition: nil
+            ),
             status: .playing,
             pendingOperation: pendingOperation,
             pendingReset: pendingReset
@@ -1271,14 +1313,16 @@ struct PlaybackFeatureTests {
         )
         return PlaybackQueueFeature.State(
             songs: IdentifiedArray(uniqueElements: [song]),
-            currentItemID: song.id
+            currentItemID: song.id,
+            pendingQueueTransition: nil
         )
     }
 
     private func makeStore(
         queue: PlaybackQueueFeature.State = .init(
             songs: [],
-            currentItemID: nil
+            currentItemID: nil,
+            pendingQueueTransition: nil
         ),
         status: PlaybackStatus = .idle,
         failure: MusicProviderError? = nil,

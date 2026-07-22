@@ -115,7 +115,8 @@ struct AppPlaybackCoordinationTests {
         let store = makeStore(
             playbackQueue: .init(
                 songs: currentQueue,
-                currentItemID: currentSongs[0].id
+                currentItemID: currentSongs[0].id,
+                pendingQueueTransition: nil
             ),
             isPlayerPresented: false
         ) {
@@ -183,7 +184,8 @@ struct AppPlaybackCoordinationTests {
         var state = makeState(
             playbackQueue: PlaybackQueueFeature.State(
                 songs: firstPage,
-                currentItemID: firstPageSongs[0].id
+                currentItemID: firstPageSongs[0].id,
+                pendingQueueTransition: nil
             )
         )
         state.search.status = .loaded(
@@ -328,7 +330,8 @@ struct AppPlaybackCoordinationTests {
         ),
         playbackQueue: PlaybackQueueFeature.State = .init(
             songs: [],
-            currentItemID: nil
+            currentItemID: nil,
+            pendingQueueTransition: nil
         ),
         isPlayerPresented: Bool = false,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
@@ -355,7 +358,8 @@ struct AppPlaybackCoordinationTests {
         ),
         playbackQueue: PlaybackQueueFeature.State = .init(
             songs: [],
-            currentItemID: nil
+            currentItemID: nil,
+            pendingQueueTransition: nil
         ),
         isPlayerPresented: Bool = false,
         providerSwitch: ProviderSwitchFeature.State? = nil

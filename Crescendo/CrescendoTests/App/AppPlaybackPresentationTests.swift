@@ -19,7 +19,8 @@ struct AppPlaybackPresentationTests {
             providerID: "fake",
             queue: PlaybackQueueFeature.State(
                 songs: queue,
-                currentItemID: song.id
+                currentItemID: song.id,
+                pendingQueueTransition: nil
             ),
             status: .paused,
             failure: .playbackFailed,

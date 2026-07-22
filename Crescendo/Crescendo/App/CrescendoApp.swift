@@ -24,7 +24,8 @@ struct CrescendoApp: App {
                     providerID: nil,
                     queue: PlaybackQueueFeature.State(
                         songs: [],
-                        currentItemID: nil
+                        currentItemID: nil,
+                        pendingQueueTransition: nil
                     ),
                     status: .idle,
                     failure: nil,

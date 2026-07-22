@@ -153,7 +153,11 @@ struct AppFeatureTests {
             ),
             playback: PlaybackFeature.State(
                 providerID: .appleMusic,
-                queue: .init(songs: queue, currentItemID: song.id),
+                queue: .init(
+                    songs: queue,
+                    currentItemID: song.id,
+                    pendingQueueTransition: nil
+                ),
                 status: .playing,
                 failure: .network,
                 playbackEligibility: .eligible,
@@ -236,7 +240,11 @@ struct AppFeatureTests {
         await operationProbe.waitUntilCancelled()
 
         await store.receive(.playback(.queue(.reset))) {
-            $0.playback.queue = .init(songs: [], currentItemID: nil)
+            $0.playback.queue = .init(
+                songs: [],
+                currentItemID: nil,
+                pendingQueueTransition: nil
+            )
         }
         await store.receive(.playback(.timeline(.reset))) {
             $0.playback.timeline = .init(
@@ -506,7 +514,11 @@ struct AppFeatureTests {
             playback: playback
                 ?? PlaybackFeature.State(
                     providerID: nil,
-                    queue: .init(songs: [], currentItemID: nil),
+                    queue: .init(
+                        songs: [],
+                        currentItemID: nil,
+                        pendingQueueTransition: nil
+                    ),
                     status: .idle,
                     failure: nil,
                     playbackEligibility: .unknown,

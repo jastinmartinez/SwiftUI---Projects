@@ -115,7 +115,8 @@ struct PlaybackNowPlayingPresentationTests {
             providerID: song.id.providerID,
             queue: PlaybackQueueFeature.State(
                 songs: queue,
-                currentItemID: song.id
+                currentItemID: song.id,
+                pendingQueueTransition: nil
             ),
             status: status,
             failure: nil,
