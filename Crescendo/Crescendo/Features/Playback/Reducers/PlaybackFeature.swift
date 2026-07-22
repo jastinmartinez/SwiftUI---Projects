@@ -88,6 +88,11 @@ struct PlaybackFeature {
         )
         case setPlayerPresented(Bool)
         case snapshotReceived(PlaybackSnapshot)
+        case timelinePositionChanged(TimeInterval)
+        case timelineInteractionEnded
+        case restartTapped
+        case seekBackwardTapped
+        case seekForwardTapped
         case queue(PlaybackQueueFeature.Action)
         case timeline(PlaybackTimelineFeature.Action)
     }
@@ -393,6 +398,33 @@ struct PlaybackFeature {
                 state.failure = error
                 return .none
 
+            case .timelinePositionChanged(let requestedPosition):
+                guard state.canRequestSeek,
+                    let duration = state.queue.currentItem?.duration
+                else { return .none }
+                let position = min(max(requestedPosition, 0), duration)
+                return .send(.timeline(.positionChanged(position)))
+
+            case .timelineInteractionEnded:
+                guard state.canRequestSeek else { return .none }
+                return .send(.timeline(.dragEnded))
+
+            case .restartTapped:
+                guard state.canRequestSeek else { return .none }
+                return .send(.timeline(.seekRequested(0)))
+
+            case .seekBackwardTapped:
+                guard state.canRequestSeek else { return .none }
+                let target = max(state.timeline.position - 15, 0)
+                return .send(.timeline(.seekRequested(target)))
+
+            case .seekForwardTapped:
+                guard state.canRequestSeek,
+                    let duration = state.queue.currentItem?.duration
+                else { return .none }
+                let target = min(state.timeline.position + 15, duration)
+                return .send(.timeline(.seekRequested(target)))
+
             case .snapshotReceived(let snapshot):
                 guard state.pendingReset == nil else { return .none }
                 state.status = snapshot.status
@@ -513,5 +545,13 @@ extension PlaybackFeature.State {
         case nil:
             return !queue.songs.isEmpty && status != .stopped
         }
+    }
+
+    var canRequestSeek: Bool {
+        guard pendingReset == nil,
+            capabilities.supportsSeeking,
+            let duration = queue.currentItem?.duration
+        else { return false }
+        return duration > 0
     }
 }

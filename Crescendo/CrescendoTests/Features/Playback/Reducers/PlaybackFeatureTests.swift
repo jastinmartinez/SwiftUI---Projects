@@ -954,9 +954,118 @@ struct PlaybackFeatureTests {
         #expect(store.state.pendingReset == pendingReset)
     }
 
+    @Test
+    func continuousTimelineIntentIsClampedByTheParent() async {
+        let store = makeStore(queue: makeQueue(duration: 180))
+
+        await store.send(.timelinePositionChanged(200))
+        await store.receive(.timeline(.positionChanged(180))) {
+            $0.timeline.interaction = .dragging(position: 180)
+        }
+    }
+
+    @Test
+    func discreteTimelineControlsUseTheCurrentInteractionPosition() async {
+        let store = makeStore(
+            queue: makeQueue(duration: 180),
+            timeline: .init(
+                confirmedPosition: 40,
+                interaction: .seeking(requestID: UUID(9), position: 60)
+            )
+        ) {
+            $0.playbackControl.seek = { _ in }
+        }
+
+        await store.send(.seekBackwardTapped)
+        await store.receive(.timeline(.seekRequested(45))) {
+            $0.timeline.interaction = .seeking(
+                requestID: UUID(0),
+                position: 45
+            )
+        }
+        await store.receive(.timeline(.seekSucceeded(requestID: UUID(0)))) {
+            $0.timeline.confirmedPosition = 45
+            $0.timeline.interaction = .idle
+        }
+    }
+
+    @Test
+    func restartAndForwardSeekClampToTimelineBounds() async {
+        let seekPositions = LockIsolated<[TimeInterval]>([])
+        let store = makeStore(
+            queue: makeQueue(duration: 180),
+            timeline: .init(confirmedPosition: 175, interaction: .idle)
+        ) {
+            $0.playbackControl.seek = { position in
+                seekPositions.withValue { $0.append(position) }
+            }
+        }
+
+        await store.send(.seekForwardTapped)
+        await store.receive(.timeline(.seekRequested(180))) {
+            $0.timeline.interaction = .seeking(
+                requestID: UUID(0),
+                position: 180
+            )
+        }
+        await store.receive(.timeline(.seekSucceeded(requestID: UUID(0)))) {
+            $0.timeline.confirmedPosition = 180
+            $0.timeline.interaction = .idle
+        }
+
+        await store.send(.restartTapped)
+        await store.receive(.timeline(.seekRequested(0))) {
+            $0.timeline.interaction = .seeking(
+                requestID: UUID(1),
+                position: 0
+            )
+        }
+        await store.receive(.timeline(.seekSucceeded(requestID: UUID(1)))) {
+            $0.timeline.confirmedPosition = 0
+            $0.timeline.interaction = .idle
+        }
+
+        #expect(seekPositions.value == [180, 0])
+    }
+
+    @Test
+    func unavailableTimelineIntentIsATrueNoOp() async {
+        var capabilities = MusicProviderCapabilities.allEnabled
+        capabilities = MusicProviderCapabilities(
+            supportsCatalogSearch: capabilities.supportsCatalogSearch,
+            supportsEmbeddedPlayback: capabilities.supportsEmbeddedPlayback,
+            supportsSeeking: false,
+            supportsQueueReplacement: capabilities.supportsQueueReplacement
+        )
+        let store = makeStore(
+            queue: makeQueue(duration: 180),
+            capabilities: capabilities
+        )
+
+        await store.send(.timelinePositionChanged(30))
+        await store.send(.timelineInteractionEnded)
+        await store.send(.restartTapped)
+        await store.send(.seekBackwardTapped)
+        await store.send(.seekForwardTapped)
+    }
+
     // MARK: - Helpers
 
     private let providerID = ProviderID(rawValue: "fake")
+
+    private func makeQueue(duration: TimeInterval?) -> PlaybackQueueFeature.State {
+        let song = SongSummary(
+            id: MusicItemID(providerID: providerID, nativeID: "timeline"),
+            title: "Timeline",
+            artistName: "Artist",
+            artworkURL: nil,
+            duration: duration
+        )
+        return PlaybackQueueFeature.State(
+            songs: IdentifiedArray(uniqueElements: [song]),
+            currentItemID: song.id
+        )
+    }
 
     private func makeStore(
         queue: PlaybackQueueFeature.State = .init(
