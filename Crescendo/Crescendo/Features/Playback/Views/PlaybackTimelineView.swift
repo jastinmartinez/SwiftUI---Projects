@@ -1,25 +1,12 @@
-import Foundation
 import SwiftUI
 
-/// Displays duration-backed playback progress and seeking.
+/// Displays playback position and optional full-player seek actions.
 struct PlaybackTimelineView: View {
     let model: Model
 
     var body: some View {
-        VStack(spacing: 6) {
-            Slider(
-                value: Binding(
-                    get: { model.position },
-                    set: { model.onPositionChanged($0) }
-                ),
-                in: model.range,
-                onEditingChanged: { isEditing in
-                    guard !isEditing else { return }
-                    model.onDragEnded()
-                }
-            )
-            .accessibilityLabel(model.strings.accessibilityLabel)
-            .accessibilityValue(model.strings.accessibilityValue)
+        VStack(spacing: 10) {
+            PlaybackSlider(model: model.slider)
 
             HStack {
                 Text(model.elapsedTimeText)
@@ -28,60 +15,47 @@ struct PlaybackTimelineView: View {
             }
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
+
+            if !model.controls.isEmpty {
+                HStack(spacing: 28) {
+                    ForEach(model.controls) { control in
+                        Button(action: control.perform) {
+                            Image(systemName: control.systemImage)
+                        }
+                        .accessibilityLabel(control.accessibilityLabel)
+                        .disabled(!control.isEnabled)
+                    }
+                }
+                .font(.title3.weight(.semibold))
+                .buttonStyle(.plain)
+            }
         }
     }
 }
 
 extension PlaybackTimelineView {
     struct Model {
-        let position: TimeInterval
-        let range: ClosedRange<TimeInterval>
+        let slider: PlaybackSlider.Model
         let elapsedTimeText: String
         let durationText: String
-        let strings: Strings
-        let onPositionChanged: (TimeInterval) -> Void
-        let onDragEnded: () -> Void
+        let controls: [Control]
     }
 }
 
 extension PlaybackTimelineView.Model {
-    struct Strings {
+    struct Control: Identifiable {
+        let id: ID
+        let systemImage: String
         let accessibilityLabel: String
-        let accessibilityValue: String
+        let isEnabled: Bool
+        let perform: () -> Void
     }
 }
 
-extension PlaybackTimelineView.Model {
-    /// Builds the shared interactive timeline model for any player surface.
-    static func make(
-        duration: TimeInterval?,
-        timeline: PlaybackTimelineFeature.State,
-        supportsSeeking: Bool,
-        strings: (_ elapsedTime: String, _ durationTime: String) -> Strings,
-        onPositionChanged: @escaping (TimeInterval) -> Void,
-        onDragEnded: @escaping () -> Void
-    ) -> Self? {
-        guard supportsSeeking, let duration, duration > 0 else {
-            return nil
-        }
-        let currentPosition: TimeInterval
-        switch timeline.interaction {
-        case .idle:
-            currentPosition = timeline.confirmedPosition
-        case .dragging(let position), .seeking(_, let position):
-            currentPosition = position
-        }
-        let position = min(max(currentPosition, 0), duration)
-        let elapsedTimeText = position.musicDurationText
-        let durationText = duration.musicDurationText
-        return Self(
-            position: position,
-            range: 0...duration,
-            elapsedTimeText: elapsedTimeText,
-            durationText: durationText,
-            strings: strings(elapsedTimeText, durationText),
-            onPositionChanged: onPositionChanged,
-            onDragEnded: onDragEnded
-        )
+extension PlaybackTimelineView.Model.Control {
+    enum ID: Hashable {
+        case backward
+        case restart
+        case forward
     }
 }

@@ -61,6 +61,13 @@ extension Locs {
         static let pause = String(localized: "music_playback.pause")
         static let position = String(localized: "music_playback.position")
         static let stop = String(localized: "music_playback.stop")
+        static let restart = String(localized: "music_playback.restart")
+        static let backwardFifteenSeconds = String(
+            localized: "music_playback.backward_fifteen_seconds"
+        )
+        static let forwardFifteenSeconds = String(
+            localized: "music_playback.forward_fifteen_seconds"
+        )
 
         static func positionValue(
             elapsedTime: String,

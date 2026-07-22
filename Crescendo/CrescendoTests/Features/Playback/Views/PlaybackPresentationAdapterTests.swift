@@ -38,8 +38,8 @@ struct PlaybackPresentationAdapterTests {
         #expect(model.metadata.artistName == song.artistName)
         #expect(model.metadata.providerAttribution == "Playing from Apple Music")
         #expect(model.artworkURL == song.artworkURL)
-        #expect(model.timeline?.position == 43)
-        #expect(model.timeline?.range == 0...215)
+        #expect(model.timeline?.slider.value == 43)
+        #expect(model.timeline?.slider.scale == .init(range: 0...215))
         #expect(model.timeline?.elapsedTimeText == "0:43")
         #expect(model.timeline?.durationText == "3:35")
         #expect(model.controls.primaryAction == .pause)
@@ -88,30 +88,51 @@ struct PlaybackPresentationAdapterTests {
     }
 
     @Test
-    func timelineFactoryUsesConfirmedPositionAndInjectedStrings() throws {
-        let model = try #require(
-            PlaybackTimelineView.Model.make(
-                duration: 215,
-                timeline: PlaybackTimelineFeature.State(
-                    confirmedPosition: 43,
-                    interaction: .idle
-                ),
-                supportsSeeking: true,
-                strings: { elapsedTime, durationTime in
-                    PlaybackTimelineView.Model.Strings(
-                        accessibilityLabel: "Custom position",
-                        accessibilityValue:
-                            "\(elapsedTime) elapsed from \(durationTime)"
-                    )
-                },
-                onPositionChanged: { _ in },
-                onDragEnded: {}
-            )
+    func fullTimelineProjectsSliderControlsAndLocalizedLabels() throws {
+        let song = makeSong(duration: 215)
+        let actions = LockIsolated<[PlaybackFeature.Action]>([])
+        let store = makeActionRecordingStore(song: song, actions: actions)
+        let timeline = try #require(
+            PlaybackTimelineView.Model(store, showsControls: true)
         )
 
-        #expect(model.position == 43)
-        #expect(model.strings.accessibilityLabel == "Custom position")
-        #expect(model.strings.accessibilityValue == "0:43 elapsed from 3:35")
+        #expect(timeline.slider.value == 43)
+        #expect(timeline.slider.scale == .init(range: 0...215))
+        #expect(timeline.slider.isEnabled)
+        #expect(timeline.slider.strings.accessibilityLabel == "Playback position")
+        #expect(timeline.slider.strings.accessibilityValue == "0:43 of 3:35")
+        #expect(timeline.elapsedTimeText == "0:43")
+        #expect(timeline.durationText == "3:35")
+        #expect(timeline.controls.map(\.id) == [.backward, .restart, .forward])
+        #expect(
+            timeline.controls.map(\.systemImage) == [
+                "gobackward.15",
+                "arrow.counterclockwise",
+                "goforward.15",
+            ]
+        )
+        #expect(
+            timeline.controls.map(\.accessibilityLabel) == [
+                "Back 15 seconds",
+                "Restart",
+                "Forward 15 seconds",
+            ]
+        )
+        #expect(timeline.controls.allSatisfy { $0.isEnabled })
+
+        timeline.slider.onValueChanged(30)
+        timeline.slider.onInteractionEnded()
+        timeline.controls.forEach { $0.perform() }
+
+        #expect(
+            actions.value == [
+                .timelinePositionChanged(30),
+                .timelineInteractionEnded,
+                .seekBackwardTapped,
+                .restartTapped,
+                .seekForwardTapped,
+            ]
+        )
     }
 
     @Test(arguments: [
@@ -121,83 +142,69 @@ struct PlaybackPresentationAdapterTests {
     func timelineInteractionOverridesConfirmedPosition(
         interaction: PlaybackTimelineFeature.Interaction
     ) throws {
-        let model = try #require(
-            PlaybackTimelineView.Model.make(
-                duration: 215,
-                timeline: .init(
-                    confirmedPosition: 43,
-                    interaction: interaction
-                ),
-                supportsSeeking: true,
-                strings: { _, _ in
-                    .init(accessibilityLabel: "", accessibilityValue: "")
-                },
-                onPositionChanged: { _ in },
-                onDragEnded: {}
-            )
+        let store = makePlaybackStore(
+            song: makeSong(duration: 215),
+            confirmedPosition: 43,
+            timelineInteraction: interaction
         )
 
-        #expect(model.position == 60)
+        let timeline = try #require(
+            PlaybackTimelineView.Model(store, showsControls: true)
+        )
+        #expect(timeline.slider.value == 60)
     }
 
     @Test
-    func timelineClampsAndOmitsUnsupportedValues() {
-        let negative = PlaybackTimelineView.Model.make(
-            duration: 215,
-            timeline: .init(confirmedPosition: -1, interaction: .idle),
-            supportsSeeking: true,
-            strings: { _, _ in
-                .init(accessibilityLabel: "", accessibilityValue: "")
-            },
-            onPositionChanged: { _ in },
-            onDragEnded: {}
+    func timelineClampsPositionAndRequiresPositiveDuration() throws {
+        let overflow = makePlaybackStore(
+            song: makeSong(duration: 215),
+            confirmedPosition: 216
         )
-        let overflow = PlaybackTimelineView.Model.make(
-            duration: 215,
-            timeline: .init(confirmedPosition: 216, interaction: .idle),
-            supportsSeeking: true,
-            strings: { _, _ in
-                .init(accessibilityLabel: "", accessibilityValue: "")
-            },
-            onPositionChanged: { _ in },
-            onDragEnded: {}
+        let missing = makePlaybackStore(song: makeSong(duration: nil))
+
+        let overflowTimeline = try #require(
+            PlaybackTimelineView.Model(overflow, showsControls: true)
         )
-        let unsupported = PlaybackTimelineView.Model.make(
-            duration: 215,
-            timeline: .init(confirmedPosition: 43, interaction: .idle),
+        #expect(overflowTimeline.slider.value == 215)
+        #expect(
+            PlaybackTimelineView.Model(
+                missing,
+                showsControls: true
+            ).map { _ in true } == nil
+        )
+    }
+
+    @Test
+    func unsupportedSeekingKeepsTimelineVisibleButDisabled() throws {
+        let capabilities = MusicProviderCapabilities(
+            supportsCatalogSearch: true,
+            supportsEmbeddedPlayback: true,
             supportsSeeking: false,
-            strings: { _, _ in
-                .init(accessibilityLabel: "", accessibilityValue: "")
-            },
-            onPositionChanged: { _ in },
-            onDragEnded: {}
+            supportsQueueReplacement: true
+        )
+        let store = makePlaybackStore(
+            song: makeSong(duration: 215),
+            capabilities: capabilities
         )
 
-        #expect(negative?.position == 0)
-        #expect(overflow?.position == 215)
-        #expect(unsupported == nil)
+        let timeline = try #require(
+            PlaybackTimelineView.Model(store, showsControls: true)
+        )
+        #expect(!timeline.slider.isEnabled)
+        #expect(timeline.controls.allSatisfy { !$0.isEnabled })
     }
 
     @Test
-    func adapterCallbacksForwardPresentationActions() {
+    func controlAdapterCallbacksForwardPresentationActions() {
         let song = makeSong(duration: 215)
         let actions = LockIsolated<[PlaybackFeature.Action]>([])
         let store = makeActionRecordingStore(song: song, actions: actions)
         let model = PlaybackView.Model(store, providerName: nil)
 
-        model.timeline?.onPositionChanged(30)
-        model.timeline?.onDragEnded()
         model.controls.onPrimaryAction()
         model.controls.onStop()
 
-        #expect(
-            actions.value == [
-                .timeline(.positionChanged(30)),
-                .timeline(.dragEnded),
-                .playPauseTapped,
-                .stopTapped,
-            ]
-        )
+        #expect(actions.value == [.playPauseTapped, .stopTapped])
     }
 
     @Test
@@ -266,6 +273,7 @@ struct PlaybackPresentationAdapterTests {
         playbackEligibility: CatalogPlaybackEligibility = .eligible,
         capabilities: MusicProviderCapabilities = .allEnabled,
         confirmedPosition: TimeInterval = 0,
+        timelineInteraction: PlaybackTimelineFeature.Interaction = .idle,
         pendingOperation: PlaybackFeature.PendingOperation? = nil
     ) -> StoreOf<PlaybackFeature> {
         let songs = IdentifiedArray(uniqueElements: song.map { [$0] } ?? [])
@@ -282,7 +290,7 @@ struct PlaybackPresentationAdapterTests {
                 capabilities: capabilities,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: confirmedPosition,
-                    interaction: .idle
+                    interaction: timelineInteraction
                 ),
                 pendingOperation: pendingOperation,
                 pendingReset: nil,

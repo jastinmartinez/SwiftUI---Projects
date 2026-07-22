@@ -27,22 +27,9 @@ extension PlaybackView.Model {
 
         let song = store.queue.currentItem
 
-        let timeline = PlaybackTimelineView.Model.make(
-            duration: song?.duration,
-            timeline: store.timeline,
-            supportsSeeking: store.capabilities.supportsSeeking,
-            strings: { elapsedTime, durationTime in
-                .localized(
-                    elapsedTime: elapsedTime,
-                    durationTime: durationTime
-                )
-            },
-            onPositionChanged: {
-                store.send(.timeline(.positionChanged($0)))
-            },
-            onDragEnded: {
-                store.send(.timeline(.dragEnded))
-            }
+        let timeline = PlaybackTimelineView.Model(
+            store,
+            showsControls: true
         )
 
         self.init(
@@ -56,21 +43,6 @@ extension PlaybackView.Model {
             timeline: timeline,
             controls: PlaybackControlsView.Model(store),
             eligibility: PlaybackEligibilityNoticeView.Model(store)
-        )
-    }
-}
-
-extension PlaybackTimelineView.Model.Strings {
-    static func localized(
-        elapsedTime: String,
-        durationTime: String
-    ) -> Self {
-        Self(
-            accessibilityLabel: Locs.Playback.position,
-            accessibilityValue: Locs.Playback.positionValue(
-                elapsedTime: elapsedTime,
-                durationTime: durationTime
-            )
         )
     }
 }

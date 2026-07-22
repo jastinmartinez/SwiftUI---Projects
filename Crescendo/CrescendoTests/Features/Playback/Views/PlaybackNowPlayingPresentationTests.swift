@@ -8,7 +8,7 @@ import Testing
 struct PlaybackNowPlayingPresentationTests {
     @Test
     func barToggleWhilePlayingPausesThroughReducer() async {
-        let song = makeSong()
+        let song = makeSong(duration: nil)
         let (pauseCalled, pauseCalledContinuation) = AsyncStream<Void>.makeStream()
         let store = Store(initialState: makeState(song: song, status: .playing)) {
             PlaybackFeature()
@@ -27,7 +27,7 @@ struct PlaybackNowPlayingPresentationTests {
 
     @Test
     func barToggleProjectsParentOperationPermission() {
-        let song = makeSong()
+        let song = makeSong(duration: nil)
         var state = makeState(song: song, status: .playing)
         state.pendingOperation = .statusChange(
             .init(requestID: UUID(0), target: .paused)
@@ -43,7 +43,7 @@ struct PlaybackNowPlayingPresentationTests {
 
     @Test
     func barOpenRoutesPresentationThroughPlayback() {
-        let song = makeSong()
+        let song = makeSong(duration: nil)
         let store = Store(initialState: makeState(song: song, status: .playing)) {
             PlaybackFeature()
         }
@@ -56,7 +56,7 @@ struct PlaybackNowPlayingPresentationTests {
 
     @Test
     func barToggleWhilePausedResumesWithoutResettingSelection() async {
-        let song = makeSong()
+        let song = makeSong(duration: nil)
         let playCallCount = LockIsolated(0)
         let resumeCallCount = LockIsolated(0)
         let (resumeStarted, resumeStartedContinuation) = AsyncStream<Void>.makeStream()
@@ -90,6 +90,19 @@ struct PlaybackNowPlayingPresentationTests {
         resumeStartedContinuation.finish()
     }
 
+    @Test
+    func compactTimelineUsesSharedSliderWithoutUtilityActions() throws {
+        let song = makeSong(duration: 180)
+        let store = Store(initialState: makeState(song: song, status: .playing)) {
+            PlaybackFeature()
+        }
+        let model = PlaybackNowPlayingView.Model(store, song: song)
+        let timeline = try #require(model.timeline)
+
+        #expect(timeline.slider.scale == .init(range: 0...180))
+        #expect(timeline.controls.isEmpty)
+    }
+
     // MARK: - Helpers
 
     private func makeState(
@@ -117,13 +130,13 @@ struct PlaybackNowPlayingPresentationTests {
         )
     }
 
-    private func makeSong() -> SongSummary {
+    private func makeSong(duration: TimeInterval?) -> SongSummary {
         SongSummary(
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
             artistName: "Artist",
             artworkURL: nil,
-            duration: nil
+            duration: duration
         )
     }
 }
