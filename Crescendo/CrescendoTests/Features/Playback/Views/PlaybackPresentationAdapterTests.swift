@@ -156,19 +156,44 @@ struct PlaybackPresentationAdapterTests {
 
     @Test
     func timelineClampsPositionAndRequiresPositiveDuration() throws {
+        let negativePosition = makePlaybackStore(
+            song: makeSong(duration: 215),
+            confirmedPosition: -1
+        )
         let overflow = makePlaybackStore(
             song: makeSong(duration: 215),
             confirmedPosition: 216
         )
         let missing = makePlaybackStore(song: makeSong(duration: nil))
+        let zero = makePlaybackStore(song: makeSong(duration: 0))
+        let negativeDuration = makePlaybackStore(song: makeSong(duration: -1))
 
+        let negativePositionTimeline = try #require(
+            PlaybackTimelineView.Model(
+                negativePosition,
+                showsControls: true
+            )
+        )
         let overflowTimeline = try #require(
             PlaybackTimelineView.Model(overflow, showsControls: true)
         )
+        #expect(negativePositionTimeline.slider.value == 0)
         #expect(overflowTimeline.slider.value == 215)
         #expect(
             PlaybackTimelineView.Model(
                 missing,
+                showsControls: true
+            ).map { _ in true } == nil
+        )
+        #expect(
+            PlaybackTimelineView.Model(
+                zero,
+                showsControls: true
+            ).map { _ in true } == nil
+        )
+        #expect(
+            PlaybackTimelineView.Model(
+                negativeDuration,
                 showsControls: true
             ).map { _ in true } == nil
         )
