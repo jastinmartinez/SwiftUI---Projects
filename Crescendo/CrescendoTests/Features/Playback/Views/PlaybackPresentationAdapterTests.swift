@@ -122,7 +122,9 @@ struct PlaybackPresentationAdapterTests {
 
         timeline.slider.onValueChanged(30)
         timeline.slider.onInteractionEnded()
-        timeline.controls.forEach { $0.perform() }
+        for control in timeline.controls {
+            control.perform()
+        }
 
         #expect(
             actions.value == [

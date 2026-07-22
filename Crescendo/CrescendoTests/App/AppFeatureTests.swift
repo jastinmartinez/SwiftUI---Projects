@@ -185,7 +185,8 @@ struct AppFeatureTests {
             )
         )
         await operationProbe.waitUntilStarted()
-        await store.send(.playback(.timeline(.dragEnded))) {
+        await store.send(.playback(.timeline(.dragEnded)))
+        await store.receive(.playback(.timeline(.seekRequested(50)))) {
             $0.playback.timeline.interaction = .seeking(
                 requestID: UUID(0),
                 position: 50
