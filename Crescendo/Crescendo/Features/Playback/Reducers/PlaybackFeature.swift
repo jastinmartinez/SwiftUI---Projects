@@ -86,6 +86,8 @@ struct PlaybackFeature {
             requestID: UUID,
             error: MusicProviderError
         )
+        case previousTapped
+        case nextTapped
         case setPlayerPresented(Bool)
         case snapshotReceived(PlaybackSnapshot)
         case timelinePositionChanged(TimeInterval)
@@ -206,13 +208,18 @@ struct PlaybackFeature {
                 )
                 state.playbackEligibility = .eligible
                 state.failure = nil
-                return .send(
-                    .performQueueReplacement(
-                        requestID: requestID,
-                        itemIDs: Array(loadedResults.ids),
-                        startingItemID: song.id
-                    )
+                let replacementAction = Action.performQueueReplacement(
+                    requestID: requestID,
+                    itemIDs: Array(loadedResults.ids),
+                    startingItemID: song.id
                 )
+                if state.queue.pendingQueueTransition != nil {
+                    return .concatenate(
+                        .send(.queue(.cancelQueueTransition)),
+                        .send(replacementAction)
+                    )
+                }
+                return .send(replacementAction)
 
             case .performQueueReplacement(
                 let requestID,
@@ -392,6 +399,16 @@ struct PlaybackFeature {
                 state.failure = error
                 return .none
 
+            case .previousTapped:
+                guard state.canRequestQueueTransition else { return .none }
+                state.failure = nil
+                return .send(.queue(.queueTransitionRequested(.previous)))
+
+            case .nextTapped:
+                guard state.canRequestQueueTransition else { return .none }
+                state.failure = nil
+                return .send(.queue(.queueTransitionRequested(.next)))
+
             case .timelinePositionChanged(let requestedPosition):
                 guard state.canRequestSeek,
                     let duration = state.queue.currentItem?.duration
@@ -523,6 +540,10 @@ struct PlaybackFeature {
                 state.failure = error
                 return .none
 
+            case .queue(.delegate(.queueTransitionFailed(let error))):
+                state.failure = error
+                return .none
+
             case .queue, .timeline:
                 return .none
             }
@@ -566,5 +587,19 @@ extension PlaybackFeature.State {
             let duration = queue.currentItem?.duration
         else { return false }
         return duration > 0
+    }
+
+    /// Whether a queue transition can execute from the current domain state.
+    var canRequestQueueTransition: Bool {
+        guard capabilities.supportsQueueTransitions,
+            pendingReset == nil,
+            !queue.songs.isEmpty,
+            queue.currentItemID != nil,
+            queue.pendingQueueTransition == nil
+        else { return false }
+        if case .queueReplacement = pendingOperation {
+            return false
+        }
+        return true
     }
 }
