@@ -7,8 +7,6 @@ struct PlaybackQueueClient: Sendable {
             _ itemIDs: [MusicItemID],
             _ startingItemID: MusicItemID
         ) async throws -> Void
-    var previous: @Sendable () async throws -> Void
-    var next: @Sendable () async throws -> Void
 }
 
 extension DependencyValues {

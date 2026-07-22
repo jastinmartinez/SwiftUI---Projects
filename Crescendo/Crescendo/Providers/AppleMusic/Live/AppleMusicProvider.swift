@@ -129,14 +129,33 @@ actor AppleMusicProvider {
         try await player.play()
     }
 
-    /// Moves playback to the previous entry in the active queue.
-    func previous() async throws {
-        try await player.skipToPreviousEntry()
+    /// Requests movement through the active queue when another entry exists.
+    ///
+    /// - Parameter direction: The provider-relative movement to request.
+    /// - Returns: Whether MusicKit accepted a transition or the queue boundary
+    ///   prevented one from being requested.
+    func navigate(
+        _ direction: PlaybackNavigationDirection
+    ) async throws -> PlaybackNavigationResult {
+        guard currentQueuePosition.canTransition(direction) else {
+            return .boundaryReached
+        }
+
+        switch direction {
+        case .previous:
+            try await player.skipToPreviousEntry()
+        case .next:
+            try await player.skipToNextEntry()
+        }
+        return .accepted
     }
 
-    /// Moves playback to the next entry in the active queue.
-    func next() async throws {
-        try await player.skipToNextEntry()
+    /// Resolves the native queue into the boundary information required for transitions.
+    private var currentQueuePosition: AppleMusicQueuePosition {
+        AppleMusicQueuePosition(
+            entryIDs: player.queue.entries.map(\.id),
+            currentEntryID: player.queue.currentEntry?.id
+        )
     }
 
     /// Pauses playback while preserving the current position.

@@ -22,8 +22,7 @@ struct PlaybackUtilityControlsView: View {
                     }
                     .foregroundStyle(.secondary)
                     .frame(
-                        minWidth: 64,
-                        maxWidth: 64,
+                        maxWidth: .infinity,
                         minHeight: 64
                     )
                 }
@@ -32,6 +31,7 @@ struct PlaybackUtilityControlsView: View {
                 .disabled(!control.isEnabled)
             }
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(

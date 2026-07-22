@@ -82,14 +82,17 @@ struct FakeMusicProviderTests {
         ]
         let fake = makeFakeProvider(searchResults: songs)
         let playbackQueue = await fake.playbackQueueClient()
+        let playbackNavigation = await fake.playbackNavigationClient()
         let playbackObservation = await fake.playbackObservationClient()
 
         try await playbackQueue.replace(songs.map(\.id), songs[1].id)
-        try await playbackQueue.next()
+        let nextResult = try await playbackNavigation.navigate(.next)
         let nextSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
-        try await playbackQueue.previous()
+        let previousResult = try await playbackNavigation.navigate(.previous)
         let previousSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
+        #expect(nextResult == .accepted)
+        #expect(previousResult == .accepted)
         #expect(nextSnapshot?.currentItemID == songs[2].id)
         #expect(nextSnapshot?.currentTime == 0)
         #expect(previousSnapshot?.currentItemID == songs[1].id)
@@ -97,28 +100,28 @@ struct FakeMusicProviderTests {
     }
 
     @Test(arguments: [PlaybackQueueBoundary.first, .last])
-    func queueTransitionAtBoundaryFailsWithoutChangingPlayback(
+    func queueTransitionAtBoundaryDoesNotChangePlayback(
         boundary: PlaybackQueueBoundary
     ) async throws {
         let songs = [makeSong(nativeID: "1"), makeSong(nativeID: "2")]
         let fake = makeFakeProvider(searchResults: songs)
         let playbackQueue = await fake.playbackQueueClient()
+        let playbackNavigation = await fake.playbackNavigationClient()
         let playbackObservation = await fake.playbackObservationClient()
         let startingItem = boundary == .first ? songs[0] : songs[1]
 
         try await playbackQueue.replace(songs.map(\.id), startingItem.id)
         let previousSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
-        await expectUnavailable {
-            switch boundary {
-            case .first:
-                try await playbackQueue.previous()
-            case .last:
-                try await playbackQueue.next()
-            }
+        let result = switch boundary {
+        case .first:
+            try await playbackNavigation.navigate(.previous)
+        case .last:
+            try await playbackNavigation.navigate(.next)
         }
 
         let currentSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
+        #expect(result == .boundaryReached)
         #expect(currentSnapshot == previousSnapshot)
     }
 

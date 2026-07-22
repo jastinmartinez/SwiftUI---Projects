@@ -49,6 +49,7 @@ struct CrescendoApp: App {
             $0.playbackTransport = .appleMusic(appleMusicProvider)
             $0.playbackTimeline = .appleMusic(appleMusicProvider)
             $0.playbackQueue = .appleMusic(appleMusicProvider)
+            $0.playbackNavigation = .appleMusic(appleMusicProvider)
             $0.playbackObservation = .appleMusic(appleMusicProvider)
         }
     }

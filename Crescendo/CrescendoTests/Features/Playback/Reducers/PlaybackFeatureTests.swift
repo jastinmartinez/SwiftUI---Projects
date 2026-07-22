@@ -1300,14 +1300,14 @@ struct PlaybackFeatureTests {
     }
 
     @Test(arguments: [
-        PlaybackQueueFeature.QueueTransitionDirection.previous,
+        PlaybackNavigationDirection.previous,
         .next,
     ])
     func parentRoutesAuthorizedQueueTransitionToTheQueueChild(
-        direction: PlaybackQueueFeature.QueueTransitionDirection
+        direction: PlaybackNavigationDirection
     ) async {
         let songs = makeSongs()
-        let calls = LockIsolated<[PlaybackQueueFeature.QueueTransitionDirection]>([])
+        let calls = LockIsolated<[PlaybackNavigationDirection]>([])
         let store = makeStore(
             queue: .init(
                 songs: IdentifiedArray(uniqueElements: songs),
@@ -1315,11 +1315,9 @@ struct PlaybackFeatureTests {
                 pendingQueueTransition: nil
             )
         ) {
-            $0.playbackQueue.previous = {
-                calls.withValue { $0.append(.previous) }
-            }
-            $0.playbackQueue.next = {
-                calls.withValue { $0.append(.next) }
+            $0.playbackNavigation.navigate = { direction in
+                calls.withValue { $0.append(direction) }
+                return .accepted
             }
         }
 

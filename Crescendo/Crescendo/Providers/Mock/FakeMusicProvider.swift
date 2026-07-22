@@ -86,14 +86,17 @@ actor FakeMusicProvider {
                     itemIDs: itemIDs,
                     startingItemID: startingItemID
                 )
-            },
-            previous: { [weak self] in
+            }
+        )
+    }
+
+    func playbackNavigationClient() -> PlaybackNavigationClient {
+        PlaybackNavigationClient(
+            navigate: { [weak self] direction in
                 guard let self else { throw MusicProviderError.unavailable }
-                try await self.moveCurrentItem(by: -1)
-            },
-            next: { [weak self] in
-                guard let self else { throw MusicProviderError.unavailable }
-                try await self.moveCurrentItem(by: 1)
+                return try await self.moveCurrentItem(
+                    by: direction == .previous ? -1 : 1
+                )
             }
         )
     }
@@ -139,13 +142,15 @@ actor FakeMusicProvider {
         )
     }
 
-    private func moveCurrentItem(by offset: Int) throws {
+    private func moveCurrentItem(
+        by offset: Int
+    ) throws -> PlaybackNavigationResult {
         guard let queueCurrentIndex else {
             throw MusicProviderError.unavailable
         }
         let destinationIndex = queueCurrentIndex + offset
         guard queueItemIDs.indices.contains(destinationIndex) else {
-            throw MusicProviderError.unavailable
+            return .boundaryReached
         }
 
         self.queueCurrentIndex = destinationIndex
@@ -157,6 +162,7 @@ actor FakeMusicProvider {
             repeatMode: playbackSnapshot.repeatMode,
             shuffleMode: playbackSnapshot.shuffleMode
         )
+        return .accepted
     }
 
     private func searchPage(offset: Int, limit: Int) -> SearchPage {

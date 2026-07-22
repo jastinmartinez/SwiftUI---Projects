@@ -12,9 +12,7 @@ extension PlaybackQueueClient {
                     itemIDs: $0,
                     startingItemID: $1
                 )
-            },
-            previous: { try await provider.previous() },
-            next: { try await provider.next() }
+            }
         )
     }
 }

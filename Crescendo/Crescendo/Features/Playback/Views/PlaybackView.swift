@@ -7,27 +7,34 @@ struct PlaybackView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                SongArtworkView(
-                    model: .init(
-                        artworkURL: model.artworkURL,
-                        size: 300,
-                        cornerRadius: 24
+            VStack(spacing: 20) {
+                VStack(spacing: 16) {
+                    SongArtworkView(
+                        model: .init(
+                            artworkURL: model.artworkURL,
+                            size: 300,
+                            cornerRadius: 24
+                        )
                     )
-                )
 
-                PlaybackMetadataView(model: model.metadata)
-
-                if let timeline = model.timeline {
-                    PlaybackTimelineView(model: timeline)
+                    PlaybackMetadataView(model: model.metadata)
                 }
 
-                if let skipControls = model.skipControls {
-                    PlaybackSkipControlsView(model: skipControls)
+                VStack(spacing: 12) {
+                    if let timeline = model.timeline {
+                        PlaybackTimelineView(model: timeline)
+                    }
+
+                    if let skipControls = model.skipControls {
+                        PlaybackSkipControlsView(model: skipControls)
+                    }
                 }
 
-                PlaybackControlsView(model: model.controls)
-                PlaybackUtilityControlsView(model: model.utilityControls)
+                VStack(spacing: 16) {
+                    PlaybackControlsView(model: model.controls)
+                    PlaybackUtilityControlsView(model: model.utilityControls)
+                }
+
                 PlaybackEligibilityNoticeView(model: model.eligibility)
             }
             .frame(maxWidth: .infinity)

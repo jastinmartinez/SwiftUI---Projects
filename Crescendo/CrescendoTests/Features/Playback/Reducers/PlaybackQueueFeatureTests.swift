@@ -98,23 +98,21 @@ struct PlaybackQueueFeatureTests {
     }
 
     @Test(arguments: [
-        PlaybackQueueFeature.QueueTransitionDirection.previous,
+        PlaybackNavigationDirection.previous,
         .next,
     ])
     func queueTransitionCallsOnlyTheRequestedCapabilityAndWaitsForObservation(
-        direction: PlaybackQueueFeature.QueueTransitionDirection
+        direction: PlaybackNavigationDirection
     ) async {
         let songs = makeSongs()
-        let calls = LockIsolated<[PlaybackQueueFeature.QueueTransitionDirection]>([])
+        let calls = LockIsolated<[PlaybackNavigationDirection]>([])
         let store = makeStore(
             songs: songs,
             currentItemID: songs[1].id
         ) {
-            $0.playbackQueue.previous = {
-                calls.withValue { $0.append(.previous) }
-            }
-            $0.playbackQueue.next = {
-                calls.withValue { $0.append(.next) }
+            $0.playbackNavigation.navigate = { direction in
+                calls.withValue { $0.append(direction) }
+                return .accepted
             }
         }
 
@@ -187,8 +185,9 @@ struct PlaybackQueueFeatureTests {
             currentItemID: songs[0].id,
             pendingQueueTransition: pending
         ) {
-            $0.playbackQueue.previous = {
+            $0.playbackNavigation.navigate = { _ in
                 calls.withValue { $0 += 1 }
+                return .accepted
             }
         }
 
@@ -228,7 +227,8 @@ struct PlaybackQueueFeatureTests {
             songs: songs,
             currentItemID: songs[0].id
         ) {
-            $0.playbackQueue.next = {
+            $0.playbackNavigation.navigate = { direction in
+                #expect(direction == .next)
                 throw MusicProviderError.playbackFailed
             }
         }
@@ -253,6 +253,34 @@ struct PlaybackQueueFeatureTests {
     }
 
     @Test
+    func queueBoundaryClearsTheOperationWithoutDelegatingFailure() async {
+        let songs = makeSongs()
+        let store = makeStore(
+            songs: songs,
+            currentItemID: songs[0].id
+        ) {
+            $0.playbackNavigation.navigate = { direction in
+                #expect(direction == .previous)
+                return .boundaryReached
+            }
+        }
+
+        await store.send(.queueTransitionRequested(.previous)) {
+            $0.pendingQueueTransition = .init(
+                requestID: UUID(0),
+                direction: .previous
+            )
+        }
+        await store.receive(
+            .queueTransitionReachedBoundary(requestID: UUID(0))
+        ) {
+            $0.pendingQueueTransition = nil
+        }
+
+        #expect(store.state.currentItemID == songs[0].id)
+    }
+
+    @Test
     func resetCancelsAnExecutingQueueTransition() async {
         let songs = makeSongs()
         let probe = SuspendedQueueTransitionProbe()
@@ -260,7 +288,7 @@ struct PlaybackQueueFeatureTests {
             songs: songs,
             currentItemID: songs[0].id
         ) {
-            $0.playbackQueue.next = probe.callAsFunction
+            $0.playbackNavigation.navigate = probe.callAsFunction
         }
 
         await store.send(.queueTransitionRequested(.next)) {
@@ -313,7 +341,10 @@ struct PlaybackQueueFeatureTests {
             (cancelled, cancelledContinuation) = AsyncStream<Void>.makeStream()
         }
 
-        func callAsFunction() async throws {
+        func callAsFunction(
+            _ direction: PlaybackNavigationDirection
+        ) async throws -> PlaybackNavigationResult {
+            #expect(direction == .next)
             try await withTaskCancellationHandler {
                 try await withCheckedThrowingContinuation { continuation in
                     pendingContinuation.withValue { $0 = continuation }
@@ -327,6 +358,7 @@ struct PlaybackQueueFeatureTests {
                 }
                 cancelledContinuation.yield()
             }
+            return .accepted
         }
 
         func waitUntilStarted() async {

@@ -14,13 +14,7 @@ struct PlaybackQueueFeature {
     /// Identifies one queue transition awaiting provider observation.
     struct PendingQueueTransition: Equatable {
         let requestID: UUID
-        let direction: QueueTransitionDirection
-    }
-
-    /// Describes provider-relative movement without predicting a queue index.
-    enum QueueTransitionDirection: Equatable, Sendable {
-        case previous
-        case next
+        let direction: PlaybackNavigationDirection
     }
 
     enum Delegate: Equatable {
@@ -33,11 +27,12 @@ struct PlaybackQueueFeature {
             startingAt: MusicItemID
         )
         case currentItemObserved(MusicItemID?)
-        case queueTransitionRequested(QueueTransitionDirection)
+        case queueTransitionRequested(PlaybackNavigationDirection)
         case queueTransitionFailed(
             requestID: UUID,
             error: MusicProviderError
         )
+        case queueTransitionReachedBoundary(requestID: UUID)
         case cancelQueueTransition
         case reset
         case delegate(Delegate)
@@ -47,7 +42,7 @@ struct PlaybackQueueFeature {
         case queueTransition
     }
 
-    @Dependency(\.playbackQueue) var playbackQueue
+    @Dependency(\.playbackNavigation) var playbackNavigation
     @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
@@ -83,11 +78,15 @@ struct PlaybackQueueFeature {
                 )
                 return .run { send in
                     do {
-                        switch direction {
-                        case .previous:
-                            try await playbackQueue.previous()
-                        case .next:
-                            try await playbackQueue.next()
+                        let result = try await playbackNavigation.navigate(
+                            direction
+                        )
+                        if result == .boundaryReached {
+                            await send(
+                                .queueTransitionReachedBoundary(
+                                    requestID: requestID
+                                )
+                            )
                         }
                     } catch is CancellationError {
                         return
@@ -110,6 +109,13 @@ struct PlaybackQueueFeature {
                     }
                 }
                 .cancellable(id: CancelID.queueTransition)
+
+            case .queueTransitionReachedBoundary(let requestID):
+                guard state.pendingQueueTransition?.requestID == requestID else {
+                    return .none
+                }
+                state.pendingQueueTransition = nil
+                return .none
 
             case .queueTransitionFailed(let requestID, let error):
                 guard state.pendingQueueTransition?.requestID == requestID else {
