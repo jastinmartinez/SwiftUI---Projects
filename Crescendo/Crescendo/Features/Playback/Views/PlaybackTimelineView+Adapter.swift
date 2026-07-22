@@ -17,7 +17,7 @@ extension PlaybackTimelineView.Model {
         let isEnabled = store.canRequestSeek
 
         self.init(
-            slider: PlaybackSlider.Model(
+            slider: PlaybackSliderView.Model(
                 value: position,
                 scale: .init(range: 0...duration),
                 accessibilityStep: 15,

@@ -7,11 +7,6 @@ struct PlaybackQueueFeature {
     struct State: Equatable {
         var songs: IdentifiedArrayOf<SongSummary>
         var currentItemID: MusicItemID?
-
-        var currentItem: SongSummary? {
-            guard let currentItemID else { return nil }
-            return songs[id: currentItemID]
-        }
     }
 
     enum Action: Equatable {
@@ -47,5 +42,12 @@ struct PlaybackQueueFeature {
                 return .none
             }
         }
+    }
+}
+
+extension PlaybackQueueFeature.State {
+    var currentItem: SongSummary? {
+        guard let currentItemID else { return nil }
+        return songs[id: currentItemID]
     }
 }

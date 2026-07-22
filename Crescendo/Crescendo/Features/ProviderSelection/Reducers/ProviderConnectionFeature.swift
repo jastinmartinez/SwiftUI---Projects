@@ -9,14 +9,6 @@ struct ProviderConnectionFeature {
     struct State: Equatable {
         let providers: [ProviderDescriptor]
         var connection: ProviderConnection
-
-        var activeProvider: ProviderDescriptor? {
-            providers.first { $0.id == connection.providerID }
-        }
-
-        func provider(id: ProviderID) -> ProviderDescriptor? {
-            providers.first { $0.id == id }
-        }
     }
 
     /// Events that require coordination with sibling application features.
@@ -204,5 +196,15 @@ struct ProviderConnectionFeature {
                 return .none
             }
         }
+    }
+}
+
+extension ProviderConnectionFeature.State {
+    var activeProvider: ProviderDescriptor? {
+        providers.first { $0.id == connection.providerID }
+    }
+
+    func provider(id: ProviderID) -> ProviderDescriptor? {
+        providers.first { $0.id == id }
     }
 }

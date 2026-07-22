@@ -7,13 +7,6 @@ struct ProviderSwitchFeature {
     enum Phase: Equatable {
         case ready(targetProviderID: ProviderID)
         case pausing(targetProviderID: ProviderID, requestID: UUID)
-
-        var targetProviderID: ProviderID {
-            switch self {
-            case .ready(let targetProviderID), .pausing(let targetProviderID, _):
-                targetProviderID
-            }
-        }
     }
 
     @ObservableState
@@ -107,6 +100,15 @@ struct ProviderSwitchFeature {
             case .delegate:
                 return .none
             }
+        }
+    }
+}
+
+extension ProviderSwitchFeature.Phase {
+    var targetProviderID: ProviderID {
+        switch self {
+        case .ready(let targetProviderID), .pausing(let targetProviderID, _):
+            targetProviderID
         }
     }
 }

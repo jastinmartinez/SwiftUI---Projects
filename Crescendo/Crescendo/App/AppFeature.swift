@@ -10,14 +10,6 @@ struct AppFeature {
         var search: SearchFeature.State
         var playback: PlaybackFeature.State
         var providerSwitch: ProviderSwitchFeature.State?
-
-        var requiresProviderSelection: Bool {
-            providerConnection.connection == .disconnected
-        }
-
-        var activeProvider: ProviderDescriptor? {
-            providerConnection.activeProvider
-        }
     }
 
     enum Action: Equatable {
@@ -210,5 +202,15 @@ struct AppFeature {
         .ifLet(\.providerSwitch, action: \.providerSwitch) {
             ProviderSwitchFeature()
         }
+    }
+}
+
+extension AppFeature.State {
+    var requiresProviderSelection: Bool {
+        providerConnection.connection == .disconnected
+    }
+
+    var activeProvider: ProviderDescriptor? {
+        providerConnection.activeProvider
     }
 }

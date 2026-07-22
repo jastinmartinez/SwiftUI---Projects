@@ -6,7 +6,7 @@ struct PlaybackTimelineView: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            PlaybackSlider(model: model.slider)
+            PlaybackSliderView(model: model.slider)
 
             HStack {
                 Text(model.elapsedTimeText)
@@ -35,7 +35,7 @@ struct PlaybackTimelineView: View {
 
 extension PlaybackTimelineView {
     struct Model {
-        let slider: PlaybackSlider.Model
+        let slider: PlaybackSliderView.Model
         let elapsedTimeText: String
         let durationText: String
         let controls: [Control]

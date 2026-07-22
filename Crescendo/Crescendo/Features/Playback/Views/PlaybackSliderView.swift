@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// Displays and edits playback position without owning workflow state.
-struct PlaybackSlider: View {
+struct PlaybackSliderView: View {
     let model: Model
 
     var body: some View {
@@ -73,7 +73,7 @@ struct PlaybackSlider: View {
     }
 }
 
-extension PlaybackSlider {
+extension PlaybackSliderView {
     struct Model {
         let value: TimeInterval
         let scale: Scale
@@ -85,7 +85,7 @@ extension PlaybackSlider {
     }
 }
 
-extension PlaybackSlider.Model {
+extension PlaybackSliderView.Model {
     struct Strings {
         let accessibilityLabel: String
         let accessibilityValue: String
