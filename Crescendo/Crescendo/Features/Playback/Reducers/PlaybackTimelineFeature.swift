@@ -20,6 +20,7 @@ struct PlaybackTimelineFeature {
         case positionObserved(TimeInterval)
         case positionChanged(TimeInterval)
         case dragEnded
+        case seekRequested(TimeInterval)
         case reset
         case seekSucceeded(requestID: UUID)
         case seekFailed(requestID: UUID, error: MusicProviderError)
@@ -52,6 +53,10 @@ struct PlaybackTimelineFeature {
                 guard case .dragging(let position) = state.interaction else {
                     return .none
                 }
+                return .send(.seekRequested(position))
+
+            case .seekRequested(let requestedPosition):
+                let position = max(requestedPosition, 0)
                 let requestID = uuid()
                 state.interaction = .seeking(
                     requestID: requestID,
@@ -60,12 +65,17 @@ struct PlaybackTimelineFeature {
                 return .run { send in
                     do {
                         try await playbackControl.seek(position)
+                        try Task.checkCancellation()
                         await send(.seekSucceeded(requestID: requestID))
+                    } catch is CancellationError {
+                        return
                     } catch let error as MusicProviderError {
+                        guard !Task.isCancelled else { return }
                         await send(
                             .seekFailed(requestID: requestID, error: error)
                         )
                     } catch {
+                        guard !Task.isCancelled else { return }
                         await send(
                             .seekFailed(
                                 requestID: requestID,
@@ -83,11 +93,12 @@ struct PlaybackTimelineFeature {
 
             case .seekSucceeded(let requestID):
                 guard
-                    case .seeking(let activeRequestID, _) = state.interaction,
+                    case .seeking(let activeRequestID, let position) = state.interaction,
                     activeRequestID == requestID
                 else {
                     return .none
                 }
+                state.confirmedPosition = position
                 state.interaction = .idle
                 return .none
 
@@ -104,6 +115,17 @@ struct PlaybackTimelineFeature {
             case .delegate:
                 return .none
             }
+        }
+    }
+}
+
+extension PlaybackTimelineFeature.State {
+    var position: TimeInterval {
+        switch interaction {
+        case .idle:
+            confirmedPosition
+        case .dragging(let position), .seeking(_, let position):
+            position
         }
     }
 }

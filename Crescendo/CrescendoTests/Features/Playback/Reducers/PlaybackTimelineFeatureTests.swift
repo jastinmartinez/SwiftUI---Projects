@@ -45,13 +45,15 @@ struct PlaybackTimelineFeatureTests {
             seekPositions: seekPositions
         )
 
-        await store.send(.dragEnded) {
+        await store.send(.dragEnded)
+        await store.receive(.seekRequested(20)) {
             $0.interaction = .seeking(
                 requestID: UUID(0),
                 position: 20
             )
         }
         await store.receive(.seekSucceeded(requestID: UUID(0))) {
+            $0.confirmedPosition = 20
             $0.interaction = .idle
         }
 
@@ -70,6 +72,7 @@ struct PlaybackTimelineFeatureTests {
 
         await store.send(.seekSucceeded(requestID: UUID(0)))
         await store.send(.seekSucceeded(requestID: activeRequestID)) {
+            $0.confirmedPosition = 20
             $0.interaction = .idle
         }
     }
@@ -84,7 +87,8 @@ struct PlaybackTimelineFeatureTests {
             finishSeek: finishSeek
         )
 
-        await store.send(.dragEnded) {
+        await store.send(.dragEnded)
+        await store.receive(.seekRequested(10)) {
             $0.interaction = .seeking(
                 requestID: UUID(0),
                 position: 10
@@ -107,7 +111,8 @@ struct PlaybackTimelineFeatureTests {
             seekError: .network
         )
 
-        await store.send(.dragEnded) {
+        await store.send(.dragEnded)
+        await store.receive(.seekRequested(20)) {
             $0.interaction = .seeking(
                 requestID: UUID(0),
                 position: 20
@@ -139,7 +144,8 @@ struct PlaybackTimelineFeatureTests {
             seekOperation: suspendedSeek.callAsFunction
         )
 
-        await store.send(.dragEnded) {
+        await store.send(.dragEnded)
+        await store.receive(.seekRequested(20)) {
             $0.interaction = .seeking(
                 requestID: UUID(0),
                 position: 20
@@ -159,6 +165,43 @@ struct PlaybackTimelineFeatureTests {
         suspendedSeek.fail(with: .network)
         await store.finish()
         #expect(store.state.interaction == .idle)
+    }
+
+    @Test
+    func directSeekUsesOneRequestAndConfirmsItsTarget() async {
+        let seekPositions = LockIsolated<[TimeInterval]>([])
+        let store = makeStore(seekPositions: seekPositions)
+
+        await store.send(.seekRequested(30)) {
+            $0.interaction = .seeking(
+                requestID: UUID(0),
+                position: 30
+            )
+        }
+        await store.receive(.seekSucceeded(requestID: UUID(0))) {
+            $0.confirmedPosition = 30
+            $0.interaction = .idle
+        }
+
+        #expect(seekPositions.value == [30])
+    }
+
+    @Test
+    func directSeekClampsNegativeTargetsToZero() async {
+        let seekPositions = LockIsolated<[TimeInterval]>([])
+        let store = makeStore(seekPositions: seekPositions)
+
+        await store.send(.seekRequested(-1)) {
+            $0.interaction = .seeking(
+                requestID: UUID(0),
+                position: 0
+            )
+        }
+        await store.receive(.seekSucceeded(requestID: UUID(0))) {
+            $0.interaction = .idle
+        }
+
+        #expect(seekPositions.value == [0])
     }
 
     // MARK: - Helpers
