@@ -88,34 +88,6 @@ struct ProviderSelectionView: View {
 
 extension ProviderSelectionView {
     struct Model {
-        enum Icon: Equatable {
-            case generic
-            case appleMusic
-        }
-
-        enum Status: Equatable {
-            case disconnected
-            case connecting(providerName: String)
-            case connected(providerName: String)
-            case needsAccess(providerName: String)
-            case restricted(providerName: String)
-            case failed(providerName: String)
-        }
-
-        struct ProviderRow: Identifiable {
-            let id: ProviderID
-            let label: String
-            let statusLabel: String?
-            let isSelected: Bool
-            let isEnabled: Bool
-            let onSelect: @MainActor () -> Void
-        }
-
-        struct RecoveryAction {
-            let label: String
-            let perform: @MainActor () -> Void
-        }
-
         let status: Status
         let activeProviderName: String?
         let connectedProviderName: String?
@@ -126,29 +98,35 @@ extension ProviderSelectionView {
         let providerRows: [ProviderRow]
         let recoveryAction: RecoveryAction?
         let isSelectionEnabled: Bool
+    }
+}
 
-        init(
-            status: Status,
-            activeProviderName: String?,
-            connectedProviderName: String?,
-            collapsedIcon: Icon,
-            collapsedLabel: String,
-            accessibilityValue: String,
-            menuTitle: String,
-            providerRows: [ProviderRow],
-            recoveryAction: RecoveryAction?,
-            isSelectionEnabled: Bool
-        ) {
-            self.status = status
-            self.activeProviderName = activeProviderName
-            self.connectedProviderName = connectedProviderName
-            self.collapsedIcon = collapsedIcon
-            self.collapsedLabel = collapsedLabel
-            self.accessibilityValue = accessibilityValue
-            self.menuTitle = menuTitle
-            self.providerRows = providerRows
-            self.recoveryAction = recoveryAction
-            self.isSelectionEnabled = isSelectionEnabled
-        }
+extension ProviderSelectionView.Model {
+    enum Icon: Equatable {
+        case generic
+        case appleMusic
+    }
+
+    enum Status: Equatable {
+        case disconnected
+        case connecting(providerName: String)
+        case connected(providerName: String)
+        case needsAccess(providerName: String)
+        case restricted(providerName: String)
+        case failed(providerName: String)
+    }
+
+    struct ProviderRow: Identifiable {
+        let id: ProviderID
+        let label: String
+        let statusLabel: String?
+        let isSelected: Bool
+        let isEnabled: Bool
+        let onSelect: @MainActor () -> Void
+    }
+
+    struct RecoveryAction {
+        let label: String
+        let perform: @MainActor () -> Void
     }
 }

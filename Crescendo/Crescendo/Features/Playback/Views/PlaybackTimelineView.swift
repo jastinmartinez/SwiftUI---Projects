@@ -41,11 +41,13 @@ extension PlaybackTimelineView {
         let strings: Strings
         let onPositionChanged: (TimeInterval) -> Void
         let onDragEnded: () -> Void
+    }
+}
 
-        struct Strings {
-            let accessibilityLabel: String
-            let accessibilityValue: String
-        }
+extension PlaybackTimelineView.Model {
+    struct Strings {
+        let accessibilityLabel: String
+        let accessibilityValue: String
     }
 }
 

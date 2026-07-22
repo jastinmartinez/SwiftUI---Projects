@@ -29,20 +29,22 @@ struct SearchPaginationFooterView: View {
 
 extension SearchPaginationFooterView {
     struct Model {
-        enum Content: Equatable {
-            case hidden
-            case loading
-            case failed
-        }
-
-        struct Strings: Equatable {
-            let loading: String
-            let failure: String
-            let retry: String
-        }
-
         let content: Content
         let strings: Strings
         let onRetry: () -> Void
+    }
+}
+
+extension SearchPaginationFooterView.Model {
+    enum Content: Equatable {
+        case hidden
+        case loading
+        case failed
+    }
+
+    struct Strings: Equatable {
+        let loading: String
+        let failure: String
+        let retry: String
     }
 }

@@ -54,15 +54,17 @@ struct PlaybackControlsView: View {
 
 extension PlaybackControlsView {
     struct Model {
-        enum PrimaryAction: Equatable {
-            case play
-            case pause
-        }
-
         let primaryAction: PrimaryAction
         let isPrimaryEnabled: Bool
         let isStopEnabled: Bool
         let onPrimaryAction: () -> Void
         let onStop: () -> Void
+    }
+}
+
+extension PlaybackControlsView.Model {
+    enum PrimaryAction: Equatable {
+        case play
+        case pause
     }
 }
