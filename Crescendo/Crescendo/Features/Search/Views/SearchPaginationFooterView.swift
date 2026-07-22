@@ -9,13 +9,6 @@ struct SearchPaginationFooterView: View {
         case .hidden:
             EmptyView()
 
-        case .ready(let triggerID):
-            Color.clear
-                .frame(height: 1)
-                .task(id: triggerID) {
-                    model.onLoadNextPage()
-                }
-
         case .loading:
             ProgressView(model.strings.loading)
                 .frame(maxWidth: .infinity)
@@ -38,7 +31,6 @@ extension SearchPaginationFooterView {
     struct Model {
         enum Content: Equatable {
             case hidden
-            case ready(triggerID: String)
             case loading
             case failed
         }
@@ -51,7 +43,6 @@ extension SearchPaginationFooterView {
 
         let content: Content
         let strings: Strings
-        let onLoadNextPage: () -> Void
         let onRetry: () -> Void
     }
 }

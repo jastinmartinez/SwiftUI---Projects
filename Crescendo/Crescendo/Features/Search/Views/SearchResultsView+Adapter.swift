@@ -19,37 +19,50 @@ extension SearchResultsView.Model {
                 content = .empty(query: store.query)
 
             case .loaded(let pagination):
+                let paginationTriggerID: String?
                 let footerContent: SearchPaginationFooterView.Model.Content
                 switch pagination.status {
                 case .idle:
-                    footerContent =
-                        pagination.nextCursor.map {
-                            .ready(triggerID: $0.value)
-                        } ?? .hidden
+                    paginationTriggerID = pagination.nextCursor?.value
+                    footerContent = .hidden
                 case .loading:
+                    paginationTriggerID = nil
                     footerContent = .loading
                 case .failed:
+                    paginationTriggerID = nil
                     footerContent = .failed
                 }
+                let lastSongID = pagination.songs.last?.id
 
                 content = .results(
-                    summary: Locs.Search.resultsSummary(
-                        count: pagination.songs.count,
-                        providerName: providerName
-                    ),
-                    rows: pagination.songs.map(SongRowView.Model.init),
-                    footer: SearchPaginationFooterView.Model(
-                        content: footerContent,
-                        strings: .init(
-                            loading: Locs.Search.loadingMore,
-                            failure: Locs.Search.loadMoreFailed,
-                            retry: Locs.Common.retry
+                    SearchResultListView.Model(
+                        summary: Locs.Search.resultsSummary(
+                            count: pagination.songs.count,
+                            providerName: providerName
                         ),
+                        rows: pagination.songs.map { song in
+                            SearchResultListView.Model.Row(
+                                id: song.id,
+                                song: SongRowView.Model(song),
+                                paginationTriggerID: song.id == lastSongID
+                                    ? paginationTriggerID
+                                    : nil
+                            )
+                        },
+                        footer: SearchPaginationFooterView.Model(
+                            content: footerContent,
+                            strings: .init(
+                                loading: Locs.Search.loadingMore,
+                                failure: Locs.Search.loadMoreFailed,
+                                retry: Locs.Common.retry
+                            ),
+                            onRetry: {
+                                store.send(.pagination(.retryButtonTapped))
+                            }
+                        ),
+                        onSongTapped: { store.send(.resultTapped($0)) },
                         onLoadNextPage: {
                             store.send(.pagination(.nextPageRequested))
-                        },
-                        onRetry: {
-                            store.send(.pagination(.retryButtonTapped))
                         }
                     )
                 )
@@ -61,8 +74,7 @@ extension SearchResultsView.Model {
 
         self.init(
             content: content,
-            onRetry: { store.send(.retryButtonTapped) },
-            onSongTapped: { store.send(.resultTapped($0)) }
+            onRetry: { store.send(.retryButtonTapped) }
         )
     }
 }

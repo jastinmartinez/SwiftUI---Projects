@@ -9,7 +9,7 @@ struct SearchFeatureView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 24) {
+                VStack(spacing: 24) {
                     SearchHeaderView(
                         model: .init(
                             store,

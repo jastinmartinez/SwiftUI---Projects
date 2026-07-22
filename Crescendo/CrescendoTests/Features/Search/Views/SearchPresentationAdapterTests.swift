@@ -81,31 +81,70 @@ struct SearchPresentationAdapterTests {
         )
         let model = SearchResultsView.Model(store, providerName: "Apple Music")
         let expectedRows = [
-            SongRowView.Model(
+            SearchResultListView.Model.Row(
                 id: song.id,
-                title: "Result",
-                artistName: "Artist",
-                artworkURL: song.artworkURL,
-                durationText: "3:35"
+                song: SongRowView.Model(
+                    id: song.id,
+                    title: "Result",
+                    artistName: "Artist",
+                    artworkURL: song.artworkURL,
+                    durationText: "3:35"
+                ),
+                paginationTriggerID: "next"
             )
         ]
 
-        guard case .results(let summary, let rows, let footer) = model.content else {
+        guard case .results(let results) = model.content else {
             Issue.record("Expected loaded results")
             return
         }
 
-        #expect(summary == "1 song · Apple Music")
-        #expect(rows == expectedRows)
-        #expect(footer.content == .ready(triggerID: "next"))
+        #expect(results.summary == "1 song · Apple Music")
+        #expect(results.rows == expectedRows)
+        #expect(results.footer.content == .hidden)
         #expect(
-            footer.strings
+            results.footer.strings
                 == SearchPaginationFooterView.Model.Strings(
                     loading: "Loading more songs",
                     failure: "More songs couldn’t be loaded.",
                     retry: "Retry"
                 )
         )
+    }
+
+    @Test
+    func nextPageTriggerMapsOnlyToLastResultRow() {
+        let firstSong = makeSong()
+        let lastSong = SongSummary(
+            id: .init(providerID: "fake", nativeID: "2"),
+            title: "Last result",
+            artistName: "Artist",
+            artworkURL: URL(string: "https://example.com/last-artwork.jpg"),
+            duration: 180
+        )
+        let model = SearchResultsView.Model(
+            makeStore(
+                query: "result",
+                status: loadedStatus(
+                    songs: [firstSong, lastSong],
+                    nextCursor: SearchCursor(value: "next"),
+                    paginationStatus: .idle
+                ),
+                providerAccess: makeAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            ),
+            providerName: "Apple Music"
+        )
+
+        guard case .results(let results) = model.content else {
+            Issue.record("Expected loaded results")
+            return
+        }
+
+        #expect(results.rows.map(\.paginationTriggerID) == [nil, "next"])
+        #expect(results.footer.content == .hidden)
     }
 
     @Test
@@ -129,10 +168,7 @@ struct SearchPresentationAdapterTests {
         )
 
         #expect(try footer(from: hidden).content == .hidden)
-        #expect(
-            try footer(from: ready).content
-                == .ready(triggerID: cursor.value)
-        )
+        #expect(try footer(from: ready).content == .hidden)
         #expect(try footer(from: loading).content == .loading)
         #expect(try footer(from: failed).content == .failed)
     }
@@ -141,7 +177,7 @@ struct SearchPresentationAdapterTests {
         SearchPaginationFeature.Status.idle,
         .failed(.network),
     ])
-    func footerCallbackStartsTheExpectedPageRequest(
+    func paginationCallbackStartsTheExpectedPageRequest(
         paginationStatus: SearchPaginationFeature.Status
     ) throws {
         let store = Store(
@@ -173,13 +209,13 @@ struct SearchPresentationAdapterTests {
             store,
             providerName: "Apple Music"
         )
-        let footer = try footer(from: model)
+        let results = try results(from: model)
 
         switch paginationStatus {
         case .idle:
-            footer.onLoadNextPage()
+            results.onLoadNextPage()
         case .failed:
-            footer.onRetry()
+            results.footer.onRetry()
         case .loading:
             Issue.record("This test covers only actionable footer states")
         }
@@ -268,10 +304,16 @@ struct SearchPresentationAdapterTests {
     private func footer(
         from model: SearchResultsView.Model
     ) throws -> SearchPaginationFooterView.Model {
-        guard case .results(_, _, let footer) = model.content else {
+        try results(from: model).footer
+    }
+
+    private func results(
+        from model: SearchResultsView.Model
+    ) throws -> SearchResultListView.Model {
+        guard case .results(let results) = model.content else {
             throw TestFailure.expectedLoadedResults
         }
-        return footer
+        return results
     }
 
     private func makeProviderSelection() -> ProviderSelectionView.Model {

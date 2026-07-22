@@ -18,15 +18,8 @@ struct SearchResultsView: View {
             ProgressView(Locs.Search.searching)
         case .empty(let query):
             ContentUnavailableView.search(text: query)
-        case .results(let summary, let rows, let footer):
-            SearchResultListView(
-                model: .init(
-                    summary: summary,
-                    rows: rows,
-                    footer: footer,
-                    onSongTapped: model.onSongTapped
-                )
-            )
+        case .results(let results):
+            SearchResultListView(model: results)
         case .failed:
             Button(Locs.Common.retry, action: model.onRetry)
         }
@@ -38,7 +31,6 @@ extension SearchResultsView {
     struct Model {
         let content: Content
         let onRetry: () -> Void
-        let onSongTapped: (MusicItemID) -> Void
     }
 }
 
@@ -48,11 +40,7 @@ extension SearchResultsView.Model {
         case requiresProvider
         case loading
         case empty(query: String)
-        case results(
-            summary: String,
-            rows: [SongRowView.Model],
-            footer: SearchPaginationFooterView.Model
-        )
+        case results(SearchResultListView.Model)
         case failed
     }
 }
