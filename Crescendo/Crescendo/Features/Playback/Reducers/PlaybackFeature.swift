@@ -297,8 +297,14 @@ struct PlaybackFeature {
 
             case .playPauseTapped:
                 guard state.canRequestPlayPause else { return .none }
-                let target: PendingStatusChange.Target =
-                    state.status == .playing ? .paused : .playing
+                let target: PendingStatusChange.Target
+                if case .statusChange(let change) = state.pendingOperation,
+                    change.target == .stopped
+                {
+                    target = .playing
+                } else {
+                    target = state.status == .playing ? .paused : .playing
+                }
                 let requestID = uuid()
                 state.pendingOperation = .statusChange(
                     PendingStatusChange(requestID: requestID, target: target)
@@ -373,20 +379,7 @@ struct PlaybackFeature {
                     case .statusChange(let change) = state.pendingOperation,
                     change.requestID == requestID
                 else { return .none }
-
-                state.pendingOperation = nil
-                state.failure = nil
-                switch change.target {
-                case .playing:
-                    state.status = .playing
-                    return .none
-                case .paused:
-                    state.status = .paused
-                    return .none
-                case .stopped:
-                    state.status = .stopped
-                    return .send(.timeline(.reset))
-                }
+                return .none
 
             case .statusChangeFailed(let requestID, let error):
                 guard
@@ -538,10 +531,18 @@ struct PlaybackFeature {
 
 extension PlaybackFeature.State {
     var canRequestPlayPause: Bool {
-        !queue.songs.isEmpty
-            && capabilities.supportsEmbeddedPlayback
-            && pendingOperation == nil
-            && pendingReset == nil
+        guard !queue.songs.isEmpty,
+            capabilities.supportsEmbeddedPlayback,
+            pendingReset == nil
+        else { return false }
+        switch pendingOperation {
+        case .statusChange(let change):
+            return change.target == .stopped
+        case .queueReplacement:
+            return false
+        case nil:
+            return true
+        }
     }
 
     var canRequestStop: Bool {

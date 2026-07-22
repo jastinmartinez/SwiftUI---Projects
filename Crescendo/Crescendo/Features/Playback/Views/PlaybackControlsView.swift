@@ -10,6 +10,11 @@ struct PlaybackControlsView: View {
                 Image(systemName: primarySymbolName)
                     .font(.title.bold())
                     .foregroundStyle(.white)
+                    .contentTransition(.symbolEffect(.replace))
+                    .animation(
+                        .easeInOut(duration: 0.2),
+                        value: model.primaryAction
+                    )
                     .frame(width: 72, height: 72)
                     .background(LinearGradient.crescendoSpectrum, in: Circle())
             }

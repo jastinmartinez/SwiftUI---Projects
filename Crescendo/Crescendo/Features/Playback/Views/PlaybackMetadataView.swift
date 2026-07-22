@@ -27,6 +27,8 @@ struct PlaybackMetadataView: View {
             Text(model.statusText)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(LinearGradient.crescendoSpectrum)
+                .contentTransition(.opacity)
+                .animation(.easeInOut(duration: 0.2), value: model.statusText)
         }
     }
 }

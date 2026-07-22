@@ -24,6 +24,52 @@ struct PlaybackPresentationAdapterTests {
         #expect(model.metadata.statusText == expectedText)
     }
 
+    @Test(arguments: [
+        (
+            PlaybackStatus.playing,
+            PlaybackFeature.PendingStatusChange.Target.paused,
+            Locs.Playback.Status.paused,
+            PlaybackControlsView.Model.PrimaryAction.play,
+            false
+        ),
+        (
+            PlaybackStatus.paused,
+            PlaybackFeature.PendingStatusChange.Target.playing,
+            Locs.Playback.Status.playing,
+            PlaybackControlsView.Model.PrimaryAction.pause,
+            false
+        ),
+        (
+            PlaybackStatus.playing,
+            PlaybackFeature.PendingStatusChange.Target.stopped,
+            Locs.Playback.Status.stopped,
+            PlaybackControlsView.Model.PrimaryAction.play,
+            true
+        ),
+    ])
+    func pendingStatusTargetProjectsImmediatePresentation(
+        confirmedStatus: PlaybackStatus,
+        target: PlaybackFeature.PendingStatusChange.Target,
+        expectedStatusText: String,
+        expectedPrimaryAction: PlaybackControlsView.Model.PrimaryAction,
+        expectedIsPrimaryEnabled: Bool
+    ) {
+        let model = PlaybackView.Model(
+            makePlaybackStore(
+                song: makeSong(),
+                status: confirmedStatus,
+                pendingOperation: .statusChange(
+                    .init(requestID: UUID(0), target: target)
+                )
+            ),
+            providerName: nil
+        )
+
+        #expect(model.metadata.statusText == expectedStatusText)
+        #expect(model.controls.primaryAction == expectedPrimaryAction)
+        #expect(model.controls.isPrimaryEnabled == expectedIsPrimaryEnabled)
+    }
+
     @Test
     func confirmedQueueMapsMetadataTimelineAndControls() {
         let song = makeSong(duration: 215)

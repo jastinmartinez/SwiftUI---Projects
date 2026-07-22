@@ -38,6 +38,11 @@ struct PlaybackNowPlayingView: View {
                     Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
                         .font(.headline)
                         .foregroundStyle(.white)
+                        .contentTransition(.symbolEffect(.replace))
+                        .animation(
+                            .easeInOut(duration: 0.2),
+                            value: model.isPlaying
+                        )
                         .frame(width: 52, height: 52)
                         .background(LinearGradient.crescendoSpectrum, in: Circle())
                 }

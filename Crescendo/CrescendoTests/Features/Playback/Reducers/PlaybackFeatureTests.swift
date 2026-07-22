@@ -407,12 +407,16 @@ struct PlaybackFeatureTests {
         await store.receive(
             .performStatusChange(requestID: UUID(0), target: .paused)
         )
-        await store.receive(.statusChangeSucceeded(requestID: UUID(0))) {
-            $0.pendingOperation = nil
-            $0.status = .paused
-        }
+        await store.receive(.statusChangeSucceeded(requestID: UUID(0)))
 
         #expect(calls.value == ["pause"])
+        #expect(store.state.status == .playing)
+        #expect(
+            store.state.pendingOperation
+                == .statusChange(
+                    .init(requestID: UUID(0), target: .paused)
+                )
+        )
     }
 
     @Test(arguments: [PlaybackStatus.paused, .stopped])
@@ -445,12 +449,16 @@ struct PlaybackFeatureTests {
         await store.receive(
             .performStatusChange(requestID: UUID(0), target: .playing)
         )
-        await store.receive(.statusChangeSucceeded(requestID: UUID(0))) {
-            $0.pendingOperation = nil
-            $0.status = .playing
-        }
+        await store.receive(.statusChangeSucceeded(requestID: UUID(0)))
 
         #expect(calls.value == ["resume"])
+        #expect(store.state.status == status)
+        #expect(
+            store.state.pendingOperation
+                == .statusChange(
+                    .init(requestID: UUID(0), target: .playing)
+                )
+        )
     }
 
     @Test
@@ -472,6 +480,40 @@ struct PlaybackFeatureTests {
         #expect(!store.state.canRequestPlayPause)
         await store.send(.playPauseTapped)
         #expect(store.state.pendingOperation == .statusChange(pending))
+    }
+
+    @Test
+    func playSupersedesPendingStop() async {
+        let songs = makeSongs()
+        let calls = LockIsolated<[String]>([])
+        let store = makeStore(
+            queue: .init(
+                songs: IdentifiedArray(uniqueElements: songs),
+                currentItemID: songs[0].id
+            ),
+            status: .playing,
+            pendingOperation: .statusChange(
+                .init(requestID: UUID(99), target: .stopped)
+            )
+        ) {
+            $0.playbackControl.resume = {
+                calls.withValue { $0.append("resume") }
+            }
+        }
+
+        #expect(store.state.canRequestPlayPause)
+        await store.send(.playPauseTapped) {
+            $0.pendingOperation = .statusChange(
+                .init(requestID: UUID(0), target: .playing)
+            )
+            $0.failure = nil
+        }
+        await store.receive(
+            .performStatusChange(requestID: UUID(0), target: .playing)
+        )
+        await store.receive(.statusChangeSucceeded(requestID: UUID(0)))
+
+        #expect(calls.value == ["resume"])
     }
 
     @Test(arguments: [
@@ -621,7 +663,7 @@ struct PlaybackFeatureTests {
     }
 
     @Test
-    func matchingResponseConfirmsTargetAndStaleResponseDoesNothing() async {
+    func successfulStatusCommandWaitsForMatchingSnapshot() async {
         let songs = makeSongs()
         let pending = PlaybackFeature.PendingStatusChange(
             requestID: UUID(1),
@@ -638,10 +680,26 @@ struct PlaybackFeatureTests {
 
         await store.send(.statusChangeSucceeded(requestID: UUID(0)))
         #expect(store.state.pendingOperation == .statusChange(pending))
-        await store.send(.statusChangeSucceeded(requestID: UUID(1))) {
+        await store.send(.statusChangeSucceeded(requestID: UUID(1)))
+        #expect(store.state.pendingOperation == .statusChange(pending))
+        #expect(store.state.status == .playing)
+
+        await store.send(
+            .snapshotReceived(
+                makeSnapshot(
+                    itemID: songs[0].id,
+                    status: .paused,
+                    currentTime: 12
+                )
+            )
+        ) {
             $0.pendingOperation = nil
             $0.status = .paused
             $0.failure = nil
+        }
+        await store.receive(.queue(.currentItemObserved(songs[0].id)))
+        await store.receive(.timeline(.positionObserved(12))) {
+            $0.timeline.confirmedPosition = 12
         }
     }
 
@@ -780,14 +838,28 @@ struct PlaybackFeatureTests {
             .performStatusChange(requestID: UUID(0), target: .stopped)
         )
         #expect(store.state.timeline.confirmedPosition == 42)
-        await store.receive(.statusChangeSucceeded(requestID: UUID(0))) {
+        await store.receive(.statusChangeSucceeded(requestID: UUID(0)))
+        #expect(store.state.status == .playing)
+        #expect(store.state.timeline.confirmedPosition == 42)
+
+        await store.send(
+            .snapshotReceived(
+                makeSnapshot(
+                    itemID: songs[0].id,
+                    status: .stopped,
+                    currentTime: 0
+                )
+            )
+        ) {
             $0.pendingOperation = nil
             $0.status = .stopped
+            $0.failure = nil
         }
         await store.receive(.timeline(.reset)) {
             $0.timeline.confirmedPosition = 0
             $0.timeline.interaction = .idle
         }
+        await store.receive(.queue(.currentItemObserved(songs[0].id)))
     }
 
     @Test

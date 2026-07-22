@@ -39,6 +39,7 @@ struct PlaybackNowPlayingPresentationTests {
         let model = PlaybackNowPlayingView.Model(store, song: song)
 
         #expect(!model.isPlayEnabled)
+        #expect(!model.isPlaying)
     }
 
     @Test
