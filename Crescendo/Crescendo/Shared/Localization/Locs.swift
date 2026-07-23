@@ -61,6 +61,8 @@ extension Locs {
         static let pause = String(localized: "music_playback.pause")
         static let previous = String(localized: "music_playback.previous")
         static let next = String(localized: "music_playback.next")
+        static let shuffle = String(localized: "music_playback.shuffle")
+        static let repeatMode = String(localized: "music_playback.repeat")
         static let position = String(localized: "music_playback.position")
         static let stop = String(localized: "music_playback.stop")
         static let restart = String(localized: "music_playback.restart")
@@ -87,6 +89,13 @@ extension Locs {
                 format: String(localized: "music_playback.playing_from"),
                 providerName
             )
+        }
+
+        enum Mode {
+            static let off = String(localized: "music_playback.mode.off")
+            static let on = String(localized: "music_playback.mode.on")
+            static let all = String(localized: "music_playback.mode.all")
+            static let one = String(localized: "music_playback.mode.one")
         }
 
         enum Status {

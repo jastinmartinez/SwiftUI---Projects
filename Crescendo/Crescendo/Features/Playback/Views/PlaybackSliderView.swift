@@ -1,7 +1,11 @@
 import Foundation
 import SwiftUI
 
-/// Displays and edits playback position without owning workflow state.
+/// Displays playback position with Crescendo's gradient track and thumb.
+///
+/// Dragging emits draft values continuously and sends a distinct completion callback
+/// when interaction ends. The reducer remains responsible for committing seeks and
+/// reconciling provider-confirmed position.
 struct PlaybackSliderView: View {
     let model: Model
 
@@ -74,6 +78,7 @@ struct PlaybackSliderView: View {
 }
 
 extension PlaybackSliderView {
+    /// The immutable values, accessibility content, and callbacks used by the slider.
     struct Model {
         let value: TimeInterval
         let scale: Scale
@@ -86,11 +91,16 @@ extension PlaybackSliderView {
 }
 
 extension PlaybackSliderView.Model {
+    /// Localized accessibility content describing the current timeline position.
     struct Strings {
         let accessibilityLabel: String
         let accessibilityValue: String
     }
 
+    /// Converts between playback values, normalized progress, and track coordinates.
+    ///
+    /// Every conversion clamps to `range`, keeping gesture and accessibility input
+    /// within the provider-confirmed duration.
     struct Scale: Equatable {
         let range: ClosedRange<TimeInterval>
 

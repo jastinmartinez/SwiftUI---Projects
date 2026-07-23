@@ -4,11 +4,11 @@ import Testing
 
 struct PlaybackQueuePositionTests {
     @Test(arguments: [
-        (PlaybackNavigationDirection.previous, false),
+        (PlaybackQueueNavigationDirection.previous, false),
         (.next, true),
     ])
     func firstEntryExposesOnlyTheNextTransition(
-        direction: PlaybackNavigationDirection,
+        direction: PlaybackQueueNavigationDirection,
         expected: Bool
     ) {
         let position = PlaybackQueuePosition(
@@ -20,11 +20,11 @@ struct PlaybackQueuePositionTests {
     }
 
     @Test(arguments: [
-        (PlaybackNavigationDirection.previous, true),
+        (PlaybackQueueNavigationDirection.previous, true),
         (.next, false),
     ])
     func lastEntryExposesOnlyThePreviousTransition(
-        direction: PlaybackNavigationDirection,
+        direction: PlaybackQueueNavigationDirection,
         expected: Bool
     ) {
         let position = PlaybackQueuePosition(

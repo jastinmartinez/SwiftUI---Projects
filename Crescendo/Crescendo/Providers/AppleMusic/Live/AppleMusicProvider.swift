@@ -135,8 +135,8 @@ actor AppleMusicProvider {
     /// - Returns: Whether MusicKit accepted a transition or the queue boundary
     ///   prevented one from being requested.
     func navigate(
-        _ direction: PlaybackNavigationDirection
-    ) async throws -> PlaybackNavigationResult {
+        _ direction: PlaybackQueueNavigationDirection
+    ) async throws -> PlaybackQueueNavigationResult {
         guard currentQueuePosition.canTransition(direction) else {
             return .boundaryReached
         }
@@ -148,6 +148,16 @@ actor AppleMusicProvider {
             try await player.skipToNextEntry()
         }
         return .accepted
+    }
+
+    /// Sets repeat behavior for the active Apple Music queue.
+    func setRepeat(_ mode: PlaybackRepeatMode) {
+        player.state.repeatMode = MusicPlayer.RepeatMode(mode)
+    }
+
+    /// Sets shuffle behavior for the active Apple Music queue.
+    func setShuffle(_ mode: PlaybackShuffleMode) {
+        player.state.shuffleMode = MusicPlayer.ShuffleMode(mode)
     }
 
     /// Resolves the native queue into the boundary information required for transitions.

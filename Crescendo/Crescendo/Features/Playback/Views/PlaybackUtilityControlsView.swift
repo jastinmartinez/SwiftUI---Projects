@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// Renders secondary playback actions in the approved utility rail.
+/// Displays secondary playback actions in a divided, equal-width utility rail.
+///
+/// Control order and availability are supplied by the adapter. This view only
+/// applies the shared utility presentation and forwards callbacks.
 struct PlaybackUtilityControlsView: View {
     let model: Model
 
@@ -42,12 +45,14 @@ struct PlaybackUtilityControlsView: View {
 }
 
 extension PlaybackUtilityControlsView {
+    /// The ordered secondary actions rendered in the utility rail.
     struct Model {
         let controls: [Control]
     }
 }
 
 extension PlaybackUtilityControlsView.Model {
+    /// The immutable presentation and behavior for one utility action.
     struct Control: Identifiable {
         let id: ID
         let systemImage: String
@@ -59,6 +64,7 @@ extension PlaybackUtilityControlsView.Model {
 }
 
 extension PlaybackUtilityControlsView.Model.Control {
+    /// Stable identities for the supported utility actions.
     enum ID: Hashable {
         case restart
         case stop

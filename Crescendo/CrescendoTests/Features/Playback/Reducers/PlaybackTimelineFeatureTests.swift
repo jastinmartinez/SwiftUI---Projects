@@ -138,10 +138,12 @@ struct PlaybackTimelineFeatureTests {
 
     @Test
     func resetCancelsLiveSeekAndDropsLateFailure() async {
-        let suspendedSeek = SuspendedSeekProbe()
+        let suspendedSeek = SuspendedOperationProbe<Void>()
         let store = makeStore(
             interaction: .dragging(position: 20),
-            seekOperation: suspendedSeek.callAsFunction
+            seekOperation: { _ in
+                try await suspendedSeek.run()
+            }
         )
 
         await store.send(.dragEnded)
@@ -160,9 +162,9 @@ struct PlaybackTimelineFeatureTests {
             $0.confirmedPosition = 0
             $0.interaction = .idle
         }
-        #expect(suspendedSeek.cancellationObserved.value)
+        #expect(suspendedSeek.hasObservedCancellation)
 
-        suspendedSeek.fail(with: .network)
+        suspendedSeek.fail(with: MusicProviderError.network)
         await store.finish()
         #expect(store.state.interaction == .idle)
     }
@@ -235,54 +237,6 @@ struct PlaybackTimelineFeatureTests {
                     for await _ in finishSeek { break }
                 }
             }
-        }
-    }
-}
-
-// MARK: - Suspended Effect Probe
-
-struct SuspendedSeekProbe: Sendable {
-    let cancellationObserved = LockIsolated(false)
-
-    private let started: AsyncStream<Void>
-    private let startedContinuation: AsyncStream<Void>.Continuation
-    private let pendingContinuation =
-        LockIsolated<CheckedContinuation<Void, any Error>?>(nil)
-
-    init() {
-        (started, startedContinuation) = AsyncStream<Void>.makeStream()
-    }
-
-    func callAsFunction(_ position: TimeInterval) async throws {
-        try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                pendingContinuation.withValue { $0 = continuation }
-                startedContinuation.yield()
-            }
-        } onCancel: {
-            cancellationObserved.withValue { $0 = true }
-        }
-    }
-
-    func waitUntilStarted() async {
-        var iterator = started.makeAsyncIterator()
-        _ = await iterator.next()
-        startedContinuation.finish()
-    }
-
-    func succeed() {
-        pendingContinuation.withValue { pendingContinuation in
-            let continuation = pendingContinuation
-            pendingContinuation = nil
-            continuation?.resume(returning: ())
-        }
-    }
-
-    func fail(with error: MusicProviderError) {
-        pendingContinuation.withValue { pendingContinuation in
-            let continuation = pendingContinuation
-            pendingContinuation = nil
-            continuation?.resume(throwing: error)
         }
     }
 }

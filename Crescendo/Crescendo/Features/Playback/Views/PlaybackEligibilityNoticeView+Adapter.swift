@@ -1,7 +1,12 @@
 import ComposableArchitecture
 
 extension PlaybackEligibilityNoticeView.Model {
-    /// Adapts search and access state into one eligibility presentation.
+    /// Projects search results and provider access into one eligibility presentation.
+    ///
+    /// Unknown eligibility is hidden before results exist and becomes visible once
+    /// search has returned playable candidates.
+    ///
+    /// - Parameter store: The search store supplying access and result state.
     @MainActor
     init(_ store: StoreOf<SearchFeature>) {
         let hasResults: Bool
@@ -27,7 +32,9 @@ extension PlaybackEligibilityNoticeView.Model {
         self.init(presentation: presentation)
     }
 
-    /// Adapts player eligibility into its presentation.
+    /// Projects expanded-player eligibility into its user-facing presentation.
+    ///
+    /// - Parameter store: The playback store supplying confirmed eligibility.
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>) {
         let presentation: Presentation =

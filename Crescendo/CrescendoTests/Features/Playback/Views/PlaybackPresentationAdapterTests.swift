@@ -25,6 +25,17 @@ struct PlaybackPresentationAdapterTests {
     }
 
     @Test(arguments: [
+        (PlaybackPrimaryButtonView.Model.State.play, "play.fill"),
+        (.pause, "pause.fill"),
+    ])
+    func primaryStateMapsSystemImage(
+        state: PlaybackPrimaryButtonView.Model.State,
+        expectedSystemImage: String
+    ) {
+        #expect(state.systemImage == expectedSystemImage)
+    }
+
+    @Test(arguments: [
         (
             PlaybackStatus.playing,
             PlaybackFeature.PendingStatusChange.Target.paused,
@@ -249,7 +260,9 @@ struct PlaybackPresentationAdapterTests {
             supportsEmbeddedPlayback: true,
             supportsSeeking: false,
             supportsQueueReplacement: true,
-            supportsQueueTransitions: true
+            supportsQueueTransitions: true,
+            supportedRepeatModes: [.off, .all, .one],
+            supportsShuffle: true
         )
         let store = makePlaybackStore(
             song: makeSong(duration: 215),
@@ -270,21 +283,34 @@ struct PlaybackPresentationAdapterTests {
         let model = PlaybackView.Model(store, providerName: nil)
         let skipControls = try #require(model.skipControls)
 
-        skipControls.controls[0].perform()
-        skipControls.controls[1].perform()
+        model.controls.shuffle.perform()
         model.controls.previous.perform()
         model.controls.primary.perform()
         model.controls.next.perform()
+        model.controls.repeatMode.perform()
+        skipControls.controls[0].perform()
+        skipControls.controls[1].perform()
         model.utilityControls.controls[0].perform()
         model.utilityControls.controls[1].perform()
 
         #expect(
-            actions.value == [
-                .seekBackwardTapped,
-                .seekForwardTapped,
+            actions.value.prefix(5) == [
+                .shuffleTapped,
                 .previousTapped,
                 .playPauseTapped,
                 .nextTapped,
+                .repeatTapped,
+            ]
+        )
+        #expect(
+            actions.value == [
+                .shuffleTapped,
+                .previousTapped,
+                .playPauseTapped,
+                .nextTapped,
+                .repeatTapped,
+                .seekBackwardTapped,
+                .seekForwardTapped,
                 .restartTapped,
                 .stopTapped,
             ]
@@ -341,27 +367,91 @@ struct PlaybackPresentationAdapterTests {
         #expect(enabledModel.controls.next.isEnabled)
         #expect(!pendingModel.controls.previous.isEnabled)
         #expect(!pendingModel.controls.next.isEnabled)
-        #expect(
-            enabledModel.controls.previous.systemImage
-                == "backward.fill"
-        )
-        #expect(
-            enabledModel.controls.next.systemImage
-                == "forward.fill"
-        )
+        #expect(enabledModel.controls.previous.systemImage == "backward.fill")
+        #expect(enabledModel.controls.next.systemImage == "forward.fill")
         #expect(enabledModel.controls.primary.state == .play)
         #expect(
-            enabledModel.controls.previous.accessibilityLabel
-                == "Previous track"
+            enabledModel.controls.previous.accessibilityLabel == "Previous track"
         )
-        #expect(
-            enabledModel.controls.next.accessibilityLabel
-                == "Next track"
+        #expect(enabledModel.controls.next.accessibilityLabel == "Next track")
+        let utilityTitles = enabledModel.utilityControls.controls.map(\.title)
+        #expect(utilityTitles == ["Restart", "Stop"])
+    }
+
+    @Test
+    func queueModeControlsProjectConfirmedStateAndPermissions() {
+        let store = makePlaybackStore(
+            song: makeSong(),
+            repeatMode: .one,
+            shuffleMode: .songs,
+            pendingRepeatChange: .init(
+                requestID: UUID(0),
+                target: .off
+            )
         )
-        #expect(
-            enabledModel.utilityControls.controls.map(\.title)
-                == ["Restart", "Stop"]
+        let controls = PlaybackControlsView.Model(store)
+
+        #expect(controls.shuffle.systemImage == "shuffle")
+        #expect(controls.shuffle.isSelected)
+        #expect(controls.shuffle.accessibilityValue == Locs.Playback.Mode.on)
+        #expect(controls.shuffle.isEnabled)
+        #expect(controls.repeatMode.systemImage == "repeat.1")
+        #expect(controls.repeatMode.isSelected)
+        #expect(controls.repeatMode.accessibilityValue == Locs.Playback.Mode.one)
+        #expect(!controls.repeatMode.isEnabled)
+    }
+
+    @Test(arguments: [
+        (PlaybackRepeatMode.off, "repeat", false, Locs.Playback.Mode.off),
+        (.all, "repeat", true, Locs.Playback.Mode.all),
+        (.one, "repeat.1", true, Locs.Playback.Mode.one),
+    ])
+    func repeatControlProjectsConfirmedMode(
+        repeatMode: PlaybackRepeatMode,
+        expectedSystemImage: String,
+        expectedIsSelected: Bool,
+        expectedAccessibilityValue: String
+    ) {
+        let controls = PlaybackControlsView.Model(
+            makePlaybackStore(song: makeSong(), repeatMode: repeatMode)
         )
+
+        let accessibilityValue = controls.repeatMode.accessibilityValue
+        #expect(controls.repeatMode.systemImage == expectedSystemImage)
+        #expect(controls.repeatMode.isSelected == expectedIsSelected)
+        #expect(accessibilityValue == expectedAccessibilityValue)
+    }
+
+    @Test
+    func providerResetPolicyDisablesEveryCommandAdapter() throws {
+        let song = makeSong()
+        let pendingProviderReset = PlaybackFeature.PendingProviderReset(
+            requestID: UUID(0),
+            providerID: "replacement",
+            capabilities: .allEnabled
+        )
+        let store = makePlaybackStore(
+            song: song,
+            status: .playing,
+            confirmedPosition: 43,
+            pendingProviderReset: pendingProviderReset
+        )
+
+        let controls = PlaybackControlsView.Model(store)
+        let nowPlaying = PlaybackNowPlayingView.Model(store, song: song)
+        let skipControls = PlaybackSkipControlsView.Model(store)
+        let timeline = try #require(PlaybackTimelineView.Model(store))
+        let utilityControls = PlaybackUtilityControlsView.Model(store)
+
+        #expect(!controls.shuffle.isEnabled)
+        #expect(!controls.previous.isEnabled)
+        #expect(!controls.primary.isEnabled)
+        #expect(!controls.next.isEnabled)
+        #expect(!controls.repeatMode.isEnabled)
+        #expect(!nowPlaying.isPlayEnabled)
+        #expect(skipControls.controls.allSatisfy { !$0.isEnabled })
+        #expect(!timeline.slider.isEnabled)
+        #expect(utilityControls.controls.allSatisfy { !$0.isEnabled })
     }
 
     @Test(arguments: [
@@ -403,8 +493,13 @@ struct PlaybackPresentationAdapterTests {
         capabilities: MusicProviderCapabilities = .allEnabled,
         confirmedPosition: TimeInterval = 0,
         timelineInteraction: PlaybackTimelineFeature.Interaction = .idle,
+        repeatMode: PlaybackRepeatMode = .off,
+        shuffleMode: PlaybackShuffleMode = .off,
         pendingQueueTransition: PlaybackQueueFeature.PendingQueueTransition? = nil,
-        pendingOperation: PlaybackFeature.PendingOperation? = nil
+        pendingRepeatChange: PlaybackQueueFeature.PendingRepeatChange? = nil,
+        pendingShuffleChange: PlaybackQueueFeature.PendingShuffleChange? = nil,
+        pendingOperation: PlaybackFeature.PendingOperation? = nil,
+        pendingProviderReset: PlaybackFeature.PendingProviderReset? = nil
     ) -> StoreOf<PlaybackFeature> {
         let songs = IdentifiedArray(uniqueElements: song.map { [$0] } ?? [])
         return Store(
@@ -413,7 +508,11 @@ struct PlaybackPresentationAdapterTests {
                 queue: PlaybackQueueFeature.State(
                     songs: songs,
                     currentItemID: song?.id,
-                    pendingQueueTransition: pendingQueueTransition
+                    repeatMode: repeatMode,
+                    shuffleMode: shuffleMode,
+                    pendingQueueTransition: pendingQueueTransition,
+                    pendingRepeatChange: pendingRepeatChange,
+                    pendingShuffleChange: pendingShuffleChange
                 ),
                 status: status,
                 failure: failure,
@@ -424,7 +523,7 @@ struct PlaybackPresentationAdapterTests {
                     interaction: timelineInteraction
                 ),
                 pendingOperation: pendingOperation,
-                pendingReset: nil,
+                pendingProviderReset: pendingProviderReset,
                 isPlayerPresented: false
             )
         ) {
@@ -443,7 +542,11 @@ struct PlaybackPresentationAdapterTests {
                 queue: .init(
                     songs: songs,
                     currentItemID: song.id,
-                    pendingQueueTransition: nil
+                    repeatMode: .off,
+                    shuffleMode: .off,
+                    pendingQueueTransition: nil,
+                    pendingRepeatChange: nil,
+                    pendingShuffleChange: nil
                 ),
                 status: .playing,
                 failure: nil,
@@ -454,7 +557,7 @@ struct PlaybackPresentationAdapterTests {
                     interaction: .idle
                 ),
                 pendingOperation: nil,
-                pendingReset: nil,
+                pendingProviderReset: nil,
                 isPlayerPresented: false
             )
         ) {

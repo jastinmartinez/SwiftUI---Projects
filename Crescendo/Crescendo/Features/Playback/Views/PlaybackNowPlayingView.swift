@@ -1,7 +1,11 @@
 import Foundation
 import SwiftUI
 
-/// Presents a compact summary of the current song.
+/// Presents the compact playback surface shown above the app's primary content.
+///
+/// Opening the expanded player and toggling transport are independent callbacks.
+/// Confirmed metadata and immediate Play/Pause presentation arrive through the
+/// immutable model.
 struct PlaybackNowPlayingView: View {
     let model: Model
 
@@ -64,6 +68,10 @@ struct PlaybackNowPlayingView: View {
 }
 
 extension PlaybackNowPlayingView {
+    /// The immutable presentation contract for compact playback.
+    ///
+    /// `isPlaying` controls the visible transport action, while `isPlayEnabled`
+    /// determines whether playback may be requested from a nonplaying state.
     struct Model {
         let title: String
         let artistName: String

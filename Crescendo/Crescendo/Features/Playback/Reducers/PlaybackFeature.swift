@@ -14,7 +14,7 @@ struct PlaybackFeature {
         var capabilities: MusicProviderCapabilities
         var timeline: PlaybackTimelineFeature.State
         var pendingOperation: PendingOperation?
-        var pendingReset: PendingReset?
+        var pendingProviderReset: PendingProviderReset?
         var isPlayerPresented: Bool
     }
 
@@ -40,7 +40,7 @@ struct PlaybackFeature {
         }
     }
 
-    struct PendingReset: Equatable {
+    struct PendingProviderReset: Equatable {
         let requestID: UUID
         let providerID: ProviderID
         let capabilities: MusicProviderCapabilities
@@ -88,8 +88,12 @@ struct PlaybackFeature {
         )
         case previousTapped
         case nextTapped
+        case repeatTapped
+        case shuffleTapped
+        case requestQueueDefaults
         case setPlayerPresented(Bool)
         case snapshotReceived(PlaybackSnapshot)
+        case reconcileSnapshot(PlaybackSnapshot)
         case timelinePositionChanged(TimeInterval)
         case timelineInteractionEnded
         case restartTapped
@@ -119,7 +123,7 @@ struct PlaybackFeature {
         Reduce { state, action in
             switch action {
             case .task:
-                guard state.pendingReset == nil else { return .none }
+                guard state.pendingProviderReset == nil else { return .none }
                 return .run { send in
                     let snapshots = await playbackObservation.playbackSnapshots()
                     for await snapshot in snapshots {
@@ -133,7 +137,7 @@ struct PlaybackFeature {
 
             case .reset(let providerID, let capabilities):
                 let requestID = uuid()
-                state.pendingReset = PendingReset(
+                state.pendingProviderReset = PendingProviderReset(
                     requestID: requestID,
                     providerID: providerID,
                     capabilities: capabilities
@@ -149,20 +153,20 @@ struct PlaybackFeature {
                 )
 
             case .applyReset(let requestID):
-                guard let pendingReset = state.pendingReset,
-                    pendingReset.requestID == requestID
+                guard let pendingProviderReset = state.pendingProviderReset,
+                    pendingProviderReset.requestID == requestID
                 else { return .none }
 
-                state.providerID = pendingReset.providerID
+                state.providerID = pendingProviderReset.providerID
                 state.status = .idle
                 state.failure = nil
                 state.playbackEligibility = .unknown
-                state.capabilities = pendingReset.capabilities
+                state.capabilities = pendingProviderReset.capabilities
                 state.pendingOperation = nil
-                state.pendingReset = nil
+                state.pendingProviderReset = nil
                 state.isPlayerPresented = false
                 return .send(
-                    .delegate(.resetCompleted(pendingReset.providerID))
+                    .delegate(.resetCompleted(pendingProviderReset.providerID))
                 )
 
             case .delegate:
@@ -175,7 +179,7 @@ struct PlaybackFeature {
                 let playbackEligibility
             ):
                 let hasNowPlaying = !state.queue.songs.isEmpty
-                guard state.pendingReset == nil,
+                guard state.pendingProviderReset == nil,
                     state.providerID == providerID,
                     playbackEligibility == .eligible,
                     state.capabilities.supportsEmbeddedPlayback,
@@ -183,7 +187,7 @@ struct PlaybackFeature {
                     loadedResults[id: song.id] != nil,
                     loadedResults.allSatisfy({ $0.id.providerID == providerID })
                 else {
-                    if state.pendingReset == nil,
+                    if state.pendingProviderReset == nil,
                         state.providerID == providerID,
                         playbackEligibility != .eligible,
                         !hasNowPlaying
@@ -226,7 +230,7 @@ struct PlaybackFeature {
                 let itemIDs,
                 let startingItemID
             ):
-                guard state.pendingReset == nil,
+                guard state.pendingProviderReset == nil,
                     case .queueReplacement(let replacement) =
                         state.pendingOperation,
                     replacement.requestID == requestID
@@ -285,7 +289,8 @@ struct PlaybackFeature {
                             )
                         )
                     ),
-                    .send(.timeline(.reset))
+                    .send(.timeline(.reset)),
+                    .send(.requestQueueDefaults)
                 )
 
             case .queueReplacementFailed(let requestID, let error):
@@ -304,7 +309,7 @@ struct PlaybackFeature {
                 return .cancel(id: CancelID.parentOperation)
 
             case .playPauseTapped:
-                guard state.canRequestPlayPause else { return .none }
+                guard state.commandPolicy.allows(.playPause) else { return .none }
                 let target: PendingStatusChange.Target
                 if case .statusChange(let change) = state.pendingOperation,
                     change.target == .stopped
@@ -326,7 +331,7 @@ struct PlaybackFeature {
                 )
 
             case .stopTapped:
-                guard state.canRequestStop else { return .none }
+                guard state.commandPolicy.allows(.stop) else { return .none }
                 let requestID = uuid()
                 state.pendingOperation = .statusChange(
                     PendingStatusChange(requestID: requestID, target: .stopped)
@@ -340,7 +345,7 @@ struct PlaybackFeature {
                 )
 
             case .performStatusChange(let requestID, let target):
-                guard state.pendingReset == nil,
+                guard state.pendingProviderReset == nil,
                     case .statusChange(let change) = state.pendingOperation,
                     change.requestID == requestID,
                     change.target == target
@@ -400,24 +405,58 @@ struct PlaybackFeature {
                 return .none
 
             case .previousTapped:
-                guard state.canRequestQueueTransition else { return .none }
+                guard state.commandPolicy.allows(.previous) else { return .none }
                 state.failure = nil
                 return .send(.queue(.queueTransitionRequested(.previous)))
 
             case .nextTapped:
-                guard state.canRequestQueueTransition else { return .none }
+                guard state.commandPolicy.allows(.next) else { return .none }
                 state.failure = nil
                 return .send(.queue(.queueTransitionRequested(.next)))
 
+            case .repeatTapped:
+                guard state.commandPolicy.allows(.repeatMode) else { return .none }
+                state.failure = nil
+                return .send(
+                    .queue(
+                        .cycleRepeatModeRequested(
+                            state.capabilities.supportedRepeatModes
+                        )
+                    )
+                )
+
+            case .shuffleTapped:
+                guard state.commandPolicy.allows(.shuffleMode) else { return .none }
+                state.failure = nil
+                return .send(.queue(.toggleShuffleRequested))
+
+            case .requestQueueDefaults:
+                let supportsRepeatReset =
+                    state.capabilities.supportedRepeatModes.count > 1
+                    && state.capabilities.supportedRepeatModes.contains(.off)
+                switch (supportsRepeatReset, state.capabilities.supportsShuffle) {
+                case (true, true):
+                    return .concatenate(
+                        .send(.queue(.repeatModeChangeRequested(.off))),
+                        .send(.queue(.shuffleModeChangeRequested(.off)))
+                    )
+                case (true, false):
+                    return .send(.queue(.repeatModeChangeRequested(.off)))
+                case (false, true):
+                    return .send(.queue(.shuffleModeChangeRequested(.off)))
+                case (false, false):
+                    return .none
+                }
+
             case .timelinePositionChanged(let requestedPosition):
-                guard state.canRequestSeek,
+                guard state.commandPolicy.allows(.seek),
                     let duration = state.queue.currentItem?.duration
                 else { return .none }
                 let position = min(max(requestedPosition, 0), duration)
                 return .send(.timeline(.positionChanged(position)))
 
             case .timelineInteractionEnded:
-                guard state.canRequestSeek,
+                guard state.commandPolicy.allows(.seek),
                     let duration = state.queue.currentItem?.duration
                 else { return .none }
                 let position = min(max(state.timeline.position, 0), duration)
@@ -430,29 +469,36 @@ struct PlaybackFeature {
                 )
 
             case .restartTapped:
-                guard state.canRequestSeek else { return .none }
+                guard state.commandPolicy.allows(.seek) else { return .none }
                 return .send(.timeline(.seekRequested(0)))
 
             case .seekBackwardTapped:
-                guard state.canRequestSeek,
+                guard state.commandPolicy.allows(.seek),
                     let duration = state.queue.currentItem?.duration
                 else { return .none }
                 let target = min(max(state.timeline.position - 15, 0), duration)
                 return .send(.timeline(.seekRequested(target)))
 
             case .seekForwardTapped:
-                guard state.canRequestSeek,
+                guard state.commandPolicy.allows(.seek),
                     let duration = state.queue.currentItem?.duration
                 else { return .none }
                 let target = min(state.timeline.position + 15, duration)
                 return .send(.timeline(.seekRequested(target)))
 
             case .snapshotReceived(let snapshot):
-                guard state.pendingReset == nil else { return .none }
+                guard state.pendingProviderReset == nil else { return .none }
+                return .concatenate(
+                    .send(.queue(.repeatModeObserved(snapshot.repeatMode))),
+                    .send(.queue(.shuffleModeObserved(snapshot.shuffleMode))),
+                    .send(.reconcileSnapshot(snapshot))
+                )
+
+            case .reconcileSnapshot(let snapshot):
+                guard state.pendingProviderReset == nil else { return .none }
                 state.status = snapshot.status
 
-                if case .queueReplacement(let replacement) =
-                    state.pendingOperation,
+                if case .queueReplacement(let replacement) = state.pendingOperation,
                     snapshot.status == .playing,
                     snapshot.currentItemID == replacement.startingItemID
                 {
@@ -469,10 +515,9 @@ struct PlaybackFeature {
                             )
                         ),
                         .send(.timeline(.reset)),
+                        .send(.requestQueueDefaults),
                         .send(
-                            .timeline(
-                                .positionObserved(snapshot.currentTime)
-                            )
+                            .timeline(.positionObserved(snapshot.currentTime))
                         )
                     )
                 }
@@ -544,6 +589,10 @@ struct PlaybackFeature {
                 state.failure = error
                 return .none
 
+            case .queue(.delegate(.modeChangeFailed(let error))):
+                state.failure = error
+                return .none
+
             case .queue, .timeline:
                 return .none
             }
@@ -552,54 +601,13 @@ struct PlaybackFeature {
 }
 
 extension PlaybackFeature.State {
-    var canRequestPlayPause: Bool {
-        guard !queue.songs.isEmpty,
-            capabilities.supportsEmbeddedPlayback,
-            pendingReset == nil
-        else { return false }
-        switch pendingOperation {
-        case .statusChange(let change):
-            return change.target == .stopped
-        case .queueReplacement:
-            return false
-        case nil:
-            return true
-        }
-    }
-
-    var canRequestStop: Bool {
-        guard capabilities.supportsEmbeddedPlayback,
-            pendingReset == nil
-        else { return false }
-        switch pendingOperation {
-        case .queueReplacement:
-            return true
-        case .statusChange:
-            return false
-        case nil:
-            return !queue.songs.isEmpty && status != .stopped
-        }
-    }
-
-    var canRequestSeek: Bool {
-        guard pendingReset == nil,
-            capabilities.supportsSeeking,
-            let duration = queue.currentItem?.duration
-        else { return false }
-        return duration > 0
-    }
-
-    /// Whether a queue transition can execute from the current domain state.
-    var canRequestQueueTransition: Bool {
-        guard capabilities.supportsQueueTransitions,
-            pendingReset == nil,
-            !queue.songs.isEmpty,
-            queue.currentItemID != nil,
-            queue.pendingQueueTransition == nil
-        else { return false }
-        if case .queueReplacement = pendingOperation {
-            return false
-        }
-        return true
+    var commandPolicy: PlaybackCommandPolicy {
+        PlaybackCommandPolicy(
+            capabilities: capabilities,
+            queue: queue,
+            status: status,
+            pendingOperation: pendingOperation,
+            isResettingProvider: pendingProviderReset != nil
+        )
     }
 }

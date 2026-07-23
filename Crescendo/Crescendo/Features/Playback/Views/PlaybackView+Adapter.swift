@@ -2,7 +2,15 @@ import ComposableArchitecture
 import Foundation
 
 extension PlaybackView.Model {
-    /// Adapts reducer-owned playback state and actions into presentation values.
+    /// Projects reducer-owned playback state into the expanded-player presentation.
+    ///
+    /// Pending transport targets take precedence over confirmed status, while
+    /// timeline-dependent sections are omitted when no valid duration exists.
+    ///
+    /// - Parameters:
+    ///   - store: The playback store supplying domain state and receiving callbacks.
+    ///   - providerName: The connected provider name shown as attribution, or `nil`
+    ///     when no attribution should be rendered.
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>, providerName: String?) {
         let statusText: String

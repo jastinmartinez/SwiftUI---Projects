@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// Displays the selected song and current playback status.
+/// Displays the active item's identity, provider attribution, and playback status.
+///
+/// Optional artist and provider values are omitted when unavailable. Status changes
+/// use a lightweight transition without introducing view-owned state.
 struct PlaybackMetadataView: View {
     let model: Model
 
@@ -34,6 +37,7 @@ struct PlaybackMetadataView: View {
 }
 
 extension PlaybackMetadataView {
+    /// The immutable text content rendered for the active playback item.
     struct Model: Equatable {
         let title: String
         let artistName: String?

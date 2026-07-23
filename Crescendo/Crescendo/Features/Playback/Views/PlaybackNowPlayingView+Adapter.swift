@@ -1,7 +1,14 @@
 import ComposableArchitecture
 
 extension PlaybackNowPlayingView.Model {
-    /// Adapts the selected song and playback state into the compact player presentation.
+    /// Projects a selected song and playback state into compact-player presentation.
+    ///
+    /// A pending status change takes precedence over confirmed status so the visible
+    /// Play/Pause action responds immediately while the provider confirms the request.
+    ///
+    /// - Parameters:
+    ///   - store: The playback store supplying state and receiving callbacks.
+    ///   - song: The confirmed queue item represented by the compact player.
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>, song: SongSummary) {
         let isPlaying: Bool
@@ -16,7 +23,7 @@ extension PlaybackNowPlayingView.Model {
             artistName: song.artistName,
             artworkURL: song.artworkURL,
             isPlaying: isPlaying,
-            isPlayEnabled: store.canRequestPlayPause,
+            isPlayEnabled: store.commandPolicy.allows(.playPause),
             playPauseAccessibilityLabel: isPlaying
                 ? Locs.Playback.pause
                 : Locs.Playback.play,

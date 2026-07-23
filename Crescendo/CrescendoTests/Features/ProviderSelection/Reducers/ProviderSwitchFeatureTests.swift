@@ -93,10 +93,11 @@ struct ProviderSwitchFeatureTests {
         _ = await pauseStartedIterator.next()
 
         await store.send(.targetChanged("future"))
-        #expect(
-            store.state.phase
-                == .pausing(targetProviderID: "future", requestID: UUID(0))
+        let expectedPhase = ProviderSwitchFeature.Phase.pausing(
+            targetProviderID: "future",
+            requestID: UUID(0)
         )
+        #expect(store.state.phase == expectedPhase)
 
         await store.send(.cancel)
         await store.receive(.delegate(.cancelled))

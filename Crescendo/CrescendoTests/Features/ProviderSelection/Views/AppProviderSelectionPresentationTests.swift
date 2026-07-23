@@ -199,7 +199,11 @@ struct AppProviderSelectionPresentationTests {
                     queue: PlaybackQueueFeature.State(
                         songs: [],
                         currentItemID: nil,
-                        pendingQueueTransition: nil
+                        repeatMode: .off,
+                        shuffleMode: .off,
+                        pendingQueueTransition: nil,
+                        pendingRepeatChange: nil,
+                        pendingShuffleChange: nil
                     ),
                     status: .idle,
                     failure: nil,
@@ -210,7 +214,7 @@ struct AppProviderSelectionPresentationTests {
                         interaction: .idle
                     ),
                     pendingOperation: pendingOperation,
-                    pendingReset: nil,
+                    pendingProviderReset: nil,
                     isPlayerPresented: false
                 ),
                 providerSwitch: nil

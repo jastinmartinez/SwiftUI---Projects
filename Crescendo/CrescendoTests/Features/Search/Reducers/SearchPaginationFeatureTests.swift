@@ -130,10 +130,10 @@ struct SearchPaginationFeatureTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearch.searchPage = { request, _ in
-                #expect(
-                    request
-                        == .continuation(SearchCursor(value: "page-2"))
+                let expectedRequest = SearchPageRequest.continuation(
+                    SearchCursor(value: "page-2")
                 )
+                #expect(request == expectedRequest)
                 return try await Task.never()
             }
         }

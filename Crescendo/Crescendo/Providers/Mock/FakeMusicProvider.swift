@@ -86,17 +86,20 @@ actor FakeMusicProvider {
                     itemIDs: itemIDs,
                     startingItemID: startingItemID
                 )
-            }
-        )
-    }
-
-    func playbackNavigationClient() -> PlaybackNavigationClient {
-        PlaybackNavigationClient(
+            },
             navigate: { [weak self] direction in
                 guard let self else { throw MusicProviderError.unavailable }
                 return try await self.moveCurrentItem(
                     by: direction == .previous ? -1 : 1
                 )
+            },
+            setRepeat: { [weak self] mode in
+                guard let self else { throw MusicProviderError.unavailable }
+                await self.setRepeat(mode)
+            },
+            setShuffle: { [weak self] mode in
+                guard let self else { throw MusicProviderError.unavailable }
+                await self.setShuffle(mode)
             }
         )
     }
@@ -144,7 +147,7 @@ actor FakeMusicProvider {
 
     private func moveCurrentItem(
         by offset: Int
-    ) throws -> PlaybackNavigationResult {
+    ) throws -> PlaybackQueueNavigationResult {
         guard let queueCurrentIndex else {
             throw MusicProviderError.unavailable
         }
@@ -163,6 +166,28 @@ actor FakeMusicProvider {
             shuffleMode: playbackSnapshot.shuffleMode
         )
         return .accepted
+    }
+
+    private func setRepeat(_ mode: PlaybackRepeatMode) {
+        playbackSnapshot = PlaybackSnapshot(
+            currentItemID: playbackSnapshot.currentItemID,
+            status: playbackSnapshot.status,
+            currentTime: playbackSnapshot.currentTime,
+            playbackRate: playbackSnapshot.playbackRate,
+            repeatMode: mode,
+            shuffleMode: playbackSnapshot.shuffleMode
+        )
+    }
+
+    private func setShuffle(_ mode: PlaybackShuffleMode) {
+        playbackSnapshot = PlaybackSnapshot(
+            currentItemID: playbackSnapshot.currentItemID,
+            status: playbackSnapshot.status,
+            currentTime: playbackSnapshot.currentTime,
+            playbackRate: playbackSnapshot.playbackRate,
+            repeatMode: playbackSnapshot.repeatMode,
+            shuffleMode: mode
+        )
     }
 
     private func searchPage(offset: Int, limit: Int) -> SearchPage {

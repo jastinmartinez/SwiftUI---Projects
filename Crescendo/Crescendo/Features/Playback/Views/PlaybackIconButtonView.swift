@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// Renders an icon-only primary-row control from an immutable model.
+/// Displays one icon-only action in the primary playback row.
+///
+/// The model supplies the symbol, accessibility label, availability, and callback
+/// so this reusable component remains stateless.
 struct PlaybackIconButtonView: View {
     let model: Model
 
@@ -18,7 +21,7 @@ struct PlaybackIconButtonView: View {
 }
 
 extension PlaybackIconButtonView {
-    /// Contains every value required to render one icon-only control.
+    /// The immutable presentation contract for one icon-only playback action.
     struct Model {
         let systemImage: String
         let accessibilityLabel: String

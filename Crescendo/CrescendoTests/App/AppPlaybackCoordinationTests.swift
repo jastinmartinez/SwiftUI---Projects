@@ -116,7 +116,11 @@ struct AppPlaybackCoordinationTests {
             playbackQueue: .init(
                 songs: currentQueue,
                 currentItemID: currentSongs[0].id,
-                pendingQueueTransition: nil
+                repeatMode: .off,
+                shuffleMode: .off,
+                pendingQueueTransition: nil,
+                pendingRepeatChange: nil,
+                pendingShuffleChange: nil
             ),
             isPlayerPresented: false
         ) {
@@ -185,7 +189,11 @@ struct AppPlaybackCoordinationTests {
             playbackQueue: PlaybackQueueFeature.State(
                 songs: firstPage,
                 currentItemID: firstPageSongs[0].id,
-                pendingQueueTransition: nil
+                repeatMode: .off,
+                shuffleMode: .off,
+                pendingQueueTransition: nil,
+                pendingRepeatChange: nil,
+                pendingShuffleChange: nil
             )
         )
         state.search.status = .loaded(
@@ -331,7 +339,11 @@ struct AppPlaybackCoordinationTests {
         playbackQueue: PlaybackQueueFeature.State = .init(
             songs: [],
             currentItemID: nil,
-            pendingQueueTransition: nil
+            repeatMode: .off,
+            shuffleMode: .off,
+            pendingQueueTransition: nil,
+            pendingRepeatChange: nil,
+            pendingShuffleChange: nil
         ),
         isPlayerPresented: Bool = false,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
@@ -359,7 +371,11 @@ struct AppPlaybackCoordinationTests {
         playbackQueue: PlaybackQueueFeature.State = .init(
             songs: [],
             currentItemID: nil,
-            pendingQueueTransition: nil
+            repeatMode: .off,
+            shuffleMode: .off,
+            pendingQueueTransition: nil,
+            pendingRepeatChange: nil,
+            pendingShuffleChange: nil
         ),
         isPlayerPresented: Bool = false,
         providerSwitch: ProviderSwitchFeature.State? = nil
@@ -400,7 +416,7 @@ struct AppPlaybackCoordinationTests {
                     interaction: .idle
                 ),
                 pendingOperation: nil,
-                pendingReset: nil,
+                pendingProviderReset: nil,
                 isPlayerPresented: isPlayerPresented
             ),
             providerSwitch: providerSwitch

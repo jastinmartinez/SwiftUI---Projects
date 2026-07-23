@@ -7,7 +7,7 @@ struct PlaybackQueuePosition: Equatable {
     ///
     /// - Parameter direction: The direction requested from the active queue.
     /// - Returns: `true` only when the queue can move to a different entry.
-    func canTransition(_ direction: PlaybackNavigationDirection) -> Bool {
+    func canTransition(_ direction: PlaybackQueueNavigationDirection) -> Bool {
         guard let currentEntryID,
             let currentIndex = entryIDs.firstIndex(of: currentEntryID)
         else {

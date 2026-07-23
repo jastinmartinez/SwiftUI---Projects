@@ -1,12 +1,16 @@
 import SwiftUI
 
-/// Renders the visually prominent play-or-pause control.
+/// Displays the primary playback action with Crescendo's emphasized styling.
+///
+/// The immutable model supplies the action currently offered to the user,
+/// availability, accessibility text, and callback. The view owns no playback or
+/// interaction state.
 struct PlaybackPrimaryButtonView: View {
     let model: Model
 
     var body: some View {
         Button(action: model.perform) {
-            Image(systemName: systemImage)
+            Image(systemName: model.state.systemImage)
                 .font(.title.bold())
                 .foregroundStyle(.white)
                 .contentTransition(.symbolEffect(.replace))
@@ -24,19 +28,13 @@ struct PlaybackPrimaryButtonView: View {
         .accessibilityLabel(model.accessibilityLabel)
         .disabled(!model.isEnabled)
     }
-
-    private var systemImage: String {
-        switch model.state {
-        case .play:
-            "play.fill"
-        case .pause:
-            "pause.fill"
-        }
-    }
 }
 
 extension PlaybackPrimaryButtonView {
-    /// Contains every value required to render the primary control.
+    /// The immutable presentation contract for the primary playback control.
+    ///
+    /// `state` describes the action offered by the button rather than confirmed
+    /// provider status. The presentation adapter is responsible for that projection.
     struct Model {
         let state: State
         let accessibilityLabel: String
@@ -46,9 +44,23 @@ extension PlaybackPrimaryButtonView {
 }
 
 extension PlaybackPrimaryButtonView.Model {
-    /// Identifies the action presented by the primary control.
+    /// Identifies the playback action currently offered by the primary control.
+    ///
+    /// Tapping `.play` requests playback; tapping `.pause` requests suspension.
     enum State: Equatable {
         case play
         case pause
+    }
+}
+
+extension PlaybackPrimaryButtonView.Model.State {
+    /// The SF Symbol that communicates the offered playback action.
+    var systemImage: String {
+        switch self {
+        case .play:
+            "play.fill"
+        case .pause:
+            "pause.fill"
+        }
     }
 }

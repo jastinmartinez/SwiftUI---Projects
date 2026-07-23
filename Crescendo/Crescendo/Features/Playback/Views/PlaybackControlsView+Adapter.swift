@@ -1,7 +1,12 @@
 import ComposableArchitecture
 
 extension PlaybackControlsView.Model {
-    /// Adapts playback state and primary-row actions into presentation values.
+    /// Projects transport and queue state into the primary playback controls.
+    ///
+    /// A pending status target takes precedence over confirmed status so the primary
+    /// control communicates the requested action immediately.
+    ///
+    /// - Parameter store: The playback store supplying state and receiving actions.
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>) {
         let primaryState: PlaybackPrimaryButtonView.Model.State
@@ -16,11 +21,31 @@ extension PlaybackControlsView.Model {
             primaryState = store.status == .playing ? .pause : .play
         }
 
+        let repeatAccessibilityValue: String
+        switch store.queue.repeatMode {
+        case .off:
+            repeatAccessibilityValue = Locs.Playback.Mode.off
+        case .all:
+            repeatAccessibilityValue = Locs.Playback.Mode.all
+        case .one:
+            repeatAccessibilityValue = Locs.Playback.Mode.one
+        }
+
         self.init(
+            shuffle: PlaybackModeButtonView.Model(
+                systemImage: "shuffle",
+                accessibilityLabel: Locs.Playback.shuffle,
+                accessibilityValue: store.queue.shuffleMode == .songs
+                    ? Locs.Playback.Mode.on
+                    : Locs.Playback.Mode.off,
+                isSelected: store.queue.shuffleMode == .songs,
+                isEnabled: store.commandPolicy.allows(.shuffleMode),
+                perform: { store.send(.shuffleTapped) }
+            ),
             previous: PlaybackIconButtonView.Model(
                 systemImage: "backward.fill",
                 accessibilityLabel: Locs.Playback.previous,
-                isEnabled: store.canRequestQueueTransition,
+                isEnabled: store.commandPolicy.allows(.previous),
                 perform: { store.send(.previousTapped) }
             ),
             primary: PlaybackPrimaryButtonView.Model(
@@ -28,14 +53,24 @@ extension PlaybackControlsView.Model {
                 accessibilityLabel: primaryState == .play
                     ? Locs.Playback.play
                     : Locs.Playback.pause,
-                isEnabled: store.canRequestPlayPause,
+                isEnabled: store.commandPolicy.allows(.playPause),
                 perform: { store.send(.playPauseTapped) }
             ),
             next: PlaybackIconButtonView.Model(
                 systemImage: "forward.fill",
                 accessibilityLabel: Locs.Playback.next,
-                isEnabled: store.canRequestQueueTransition,
+                isEnabled: store.commandPolicy.allows(.next),
                 perform: { store.send(.nextTapped) }
+            ),
+            repeatMode: PlaybackModeButtonView.Model(
+                systemImage: store.queue.repeatMode == .one
+                    ? "repeat.1"
+                    : "repeat",
+                accessibilityLabel: Locs.Playback.repeatMode,
+                accessibilityValue: repeatAccessibilityValue,
+                isSelected: store.queue.repeatMode != .off,
+                isEnabled: store.commandPolicy.allows(.repeatMode),
+                perform: { store.send(.repeatTapped) }
             )
         )
     }

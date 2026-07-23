@@ -1,5 +1,5 @@
 /// Describes movement relative to the current playback item.
-enum PlaybackNavigationDirection: Equatable, Sendable {
+enum PlaybackQueueNavigationDirection: Equatable, Sendable {
     case previous
     case next
 }

@@ -135,7 +135,7 @@ struct AppProviderSwitchingTests {
                 )
             )
         ) {
-            $0.playback.pendingReset = .init(
+            $0.playback.pendingProviderReset = .init(
                 requestID: UUID(1),
                 providerID: "future",
                 capabilities: futureCapabilities
@@ -145,7 +145,11 @@ struct AppProviderSwitchingTests {
             $0.playback.queue = PlaybackQueueFeature.State(
                 songs: [],
                 currentItemID: nil,
-                pendingQueueTransition: nil
+                repeatMode: .off,
+                shuffleMode: .off,
+                pendingQueueTransition: nil,
+                pendingRepeatChange: nil,
+                pendingShuffleChange: nil
             )
         }
         await store.receive(.playback(.timeline(.reset))) {
@@ -165,7 +169,7 @@ struct AppProviderSwitchingTests {
             $0.playback.playbackEligibility = .unknown
             $0.playback.capabilities = futureCapabilities
             $0.playback.pendingOperation = nil
-            $0.playback.pendingReset = nil
+            $0.playback.pendingProviderReset = nil
             $0.playback.isPlayerPresented = false
         }
         await store.receive(
@@ -253,10 +257,8 @@ struct AppProviderSwitchingTests {
 
         #expect(store.state.search == state.search)
         #expect(store.state.playback == state.playback)
-        #expect(
-            store.state.playback.isPlayerPresented
-                == state.playback.isPlayerPresented
-        )
+        let expectedPresentation = state.playback.isPlayerPresented
+        #expect(store.state.playback.isPlayerPresented == expectedPresentation)
         #expect(store.state.providerConnection == state.providerConnection)
     }
 
@@ -316,7 +318,9 @@ struct AppProviderSwitchingTests {
             supportsEmbeddedPlayback: true,
             supportsSeeking: false,
             supportsQueueReplacement: true,
-            supportsQueueTransitions: true
+            supportsQueueTransitions: true,
+            supportedRepeatModes: [.off, .all, .one],
+            supportsShuffle: true
         )
     }
 
@@ -387,7 +391,11 @@ struct AppProviderSwitchingTests {
                 queue: PlaybackQueueFeature.State(
                     songs: queue,
                     currentItemID: song.id,
-                    pendingQueueTransition: nil
+                    repeatMode: .off,
+                    shuffleMode: .off,
+                    pendingQueueTransition: nil,
+                    pendingRepeatChange: nil,
+                    pendingShuffleChange: nil
                 ),
                 status: .playing,
                 failure: nil,
@@ -398,7 +406,7 @@ struct AppProviderSwitchingTests {
                     interaction: .idle
                 ),
                 pendingOperation: pendingOperation,
-                pendingReset: nil,
+                pendingProviderReset: nil,
                 isPlayerPresented: true
             ),
             providerSwitch: providerSwitch

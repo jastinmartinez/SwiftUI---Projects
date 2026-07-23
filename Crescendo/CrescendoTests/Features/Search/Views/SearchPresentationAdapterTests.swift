@@ -102,14 +102,12 @@ struct SearchPresentationAdapterTests {
         #expect(results.summary == "1 song · Apple Music")
         #expect(results.rows == expectedRows)
         #expect(results.footer.content == .hidden)
-        #expect(
-            results.footer.strings
-                == SearchPaginationFooterView.Model.Strings(
-                    loading: "Loading more songs",
-                    failure: "More songs couldn’t be loaded.",
-                    retry: "Retry"
-                )
+        let expectedStrings = SearchPaginationFooterView.Model.Strings(
+            loading: "Loading more songs",
+            failure: "More songs couldn’t be loaded.",
+            retry: "Retry"
         )
+        #expect(results.footer.strings == expectedStrings)
     }
 
     @Test
@@ -198,10 +196,10 @@ struct SearchPresentationAdapterTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearch.searchPage = { request, _ in
-                #expect(
-                    request
-                        == .continuation(SearchCursor(value: "next"))
+                let expectedRequest = SearchPageRequest.continuation(
+                    SearchCursor(value: "next")
                 )
+                #expect(request == expectedRequest)
                 return try await Task.never()
             }
         }
@@ -242,10 +240,8 @@ struct SearchPresentationAdapterTests {
             )
         )
 
-        #expect(
-            PlaybackEligibilityNoticeView.Model(store).presentation
-                == .subscriptionRequired
-        )
+        let notice = PlaybackEligibilityNoticeView.Model(store)
+        #expect(notice.presentation == .subscriptionRequired)
     }
 
     // MARK: - Helpers

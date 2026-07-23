@@ -386,7 +386,7 @@ struct ProviderConnectionFeatureTests {
     }
 
     @Test
-    func openSettingsUsesSystemSettingsURL() async {
+    func openSettingsUsesSystemSettingsURL() async throws {
         let openedURLs = LockIsolated<[URL]>([])
         let store = makeStore(
             configureDependencies: {
@@ -399,10 +399,10 @@ struct ProviderConnectionFeatureTests {
 
         await store.send(.openSettingsButtonTapped)
 
-        #expect(
-            openedURLs.value
-                == [URL(string: UIApplication.openSettingsURLString)]
+        let expectedURL = try #require(
+            URL(string: UIApplication.openSettingsURLString)
         )
+        #expect(openedURLs.value == [expectedURL])
     }
 
     // MARK: - Helpers

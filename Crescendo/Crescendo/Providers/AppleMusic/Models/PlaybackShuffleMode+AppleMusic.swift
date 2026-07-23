@@ -13,3 +13,15 @@ extension PlaybackShuffleMode {
         }
     }
 }
+
+extension MusicPlayer.ShuffleMode {
+    /// Maps a provider-neutral shuffle request to MusicKit queue behavior.
+    init(_ playbackShuffleMode: PlaybackShuffleMode) {
+        switch playbackShuffleMode {
+        case .off:
+            self = .off
+        case .songs:
+            self = .songs
+        }
+    }
+}

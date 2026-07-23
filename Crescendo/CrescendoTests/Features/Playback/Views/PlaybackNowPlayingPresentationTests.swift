@@ -116,7 +116,11 @@ struct PlaybackNowPlayingPresentationTests {
             queue: PlaybackQueueFeature.State(
                 songs: queue,
                 currentItemID: song.id,
-                pendingQueueTransition: nil
+                repeatMode: .off,
+                shuffleMode: .off,
+                pendingQueueTransition: nil,
+                pendingRepeatChange: nil,
+                pendingShuffleChange: nil
             ),
             status: status,
             failure: nil,
@@ -127,7 +131,7 @@ struct PlaybackNowPlayingPresentationTests {
                 interaction: .idle
             ),
             pendingOperation: nil,
-            pendingReset: nil,
+            pendingProviderReset: nil,
             isPlayerPresented: false
         )
     }

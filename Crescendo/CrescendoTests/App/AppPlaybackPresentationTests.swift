@@ -20,7 +20,11 @@ struct AppPlaybackPresentationTests {
             queue: PlaybackQueueFeature.State(
                 songs: queue,
                 currentItemID: song.id,
-                pendingQueueTransition: nil
+                repeatMode: .off,
+                shuffleMode: .off,
+                pendingQueueTransition: nil,
+                pendingRepeatChange: nil,
+                pendingShuffleChange: nil
             ),
             status: .paused,
             failure: .playbackFailed,
@@ -31,7 +35,7 @@ struct AppPlaybackPresentationTests {
                 interaction: .idle
             ),
             pendingOperation: nil,
-            pendingReset: nil,
+            pendingProviderReset: nil,
             isPlayerPresented: true
         )
         let state = AppFeature.State(

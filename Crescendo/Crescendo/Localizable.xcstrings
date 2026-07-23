@@ -61,6 +61,46 @@
         }
       }
     },
+    "music_playback.mode.all" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
+          }
+        }
+      }
+    },
+    "music_playback.mode.off" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        }
+      }
+    },
+    "music_playback.mode.on" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On"
+          }
+        }
+      }
+    },
+    "music_playback.mode.one" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One"
+          }
+        }
+      }
+    },
     "music_playback.next" : {
       "localizations" : {
         "en" : {
@@ -141,6 +181,16 @@
         }
       }
     },
+    "music_playback.repeat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat"
+          }
+        }
+      }
+    },
     "music_playback.restart" : {
       "localizations" : {
         "en" : {
@@ -217,6 +267,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "This song isn't available with your account or region."
+          }
+        }
+      }
+    },
+    "music_playback.shuffle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shuffle"
           }
         }
       }

@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// Renders the homogeneous backward and forward timeline actions.
+/// Displays the ordered set of discrete timeline-navigation actions.
+///
+/// Every control carries its own identity, symbol, availability, accessibility
+/// label, and callback, so the view does not infer reducer behavior.
 struct PlaybackSkipControlsView: View {
     let model: Model
 
@@ -24,12 +27,14 @@ struct PlaybackSkipControlsView: View {
 }
 
 extension PlaybackSkipControlsView {
+    /// The ordered timeline controls rendered by the view.
     struct Model {
         let controls: [Control]
     }
 }
 
 extension PlaybackSkipControlsView.Model {
+    /// The immutable presentation and behavior for one timeline action.
     struct Control: Identifiable {
         let id: ID
         let systemImage: String
@@ -40,6 +45,7 @@ extension PlaybackSkipControlsView.Model {
 }
 
 extension PlaybackSkipControlsView.Model.Control {
+    /// Stable identities for the supported timeline actions.
     enum ID: Hashable {
         case backward
         case forward

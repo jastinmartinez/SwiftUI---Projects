@@ -12,7 +12,10 @@ extension PlaybackQueueClient {
                     itemIDs: $0,
                     startingItemID: $1
                 )
-            }
+            },
+            navigate: { try await provider.navigate($0) },
+            setRepeat: { await provider.setRepeat($0) },
+            setShuffle: { await provider.setShuffle($0) }
         )
     }
 }

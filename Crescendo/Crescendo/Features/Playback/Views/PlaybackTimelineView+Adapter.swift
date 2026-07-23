@@ -2,7 +2,13 @@ import ComposableArchitecture
 import Foundation
 
 extension PlaybackTimelineView.Model {
-    /// Adapts the confirmed duration and reducer-owned seek state into a timeline.
+    /// Projects confirmed duration and reducer-owned interaction into a timeline.
+    ///
+    /// Initialization fails when the active item has no positive duration, preventing
+    /// the view from presenting a timeline that cannot be mapped safely.
+    ///
+    /// - Parameter store: The playback store supplying duration, position, and seek
+    ///   actions.
     @MainActor
     init?(_ store: StoreOf<PlaybackFeature>) {
         guard let duration = store.queue.currentItem?.duration,
@@ -18,7 +24,7 @@ extension PlaybackTimelineView.Model {
                 value: position,
                 scale: .init(range: 0...duration),
                 accessibilityStep: 15,
-                isEnabled: store.canRequestSeek,
+                isEnabled: store.commandPolicy.allows(.seek),
                 strings: .init(
                     accessibilityLabel: Locs.Playback.position,
                     accessibilityValue: Locs.Playback.positionValue(

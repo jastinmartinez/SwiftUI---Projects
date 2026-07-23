@@ -25,7 +25,11 @@ struct CrescendoApp: App {
                     queue: PlaybackQueueFeature.State(
                         songs: [],
                         currentItemID: nil,
-                        pendingQueueTransition: nil
+                        repeatMode: .off,
+                        shuffleMode: .off,
+                        pendingQueueTransition: nil,
+                        pendingRepeatChange: nil,
+                        pendingShuffleChange: nil
                     ),
                     status: .idle,
                     failure: nil,
@@ -36,7 +40,7 @@ struct CrescendoApp: App {
                         interaction: .idle
                     ),
                     pendingOperation: nil,
-                    pendingReset: nil,
+                    pendingProviderReset: nil,
                     isPlayerPresented: false
                 ),
                 providerSwitch: nil
@@ -49,7 +53,6 @@ struct CrescendoApp: App {
             $0.playbackTransport = .appleMusic(appleMusicProvider)
             $0.playbackTimeline = .appleMusic(appleMusicProvider)
             $0.playbackQueue = .appleMusic(appleMusicProvider)
-            $0.playbackNavigation = .appleMusic(appleMusicProvider)
             $0.playbackObservation = .appleMusic(appleMusicProvider)
         }
     }

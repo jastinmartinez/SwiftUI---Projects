@@ -44,10 +44,8 @@ struct FakeMusicProviderTests {
         )
 
         #expect(firstPage.songs.map(\.id) == Array(songs.prefix(2)).map(\.id))
-        #expect(
-            continuation.songs.map(\.id)
-                == Array(songs.dropFirst(2).prefix(2)).map(\.id)
-        )
+        let expectedSongs = Array(songs.dropFirst(2).prefix(2))
+        #expect(continuation.songs.map(\.id) == expectedSongs.map(\.id))
         #expect(continuation.nextCursor == nil)
     }
 
@@ -82,13 +80,12 @@ struct FakeMusicProviderTests {
         ]
         let fake = makeFakeProvider(searchResults: songs)
         let playbackQueue = await fake.playbackQueueClient()
-        let playbackNavigation = await fake.playbackNavigationClient()
         let playbackObservation = await fake.playbackObservationClient()
 
         try await playbackQueue.replace(songs.map(\.id), songs[1].id)
-        let nextResult = try await playbackNavigation.navigate(.next)
+        let nextResult = try await playbackQueue.navigate(.next)
         let nextSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
-        let previousResult = try await playbackNavigation.navigate(.previous)
+        let previousResult = try await playbackQueue.navigate(.previous)
         let previousSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
         #expect(nextResult == .accepted)
@@ -106,23 +103,39 @@ struct FakeMusicProviderTests {
         let songs = [makeSong(nativeID: "1"), makeSong(nativeID: "2")]
         let fake = makeFakeProvider(searchResults: songs)
         let playbackQueue = await fake.playbackQueueClient()
-        let playbackNavigation = await fake.playbackNavigationClient()
         let playbackObservation = await fake.playbackObservationClient()
         let startingItem = boundary == .first ? songs[0] : songs[1]
 
         try await playbackQueue.replace(songs.map(\.id), startingItem.id)
         let previousSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
-        let result = switch boundary {
+        let result: PlaybackQueueNavigationResult
+        switch boundary {
         case .first:
-            try await playbackNavigation.navigate(.previous)
+            result = try await playbackQueue.navigate(.previous)
         case .last:
-            try await playbackNavigation.navigate(.next)
+            result = try await playbackQueue.navigate(.next)
         }
 
         let currentSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
         #expect(result == .boundaryReached)
         #expect(currentSnapshot == previousSnapshot)
+    }
+
+    @Test
+    func queueClientUpdatesProviderConfirmedModes() async throws {
+        let song = makeSong(nativeID: "1")
+        let fake = makeFakeProvider(searchResults: [song])
+        let queue = await fake.playbackQueueClient()
+        let observation = await fake.playbackObservationClient()
+
+        try await queue.replace([song.id], song.id)
+        try await queue.setRepeat(.one)
+        try await queue.setShuffle(.songs)
+
+        let snapshot = await nextPlaybackSnapshot(from: observation)
+        #expect(snapshot?.repeatMode == .one)
+        #expect(snapshot?.shuffleMode == .songs)
     }
 
     @Test

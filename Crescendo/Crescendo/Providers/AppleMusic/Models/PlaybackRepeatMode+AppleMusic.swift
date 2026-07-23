@@ -15,3 +15,17 @@ extension PlaybackRepeatMode {
         }
     }
 }
+
+extension MusicPlayer.RepeatMode {
+    /// Maps a provider-neutral repeat request to MusicKit queue behavior.
+    init(_ playbackRepeatMode: PlaybackRepeatMode) {
+        switch playbackRepeatMode {
+        case .off:
+            self = .none
+        case .all:
+            self = .all
+        case .one:
+            self = .one
+        }
+    }
+}
