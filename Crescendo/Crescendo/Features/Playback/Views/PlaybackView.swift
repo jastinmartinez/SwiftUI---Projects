@@ -12,7 +12,7 @@ struct PlaybackView: View {
         ScrollView {
             VStack(spacing: 20) {
                 VStack(spacing: 16) {
-                    SongArtworkView(
+                    TrackArtworkView(
                         model: .init(
                             artworkURL: model.artworkURL,
                             size: 300,

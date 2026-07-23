@@ -14,7 +14,7 @@ struct PlaybackNowPlayingView: View {
             HStack(spacing: 14) {
                 Button(action: model.onOpenPlayer) {
                     HStack(spacing: 12) {
-                        SongArtworkView(
+                        TrackArtworkView(
                             model: .init(
                                 artworkURL: model.artworkURL,
                                 size: 56,

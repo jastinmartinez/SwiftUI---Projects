@@ -16,7 +16,7 @@ struct SearchResultListView: View {
                     Button {
                         model.onTrackTapped(row.id)
                     } label: {
-                        SongRowView(model: row.song)
+                        TrackRowView(model: row.song)
                     }
                     .buttonStyle(.plain)
                     .task(id: row.paginationTriggerID) {
@@ -53,7 +53,7 @@ extension SearchResultListView {
 extension SearchResultListView.Model {
     struct Row: Equatable, Identifiable {
         let id: TrackID
-        let song: SongRowView.Model
+        let song: TrackRowView.Model
         let paginationTriggerID: String?
     }
 }

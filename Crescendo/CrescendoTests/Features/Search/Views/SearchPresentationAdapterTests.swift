@@ -83,7 +83,7 @@ struct SearchPresentationAdapterTests {
         let expectedRows = [
             SearchResultListView.Model.Row(
                 id: song.id,
-                song: SongRowView.Model(
+                song: TrackRowView.Model(
                     id: song.id,
                     title: "Result",
                     artistName: "Artist",

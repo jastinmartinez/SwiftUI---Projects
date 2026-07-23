@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Displays provider-neutral song metadata without owning feature state.
-struct SongRowView: View {
+/// Displays provider-neutral track metadata without owning feature state.
+struct TrackRowView: View {
     let model: Model
 
     var body: some View {
         HStack(spacing: 14) {
-            SongArtworkView(
+            TrackArtworkView(
                 model: .init(
                     artworkURL: model.artworkURL,
                     size: 64,
@@ -45,7 +45,7 @@ struct SongRowView: View {
     }
 }
 
-extension SongRowView {
+extension TrackRowView {
     /// The immutable presentation contract for a catalog result row.
     struct Model: Equatable, Identifiable {
         let id: TrackID

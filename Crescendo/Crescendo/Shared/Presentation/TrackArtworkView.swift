@@ -1,8 +1,8 @@
 import Foundation
 import SwiftUI
 
-/// Displays remote song artwork with a consistent music placeholder.
-struct SongArtworkView: View {
+/// Displays remote track artwork with a consistent music placeholder.
+struct TrackArtworkView: View {
     let model: Model
 
     var body: some View {
@@ -23,8 +23,8 @@ struct SongArtworkView: View {
     }
 }
 
-extension SongArtworkView {
-    /// The immutable presentation contract for remote song artwork.
+extension TrackArtworkView {
+    /// The immutable presentation contract for remote track artwork.
     struct Model: Equatable {
         let artworkURL: URL?
         let size: CGFloat

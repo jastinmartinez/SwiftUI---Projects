@@ -1,5 +1,5 @@
-extension SongRowView.Model {
-    /// Adapts provider-neutral song metadata into the row presentation contract.
+extension TrackRowView.Model {
+    /// Adapts provider-neutral track metadata into the row presentation contract.
     init(_ song: Track) {
         self.init(
             id: song.id,
