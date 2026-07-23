@@ -2,7 +2,7 @@ import Foundation
 
 /// Provider-confirmed playback values without duplicated item metadata.
 struct PlaybackSnapshot: Equatable, Sendable {
-    let currentItemID: MusicItemID?
+    let currentTrackID: TrackID?
     let status: PlaybackStatus
     let currentTime: TimeInterval
     let playbackRate: PlaybackRate
@@ -12,7 +12,7 @@ struct PlaybackSnapshot: Equatable, Sendable {
 
 extension PlaybackSnapshot {
     static let idle = Self(
-        currentItemID: nil,
+        currentTrackID: nil,
         status: .idle,
         currentTime: 0,
         playbackRate: .normal,

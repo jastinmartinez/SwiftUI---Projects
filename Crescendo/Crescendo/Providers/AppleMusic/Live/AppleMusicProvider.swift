@@ -10,11 +10,11 @@ actor AppleMusicProvider {
     private var songsByNativeID: [String: Song] = [:]
 
     /// Resolves the player's current queue entry into provider-neutral identity.
-    private var currentItemID: MusicItemID? {
+    private var currentTrackID: TrackID? {
         guard let nativeID = player.queue.currentEntry?.item?.id.rawValue else {
             return nil
         }
-        return MusicItemID(
+        return TrackID(
             providerID: Self.providerID,
             nativeID: nativeID
         )
@@ -63,39 +63,40 @@ actor AppleMusicProvider {
         request.offset = offset
         let response = try await request.response()
 
-        let summaries = response.songs.map { appleMusicSong in
+        let tracks = response.songs.map { appleMusicSong in
             let nativeID = appleMusicSong.id.rawValue
-            let songSummary = SongSummary(
+            let track = Track(
                 appleMusicNativeID: nativeID,
                 title: appleMusicSong.title,
                 artistName: appleMusicSong.artistName,
+                albumTitle: appleMusicSong.albumTitle,
                 artworkURL: appleMusicSong.artwork?.url(width: 300, height: 300),
                 duration: appleMusicSong.duration
             )
             songsByNativeID[nativeID] = appleMusicSong
-            return songSummary
+            return track
         }
 
         let nextCursor: SearchCursor? =
             if response.songs.hasNextBatch {
                 try AppleMusicSearchCursor(
                     query: query,
-                    offset: offset + summaries.count
+                    offset: offset + tracks.count
                 ).searchCursor()
             } else {
                 nil
             }
 
         return SearchPage(
-            songs: summaries,
+            tracks: tracks,
             nextCursor: nextCursor
         )
     }
 
     /// Replaces the application queue with cached songs and begins at the requested item.
     func replaceQueue(
-        itemIDs: [MusicItemID],
-        startingItemID: MusicItemID
+        itemIDs: [TrackID],
+        startingItemID: TrackID
     ) async throws {
         guard !itemIDs.isEmpty,
             itemIDs.allSatisfy({ $0.providerID == Self.providerID }),
@@ -261,7 +262,7 @@ actor AppleMusicProvider {
             currentTime = max(0, player.playbackTime)
         }
         return PlaybackSnapshot(
-            currentItemID: currentItemID,
+            currentTrackID: currentTrackID,
             status: PlaybackStatus(appleMusicStatus),
             currentTime: currentTime,
             playbackRate: PlaybackRate(value: player.state.playbackRate),

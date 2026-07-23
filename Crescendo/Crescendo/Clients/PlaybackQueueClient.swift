@@ -4,8 +4,8 @@ import ComposableArchitecture
 struct PlaybackQueueClient: Sendable {
     var replace:
         @Sendable (
-            _ itemIDs: [MusicItemID],
-            _ startingItemID: MusicItemID
+            _ trackIDs: [TrackID],
+            _ startingTrackID: TrackID
         ) async throws -> Void
     var navigate:
         @Sendable (

@@ -23,13 +23,13 @@ struct FakeMusicProviderTests {
 
     @Test
     func searchClientPaginatesConfiguredResults() async throws {
-        let songs = (1...4).map { makeSong(nativeID: String($0)) }
+        let tracks = (1...4).map { makeTrack(nativeID: String($0)) }
         let fake = FakeMusicProvider(
             access: .init(
                 authorization: .authorized,
                 playbackEligibility: .eligible
             ),
-            searchResults: songs
+            searchResults: tracks
         )
         let client = await fake.searchClient()
 
@@ -45,46 +45,46 @@ struct FakeMusicProviderTests {
             2
         )
 
-        #expect(firstPage.songs.map(\.id) == Array(songs.prefix(2)).map(\.id))
-        let expectedSongs = Array(songs.dropFirst(2).prefix(2))
-        #expect(continuation.songs.map(\.id) == expectedSongs.map(\.id))
+        #expect(firstPage.tracks.map(\.id) == Array(tracks.prefix(2)).map(\.id))
+        let expectedSongs = Array(tracks.dropFirst(2).prefix(2))
+        #expect(continuation.tracks.map(\.id) == expectedSongs.map(\.id))
         #expect(continuation.nextCursor == nil)
     }
 
     @Test
     func queueReplacementPreservesOrderAndStartsAtTheRequestedItem() async throws {
-        let songs = [
-            makeSong(nativeID: "1"),
-            makeSong(nativeID: "2"),
-            makeSong(nativeID: "3"),
+        let tracks = [
+            makeTrack(nativeID: "1"),
+            makeTrack(nativeID: "2"),
+            makeTrack(nativeID: "3"),
         ]
-        let fake = makeFakeProvider(searchResults: songs)
+        let fake = makeFakeProvider(searchResults: tracks)
         let playbackQueue = await fake.playbackQueueClient()
         let playbackObservation = await fake.playbackObservationClient()
 
-        try await playbackQueue.replace(songs.map(\.id), songs[1].id)
+        try await playbackQueue.replace(tracks.map(\.id), tracks[1].id)
 
         let playbackSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
         let queuedItemIDs = await fake.queuedItemIDs()
 
-        #expect(queuedItemIDs == songs.map(\.id))
-        #expect(playbackSnapshot?.currentItemID == songs[1].id)
+        #expect(queuedItemIDs == tracks.map(\.id))
+        #expect(playbackSnapshot?.currentTrackID == tracks[1].id)
         #expect(playbackSnapshot?.status == .playing)
         #expect(playbackSnapshot?.currentTime == 0)
     }
 
     @Test
     func queueTransitionsMoveTheProviderSnapshotWithoutChangingQueueOrder() async throws {
-        let songs = [
-            makeSong(nativeID: "1"),
-            makeSong(nativeID: "2"),
-            makeSong(nativeID: "3"),
+        let tracks = [
+            makeTrack(nativeID: "1"),
+            makeTrack(nativeID: "2"),
+            makeTrack(nativeID: "3"),
         ]
-        let fake = makeFakeProvider(searchResults: songs)
+        let fake = makeFakeProvider(searchResults: tracks)
         let playbackQueue = await fake.playbackQueueClient()
         let playbackObservation = await fake.playbackObservationClient()
 
-        try await playbackQueue.replace(songs.map(\.id), songs[1].id)
+        try await playbackQueue.replace(tracks.map(\.id), tracks[1].id)
         let nextResult = try await playbackQueue.navigate(.next)
         let nextSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
         let previousResult = try await playbackQueue.navigate(.previous)
@@ -92,23 +92,23 @@ struct FakeMusicProviderTests {
 
         #expect(nextResult == .accepted)
         #expect(previousResult == .accepted)
-        #expect(nextSnapshot?.currentItemID == songs[2].id)
+        #expect(nextSnapshot?.currentTrackID == tracks[2].id)
         #expect(nextSnapshot?.currentTime == 0)
-        #expect(previousSnapshot?.currentItemID == songs[1].id)
-        #expect(await fake.queuedItemIDs() == songs.map(\.id))
+        #expect(previousSnapshot?.currentTrackID == tracks[1].id)
+        #expect(await fake.queuedItemIDs() == tracks.map(\.id))
     }
 
     @Test(arguments: [PlaybackQueueBoundary.first, .last])
     func queueTransitionAtBoundaryDoesNotChangePlayback(
         boundary: PlaybackQueueBoundary
     ) async throws {
-        let songs = [makeSong(nativeID: "1"), makeSong(nativeID: "2")]
-        let fake = makeFakeProvider(searchResults: songs)
+        let tracks = [makeTrack(nativeID: "1"), makeTrack(nativeID: "2")]
+        let fake = makeFakeProvider(searchResults: tracks)
         let playbackQueue = await fake.playbackQueueClient()
         let playbackObservation = await fake.playbackObservationClient()
-        let startingItem = boundary == .first ? songs[0] : songs[1]
+        let startingItem = boundary == .first ? tracks[0] : tracks[1]
 
-        try await playbackQueue.replace(songs.map(\.id), startingItem.id)
+        try await playbackQueue.replace(tracks.map(\.id), startingItem.id)
         let previousSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
         let result: PlaybackQueueNavigationResult
@@ -126,7 +126,7 @@ struct FakeMusicProviderTests {
 
     @Test
     func queueClientUpdatesProviderConfirmedModes() async throws {
-        let song = makeSong(nativeID: "1")
+        let song = makeTrack(nativeID: "1")
         let fake = makeFakeProvider(searchResults: [song])
         let queue = await fake.playbackQueueClient()
         let observation = await fake.playbackObservationClient()
@@ -142,7 +142,7 @@ struct FakeMusicProviderTests {
 
     @Test
     func emptyQueueDoesNotChangePlayback() async throws {
-        let song = makeSong(nativeID: "1")
+        let song = makeTrack(nativeID: "1")
 
         try await assertUnavailableQueueDoesNotChangePlayback(
             configuredSongs: [song],
@@ -153,22 +153,22 @@ struct FakeMusicProviderTests {
 
     @Test
     func startingItemOutsideQueueDoesNotChangePlayback() async throws {
-        let songs = [
-            makeSong(nativeID: "1"),
-            makeSong(nativeID: "2"),
+        let tracks = [
+            makeTrack(nativeID: "1"),
+            makeTrack(nativeID: "2"),
         ]
 
         try await assertUnavailableQueueDoesNotChangePlayback(
-            configuredSongs: songs,
-            itemIDs: [songs[0].id],
-            startingItemID: songs[1].id
+            configuredSongs: tracks,
+            itemIDs: [tracks[0].id],
+            startingItemID: tracks[1].id
         )
     }
 
     @Test
     func mixedProviderQueueDoesNotChangePlayback() async throws {
-        let fakeSong = makeSong(nativeID: "1")
-        let otherSong = makeSong(providerID: "other", nativeID: "2")
+        let fakeSong = makeTrack(nativeID: "1")
+        let otherSong = makeTrack(providerID: "other", nativeID: "2")
 
         try await assertUnavailableQueueDoesNotChangePlayback(
             configuredSongs: [fakeSong, otherSong],
@@ -179,8 +179,8 @@ struct FakeMusicProviderTests {
 
     @Test
     func unknownCachedItemDoesNotChangePlayback() async throws {
-        let song = makeSong(nativeID: "1")
-        let unknownItemID = MusicItemID(providerID: "fake", nativeID: "unknown")
+        let song = makeTrack(nativeID: "1")
+        let unknownItemID = TrackID(providerID: "fake", nativeID: "unknown")
 
         try await assertUnavailableQueueDoesNotChangePlayback(
             configuredSongs: [song],
@@ -220,7 +220,7 @@ struct FakeMusicProviderTests {
         let playbackTransport = await fake.playbackTransportClient()
         let playbackObservation = await fake.playbackObservationClient()
 
-        let itemID = MusicItemID(providerID: "fake", nativeID: "1")
+        let itemID = TrackID(providerID: "fake", nativeID: "1")
         try await playbackQueue.replace([itemID], itemID)
         try await playbackTimeline.seek(42)
         try await playbackTransport.stop()
@@ -238,11 +238,11 @@ struct FakeMusicProviderTests {
     }
 
     private func makeFakeProvider() -> FakeMusicProvider {
-        makeFakeProvider(searchResults: [makeSong(nativeID: "1")])
+        makeFakeProvider(searchResults: [makeTrack(nativeID: "1")])
     }
 
     private func makeFakeProvider(
-        searchResults: [SongSummary]
+        searchResults: [Track]
     ) -> FakeMusicProvider {
         FakeMusicProvider(
             access: .init(authorization: .authorized, playbackEligibility: .eligible),
@@ -250,14 +250,15 @@ struct FakeMusicProviderTests {
         )
     }
 
-    private func makeSong(
+    private func makeTrack(
         providerID: ProviderID = "fake",
         nativeID: String
-    ) -> SongSummary {
-        SongSummary(
+    ) -> Track {
+        Track(
             id: .init(providerID: providerID, nativeID: nativeID),
             title: "Song \(nativeID)",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: nil,
             duration: nil
         )
@@ -272,9 +273,9 @@ struct FakeMusicProviderTests {
     }
 
     private func assertUnavailableQueueDoesNotChangePlayback(
-        configuredSongs: [SongSummary],
-        itemIDs: [MusicItemID],
-        startingItemID: MusicItemID
+        configuredSongs: [Track],
+        itemIDs: [TrackID],
+        startingItemID: TrackID
     ) async throws {
         let currentSong = try #require(configuredSongs.first)
         let fake = makeFakeProvider(searchResults: configuredSongs)

@@ -25,8 +25,8 @@ struct PlaybackFeature {
 
     struct PendingQueueReplacement: Equatable {
         let requestID: UUID
-        let songs: IdentifiedArrayOf<SongSummary>
-        let startingItemID: MusicItemID
+        let tracks: IdentifiedArrayOf<Track>
+        let targetTrackID: TrackID
     }
 
     struct PendingStatusChange: Equatable {
@@ -59,15 +59,15 @@ struct PlaybackFeature {
         case applyReset(requestID: UUID)
         case delegate(Delegate)
         case selectionReceived(
-            SongSummary,
-            loadedResults: IdentifiedArrayOf<SongSummary>,
+            Track,
+            loadedResults: IdentifiedArrayOf<Track>,
             providerID: ProviderID,
             playbackEligibility: CatalogPlaybackEligibility
         )
         case performQueueReplacement(
             requestID: UUID,
-            itemIDs: [MusicItemID],
-            startingItemID: MusicItemID
+            itemIDs: [TrackID],
+            startingItemID: TrackID
         )
         case queueReplacementSucceeded(requestID: UUID)
         case queueReplacementFailed(
@@ -173,18 +173,18 @@ struct PlaybackFeature {
                 return .none
 
             case .selectionReceived(
-                let song,
+                let track,
                 let loadedResults,
                 let providerID,
                 let playbackEligibility
             ):
-                let hasNowPlaying = !state.queue.songs.isEmpty
+                let hasNowPlaying = !state.queue.tracks.isEmpty
                 guard state.pendingProviderReset == nil,
                     state.providerID == providerID,
                     playbackEligibility == .eligible,
                     state.capabilities.supportsEmbeddedPlayback,
                     state.capabilities.supportsQueueReplacement,
-                    loadedResults[id: song.id] != nil,
+                    loadedResults[id: track.id] != nil,
                     loadedResults.allSatisfy({ $0.id.providerID == providerID })
                 else {
                     if state.pendingProviderReset == nil,
@@ -206,8 +206,8 @@ struct PlaybackFeature {
                 state.pendingOperation = .queueReplacement(
                     PendingQueueReplacement(
                         requestID: requestID,
-                        songs: loadedResults,
-                        startingItemID: song.id
+                        tracks: loadedResults,
+                        targetTrackID: track.id
                     )
                 )
                 state.playbackEligibility = .eligible
@@ -215,7 +215,7 @@ struct PlaybackFeature {
                 let replacementAction = Action.performQueueReplacement(
                     requestID: requestID,
                     itemIDs: Array(loadedResults.ids),
-                    startingItemID: song.id
+                    startingItemID: track.id
                 )
                 if state.queue.pendingQueueTransition != nil {
                     return .concatenate(
@@ -284,8 +284,8 @@ struct PlaybackFeature {
                     .send(
                         .queue(
                             .replace(
-                                replacement.songs,
-                                startingAt: replacement.startingItemID
+                                replacement.tracks,
+                                startingAt: replacement.targetTrackID
                             )
                         )
                     ),
@@ -450,14 +450,14 @@ struct PlaybackFeature {
 
             case .timelinePositionChanged(let requestedPosition):
                 guard state.commandPolicy.allows(.seek),
-                    let duration = state.queue.currentItem?.duration
+                    let duration = state.queue.currentTrack?.duration
                 else { return .none }
                 let position = min(max(requestedPosition, 0), duration)
                 return .send(.timeline(.positionChanged(position)))
 
             case .timelineInteractionEnded:
                 guard state.commandPolicy.allows(.seek),
-                    let duration = state.queue.currentItem?.duration
+                    let duration = state.queue.currentTrack?.duration
                 else { return .none }
                 let position = min(max(state.timeline.position, 0), duration)
                 guard position != state.timeline.position else {
@@ -474,14 +474,14 @@ struct PlaybackFeature {
 
             case .seekBackwardTapped:
                 guard state.commandPolicy.allows(.seek),
-                    let duration = state.queue.currentItem?.duration
+                    let duration = state.queue.currentTrack?.duration
                 else { return .none }
                 let target = min(max(state.timeline.position - 15, 0), duration)
                 return .send(.timeline(.seekRequested(target)))
 
             case .seekForwardTapped:
                 guard state.commandPolicy.allows(.seek),
-                    let duration = state.queue.currentItem?.duration
+                    let duration = state.queue.currentTrack?.duration
                 else { return .none }
                 let target = min(state.timeline.position + 15, duration)
                 return .send(.timeline(.seekRequested(target)))
@@ -500,7 +500,7 @@ struct PlaybackFeature {
 
                 if case .queueReplacement(let replacement) = state.pendingOperation,
                     snapshot.status == .playing,
-                    snapshot.currentItemID == replacement.startingItemID
+                    snapshot.currentTrackID == replacement.targetTrackID
                 {
                     state.pendingOperation = nil
                     state.failure = nil
@@ -509,8 +509,8 @@ struct PlaybackFeature {
                         .send(
                             .queue(
                                 .replace(
-                                    replacement.songs,
-                                    startingAt: replacement.startingItemID
+                                    replacement.tracks,
+                                    startingAt: replacement.targetTrackID
                                 )
                             )
                         ),
@@ -542,7 +542,7 @@ struct PlaybackFeature {
                                 .send(
                                     .queue(
                                         .currentItemObserved(
-                                            snapshot.currentItemID
+                                            snapshot.currentTrackID
                                         )
                                     )
                                 )
@@ -552,7 +552,7 @@ struct PlaybackFeature {
                             .cancel(id: CancelID.parentOperation),
                             .send(
                                 .queue(
-                                    .currentItemObserved(snapshot.currentItemID)
+                                    .currentItemObserved(snapshot.currentTrackID)
                                 )
                             ),
                             .send(
@@ -567,7 +567,7 @@ struct PlaybackFeature {
                 return .concatenate(
                     .send(
                         .queue(
-                            .currentItemObserved(snapshot.currentItemID)
+                            .currentItemObserved(snapshot.currentTrackID)
                         )
                     ),
                     .send(

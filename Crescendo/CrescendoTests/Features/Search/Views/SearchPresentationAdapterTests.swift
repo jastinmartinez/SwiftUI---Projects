@@ -49,7 +49,7 @@ struct SearchPresentationAdapterTests {
             makeStore(
                 query: "vela",
                 status: loadedStatus(
-                    songs: [makeSong()],
+                    tracks: [makeTrack()],
                     nextCursor: nil,
                     paginationStatus: .idle
                 ),
@@ -66,11 +66,11 @@ struct SearchPresentationAdapterTests {
 
     @Test
     func loadedSongsMapToResultRows() {
-        let song = makeSong()
+        let song = makeTrack()
         let store = makeStore(
             query: "result",
             status: loadedStatus(
-                songs: [song],
+                tracks: [song],
                 nextCursor: SearchCursor(value: "next"),
                 paginationStatus: .idle
             ),
@@ -112,11 +112,12 @@ struct SearchPresentationAdapterTests {
 
     @Test
     func nextPageTriggerMapsOnlyToLastResultRow() {
-        let firstSong = makeSong()
-        let lastSong = SongSummary(
+        let firstSong = makeTrack()
+        let lastSong = Track(
             id: .init(providerID: "fake", nativeID: "2"),
             title: "Last result",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: URL(string: "https://example.com/last-artwork.jpg"),
             duration: 180
         )
@@ -124,7 +125,7 @@ struct SearchPresentationAdapterTests {
             makeStore(
                 query: "result",
                 status: loadedStatus(
-                    songs: [firstSong, lastSong],
+                    tracks: [firstSong, lastSong],
                     nextCursor: SearchCursor(value: "next"),
                     paginationStatus: .idle
                 ),
@@ -182,7 +183,7 @@ struct SearchPresentationAdapterTests {
             initialState: SearchFeature.State(
                 query: "result",
                 status: loadedStatus(
-                    songs: [makeSong()],
+                    tracks: [makeTrack()],
                     nextCursor: SearchCursor(value: "next"),
                     paginationStatus: paginationStatus
                 ),
@@ -231,7 +232,7 @@ struct SearchPresentationAdapterTests {
         let store = makeStore(
             query: "result",
             status: loadedStatus(
-                songs: [makeSong()],
+                tracks: [makeTrack()],
                 nextCursor: nil,
                 paginationStatus: .idle
             ),
@@ -265,13 +266,13 @@ struct SearchPresentationAdapterTests {
     }
 
     private func loadedStatus(
-        songs: [SongSummary],
+        tracks: [Track],
         nextCursor: SearchCursor?,
         paginationStatus: SearchPaginationFeature.Status
     ) -> SearchFeature.Status {
         .loaded(
             SearchPaginationFeature.State(
-                songs: .init(uniqueElements: songs),
+                tracks: .init(uniqueElements: tracks),
                 nextCursor: nextCursor,
                 status: paginationStatus,
                 providerID: .appleMusic
@@ -287,7 +288,7 @@ struct SearchPresentationAdapterTests {
             makeStore(
                 query: "result",
                 status: loadedStatus(
-                    songs: [makeSong()],
+                    tracks: [makeTrack()],
                     nextCursor: nextCursor,
                     paginationStatus: paginationStatus
                 ),
@@ -351,11 +352,12 @@ struct SearchPresentationAdapterTests {
         )
     }
 
-    private func makeSong() -> SongSummary {
-        SongSummary(
+    private func makeTrack() -> Track {
+        Track(
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Result",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: URL(string: "https://example.com/artwork.jpg"),
             duration: 215
         )

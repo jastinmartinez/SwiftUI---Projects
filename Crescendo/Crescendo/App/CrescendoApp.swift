@@ -24,8 +24,8 @@ struct CrescendoApp: App {
                 playback: PlaybackFeature.State(
                     providerID: nil,
                     queue: PlaybackQueueFeature.State(
-                        songs: [],
-                        currentItemID: nil,
+                        tracks: [],
+                        currentTrackID: nil,
                         repeatMode: .off,
                         shuffleMode: .off,
                         pendingQueueTransition: nil,

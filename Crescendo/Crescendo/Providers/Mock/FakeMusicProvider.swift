@@ -7,12 +7,12 @@ actor FakeMusicProvider {
     }
 
     private let configuredAccess: MusicProviderAccess
-    private let configuredResults: [SongSummary]
+    private let configuredResults: [Track]
     private var playbackSnapshot = PlaybackSnapshot.idle
-    private var queueItemIDs: [MusicItemID] = []
+    private var queueItemIDs: [TrackID] = []
     private var queueCurrentIndex: Int?
 
-    init(access: MusicProviderAccess, searchResults: [SongSummary]) {
+    init(access: MusicProviderAccess, searchResults: [Track]) {
         self.configuredAccess = access
         self.configuredResults = searchResults
     }
@@ -104,7 +104,7 @@ actor FakeMusicProvider {
         )
     }
 
-    func queuedItemIDs() -> [MusicItemID] {
+    func queuedItemIDs() -> [TrackID] {
         queueItemIDs
     }
 
@@ -121,8 +121,8 @@ actor FakeMusicProvider {
     }
 
     private func replaceQueue(
-        itemIDs: [MusicItemID],
-        startingItemID: MusicItemID
+        itemIDs: [TrackID],
+        startingItemID: TrackID
     ) throws {
         let cachedItemIDs = Set(configuredResults.map(\.id))
         guard !itemIDs.isEmpty,
@@ -136,7 +136,7 @@ actor FakeMusicProvider {
         queueItemIDs = itemIDs
         queueCurrentIndex = startingIndex
         playbackSnapshot = PlaybackSnapshot(
-            currentItemID: itemIDs[startingIndex],
+            currentTrackID: itemIDs[startingIndex],
             status: .playing,
             currentTime: 0,
             playbackRate: .normal,
@@ -158,7 +158,7 @@ actor FakeMusicProvider {
 
         self.queueCurrentIndex = destinationIndex
         playbackSnapshot = PlaybackSnapshot(
-            currentItemID: queueItemIDs[destinationIndex],
+            currentTrackID: queueItemIDs[destinationIndex],
             status: playbackSnapshot.status,
             currentTime: 0,
             playbackRate: playbackSnapshot.playbackRate,
@@ -170,7 +170,7 @@ actor FakeMusicProvider {
 
     private func setRepeat(_ mode: PlaybackRepeatMode) {
         playbackSnapshot = PlaybackSnapshot(
-            currentItemID: playbackSnapshot.currentItemID,
+            currentTrackID: playbackSnapshot.currentTrackID,
             status: playbackSnapshot.status,
             currentTime: playbackSnapshot.currentTime,
             playbackRate: playbackSnapshot.playbackRate,
@@ -181,7 +181,7 @@ actor FakeMusicProvider {
 
     private func setShuffle(_ mode: PlaybackShuffleMode) {
         playbackSnapshot = PlaybackSnapshot(
-            currentItemID: playbackSnapshot.currentItemID,
+            currentTrackID: playbackSnapshot.currentTrackID,
             status: playbackSnapshot.status,
             currentTime: playbackSnapshot.currentTime,
             playbackRate: playbackSnapshot.playbackRate,
@@ -191,10 +191,10 @@ actor FakeMusicProvider {
     }
 
     private func searchPage(offset: Int, limit: Int) -> SearchPage {
-        let songs = Array(
+        let tracks = Array(
             configuredResults.dropFirst(offset).prefix(limit)
         )
-        let nextOffset = offset + songs.count
+        let nextOffset = offset + tracks.count
         let nextCursor: SearchCursor?
         if nextOffset < configuredResults.count,
             let data = try? JSONEncoder().encode(
@@ -206,12 +206,12 @@ actor FakeMusicProvider {
         } else {
             nextCursor = nil
         }
-        return SearchPage(songs: songs, nextCursor: nextCursor)
+        return SearchPage(tracks: tracks, nextCursor: nextCursor)
     }
 
     private func setStatus(_ status: PlaybackStatus) {
         playbackSnapshot = PlaybackSnapshot(
-            currentItemID: playbackSnapshot.currentItemID,
+            currentTrackID: playbackSnapshot.currentTrackID,
             status: status,
             currentTime: playbackSnapshot.currentTime,
             playbackRate: playbackSnapshot.playbackRate,
@@ -222,7 +222,7 @@ actor FakeMusicProvider {
 
     private func stopPlayback() {
         playbackSnapshot = PlaybackSnapshot(
-            currentItemID: playbackSnapshot.currentItemID,
+            currentTrackID: playbackSnapshot.currentTrackID,
             status: .stopped,
             currentTime: 0,
             playbackRate: playbackSnapshot.playbackRate,
@@ -233,7 +233,7 @@ actor FakeMusicProvider {
 
     private func setTime(_ time: TimeInterval) {
         playbackSnapshot = PlaybackSnapshot(
-            currentItemID: playbackSnapshot.currentItemID,
+            currentTrackID: playbackSnapshot.currentTrackID,
             status: playbackSnapshot.status,
             currentTime: time,
             playbackRate: playbackSnapshot.playbackRate,

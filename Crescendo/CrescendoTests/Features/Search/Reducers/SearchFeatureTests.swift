@@ -8,9 +8,9 @@ import Testing
 struct SearchFeatureTests {
     @Test
     func authorizedAccessSearchesImmediatelyWithoutRequestingAccess() async {
-        let song = makeSong()
+        let song = makeTrack()
         let page = SearchPage(
-            songs: [song],
+            tracks: [song],
             nextCursor: SearchCursor(value: "next")
         )
         let access = makeAccess(
@@ -47,7 +47,7 @@ struct SearchFeatureTests {
         }
         await store.receive(.searchResponse(UUID(0), .success(page))) {
             $0.status = loadedStatus(
-                songs: page.songs,
+                tracks: page.tracks,
                 nextCursor: page.nextCursor,
                 paginationStatus: .idle
             )
@@ -56,8 +56,8 @@ struct SearchFeatureTests {
 
     @Test
     func ineligibleAuthorizedAccessStillSearchesAndIsRetained() async {
-        let song = makeSong()
-        let page = SearchPage(songs: [song], nextCursor: nil)
+        let song = makeTrack()
+        let page = SearchPage(tracks: [song], nextCursor: nil)
         let access = makeAccess(
             authorization: .authorized,
             playbackEligibility: .ineligible
@@ -91,7 +91,7 @@ struct SearchFeatureTests {
         }
         await store.receive(.searchResponse(UUID(0), .success(page))) {
             $0.status = loadedStatus(
-                songs: page.songs,
+                tracks: page.tracks,
                 nextCursor: page.nextCursor,
                 paginationStatus: .idle
             )
@@ -102,7 +102,7 @@ struct SearchFeatureTests {
 
     @Test
     func unresolvedAccessMakesSubmitATrueNoOp() async {
-        let song = makeSong()
+        let song = makeTrack()
         let cases: [MusicProviderAccess?] = [
             nil,
             makeAccess(
@@ -115,7 +115,7 @@ struct SearchFeatureTests {
             let state = makeState(
                 query: "result",
                 status: loadedStatus(
-                    songs: [song],
+                    tracks: [song],
                     nextCursor: nil,
                     paginationStatus: .idle
                 ),
@@ -126,7 +126,7 @@ struct SearchFeatureTests {
             } withDependencies: {
                 $0.providerSearch.searchPage = { _, _, _ in
                     Issue.record("Search must not run without authorized access")
-                    return SearchPage(songs: [], nextCursor: nil)
+                    return SearchPage(tracks: [], nextCursor: nil)
                 }
             }
 
@@ -177,20 +177,20 @@ struct SearchFeatureTests {
         await store.send(
             .searchResponse(
                 UUID(0),
-                .success(SearchPage(songs: [makeSong()], nextCursor: nil))
+                .success(SearchPage(tracks: [makeTrack()], nextCursor: nil))
             )
         )
     }
 
     @Test
     func tappingLoadedResultDelegatesSongTap() async {
-        let song = makeSong()
-        let secondSong = makeSong(nativeID: "2")
+        let song = makeTrack()
+        let secondSong = makeTrack(nativeID: "2")
         let store = TestStore(
             initialState: makeState(
                 query: "result",
                 status: loadedStatus(
-                    songs: [song, secondSong],
+                    tracks: [song, secondSong],
                     nextCursor: nil,
                     paginationStatus: .idle
                 ),
@@ -206,7 +206,7 @@ struct SearchFeatureTests {
         await store.send(.resultTapped(song.id))
         await store.receive(
             .delegate(
-                .songTapped(
+                .trackTapped(
                     song,
                     loadedResults: [song, secondSong]
                 )
@@ -216,12 +216,12 @@ struct SearchFeatureTests {
 
     @Test
     func queryChangeCancelsAnUnresolvedContinuationRequest() async {
-        let song = makeSong()
+        let song = makeTrack()
         let store = TestStore(
             initialState: makeState(
                 query: "old",
                 status: loadedStatus(
-                    songs: [song],
+                    tracks: [song],
                     nextCursor: SearchCursor(value: "page-2"),
                     paginationStatus: .idle
                 ),
@@ -255,7 +255,7 @@ struct SearchFeatureTests {
             )
         ) {
             $0.status = loadedStatus(
-                songs: [song],
+                tracks: [song],
                 nextCursor: SearchCursor(value: "page-2"),
                 paginationStatus: .loading(requestID: UUID(0))
             )
@@ -284,13 +284,13 @@ struct SearchFeatureTests {
     }
 
     private func loadedStatus(
-        songs: [SongSummary],
+        tracks: [Track],
         nextCursor: SearchCursor?,
         paginationStatus: SearchPaginationFeature.Status
     ) -> SearchFeature.Status {
         .loaded(
             SearchPaginationFeature.State(
-                songs: .init(uniqueElements: songs),
+                tracks: .init(uniqueElements: tracks),
                 nextCursor: nextCursor,
                 status: paginationStatus,
                 providerID: .appleMusic
@@ -308,11 +308,12 @@ struct SearchFeatureTests {
         )
     }
 
-    private func makeSong(nativeID: String = "1") -> SongSummary {
-        SongSummary(
+    private func makeTrack(nativeID: String = "1") -> Track {
+        Track(
             id: .init(providerID: "fake", nativeID: nativeID),
             title: "Result",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: nil,
             duration: nil
         )

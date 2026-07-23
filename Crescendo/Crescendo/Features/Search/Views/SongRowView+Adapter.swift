@@ -1,6 +1,6 @@
 extension SongRowView.Model {
     /// Adapts provider-neutral song metadata into the row presentation contract.
-    init(_ song: SongSummary) {
+    init(_ song: Track) {
         self.init(
             id: song.id,
             title: song.title,

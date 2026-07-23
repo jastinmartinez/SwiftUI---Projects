@@ -36,7 +36,7 @@ struct PlaybackCommandPolicy: Equatable {
 private extension PlaybackCommandPolicy {
     var allowsPlayPause: Bool {
         guard capabilities.supportsEmbeddedPlayback,
-            !queue.songs.isEmpty
+            !queue.tracks.isEmpty
         else { return false }
 
         switch pendingOperation {
@@ -58,20 +58,20 @@ private extension PlaybackCommandPolicy {
         case .statusChange:
             return false
         case nil:
-            return !queue.songs.isEmpty && status != .stopped
+            return !queue.tracks.isEmpty && status != .stopped
         }
     }
 
     var allowsSeek: Bool {
         guard capabilities.supportsSeeking,
-            let duration = queue.currentItem?.duration
+            let duration = queue.currentTrack?.duration
         else { return false }
         return duration > 0
     }
 
     var allowsQueueTransition: Bool {
         guard capabilities.supportsQueueTransitions,
-            queue.currentItemID != nil,
+            queue.currentTrackID != nil,
             queue.pendingQueueTransition == nil
         else { return false }
         guard case .queueReplacement = pendingOperation else {
@@ -81,7 +81,7 @@ private extension PlaybackCommandPolicy {
     }
 
     var allowsRepeatChange: Bool {
-        guard queue.currentItemID != nil,
+        guard queue.currentTrackID != nil,
             queue.pendingRepeatChange == nil,
             capabilities.supportedRepeatModes.count > 1
         else { return false }
@@ -93,7 +93,7 @@ private extension PlaybackCommandPolicy {
 
     var allowsShuffleChange: Bool {
         guard capabilities.supportsShuffle,
-            queue.currentItemID != nil,
+            queue.currentTrackID != nil,
             queue.pendingShuffleChange == nil
         else { return false }
         guard case .queueReplacement = pendingOperation else {

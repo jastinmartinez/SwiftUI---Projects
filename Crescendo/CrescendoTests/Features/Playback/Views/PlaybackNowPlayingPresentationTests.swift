@@ -8,7 +8,7 @@ import Testing
 struct PlaybackNowPlayingPresentationTests {
     @Test
     func barToggleWhilePlayingPausesThroughReducer() async {
-        let song = makeSong(duration: nil)
+        let song = makeTrack(duration: nil)
         let (pauseCalled, pauseCalledContinuation) = AsyncStream<Void>.makeStream()
         let store = Store(initialState: makeState(song: song, status: .playing)) {
             PlaybackFeature()
@@ -27,7 +27,7 @@ struct PlaybackNowPlayingPresentationTests {
 
     @Test
     func barToggleProjectsParentOperationPermission() {
-        let song = makeSong(duration: nil)
+        let song = makeTrack(duration: nil)
         var state = makeState(song: song, status: .playing)
         state.pendingOperation = .statusChange(
             .init(requestID: UUID(0), target: .paused)
@@ -44,7 +44,7 @@ struct PlaybackNowPlayingPresentationTests {
 
     @Test
     func barOpenRoutesPresentationThroughPlayback() {
-        let song = makeSong(duration: nil)
+        let song = makeTrack(duration: nil)
         let store = Store(initialState: makeState(song: song, status: .playing)) {
             PlaybackFeature()
         }
@@ -57,7 +57,7 @@ struct PlaybackNowPlayingPresentationTests {
 
     @Test
     func barToggleWhilePausedResumesWithoutResettingSelection() async {
-        let song = makeSong(duration: nil)
+        let song = makeTrack(duration: nil)
         let playCallCount = LockIsolated(0)
         let resumeCallCount = LockIsolated(0)
         let (resumeStarted, resumeStartedContinuation) = AsyncStream<Void>.makeStream()
@@ -82,7 +82,7 @@ struct PlaybackNowPlayingPresentationTests {
 
         var resumeStartedIterator = resumeStarted.makeAsyncIterator()
         _ = await resumeStartedIterator.next()
-        #expect(store.queue.currentItem == song)
+        #expect(store.queue.currentTrack == song)
         #expect(playCallCount.value == 0)
         #expect(resumeCallCount.value == 1)
 
@@ -93,7 +93,7 @@ struct PlaybackNowPlayingPresentationTests {
 
     @Test
     func compactTimelineUsesSharedSliderAndInjectedPrimaryLabel() throws {
-        let song = makeSong(duration: 180)
+        let song = makeTrack(duration: 180)
         let store = Store(initialState: makeState(song: song, status: .playing)) {
             PlaybackFeature()
         }
@@ -107,15 +107,15 @@ struct PlaybackNowPlayingPresentationTests {
     // MARK: - Helpers
 
     private func makeState(
-        song: SongSummary,
+        song: Track,
         status: PlaybackStatus
     ) -> PlaybackFeature.State {
         let queue = IdentifiedArray(uniqueElements: [song])
         return PlaybackFeature.State(
             providerID: song.id.providerID,
             queue: PlaybackQueueFeature.State(
-                songs: queue,
-                currentItemID: song.id,
+                tracks: queue,
+                currentTrackID: song.id,
                 repeatMode: .off,
                 shuffleMode: .off,
                 pendingQueueTransition: nil,
@@ -136,11 +136,12 @@ struct PlaybackNowPlayingPresentationTests {
         )
     }
 
-    private func makeSong(duration: TimeInterval?) -> SongSummary {
-        SongSummary(
+    private func makeTrack(duration: TimeInterval?) -> Track {
+        Track(
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: nil,
             duration: duration
         )

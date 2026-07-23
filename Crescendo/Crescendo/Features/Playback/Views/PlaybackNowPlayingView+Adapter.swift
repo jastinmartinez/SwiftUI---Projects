@@ -10,7 +10,7 @@ extension PlaybackNowPlayingView.Model {
     ///   - store: The playback store supplying state and receiving callbacks.
     ///   - song: The confirmed queue item represented by the compact player.
     @MainActor
-    init(_ store: StoreOf<PlaybackFeature>, song: SongSummary) {
+    init(_ store: StoreOf<PlaybackFeature>, song: Track) {
         let isPlaying: Bool
         if case .statusChange(let change) = store.pendingOperation {
             isPlaying = change.target == .playing

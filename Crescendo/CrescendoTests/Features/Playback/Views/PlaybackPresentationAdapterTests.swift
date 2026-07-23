@@ -17,7 +17,7 @@ struct PlaybackPresentationAdapterTests {
         expectedText: String
     ) {
         let model = PlaybackView.Model(
-            makePlaybackStore(song: makeSong(), status: status),
+            makePlaybackStore(song: makeTrack(), status: status),
             providerName: nil
         )
 
@@ -67,7 +67,7 @@ struct PlaybackPresentationAdapterTests {
     ) {
         let model = PlaybackView.Model(
             makePlaybackStore(
-                song: makeSong(),
+                song: makeTrack(),
                 status: confirmedStatus,
                 pendingOperation: .statusChange(
                     .init(requestID: UUID(0), target: target)
@@ -83,7 +83,7 @@ struct PlaybackPresentationAdapterTests {
 
     @Test
     func confirmedQueueMapsMetadataTimelineAndControls() {
-        let song = makeSong(duration: 215)
+        let song = makeTrack(duration: 215)
         let store = makePlaybackStore(
             song: song,
             status: .playing,
@@ -106,15 +106,15 @@ struct PlaybackPresentationAdapterTests {
 
     @Test
     func pendingInitialReplacementShowsLoadingWithoutSongMetadata() {
-        let song = makeSong()
-        let songs = IdentifiedArray(uniqueElements: [song])
+        let song = makeTrack()
+        let tracks = IdentifiedArray(uniqueElements: [song])
         let store = makePlaybackStore(
             song: nil,
             pendingOperation: .queueReplacement(
                 .init(
                     requestID: UUID(0),
-                    songs: songs,
-                    startingItemID: song.id
+                    tracks: tracks,
+                    targetTrackID: song.id
                 )
             )
         )
@@ -137,7 +137,7 @@ struct PlaybackPresentationAdapterTests {
         expectedText: String
     ) {
         let model = PlaybackView.Model(
-            makePlaybackStore(song: makeSong(), failure: failure),
+            makePlaybackStore(song: makeTrack(), failure: failure),
             providerName: nil
         )
 
@@ -146,7 +146,7 @@ struct PlaybackPresentationAdapterTests {
 
     @Test
     func fullTimelineProjectsSliderControlsAndLocalizedLabels() throws {
-        let song = makeSong(duration: 215)
+        let song = makeTrack(duration: 215)
         let actions = LockIsolated<[PlaybackFeature.Action]>([])
         let store = makeActionRecordingStore(song: song, actions: actions)
         let timeline = try #require(PlaybackTimelineView.Model(store))
@@ -211,7 +211,7 @@ struct PlaybackPresentationAdapterTests {
         interaction: PlaybackTimelineFeature.Interaction
     ) throws {
         let store = makePlaybackStore(
-            song: makeSong(duration: 215),
+            song: makeTrack(duration: 215),
             confirmedPosition: 43,
             timelineInteraction: interaction
         )
@@ -223,16 +223,16 @@ struct PlaybackPresentationAdapterTests {
     @Test
     func timelineClampsPositionAndRequiresPositiveDuration() throws {
         let negativePosition = makePlaybackStore(
-            song: makeSong(duration: 215),
+            song: makeTrack(duration: 215),
             confirmedPosition: -1
         )
         let overflow = makePlaybackStore(
-            song: makeSong(duration: 215),
+            song: makeTrack(duration: 215),
             confirmedPosition: 216
         )
-        let missing = makePlaybackStore(song: makeSong(duration: nil))
-        let zero = makePlaybackStore(song: makeSong(duration: 0))
-        let negativeDuration = makePlaybackStore(song: makeSong(duration: -1))
+        let missing = makePlaybackStore(song: makeTrack(duration: nil))
+        let zero = makePlaybackStore(song: makeTrack(duration: 0))
+        let negativeDuration = makePlaybackStore(song: makeTrack(duration: -1))
 
         let negativePositionTimeline = try #require(
             PlaybackTimelineView.Model(negativePosition)
@@ -265,7 +265,7 @@ struct PlaybackPresentationAdapterTests {
             supportsShuffle: true
         )
         let store = makePlaybackStore(
-            song: makeSong(duration: 215),
+            song: makeTrack(duration: 215),
             capabilities: capabilities
         )
 
@@ -277,7 +277,7 @@ struct PlaybackPresentationAdapterTests {
 
     @Test
     func controlAdapterCallbacksForwardPresentationActions() throws {
-        let song = makeSong(duration: 215)
+        let song = makeTrack(duration: 215)
         let actions = LockIsolated<[PlaybackFeature.Action]>([])
         let store = makeActionRecordingStore(song: song, actions: actions)
         let model = PlaybackView.Model(store, providerName: nil)
@@ -319,8 +319,8 @@ struct PlaybackPresentationAdapterTests {
 
     @Test
     func controlsProjectReducerOwnedPermissions() {
-        let song = makeSong()
-        let songs = IdentifiedArray(uniqueElements: [song])
+        let song = makeTrack()
+        let tracks = IdentifiedArray(uniqueElements: [song])
         let store = makePlaybackStore(
             song: song,
             status: .playing,
@@ -337,7 +337,7 @@ struct PlaybackPresentationAdapterTests {
             song: nil,
             status: .stopped,
             pendingOperation: .queueReplacement(
-                .init(requestID: UUID(0), songs: songs, startingItemID: song.id)
+                .init(requestID: UUID(0), tracks: tracks, targetTrackID: song.id)
             )
         )
         let replacingModel = PlaybackView.Model(replacingStore, providerName: nil)
@@ -347,7 +347,7 @@ struct PlaybackPresentationAdapterTests {
 
     @Test
     func queueControlsProjectPermissionsLabelsAndSymbols() {
-        let song = makeSong()
+        let song = makeTrack()
         let enabledModel = PlaybackView.Model(
             makePlaybackStore(song: song),
             providerName: nil
@@ -381,7 +381,7 @@ struct PlaybackPresentationAdapterTests {
     @Test
     func queueModeControlsProjectConfirmedStateAndPermissions() {
         let store = makePlaybackStore(
-            song: makeSong(),
+            song: makeTrack(),
             repeatMode: .one,
             shuffleMode: .songs,
             pendingRepeatChange: .init(
@@ -413,7 +413,7 @@ struct PlaybackPresentationAdapterTests {
         expectedAccessibilityValue: String
     ) {
         let controls = PlaybackControlsView.Model(
-            makePlaybackStore(song: makeSong(), repeatMode: repeatMode)
+            makePlaybackStore(song: makeTrack(), repeatMode: repeatMode)
         )
 
         let accessibilityValue = controls.repeatMode.accessibilityValue
@@ -424,7 +424,7 @@ struct PlaybackPresentationAdapterTests {
 
     @Test
     func providerResetPolicyDisablesEveryCommandAdapter() throws {
-        let song = makeSong()
+        let song = makeTrack()
         let pendingProviderReset = PlaybackFeature.PendingProviderReset(
             requestID: UUID(0),
             providerID: "replacement",
@@ -468,7 +468,7 @@ struct PlaybackPresentationAdapterTests {
     ) {
         let model = PlaybackEligibilityNoticeView.Model(
             makePlaybackStore(
-                song: makeSong(),
+                song: makeTrack(),
                 playbackEligibility: eligibility
             )
         )
@@ -486,7 +486,7 @@ struct PlaybackPresentationAdapterTests {
     // MARK: - Helpers
 
     private func makePlaybackStore(
-        song: SongSummary?,
+        song: Track?,
         status: PlaybackStatus = .idle,
         failure: MusicProviderError? = nil,
         playbackEligibility: CatalogPlaybackEligibility = .eligible,
@@ -501,13 +501,13 @@ struct PlaybackPresentationAdapterTests {
         pendingOperation: PlaybackFeature.PendingOperation? = nil,
         pendingProviderReset: PlaybackFeature.PendingProviderReset? = nil
     ) -> StoreOf<PlaybackFeature> {
-        let songs = IdentifiedArray(uniqueElements: song.map { [$0] } ?? [])
+        let tracks = IdentifiedArray(uniqueElements: song.map { [$0] } ?? [])
         return Store(
             initialState: PlaybackFeature.State(
                 providerID: song?.id.providerID ?? "fake",
                 queue: PlaybackQueueFeature.State(
-                    songs: songs,
-                    currentItemID: song?.id,
+                    tracks: tracks,
+                    currentTrackID: song?.id,
                     repeatMode: repeatMode,
                     shuffleMode: shuffleMode,
                     pendingQueueTransition: pendingQueueTransition,
@@ -532,16 +532,16 @@ struct PlaybackPresentationAdapterTests {
     }
 
     private func makeActionRecordingStore(
-        song: SongSummary,
+        song: Track,
         actions: LockIsolated<[PlaybackFeature.Action]>
     ) -> StoreOf<PlaybackFeature> {
-        let songs = IdentifiedArray(uniqueElements: [song])
+        let tracks = IdentifiedArray(uniqueElements: [song])
         return Store(
             initialState: PlaybackFeature.State(
                 providerID: song.id.providerID,
                 queue: .init(
-                    songs: songs,
-                    currentItemID: song.id,
+                    tracks: tracks,
+                    currentTrackID: song.id,
                     repeatMode: .off,
                     shuffleMode: .off,
                     pendingQueueTransition: nil,
@@ -568,11 +568,12 @@ struct PlaybackPresentationAdapterTests {
         }
     }
 
-    private func makeSong(duration: TimeInterval? = 180) -> SongSummary {
-        SongSummary(
+    private func makeTrack(duration: TimeInterval? = 180) -> Track {
+        Track(
             id: .init(providerID: "fake", nativeID: "song"),
             title: "Song",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: URL(string: "https://example.com/artwork"),
             duration: duration
         )

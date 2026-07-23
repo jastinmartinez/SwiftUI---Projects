@@ -6,7 +6,7 @@ import Foundation
 struct SearchPaginationFeature {
     @ObservableState
     struct State: Equatable {
-        var songs: IdentifiedArrayOf<SongSummary>
+        var tracks: IdentifiedArrayOf<Track>
         var nextCursor: SearchCursor?
         var status: Status
         var providerID: ProviderID
@@ -103,8 +103,8 @@ struct SearchPaginationFeature {
                     return .none
                 }
 
-                for song in page.songs where state.songs[id: song.id] == nil {
-                    state.songs.append(song)
+                for song in page.tracks where state.tracks[id: song.id] == nil {
+                    state.tracks.append(song)
                 }
                 state.nextCursor = page.nextCursor
                 state.status = .idle

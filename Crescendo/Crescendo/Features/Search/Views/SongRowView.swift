@@ -48,7 +48,7 @@ struct SongRowView: View {
 extension SongRowView {
     /// The immutable presentation contract for a catalog result row.
     struct Model: Equatable, Identifiable {
-        let id: MusicItemID
+        let id: TrackID
         let title: String
         let artistName: String
         let artworkURL: URL?

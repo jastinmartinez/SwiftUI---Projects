@@ -121,7 +121,7 @@ struct AppFeatureTests {
 
     @Test
     func changedProviderConnectionCancelsPlaybackAndResetsProviderOwnedState() async {
-        let song = makeSong()
+        let song = makeTrack()
         let queue = IdentifiedArray(uniqueElements: [song])
         let futureProvider = makeProvider(id: "future")
         let observationProbe = PlaybackObservationLifecycleProbe()
@@ -141,7 +141,7 @@ struct AppFeatureTests {
                 query: song.title,
                 status: .loaded(
                     SearchPaginationFeature.State(
-                        songs: queue,
+                        tracks: queue,
                         nextCursor: nil,
                         status: .idle,
                         providerID: .appleMusic
@@ -156,8 +156,8 @@ struct AppFeatureTests {
             playback: PlaybackFeature.State(
                 providerID: .appleMusic,
                 queue: .init(
-                    songs: queue,
-                    currentItemID: song.id,
+                    tracks: queue,
+                    currentTrackID: song.id,
                     repeatMode: .off,
                     shuffleMode: .off,
                     pendingQueueTransition: nil,
@@ -249,8 +249,8 @@ struct AppFeatureTests {
 
         await store.receive(.playback(.queue(.reset))) {
             $0.playback.queue = .init(
-                songs: [],
-                currentItemID: nil,
+                tracks: [],
+                currentTrackID: nil,
                 repeatMode: .off,
                 shuffleMode: .off,
                 pendingQueueTransition: nil,
@@ -336,7 +336,7 @@ struct AppFeatureTests {
         await observationProbe.waitForSubscription(2)
 
         let replacementSnapshot = PlaybackSnapshot(
-            currentItemID: nil,
+            currentTrackID: nil,
             status: .playing,
             currentTime: 27,
             playbackRate: .normal,
@@ -417,7 +417,7 @@ struct AppFeatureTests {
         await observationProbe.waitForSubscription(1)
 
         let snapshot = PlaybackSnapshot(
-            currentItemID: nil,
+            currentTrackID: nil,
             status: .paused,
             currentTime: 14,
             playbackRate: .normal,
@@ -537,8 +537,8 @@ struct AppFeatureTests {
                 ?? PlaybackFeature.State(
                     providerID: nil,
                     queue: .init(
-                        songs: [],
-                        currentItemID: nil,
+                        tracks: [],
+                        currentTrackID: nil,
                         repeatMode: .off,
                         shuffleMode: .off,
                         pendingQueueTransition: nil,
@@ -577,11 +577,12 @@ struct AppFeatureTests {
         )
     }
 
-    private func makeSong() -> SongSummary {
-        SongSummary(
+    private func makeTrack() -> Track {
+        Track(
             id: .init(providerID: .appleMusic, nativeID: "selected"),
             title: "Selected song",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: nil,
             duration: 180
         )

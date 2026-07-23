@@ -143,8 +143,8 @@ struct AppProviderSwitchingTests {
         }
         await store.receive(.playback(.queue(.reset))) {
             $0.playback.queue = PlaybackQueueFeature.State(
-                songs: [],
-                currentItemID: nil,
+                tracks: [],
+                currentTrackID: nil,
                 repeatMode: .off,
                 shuffleMode: .off,
                 pendingQueueTransition: nil,
@@ -265,14 +265,14 @@ struct AppProviderSwitchingTests {
 
     @Test
     func providerSelectionIsRejectedDuringPlaybackOperation() async {
-        let song = makeSong()
-        let songs = IdentifiedArray(uniqueElements: [song])
+        let song = makeTrack()
+        let tracks = IdentifiedArray(uniqueElements: [song])
         let state = makeState(
             pendingOperation: .queueReplacement(
                 PlaybackFeature.PendingQueueReplacement(
                     requestID: UUID(0),
-                    songs: songs,
-                    startingItemID: song.id
+                    tracks: tracks,
+                    targetTrackID: song.id
                 )
             )
         )
@@ -285,7 +285,7 @@ struct AppProviderSwitchingTests {
 
     @Test
     func searchResultTapIsRejectedDuringProviderSwitch() async {
-        let song = makeSong(nativeID: "next")
+        let song = makeTrack(nativeID: "next")
         let state = makeState(
             providerSwitch: ProviderSwitchFeature.State(
                 sourceProviderID: .appleMusic,
@@ -300,7 +300,7 @@ struct AppProviderSwitchingTests {
         await store.send(
             .search(
                 .delegate(
-                    .songTapped(
+                    .trackTapped(
                         song,
                         loadedResults: IdentifiedArray(uniqueElements: [song])
                     )
@@ -353,7 +353,7 @@ struct AppProviderSwitchingTests {
         providerSwitch: ProviderSwitchFeature.State? = nil,
         pendingOperation: PlaybackFeature.PendingOperation? = nil
     ) -> AppFeature.State {
-        let song = makeSong()
+        let song = makeTrack()
         let queue = IdentifiedArray(uniqueElements: [song])
         return AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
@@ -377,7 +377,7 @@ struct AppProviderSwitchingTests {
                 query: "Selected song",
                 status: .loaded(
                     SearchPaginationFeature.State(
-                        songs: [makeSong()],
+                        tracks: [makeTrack()],
                         nextCursor: nil,
                         status: .idle,
                         providerID: .appleMusic
@@ -392,8 +392,8 @@ struct AppProviderSwitchingTests {
             playback: PlaybackFeature.State(
                 providerID: .appleMusic,
                 queue: PlaybackQueueFeature.State(
-                    songs: queue,
-                    currentItemID: song.id,
+                    tracks: queue,
+                    currentTrackID: song.id,
                     repeatMode: .off,
                     shuffleMode: .off,
                     pendingQueueTransition: nil,
@@ -427,11 +427,12 @@ struct AppProviderSwitchingTests {
         )
     }
 
-    private func makeSong(nativeID: String = "selected") -> SongSummary {
-        SongSummary(
+    private func makeTrack(nativeID: String = "selected") -> Track {
+        Track(
             id: .init(providerID: .appleMusic, nativeID: nativeID),
             title: "Selected song",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: nil,
             duration: nil
         )

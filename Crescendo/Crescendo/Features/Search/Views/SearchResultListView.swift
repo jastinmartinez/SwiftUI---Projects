@@ -14,7 +14,7 @@ struct SearchResultListView: View {
             LazyVStack(spacing: 0) {
                 ForEach(model.rows) { row in
                     Button {
-                        model.onSongTapped(row.id)
+                        model.onTrackTapped(row.id)
                     } label: {
                         SongRowView(model: row.song)
                     }
@@ -45,14 +45,14 @@ extension SearchResultListView {
         let summary: String
         let rows: [Row]
         let footer: SearchPaginationFooterView.Model
-        let onSongTapped: (MusicItemID) -> Void
+        let onTrackTapped: (TrackID) -> Void
         let onLoadNextPage: () -> Void
     }
 }
 
 extension SearchResultListView.Model {
     struct Row: Equatable, Identifiable {
-        let id: MusicItemID
+        let id: TrackID
         let song: SongRowView.Model
         let paginationTriggerID: String?
     }

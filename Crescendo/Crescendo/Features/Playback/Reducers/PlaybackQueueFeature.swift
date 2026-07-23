@@ -6,8 +6,8 @@ import Foundation
 struct PlaybackQueueFeature {
     @ObservableState
     struct State: Equatable {
-        var songs: IdentifiedArrayOf<SongSummary>
-        var currentItemID: MusicItemID?
+        var tracks: IdentifiedArrayOf<Track>
+        var currentTrackID: TrackID?
         var repeatMode: PlaybackRepeatMode
         var shuffleMode: PlaybackShuffleMode
         var pendingQueueTransition: PendingQueueTransition?
@@ -40,10 +40,10 @@ struct PlaybackQueueFeature {
 
     enum Action: Equatable {
         case replace(
-            IdentifiedArrayOf<SongSummary>,
-            startingAt: MusicItemID
+            IdentifiedArrayOf<Track>,
+            startingAt: TrackID
         )
-        case currentItemObserved(MusicItemID?)
+        case currentItemObserved(TrackID?)
         case cycleRepeatModeRequested(Set<PlaybackRepeatMode>)
         case repeatModeChangeRequested(PlaybackRepeatMode)
         case repeatModeChangeSucceeded(requestID: UUID)
@@ -83,12 +83,12 @@ struct PlaybackQueueFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .replace(let songs, let startingItemID):
-                guard songs[id: startingItemID] != nil else {
+            case .replace(let tracks, let startingItemID):
+                guard tracks[id: startingItemID] != nil else {
                     return .none
                 }
-                state.songs = songs
-                state.currentItemID = startingItemID
+                state.tracks = tracks
+                state.currentTrackID = startingItemID
                 state.pendingQueueTransition = nil
                 state.pendingRepeatChange = nil
                 state.pendingShuffleChange = nil
@@ -100,10 +100,10 @@ struct PlaybackQueueFeature {
 
             case .currentItemObserved(let itemID):
                 guard let itemID,
-                    state.songs[id: itemID] != nil
+                    state.tracks[id: itemID] != nil
                 else { return .none }
-                guard itemID != state.currentItemID else { return .none }
-                state.currentItemID = itemID
+                guard itemID != state.currentTrackID else { return .none }
+                state.currentTrackID = itemID
                 state.pendingQueueTransition = nil
                 return .none
 
@@ -126,8 +126,8 @@ struct PlaybackQueueFeature {
                 return .none
 
             case .repeatModeChangeRequested(let target):
-                guard !state.songs.isEmpty,
-                    state.currentItemID != nil,
+                guard !state.tracks.isEmpty,
+                    state.currentTrackID != nil,
                     state.pendingRepeatChange == nil
                 else { return .none }
                 let requestID = uuid()
@@ -196,8 +196,8 @@ struct PlaybackQueueFeature {
                 return .send(.shuffleModeChangeRequested(target))
 
             case .shuffleModeChangeRequested(let target):
-                guard !state.songs.isEmpty,
-                    state.currentItemID != nil,
+                guard !state.tracks.isEmpty,
+                    state.currentTrackID != nil,
                     state.pendingShuffleChange == nil
                 else { return .none }
                 let requestID = uuid()
@@ -258,8 +258,8 @@ struct PlaybackQueueFeature {
                 return .cancel(id: CancelID.shuffleModeChange)
 
             case .queueTransitionRequested(let direction):
-                guard !state.songs.isEmpty,
-                    state.currentItemID != nil,
+                guard !state.tracks.isEmpty,
+                    state.currentTrackID != nil,
                     state.pendingQueueTransition == nil
                 else { return .none }
                 let requestID = uuid()
@@ -320,8 +320,8 @@ struct PlaybackQueueFeature {
                 return .cancel(id: CancelID.queueTransition)
 
             case .reset:
-                state.songs = []
-                state.currentItemID = nil
+                state.tracks = []
+                state.currentTrackID = nil
                 state.repeatMode = .off
                 state.shuffleMode = .off
                 state.pendingQueueTransition = nil
@@ -341,8 +341,8 @@ struct PlaybackQueueFeature {
 }
 
 extension PlaybackQueueFeature.State {
-    var currentItem: SongSummary? {
-        guard let currentItemID else { return nil }
-        return songs[id: currentItemID]
+    var currentTrack: Track? {
+        guard let currentTrackID else { return nil }
+        return tracks[id: currentTrackID]
     }
 }

@@ -7,10 +7,11 @@ import Testing
 struct AppPlaybackPresentationTests {
     @Test
     func dismissingAndReopeningSheetKeepsPlaybackState() async {
-        let song = SongSummary(
+        let song = Track(
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: nil,
             duration: nil
         )
@@ -18,8 +19,8 @@ struct AppPlaybackPresentationTests {
         let playback = PlaybackFeature.State(
             providerID: "fake",
             queue: PlaybackQueueFeature.State(
-                songs: queue,
-                currentItemID: song.id,
+                tracks: queue,
+                currentTrackID: song.id,
                 repeatMode: .off,
                 shuffleMode: .off,
                 pendingQueueTransition: nil,
@@ -53,7 +54,7 @@ struct AppPlaybackPresentationTests {
                 query: "",
                 status: .loaded(
                     SearchPaginationFeature.State(
-                        songs: [song],
+                        tracks: [song],
                         nextCursor: nil,
                         status: .idle,
                         providerID: .appleMusic

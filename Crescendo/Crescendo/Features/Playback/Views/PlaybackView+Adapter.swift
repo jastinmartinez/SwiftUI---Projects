@@ -42,7 +42,7 @@ extension PlaybackView.Model {
             }
         }
 
-        let song = store.queue.currentItem
+        let song = store.queue.currentTrack
 
         let timeline = PlaybackTimelineView.Model(store)
 

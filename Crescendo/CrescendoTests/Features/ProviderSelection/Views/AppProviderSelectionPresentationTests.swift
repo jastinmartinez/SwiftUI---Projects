@@ -109,22 +109,23 @@ struct AppProviderSelectionPresentationTests {
 
     @Test
     func playbackOperationDisablesProviderSelection() {
-        let song = SongSummary(
+        let song = Track(
             id: .init(providerID: .appleMusic, nativeID: "selected"),
             title: "Selected",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: nil,
             duration: nil
         )
-        let songs = IdentifiedArray(uniqueElements: [song])
+        let tracks = IdentifiedArray(uniqueElements: [song])
         let model = ProviderSelectionView.Model(
             makeStore(
                 connection: connectedConnection,
                 pendingOperation: .queueReplacement(
                     .init(
                         requestID: UUID(0),
-                        songs: songs,
-                        startingItemID: song.id
+                        tracks: tracks,
+                        targetTrackID: song.id
                     )
                 )
             )
@@ -198,8 +199,8 @@ struct AppProviderSelectionPresentationTests {
                 playback: PlaybackFeature.State(
                     providerID: connection.providerID,
                     queue: PlaybackQueueFeature.State(
-                        songs: [],
-                        currentItemID: nil,
+                        tracks: [],
+                        currentTrackID: nil,
                         repeatMode: .off,
                         shuffleMode: .off,
                         pendingQueueTransition: nil,

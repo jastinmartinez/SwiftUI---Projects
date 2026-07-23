@@ -15,7 +15,7 @@ extension SearchResultsView.Model {
             case .searching:
                 content = .loading
 
-            case .loaded(let pagination) where pagination.songs.isEmpty:
+            case .loaded(let pagination) where pagination.tracks.isEmpty:
                 content = .empty(query: store.query)
 
             case .loaded(let pagination):
@@ -32,15 +32,15 @@ extension SearchResultsView.Model {
                     paginationTriggerID = nil
                     footerContent = .failed
                 }
-                let lastSongID = pagination.songs.last?.id
+                let lastSongID = pagination.tracks.last?.id
 
                 content = .results(
                     SearchResultListView.Model(
                         summary: Locs.Search.resultsSummary(
-                            count: pagination.songs.count,
+                            count: pagination.tracks.count,
                             providerName: providerName
                         ),
-                        rows: pagination.songs.map { song in
+                        rows: pagination.tracks.map { song in
                             SearchResultListView.Model.Row(
                                 id: song.id,
                                 song: SongRowView.Model(song),
@@ -60,7 +60,7 @@ extension SearchResultsView.Model {
                                 store.send(.pagination(.retryButtonTapped))
                             }
                         ),
-                        onSongTapped: { store.send(.resultTapped($0)) },
+                        onTrackTapped: { store.send(.resultTapped($0)) },
                         onLoadNextPage: {
                             store.send(.pagination(.nextPageRequested))
                         }

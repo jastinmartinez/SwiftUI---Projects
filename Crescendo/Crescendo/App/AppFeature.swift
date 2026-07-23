@@ -175,7 +175,7 @@ struct AppFeature {
 
             case .search(
                 .delegate(
-                    .songTapped(let song, let loadedResults)
+                    .trackTapped(let track, let loadedResults)
                 )
             ):
                 guard state.providerSwitch == nil,
@@ -188,7 +188,7 @@ struct AppFeature {
                 return .send(
                     .playback(
                         .selectionReceived(
-                            song,
+                            track,
                             loadedResults: loadedResults,
                             providerID: providerID,
                             playbackEligibility: access.playbackEligibility

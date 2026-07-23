@@ -8,44 +8,44 @@ import Testing
 struct PlaybackQueueFeatureTests {
     @Test
     func replacementStoresTheFrozenOrderAndStartingItem() async {
-        let songs = makeSongs()
-        let queue = IdentifiedArray(uniqueElements: songs)
+        let tracks = makeTracks()
+        let queue = IdentifiedArray(uniqueElements: tracks)
         let store = makeStore()
 
-        await store.send(.replace(queue, startingAt: songs[1].id)) {
-            $0.songs = queue
-            $0.currentItemID = songs[1].id
+        await store.send(.replace(queue, startingAt: tracks[1].id)) {
+            $0.tracks = queue
+            $0.currentTrackID = tracks[1].id
         }
 
-        #expect(store.state.currentItem == songs[1])
+        #expect(store.state.currentTrack == tracks[1])
     }
 
     @Test
     func observedQueueItemUpdatesTheCurrentIdentity() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id
+            tracks: tracks,
+            currentTrackID: tracks[0].id
         )
 
-        await store.send(.currentItemObserved(songs[1].id)) {
-            $0.currentItemID = songs[1].id
+        await store.send(.currentItemObserved(tracks[1].id)) {
+            $0.currentTrackID = tracks[1].id
         }
 
-        #expect(store.state.currentItem == songs[1])
+        #expect(store.state.currentTrack == tracks[1])
     }
 
     @Test(arguments: [
-        MusicItemID(providerID: "fake", nativeID: "unknown"),
-        MusicItemID(providerID: "other", nativeID: "1"),
+        TrackID(providerID: "fake", nativeID: "unknown"),
+        TrackID(providerID: "other", nativeID: "1"),
     ])
     func unknownObservedItemPreservesTheCurrentItem(
-        observedItemID: MusicItemID
+        observedItemID: TrackID
     ) async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let state = PlaybackQueueFeature.State(
-            songs: .init(uniqueElements: songs),
-            currentItemID: songs[0].id,
+            tracks: .init(uniqueElements: tracks),
+            currentTrackID: tracks[0].id,
             repeatMode: .off,
             shuffleMode: .off,
             pendingQueueTransition: nil,
@@ -59,15 +59,15 @@ struct PlaybackQueueFeatureTests {
         await store.send(.currentItemObserved(observedItemID))
 
         #expect(store.state == state)
-        #expect(store.state.currentItem == songs[0])
+        #expect(store.state.currentTrack == tracks[0])
     }
 
     @Test
     func missingObservedItemPreservesTheCurrentItem() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let state = PlaybackQueueFeature.State(
-            songs: .init(uniqueElements: songs),
-            currentItemID: songs[0].id,
+            tracks: .init(uniqueElements: tracks),
+            currentTrackID: tracks[0].id,
             repeatMode: .off,
             shuffleMode: .off,
             pendingQueueTransition: nil,
@@ -81,15 +81,15 @@ struct PlaybackQueueFeatureTests {
         await store.send(.currentItemObserved(nil))
 
         #expect(store.state == state)
-        #expect(store.state.currentItem == songs[0])
+        #expect(store.state.currentTrack == tracks[0])
     }
 
     @Test
     func resetEmptiesTheQueueAndCurrentIdentity() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             repeatMode: .all,
             shuffleMode: .songs,
             pendingQueueTransition: .init(
@@ -107,8 +107,8 @@ struct PlaybackQueueFeatureTests {
         )
 
         await store.send(.reset) {
-            $0.songs = []
-            $0.currentItemID = nil
+            $0.tracks = []
+            $0.currentTrackID = nil
             $0.repeatMode = .off
             $0.shuffleMode = .off
             $0.pendingQueueTransition = nil
@@ -116,7 +116,7 @@ struct PlaybackQueueFeatureTests {
             $0.pendingShuffleChange = nil
         }
 
-        #expect(store.state.currentItem == nil)
+        #expect(store.state.currentTrack == nil)
     }
 
     @Test(arguments: [
@@ -126,11 +126,11 @@ struct PlaybackQueueFeatureTests {
     func queueTransitionCallsOnlyTheRequestedCapabilityAndWaitsForObservation(
         direction: PlaybackQueueNavigationDirection
     ) async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let calls = LockIsolated<[PlaybackQueueNavigationDirection]>([])
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[1].id
+            tracks: tracks,
+            currentTrackID: tracks[1].id
         ) {
             $0.playbackQueue.navigate = { direction in
                 calls.withValue { $0.append(direction) }
@@ -147,64 +147,64 @@ struct PlaybackQueueFeatureTests {
         await store.finish()
 
         #expect(calls.value == [direction])
-        #expect(store.state.currentItemID == songs[1].id)
+        #expect(store.state.currentTrackID == tracks[1].id)
         #expect(store.state.pendingQueueTransition != nil)
     }
 
     @Test
     func observedChangedItemConfirmsThePendingQueueTransition() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let pending = PlaybackQueueFeature.PendingQueueTransition(
             requestID: UUID(0),
             direction: .next
         )
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             pendingQueueTransition: pending
         )
 
-        await store.send(.currentItemObserved(songs[1].id)) {
-            $0.currentItemID = songs[1].id
+        await store.send(.currentItemObserved(tracks[1].id)) {
+            $0.currentTrackID = tracks[1].id
             $0.pendingQueueTransition = nil
         }
     }
 
     @Test
     func unchangedOrUnknownObservationDoesNotConfirmAQueueTransition() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let pending = PlaybackQueueFeature.PendingQueueTransition(
             requestID: UUID(7),
             direction: .next
         )
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             pendingQueueTransition: pending
         )
 
-        await store.send(.currentItemObserved(songs[0].id))
+        await store.send(.currentItemObserved(tracks[0].id))
         await store.send(
             .currentItemObserved(
-                MusicItemID(providerID: "fake", nativeID: "unknown")
+                TrackID(providerID: "fake", nativeID: "unknown")
             )
         )
 
-        #expect(store.state.currentItemID == songs[0].id)
+        #expect(store.state.currentTrackID == tracks[0].id)
         #expect(store.state.pendingQueueTransition == pending)
     }
 
     @Test
     func unresolvedQueueTransitionRejectsAnotherRequest() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let pending = PlaybackQueueFeature.PendingQueueTransition(
             requestID: UUID(7),
             direction: .next
         )
         let calls = LockIsolated(0)
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             pendingQueueTransition: pending
         ) {
             $0.playbackQueue.navigate = { _ in
@@ -221,14 +221,14 @@ struct PlaybackQueueFeatureTests {
 
     @Test
     func staleQueueTransitionFailureCannotClearTheActiveRequest() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let pending = PlaybackQueueFeature.PendingQueueTransition(
             requestID: UUID(1),
             direction: .next
         )
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             pendingQueueTransition: pending
         )
 
@@ -244,10 +244,10 @@ struct PlaybackQueueFeatureTests {
 
     @Test
     func matchingQueueTransitionFailureClearsOnlyTheOperationAndDelegatesError() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id
+            tracks: tracks,
+            currentTrackID: tracks[0].id
         ) {
             $0.playbackQueue.navigate = { direction in
                 #expect(direction == .next)
@@ -271,15 +271,15 @@ struct PlaybackQueueFeatureTests {
         }
         await store.receive(.delegate(.queueTransitionFailed(.playbackFailed)))
 
-        #expect(store.state.currentItemID == songs[0].id)
+        #expect(store.state.currentTrackID == tracks[0].id)
     }
 
     @Test
     func queueBoundaryClearsTheOperationWithoutDelegatingFailure() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id
+            tracks: tracks,
+            currentTrackID: tracks[0].id
         ) {
             $0.playbackQueue.navigate = { direction in
                 #expect(direction == .previous)
@@ -299,17 +299,17 @@ struct PlaybackQueueFeatureTests {
             $0.pendingQueueTransition = nil
         }
 
-        #expect(store.state.currentItemID == songs[0].id)
+        #expect(store.state.currentTrackID == tracks[0].id)
     }
 
     @Test
     func resetCancelsAnExecutingQueueTransition() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let probe =
             SuspendedOperationProbe<PlaybackQueueNavigationResult>()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id
+            tracks: tracks,
+            currentTrackID: tracks[0].id
         ) {
             $0.playbackQueue.navigate = { direction in
                 #expect(direction == .next)
@@ -325,8 +325,8 @@ struct PlaybackQueueFeatureTests {
         }
         await probe.waitUntilStarted()
         await store.send(.reset) {
-            $0.songs = []
-            $0.currentItemID = nil
+            $0.tracks = []
+            $0.currentTrackID = nil
             $0.pendingQueueTransition = nil
         }
         await probe.waitUntilCancelled()
@@ -334,10 +334,10 @@ struct PlaybackQueueFeatureTests {
 
     @Test
     func repeatCycleSelectsTheNextSupportedMode() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             repeatMode: .off
         ) {
             $0.playbackQueue.setRepeat = { _ in }
@@ -358,10 +358,10 @@ struct PlaybackQueueFeatureTests {
 
     @Test
     func repeatCycleWrapsAndSkipsUnsupportedModes() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             repeatMode: .one
         ) {
             $0.playbackQueue.setRepeat = { _ in }
@@ -382,10 +382,10 @@ struct PlaybackQueueFeatureTests {
 
     @Test
     func repeatCycleDoesNothingWithoutAnotherSupportedMode() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             repeatMode: .off
         )
 
@@ -410,10 +410,10 @@ struct PlaybackQueueFeatureTests {
 
     @Test
     func shuffleToggleUsesTheOppositeConfirmedMode() async {
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             shuffleMode: .songs
         ) {
             $0.playbackQueue.setShuffle = { _ in }
@@ -451,10 +451,10 @@ struct PlaybackQueueFeatureTests {
     @Test
     func repeatCompletionConfirmsOnlyTheMatchingTarget() async {
         let calls = LockIsolated<[PlaybackRepeatMode]>([])
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id
+            tracks: tracks,
+            currentTrackID: tracks[0].id
         ) {
             $0.playbackQueue.setRepeat = { mode in
                 calls.withValue { $0.append(mode) }
@@ -479,10 +479,10 @@ struct PlaybackQueueFeatureTests {
     func repeatAndShuffleRequestsRemainIndependent() async {
         let repeatProbe = SuspendedOperationProbe<Void>()
         let shuffleProbe = SuspendedOperationProbe<Void>()
-        let songs = makeSongs()
+        let tracks = makeTracks()
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id
+            tracks: tracks,
+            currentTrackID: tracks[0].id
         ) {
             $0.playbackQueue.setRepeat = { _ in
                 try await repeatProbe.run()
@@ -511,8 +511,8 @@ struct PlaybackQueueFeatureTests {
         #expect(store.state.pendingShuffleChange?.target == .songs)
 
         await store.send(.reset) {
-            $0.songs = []
-            $0.currentItemID = nil
+            $0.tracks = []
+            $0.currentTrackID = nil
             $0.repeatMode = .off
             $0.shuffleMode = .off
             $0.pendingRepeatChange = nil
@@ -680,11 +680,11 @@ struct PlaybackQueueFeatureTests {
             SuspendedOperationProbe<PlaybackQueueNavigationResult>()
         let repeatProbe = SuspendedOperationProbe<Void>()
         let shuffleProbe = SuspendedOperationProbe<Void>()
-        let songs = makeSongs()
-        let replacement = IdentifiedArray(uniqueElements: songs)
+        let tracks = makeTracks()
+        let replacement = IdentifiedArray(uniqueElements: tracks)
         let store = makeStore(
-            songs: songs,
-            currentItemID: songs[0].id,
+            tracks: tracks,
+            currentTrackID: tracks[0].id,
             repeatMode: .all,
             shuffleMode: .songs
         ) {
@@ -721,7 +721,7 @@ struct PlaybackQueueFeatureTests {
         }
         await shuffleProbe.waitUntilStarted()
 
-        await store.send(.replace(replacement, startingAt: songs[0].id)) {
+        await store.send(.replace(replacement, startingAt: tracks[0].id)) {
             $0.pendingQueueTransition = nil
             $0.pendingRepeatChange = nil
             $0.pendingShuffleChange = nil
@@ -737,8 +737,8 @@ struct PlaybackQueueFeatureTests {
     // MARK: - Helpers
 
     private func makeStore(
-        songs: [SongSummary] = [],
-        currentItemID: MusicItemID? = nil,
+        tracks: [Track] = [],
+        currentTrackID: TrackID? = nil,
         repeatMode: PlaybackRepeatMode = .off,
         shuffleMode: PlaybackShuffleMode = .off,
         pendingQueueTransition: PlaybackQueueFeature.PendingQueueTransition? = nil,
@@ -748,8 +748,8 @@ struct PlaybackQueueFeatureTests {
     ) -> TestStoreOf<PlaybackQueueFeature> {
         TestStore(
             initialState: PlaybackQueueFeature.State(
-                songs: .init(uniqueElements: songs),
-                currentItemID: currentItemID,
+                tracks: .init(uniqueElements: tracks),
+                currentTrackID: currentTrackID,
                 repeatMode: repeatMode,
                 shuffleMode: shuffleMode,
                 pendingQueueTransition: pendingQueueTransition,
@@ -764,19 +764,20 @@ struct PlaybackQueueFeatureTests {
         }
     }
 
-    private func makeSongs() -> [SongSummary] {
+    private func makeTracks() -> [Track] {
         [
-            makeSong(nativeID: "1"),
-            makeSong(nativeID: "2"),
-            makeSong(nativeID: "3"),
+            makeTrack(nativeID: "1"),
+            makeTrack(nativeID: "2"),
+            makeTrack(nativeID: "3"),
         ]
     }
 
-    private func makeSong(nativeID: String) -> SongSummary {
-        SongSummary(
-            id: MusicItemID(providerID: "fake", nativeID: nativeID),
+    private func makeTrack(nativeID: String) -> Track {
+        Track(
+            id: TrackID(providerID: "fake", nativeID: nativeID),
             title: "Song \(nativeID)",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: nil,
             duration: nil
         )

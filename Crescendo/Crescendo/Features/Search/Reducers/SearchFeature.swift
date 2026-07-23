@@ -22,9 +22,9 @@ struct SearchFeature {
 
     /// Events emitted after search state validates a presentation action.
     enum Delegate: Equatable {
-        case songTapped(
-            SongSummary,
-            loadedResults: IdentifiedArrayOf<SongSummary>
+        case trackTapped(
+            Track,
+            loadedResults: IdentifiedArrayOf<Track>
         )
     }
 
@@ -40,7 +40,7 @@ struct SearchFeature {
             requestID: UUID
         )
         case cancelSearch
-        case resultTapped(MusicItemID)
+        case resultTapped(TrackID)
         case pagination(SearchPaginationFeature.Action)
         case delegate(Delegate)
         case searchResponse(UUID, Result<SearchPage, MusicProviderError>)
@@ -111,13 +111,13 @@ struct SearchFeature {
 
             case .resultTapped(let songID):
                 guard case .loaded(let pagination) = state.status,
-                    let song = pagination.songs[id: songID]
+                    let song = pagination.tracks[id: songID]
                 else { return .none }
                 return .send(
                     .delegate(
-                        .songTapped(
+                        .trackTapped(
                             song,
-                            loadedResults: pagination.songs
+                            loadedResults: pagination.tracks
                         )
                     )
                 )
@@ -131,7 +131,7 @@ struct SearchFeature {
                 }
                 state.status = .loaded(
                     SearchPaginationFeature.State(
-                        songs: .init(uniqueElements: page.songs),
+                        tracks: .init(uniqueElements: page.tracks),
                         nextCursor: page.nextCursor,
                         status: .idle,
                         providerID: state.providerID

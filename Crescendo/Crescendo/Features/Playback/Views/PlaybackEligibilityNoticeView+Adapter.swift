@@ -12,7 +12,7 @@ extension PlaybackEligibilityNoticeView.Model {
         let hasResults: Bool
         switch store.status {
         case .loaded(let pagination):
-            hasResults = !pagination.songs.isEmpty
+            hasResults = !pagination.tracks.isEmpty
         case .idle, .searching, .failed:
             hasResults = false
         }

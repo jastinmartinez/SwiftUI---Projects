@@ -419,8 +419,8 @@ extension PlaybackFeature.PendingOperation {
     fileprivate static let replacingQueue = Self.queueReplacement(
         .init(
             requestID: UUID(0),
-            songs: PlaybackQueueFeature.State.populated.songs,
-            startingItemID: MusicItemID(
+            tracks: PlaybackQueueFeature.State.populated.tracks,
+            targetTrackID: TrackID(
                 providerID: "fake",
                 nativeID: "current"
             )
@@ -438,8 +438,8 @@ extension PlaybackFeature.PendingOperation {
 
 extension PlaybackQueueFeature.State {
     fileprivate static let empty = Self(
-        songs: [],
-        currentItemID: nil,
+        tracks: [],
+        currentTrackID: nil,
         repeatMode: .off,
         shuffleMode: .off,
         pendingQueueTransition: nil,
@@ -450,8 +450,8 @@ extension PlaybackQueueFeature.State {
     fileprivate static let populated = populated(duration: 180)
 
     fileprivate static let transitioning = Self(
-        songs: populated.songs,
-        currentItemID: populated.currentItemID,
+        tracks: populated.tracks,
+        currentTrackID: populated.currentTrackID,
         repeatMode: .off,
         shuffleMode: .off,
         pendingQueueTransition: .init(
@@ -463,8 +463,8 @@ extension PlaybackQueueFeature.State {
     )
 
     fileprivate static let changingRepeat = Self(
-        songs: populated.songs,
-        currentItemID: populated.currentItemID,
+        tracks: populated.tracks,
+        currentTrackID: populated.currentTrackID,
         repeatMode: .off,
         shuffleMode: .off,
         pendingQueueTransition: nil,
@@ -476,8 +476,8 @@ extension PlaybackQueueFeature.State {
     )
 
     fileprivate static let changingShuffle = Self(
-        songs: populated.songs,
-        currentItemID: populated.currentItemID,
+        tracks: populated.tracks,
+        currentTrackID: populated.currentTrackID,
         repeatMode: .off,
         shuffleMode: .off,
         pendingQueueTransition: nil,
@@ -489,16 +489,17 @@ extension PlaybackQueueFeature.State {
     )
 
     fileprivate static func populated(duration: TimeInterval?) -> Self {
-        let song = SongSummary(
-            id: MusicItemID(providerID: "fake", nativeID: "current"),
+        let song = Track(
+            id: TrackID(providerID: "fake", nativeID: "current"),
             title: "Current",
             artistName: "Artist",
+            albumTitle: nil,
             artworkURL: nil,
             duration: duration
         )
         return Self(
-            songs: IdentifiedArray(uniqueElements: [song]),
-            currentItemID: song.id,
+            tracks: IdentifiedArray(uniqueElements: [song]),
+            currentTrackID: song.id,
             repeatMode: .off,
             shuffleMode: .off,
             pendingQueueTransition: nil,
