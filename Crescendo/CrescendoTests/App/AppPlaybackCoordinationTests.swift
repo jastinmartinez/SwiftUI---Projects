@@ -200,11 +200,13 @@ struct AppPlaybackCoordinationTests {
             SearchPaginationFeature.State(
                 songs: firstPage,
                 nextCursor: cursor,
-                status: .idle
+                status: .idle,
+                providerID: providerID
             )
         )
         let store = makeStore(state: state) {
-            $0.providerSearch.searchPage = { request, limit in
+            $0.providerSearch.searchPage = { requestProviderID, request, limit in
+                #expect(requestProviderID == providerID)
                 #expect(request == .continuation(cursor))
                 #expect(limit == 20)
                 return SearchPage(songs: [laterSong], nextCursor: nil)
@@ -218,7 +220,11 @@ struct AppPlaybackCoordinationTests {
         await store.receive(
             .search(
                 .pagination(
-                    .continueSearch(cursor: cursor, requestID: UUID(0))
+                    .continueSearch(
+                        providerID: providerID,
+                        cursor: cursor,
+                        requestID: UUID(0)
+                    )
                 )
             )
         ) {
@@ -402,7 +408,8 @@ struct AppPlaybackCoordinationTests {
             search: SearchFeature.State(
                 query: "",
                 status: .idle,
-                providerAccess: access
+                providerAccess: access,
+                providerID: providerID
             ),
             playback: PlaybackFeature.State(
                 providerID: providerID,

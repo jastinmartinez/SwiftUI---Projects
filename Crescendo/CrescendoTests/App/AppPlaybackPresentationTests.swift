@@ -55,13 +55,15 @@ struct AppPlaybackPresentationTests {
                     SearchPaginationFeature.State(
                         songs: [song],
                         nextCursor: nil,
-                        status: .idle
+                        status: .idle,
+                        providerID: .appleMusic
                     )
                 ),
                 providerAccess: MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
-                )
+                ),
+                providerID: .appleMusic
             ),
             playback: playback,
             providerSwitch: nil

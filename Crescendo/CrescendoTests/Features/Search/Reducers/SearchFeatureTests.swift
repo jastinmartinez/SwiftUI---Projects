@@ -27,7 +27,8 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { request, limit in
+            $0.providerSearch.searchPage = { providerID, request, limit in
+                #expect(providerID == .appleMusic)
                 #expect(request == .initial(query: "result"))
                 #expect(limit == 20)
                 return page
@@ -36,7 +37,11 @@ struct SearchFeatureTests {
 
         await store.send(.submitButtonTapped)
         await store.receive(
-            .startSearch(query: "result", requestID: UUID(0))
+            .startSearch(
+                providerID: .appleMusic,
+                query: "result",
+                requestID: UUID(0)
+            )
         ) {
             $0.status = .searching(requestID: UUID(0))
         }
@@ -67,7 +72,8 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { request, _ in
+            $0.providerSearch.searchPage = { providerID, request, _ in
+                #expect(providerID == .appleMusic)
                 #expect(request == .initial(query: "result"))
                 return page
             }
@@ -75,7 +81,11 @@ struct SearchFeatureTests {
 
         await store.send(.submitButtonTapped)
         await store.receive(
-            .startSearch(query: "result", requestID: UUID(0))
+            .startSearch(
+                providerID: .appleMusic,
+                query: "result",
+                requestID: UUID(0)
+            )
         ) {
             $0.status = .searching(requestID: UUID(0))
         }
@@ -114,7 +124,7 @@ struct SearchFeatureTests {
             let store = TestStore(initialState: state) {
                 SearchFeature()
             } withDependencies: {
-                $0.providerSearch.searchPage = { _, _ in
+                $0.providerSearch.searchPage = { _, _, _ in
                     Issue.record("Search must not run without authorized access")
                     return SearchPage(songs: [], nextCursor: nil)
                 }
@@ -141,7 +151,8 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { request, _ in
+            $0.providerSearch.searchPage = { providerID, request, _ in
+                #expect(providerID == .appleMusic)
                 #expect(request == .initial(query: "old"))
                 return try await Task.never()
             }
@@ -149,7 +160,11 @@ struct SearchFeatureTests {
 
         await store.send(.submitButtonTapped)
         await store.receive(
-            .startSearch(query: "old", requestID: UUID(0))
+            .startSearch(
+                providerID: .appleMusic,
+                query: "old",
+                requestID: UUID(0)
+            )
         ) {
             $0.status = .searching(requestID: UUID(0))
         }
@@ -219,7 +234,8 @@ struct SearchFeatureTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { request, _ in
+            $0.providerSearch.searchPage = { providerID, request, _ in
+                #expect(providerID == .appleMusic)
                 let expectedRequest = SearchPageRequest.continuation(
                     SearchCursor(value: "page-2")
                 )
@@ -232,6 +248,7 @@ struct SearchFeatureTests {
         await store.receive(
             .pagination(
                 .continueSearch(
+                    providerID: .appleMusic,
                     cursor: SearchCursor(value: "page-2"),
                     requestID: UUID(0)
                 )
@@ -261,7 +278,8 @@ struct SearchFeatureTests {
         SearchFeature.State(
             query: query,
             status: status,
-            providerAccess: providerAccess
+            providerAccess: providerAccess,
+            providerID: .appleMusic
         )
     }
 
@@ -274,7 +292,8 @@ struct SearchFeatureTests {
             SearchPaginationFeature.State(
                 songs: .init(uniqueElements: songs),
                 nextCursor: nextCursor,
-                status: paginationStatus
+                status: paginationStatus,
+                providerID: .appleMusic
             )
         )
     }

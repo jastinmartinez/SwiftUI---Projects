@@ -9,6 +9,7 @@ struct SearchPaginationFeature {
         var songs: IdentifiedArrayOf<SongSummary>
         var nextCursor: SearchCursor?
         var status: Status
+        var providerID: ProviderID
     }
 
     enum Status: Equatable {
@@ -22,7 +23,11 @@ struct SearchPaginationFeature {
         case nextPageRequested
         case retryButtonTapped
         case cancel
-        case continueSearch(cursor: SearchCursor, requestID: UUID)
+        case continueSearch(
+            providerID: ProviderID,
+            cursor: SearchCursor,
+            requestID: UUID
+        )
         case searchPageResponse(
             UUID,
             Result<SearchPage, MusicProviderError>
@@ -45,7 +50,11 @@ struct SearchPaginationFeature {
 
                 let requestID = uuid()
                 return .send(
-                    .continueSearch(cursor: cursor, requestID: requestID)
+                    .continueSearch(
+                        providerID: state.providerID,
+                        cursor: cursor,
+                        requestID: requestID
+                    )
                 )
 
             case .retryButtonTapped:
@@ -54,14 +63,19 @@ struct SearchPaginationFeature {
 
                 let requestID = uuid()
                 return .send(
-                    .continueSearch(cursor: cursor, requestID: requestID)
+                    .continueSearch(
+                        providerID: state.providerID,
+                        cursor: cursor,
+                        requestID: requestID
+                    )
                 )
 
-            case .continueSearch(let cursor, let requestID):
+            case .continueSearch(let providerID, let cursor, let requestID):
                 state.status = .loading(requestID: requestID)
                 return .run { send in
                     do {
                         let page = try await providerSearch.searchPage(
+                            providerID,
                             .continuation(cursor),
                             20
                         )

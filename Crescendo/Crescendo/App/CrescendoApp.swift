@@ -18,7 +18,8 @@ struct CrescendoApp: App {
                 search: SearchFeature.State(
                     query: "",
                     status: .idle,
-                    providerAccess: nil
+                    providerAccess: nil,
+                    providerID: .appleMusic
                 ),
                 playback: PlaybackFeature.State(
                     providerID: nil,

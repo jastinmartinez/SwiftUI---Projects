@@ -82,7 +82,7 @@ struct ProviderConnectionFeature {
                         )
                     ),
                     .run { send in
-                        let access = await providerAccess.currentAccess()
+                        let access = await providerAccess.currentAccess(provider.id)
                         await send(
                             .currentAccessResponse(
                                 requestID: requestID,
@@ -133,7 +133,7 @@ struct ProviderConnectionFeature {
                 }
 
                 return .run { send in
-                    let requestedAccess = await providerAccess.requestAccess()
+                    let requestedAccess = await providerAccess.requestAccess(providerID)
                     await send(
                         .requestedAccessResponse(
                             requestID: requestID,

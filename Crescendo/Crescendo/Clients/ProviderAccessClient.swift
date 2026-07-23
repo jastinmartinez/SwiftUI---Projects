@@ -1,9 +1,9 @@
 import ComposableArchitecture
 
-/// Exposes provider authorization and playback-eligibility access.
+/// Exposes provider-qualified authorization and playback eligibility.
 struct ProviderAccessClient: Sendable {
-    var currentAccess: @Sendable () async -> MusicProviderAccess
-    var requestAccess: @Sendable () async -> MusicProviderAccess
+    var currentAccess: @Sendable (_ providerID: ProviderID) async -> MusicProviderAccess
+    var requestAccess: @Sendable (_ providerID: ProviderID) async -> MusicProviderAccess
 }
 
 extension DependencyValues {

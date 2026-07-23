@@ -17,6 +17,7 @@ struct SearchFeature {
         var query: String
         var status: Status
         var providerAccess: MusicProviderAccess?
+        var providerID: ProviderID
     }
 
     /// Events emitted after search state validates a presentation action.
@@ -33,7 +34,11 @@ struct SearchFeature {
         case submitButtonTapped
         case retryButtonTapped
         case cancel
-        case startSearch(query: String, requestID: UUID)
+        case startSearch(
+            providerID: ProviderID,
+            query: String,
+            requestID: UUID
+        )
         case cancelSearch
         case resultTapped(MusicItemID)
         case pagination(SearchPaginationFeature.Action)
@@ -72,14 +77,19 @@ struct SearchFeature {
                 }
                 let requestID = uuid()
                 return .send(
-                    .startSearch(query: query, requestID: requestID)
+                    .startSearch(
+                        providerID: state.providerID,
+                        query: query,
+                        requestID: requestID
+                    )
                 )
 
-            case .startSearch(let query, let requestID):
+            case .startSearch(let providerID, let query, let requestID):
                 state.status = .searching(requestID: requestID)
                 return .run { send in
                     do {
                         let page = try await providerSearch.searchPage(
+                            providerID,
                             .initial(query: query),
                             20
                         )
@@ -123,7 +133,8 @@ struct SearchFeature {
                     SearchPaginationFeature.State(
                         songs: .init(uniqueElements: page.songs),
                         nextCursor: page.nextCursor,
-                        status: .idle
+                        status: .idle,
+                        providerID: state.providerID
                     )
                 )
                 return .none

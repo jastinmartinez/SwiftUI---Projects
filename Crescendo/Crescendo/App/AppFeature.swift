@@ -152,7 +152,8 @@ struct AppFeature {
                 state.search = SearchFeature.State(
                     query: "",
                     status: .idle,
-                    providerAccess: providerAccess
+                    providerAccess: providerAccess,
+                    providerID: providerID
                 )
                 return .none
 

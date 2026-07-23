@@ -16,11 +16,11 @@ struct ProviderConnectionFeatureTests {
             playbackEligibility: .eligible
         )
         let store = makeStore(
-            currentAccess: {
+            currentAccess: { _ in
                 currentAccessCount.withValue { $0 += 1 }
                 return access
             },
-            requestAccess: {
+            requestAccess: { _ in
                 requestAccessCount.withValue { $0 += 1 }
                 return access
             }
@@ -76,6 +76,97 @@ struct ProviderConnectionFeatureTests {
     }
 
     @Test
+    func connectionRoutesTheValidatedProviderIDToAccessOperations() async {
+        let receivedProviderIDs = LockIsolated<[ProviderID]>([])
+
+        let store = TestStore(
+            initialState: ProviderConnectionFeature.State(
+                providers: [.appleMusic],
+                connection: .disconnected
+            )
+        ) {
+            ProviderConnectionFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.providerAccess = ProviderAccessClient(
+                currentAccess: { providerID in
+                    receivedProviderIDs.withValue { $0.append(providerID) }
+                    return MusicProviderAccess(
+                        authorization: .authorized,
+                        playbackEligibility: .eligible
+                    )
+                },
+                requestAccess: { providerID in
+                    receivedProviderIDs.withValue { $0.append(providerID) }
+                    return MusicProviderAccess(
+                        authorization: .authorized,
+                        playbackEligibility: .eligible
+                    )
+                }
+            )
+        }
+
+        await store.send(.connect(.appleMusic))
+        await store.receive(.startConnection(.appleMusic)) {
+            $0.connection = .connecting(
+                providerID: .appleMusic,
+                requestID: UUID(0)
+            )
+        }
+        await store.receive(
+            .delegate(
+                .connectionStarted(
+                    providerID: .appleMusic,
+                    providerChanged: true
+                )
+            )
+        )
+        await store.receive(
+            .currentAccessResponse(
+                requestID: UUID(0),
+                providerID: .appleMusic,
+                access: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            )
+        )
+        await store.receive(
+            .accessResolved(
+                requestID: UUID(0),
+                providerID: .appleMusic,
+                access: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            )
+        ) {
+            $0.connection = .connected(
+                providerID: .appleMusic,
+                access: MusicProviderAccess(
+                    authorization: .authorized,
+                    playbackEligibility: .eligible
+                )
+            )
+        }
+        await store.receive(
+            .delegate(
+                .connectionResolved(
+                    .connected(
+                        providerID: .appleMusic,
+                        access: MusicProviderAccess(
+                            authorization: .authorized,
+                            playbackEligibility: .eligible
+                        )
+                    )
+                )
+            )
+        )
+
+        #expect(receivedProviderIDs.value == [.appleMusic])
+    }
+
+    @Test
     func undeterminedCurrentAccessRequestsPermission() async {
         let requestAccessCount = LockIsolated(0)
         let currentAccess = makeAccess(authorization: .notDetermined)
@@ -84,8 +175,8 @@ struct ProviderConnectionFeatureTests {
             playbackEligibility: .ineligible
         )
         let store = makeStore(
-            currentAccess: { currentAccess },
-            requestAccess: {
+            currentAccess: { _ in currentAccess },
+            requestAccess: { _ in
                 requestAccessCount.withValue { $0 += 1 }
                 return requestedAccess
             }
@@ -161,7 +252,7 @@ struct ProviderConnectionFeatureTests {
         expectedConnection: ProviderConnection
     ) async {
         let access = makeAccess(authorization: authorization)
-        let store = makeStore(currentAccess: { access })
+        let store = makeStore(currentAccess: { _ in access })
 
         await store.send(.connect(.appleMusic))
         await store.receive(.startConnection(.appleMusic)) {
@@ -206,8 +297,8 @@ struct ProviderConnectionFeatureTests {
             providerID: .appleMusic
         )
         let store = makeStore(
-            currentAccess: { access },
-            requestAccess: { access }
+            currentAccess: { _ in access },
+            requestAccess: { _ in access }
         )
 
         await store.send(.connect(.appleMusic))
@@ -260,7 +351,7 @@ struct ProviderConnectionFeatureTests {
             AsyncStream<Void>.makeStream()
         let store = makeStore(
             connection: .failed(providerID: .appleMusic),
-            currentAccess: {
+            currentAccess: { _ in
                 for await _ in resumeAccess { break }
                 return access
             }
@@ -409,13 +500,13 @@ struct ProviderConnectionFeatureTests {
 
     private func makeStore(
         connection: ProviderConnection = .disconnected,
-        currentAccess: @escaping @Sendable () async -> MusicProviderAccess = {
+        currentAccess: @escaping @Sendable (ProviderID) async -> MusicProviderAccess = { _ in
             MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .unknown
             )
         },
-        requestAccess: @escaping @Sendable () async -> MusicProviderAccess = {
+        requestAccess: @escaping @Sendable (ProviderID) async -> MusicProviderAccess = { _ in
             MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .unknown
@@ -436,13 +527,13 @@ struct ProviderConnectionFeatureTests {
 
     private func makeStore(
         state: ProviderConnectionFeature.State,
-        currentAccess: @escaping @Sendable () async -> MusicProviderAccess = {
+        currentAccess: @escaping @Sendable (ProviderID) async -> MusicProviderAccess = { _ in
             MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .unknown
             )
         },
-        requestAccess: @escaping @Sendable () async -> MusicProviderAccess = {
+        requestAccess: @escaping @Sendable (ProviderID) async -> MusicProviderAccess = { _ in
             MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .unknown

@@ -7,8 +7,11 @@ extension ProviderSearchClient: DependencyKey {
 extension ProviderSearchClient {
     static func appleMusic(_ provider: AppleMusicProvider) -> Self {
         Self(
-            searchPage: { request, limit in
-                try await provider.searchPage(request, limit: limit)
+            searchPage: { providerID, request, limit in
+                guard providerID == .appleMusic else {
+                    throw MusicProviderError.noActiveProvider
+                }
+                return try await provider.searchPage(request, limit: limit)
             }
         )
     }

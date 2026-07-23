@@ -4,6 +4,7 @@ import ComposableArchitecture
 struct ProviderSearchClient: Sendable {
     var searchPage:
         @Sendable (
+            _ providerID: ProviderID,
             _ request: SearchPageRequest,
             _ limit: Int
         ) async throws -> SearchPage

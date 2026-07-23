@@ -23,7 +23,7 @@ struct AppFeatureTests {
             playbackEligibility: .eligible
         )
         let store = makeStore {
-            $0.providerAccess.currentAccess = { access }
+            $0.providerAccess.currentAccess = { _ in access }
             $0.playbackObservation.playbackSnapshots = {
                 AsyncStream { $0.finish() }
             }
@@ -143,13 +143,15 @@ struct AppFeatureTests {
                     SearchPaginationFeature.State(
                         songs: queue,
                         nextCursor: nil,
-                        status: .idle
+                        status: .idle,
+                        providerID: .appleMusic
                     )
                 ),
                 providerAccess: .init(
                     authorization: .authorized,
                     playbackEligibility: .eligible
-                )
+                ),
+                providerID: .appleMusic
             ),
             playback: PlaybackFeature.State(
                 providerID: .appleMusic,
@@ -283,7 +285,8 @@ struct AppFeatureTests {
             $0.search = SearchFeature.State(
                 query: "",
                 status: .idle,
-                providerAccess: nil
+                providerAccess: nil,
+                providerID: futureProvider.id
             )
         }
         await seekProbe.waitUntilCancelled()
@@ -406,7 +409,8 @@ struct AppFeatureTests {
             $0.search = SearchFeature.State(
                 query: "",
                 status: .idle,
-                providerAccess: access
+                providerAccess: access,
+                providerID: futureProvider.id
             )
         }
         await store.receive(.playback(.task))
@@ -471,7 +475,8 @@ struct AppFeatureTests {
             search: SearchFeature.State(
                 query: "Song",
                 status: .idle,
-                providerAccess: access
+                providerAccess: access,
+                providerID: .appleMusic
             )
         )
         let store = makeStore(state: state)
@@ -525,7 +530,8 @@ struct AppFeatureTests {
                 ?? SearchFeature.State(
                     query: "",
                     status: .idle,
-                    providerAccess: nil
+                    providerAccess: nil,
+                    providerID: .appleMusic
                 ),
             playback: playback
                 ?? PlaybackFeature.State(

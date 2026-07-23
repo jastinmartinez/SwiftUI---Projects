@@ -189,13 +189,14 @@ struct SearchPresentationAdapterTests {
                 providerAccess: makeAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
-                )
+                ),
+                providerID: .appleMusic
             )
         ) {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { request, _ in
+            $0.providerSearch.searchPage = { _, request, _ in
                 let expectedRequest = SearchPageRequest.continuation(
                     SearchCursor(value: "next")
                 )
@@ -255,7 +256,8 @@ struct SearchPresentationAdapterTests {
             initialState: SearchFeature.State(
                 query: query,
                 status: status,
-                providerAccess: providerAccess
+                providerAccess: providerAccess,
+                providerID: .appleMusic
             )
         ) {
             SearchFeature()
@@ -271,7 +273,8 @@ struct SearchPresentationAdapterTests {
             SearchPaginationFeature.State(
                 songs: .init(uniqueElements: songs),
                 nextCursor: nextCursor,
-                status: paginationStatus
+                status: paginationStatus,
+                providerID: .appleMusic
             )
         )
     }

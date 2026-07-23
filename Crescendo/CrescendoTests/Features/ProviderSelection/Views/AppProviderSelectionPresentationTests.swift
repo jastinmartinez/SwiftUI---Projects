@@ -192,7 +192,8 @@ struct AppProviderSelectionPresentationTests {
                 search: SearchFeature.State(
                     query: "",
                     status: .idle,
-                    providerAccess: nil
+                    providerAccess: nil,
+                    providerID: .appleMusic
                 ),
                 playback: PlaybackFeature.State(
                     providerID: connection.providerID,

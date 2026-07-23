@@ -179,7 +179,8 @@ struct AppProviderSwitchingTests {
             $0.search = SearchFeature.State(
                 query: "",
                 status: .idle,
-                providerAccess: nil
+                providerAccess: nil,
+                providerID: "future"
             )
         }
         let access = MusicProviderAccess(
@@ -333,7 +334,7 @@ struct AppProviderSwitchingTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackTransport.pause = { try await Task.sleep(for: .seconds(60)) }
-            $0.providerAccess.currentAccess = {
+            $0.providerAccess.currentAccess = { _ in
                 return MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
@@ -378,13 +379,15 @@ struct AppProviderSwitchingTests {
                     SearchPaginationFeature.State(
                         songs: [makeSong()],
                         nextCursor: nil,
-                        status: .idle
+                        status: .idle,
+                        providerID: .appleMusic
                     )
                 ),
                 providerAccess: MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
-                )
+                ),
+                providerID: .appleMusic
             ),
             playback: PlaybackFeature.State(
                 providerID: .appleMusic,

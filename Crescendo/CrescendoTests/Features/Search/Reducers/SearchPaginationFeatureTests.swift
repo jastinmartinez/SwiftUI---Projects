@@ -26,7 +26,11 @@ struct SearchPaginationFeatureTests {
 
         await store.send(.nextPageRequested)
         await store.receive(
-            .continueSearch(cursor: cursor, requestID: UUID(0))
+            .continueSearch(
+                providerID: .appleMusic,
+                cursor: cursor,
+                requestID: UUID(0)
+            )
         ) {
             $0.status = .loading(requestID: UUID(0))
         }
@@ -44,12 +48,13 @@ struct SearchPaginationFeatureTests {
         let state = SearchPaginationFeature.State(
             songs: [],
             nextCursor: nil,
-            status: .idle
+            status: .idle,
+            providerID: .appleMusic
         )
         let store = TestStore(initialState: state) {
             SearchPaginationFeature()
         } withDependencies: {
-            $0.providerSearch.searchPage = { _, _ in
+            $0.providerSearch.searchPage = { _, _, _ in
                 Issue.record("An exhausted search must not request another page")
                 return SearchPage(songs: [], nextCursor: nil)
             }
@@ -65,12 +70,13 @@ struct SearchPaginationFeatureTests {
         let state = SearchPaginationFeature.State(
             songs: [],
             nextCursor: cursor,
-            status: .loading(requestID: UUID(0))
+            status: .loading(requestID: UUID(0)),
+            providerID: .appleMusic
         )
         let store = TestStore(initialState: state) {
             SearchPaginationFeature()
         } withDependencies: {
-            $0.providerSearch.searchPage = { _, _ in
+            $0.providerSearch.searchPage = { _, _, _ in
                 Issue.record("An unresolved request must reject duplicate work")
                 return SearchPage(songs: [], nextCursor: nil)
             }
@@ -105,7 +111,11 @@ struct SearchPaginationFeatureTests {
         }
         await store.send(.retryButtonTapped)
         await store.receive(
-            .continueSearch(cursor: cursor, requestID: UUID(0))
+            .continueSearch(
+                providerID: .appleMusic,
+                cursor: cursor,
+                requestID: UUID(0)
+            )
         ) {
             $0.status = .loading(requestID: UUID(0))
         }
@@ -123,13 +133,15 @@ struct SearchPaginationFeatureTests {
             initialState: SearchPaginationFeature.State(
                 songs: [],
                 nextCursor: SearchCursor(value: "page-2"),
-                status: .idle
+                status: .idle,
+                providerID: .appleMusic
             )
         ) {
             SearchPaginationFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { request, _ in
+            $0.providerSearch.searchPage = { providerID, request, _ in
+                #expect(providerID == .appleMusic)
                 let expectedRequest = SearchPageRequest.continuation(
                     SearchCursor(value: "page-2")
                 )
@@ -141,6 +153,7 @@ struct SearchPaginationFeatureTests {
         await store.send(.nextPageRequested)
         await store.receive(
             .continueSearch(
+                providerID: .appleMusic,
                 cursor: SearchCursor(value: "page-2"),
                 requestID: UUID(0)
             )
@@ -164,13 +177,15 @@ struct SearchPaginationFeatureTests {
             initialState: SearchPaginationFeature.State(
                 songs: .init(uniqueElements: songs),
                 nextCursor: nextCursor,
-                status: status
+                status: status,
+                providerID: .appleMusic
             )
         ) {
             SearchPaginationFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { request, limit in
+            $0.providerSearch.searchPage = { providerID, request, limit in
+                #expect(providerID == .appleMusic)
                 guard let nextCursor else {
                     Issue.record("Pagination requires a continuation cursor")
                     return SearchPage(songs: [], nextCursor: nil)

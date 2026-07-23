@@ -7,8 +7,8 @@ extension ProviderAccessClient: DependencyKey {
 extension ProviderAccessClient {
     static func appleMusic(_ provider: AppleMusicProvider) -> Self {
         Self(
-            currentAccess: { await provider.currentAccess() },
-            requestAccess: { await provider.requestAccess() }
+            currentAccess: { _ in await provider.currentAccess() },
+            requestAccess: { _ in await provider.requestAccess() }
         )
     }
 }
