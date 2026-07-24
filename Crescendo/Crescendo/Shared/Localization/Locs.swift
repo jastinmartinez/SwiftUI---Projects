@@ -101,6 +101,7 @@ extension Locs {
         enum Status {
             static let idle = String(localized: "music_playback.status.idle")
             static let loading = String(localized: "music_playback.status.loading")
+            static let waiting = String(localized: "music_playback.status.waiting")
             static let playing = String(localized: "music_playback.status.playing")
             static let paused = String(localized: "music_playback.status.paused")
             static let stopped = String(localized: "music_playback.status.stopped")

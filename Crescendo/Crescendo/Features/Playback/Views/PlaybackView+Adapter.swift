@@ -34,7 +34,7 @@ extension PlaybackView.Model {
             case .idle:
                 statusText = Locs.Playback.Status.idle
             case .waiting:
-                statusText = Locs.Playback.Status.loading
+                statusText = Locs.Playback.Status.waiting
             case .playing:
                 statusText = Locs.Playback.Status.playing
             case .paused:
