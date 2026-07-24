@@ -12,8 +12,10 @@ extension PlaybackStatus {
         switch appleMusicStatus {
         case .playing:
             self = .playing
-        case .paused, .interrupted:
+        case .paused:
             self = .paused
+        case .interrupted:
+            self = .waiting
         case .stopped:
             self = .stopped
         }

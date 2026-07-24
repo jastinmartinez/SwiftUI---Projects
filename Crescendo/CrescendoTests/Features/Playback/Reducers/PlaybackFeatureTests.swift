@@ -130,29 +130,6 @@ struct PlaybackFeatureTests {
     }
 
     @Test
-    func snapshotRoutesConfirmedModesBeforePlaybackReconciliation() async {
-        let snapshot = makeSnapshot(
-            itemID: nil,
-            status: .idle,
-            currentTime: 0,
-            repeatMode: .one,
-            shuffleMode: .songs
-        )
-        let store = makeStore()
-
-        await store.send(.snapshotReceived(snapshot))
-        await store.receive(.queue(.repeatModeObserved(.one))) {
-            $0.queue.repeatMode = .one
-        }
-        await store.receive(.queue(.shuffleModeObserved(.songs))) {
-            $0.queue.shuffleMode = .songs
-        }
-        await store.receive(.reconcileSnapshot(snapshot))
-        await store.receive(.queue(.currentItemObserved(nil)))
-        await store.receive(.timeline(.positionObserved(0)))
-    }
-
-    @Test
     func commandConfirmedReplacementRequestsExplicitQueueDefaultsAfterReset() async {
         let tracks = makeTracks()
         let queue = IdentifiedArray(uniqueElements: tracks)
@@ -248,7 +225,7 @@ struct PlaybackFeatureTests {
         let snapshot = makeSnapshot(
             itemID: tracks[1].id,
             status: .playing,
-            currentTime: 7
+            position: 7
         )
         let store = makeStore(
             capabilities: capabilities,
@@ -261,9 +238,7 @@ struct PlaybackFeatureTests {
             )
         )
 
-        await store.send(.snapshotReceived(snapshot))
-        await store.receive(.queue(.repeatModeObserved(.off)))
-        await store.receive(.queue(.shuffleModeObserved(.off)))
+        await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.pendingOperation = nil
             $0.status = .playing
@@ -759,7 +734,7 @@ struct PlaybackFeatureTests {
         let snapshot = makeSnapshot(
             itemID: unknownID,
             status: .playing,
-            currentTime: 12
+            position: 12
         )
         let store = makeStore(
             queue: .init(
@@ -773,9 +748,7 @@ struct PlaybackFeatureTests {
             )
         )
 
-        await store.send(.snapshotReceived(snapshot))
-        await store.receive(.queue(.repeatModeObserved(.off)))
-        await store.receive(.queue(.shuffleModeObserved(.off)))
+        await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .playing
         }
@@ -799,16 +772,14 @@ struct PlaybackFeatureTests {
         let snapshot = makeSnapshot(
             itemID: tracks[1].id,
             status: .playing,
-            currentTime: 7
+            position: 7
         )
         let store = makeStore(
             capabilities: capabilitiesWithoutQueueModeChanges,
             pendingOperation: .queueReplacement(pending)
         )
 
-        await store.send(.snapshotReceived(snapshot))
-        await store.receive(.queue(.repeatModeObserved(.off)))
-        await store.receive(.queue(.shuffleModeObserved(.off)))
+        await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.pendingOperation = nil
             $0.status = .playing
@@ -1168,11 +1139,9 @@ struct PlaybackFeatureTests {
         let snapshot = makeSnapshot(
             itemID: tracks[0].id,
             status: .paused,
-            currentTime: 12
+            position: 12
         )
-        await store.send(.snapshotReceived(snapshot))
-        await store.receive(.queue(.repeatModeObserved(.off)))
-        await store.receive(.queue(.shuffleModeObserved(.off)))
+        await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.pendingOperation = nil
             $0.status = .paused
@@ -1209,11 +1178,9 @@ struct PlaybackFeatureTests {
         let snapshot = makeSnapshot(
             itemID: tracks[0].id,
             status: .paused,
-            currentTime: 7
+            position: 7
         )
-        await store.send(.snapshotReceived(snapshot))
-        await store.receive(.queue(.repeatModeObserved(.off)))
-        await store.receive(.queue(.shuffleModeObserved(.off)))
+        await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .paused
         }
@@ -1251,11 +1218,9 @@ struct PlaybackFeatureTests {
         let snapshot = makeSnapshot(
             itemID: tracks[0].id,
             status: .stopped,
-            currentTime: 9
+            position: 9
         )
-        await store.send(.snapshotReceived(snapshot))
-        await store.receive(.queue(.repeatModeObserved(.off)))
-        await store.receive(.queue(.shuffleModeObserved(.off)))
+        await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .stopped
             $0.pendingOperation = nil
@@ -1346,11 +1311,9 @@ struct PlaybackFeatureTests {
         let snapshot = makeSnapshot(
             itemID: tracks[0].id,
             status: .stopped,
-            currentTime: 0
+            position: 0
         )
-        await store.send(.snapshotReceived(snapshot))
-        await store.receive(.queue(.repeatModeObserved(.off)))
-        await store.receive(.queue(.shuffleModeObserved(.off)))
+        await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.pendingOperation = nil
             $0.status = .stopped
@@ -1426,13 +1389,12 @@ struct PlaybackFeatureTests {
         let staleSnapshot = PlaybackSnapshot(
             currentTrackID: nil,
             status: .playing,
-            currentTime: 99,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
+            position: 99,
+            duration: nil
         )
 
-        await store.send(.snapshotReceived(staleSnapshot))
+        await store.send(.observationReceived(.snapshot(staleSnapshot)))
+        await store.receive(.reconcileSnapshot(staleSnapshot))
         await store.send(.reconcileSnapshot(staleSnapshot))
 
         #expect(store.state.status == .idle)
@@ -1913,11 +1875,9 @@ struct PlaybackFeatureTests {
         let snapshot = makeSnapshot(
             itemID: tracks[1].id,
             status: .playing,
-            currentTime: 0
+            position: 0
         )
-        await store.send(.snapshotReceived(snapshot))
-        await store.receive(.queue(.repeatModeObserved(.off)))
-        await store.receive(.queue(.shuffleModeObserved(.off)))
+        await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot))
         await store.receive(.queue(.currentItemObserved(tracks[1].id))) {
             $0.queue.currentTrackID = tracks[1].id
@@ -2134,17 +2094,14 @@ struct PlaybackFeatureTests {
     private func makeSnapshot(
         itemID: TrackID?,
         status: PlaybackStatus,
-        currentTime: TimeInterval,
-        repeatMode: PlaybackRepeatMode = .off,
-        shuffleMode: PlaybackShuffleMode = .off
+        position: TimeInterval,
+        duration: TimeInterval? = nil
     ) -> PlaybackSnapshot {
         PlaybackSnapshot(
             currentTrackID: itemID,
             status: status,
-            currentTime: currentTime,
-            playbackRate: .normal,
-            repeatMode: repeatMode,
-            shuffleMode: shuffleMode
+            position: position,
+            duration: duration
         )
     }
 }

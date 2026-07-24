@@ -1,22 +1,18 @@
 import Foundation
 
-/// Provider-confirmed playback values without duplicated item metadata.
+/// Player-confirmed identity, transport state, and timeline values.
 struct PlaybackSnapshot: Equatable, Sendable {
     let currentTrackID: TrackID?
     let status: PlaybackStatus
-    let currentTime: TimeInterval
-    let playbackRate: PlaybackRate
-    let repeatMode: PlaybackRepeatMode
-    let shuffleMode: PlaybackShuffleMode
+    let position: TimeInterval
+    let duration: TimeInterval?
 }
 
 extension PlaybackSnapshot {
     static let idle = Self(
         currentTrackID: nil,
         status: .idle,
-        currentTime: 0,
-        playbackRate: .normal,
-        repeatMode: .off,
-        shuffleMode: .off
+        position: 0,
+        duration: nil
     )
 }

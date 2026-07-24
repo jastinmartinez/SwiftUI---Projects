@@ -340,7 +340,7 @@ struct AppProviderSwitchingTests {
                     playbackEligibility: .eligible
                 )
             }
-            $0.playbackObservation.playbackSnapshots = {
+            $0.playbackObservation.observations = {
                 AsyncStream { $0.finish() }
             }
             if let pause {

@@ -92,7 +92,7 @@ struct PlaybackFeature {
         case shuffleTapped
         case requestQueueDefaults
         case setPlayerPresented(Bool)
-        case snapshotReceived(PlaybackSnapshot)
+        case observationReceived(PlaybackObservation)
         case reconcileSnapshot(PlaybackSnapshot)
         case timelinePositionChanged(TimeInterval)
         case timelineInteractionEnded
@@ -125,9 +125,9 @@ struct PlaybackFeature {
             case .task:
                 guard state.pendingProviderReset == nil else { return .none }
                 return .run { send in
-                    let snapshots = await playbackObservation.playbackSnapshots()
-                    for await snapshot in snapshots {
-                        await send(.snapshotReceived(snapshot))
+                    let observations = await playbackObservation.observations()
+                    for await observation in observations {
+                        await send(.observationReceived(observation))
                     }
                 }
                 .cancellable(
@@ -486,13 +486,18 @@ struct PlaybackFeature {
                 let target = min(state.timeline.position + 15, duration)
                 return .send(.timeline(.seekRequested(target)))
 
-            case .snapshotReceived(let snapshot):
-                guard state.pendingProviderReset == nil else { return .none }
-                return .concatenate(
-                    .send(.queue(.repeatModeObserved(snapshot.repeatMode))),
-                    .send(.queue(.shuffleModeObserved(snapshot.shuffleMode))),
-                    .send(.reconcileSnapshot(snapshot))
-                )
+            case .observationReceived(.snapshot(let snapshot)):
+                return .send(.reconcileSnapshot(snapshot))
+
+            case .observationReceived(.completed):
+                return .none
+
+            case .observationReceived(.failed(let trackID, _)):
+                guard trackID == nil || trackID == state.queue.currentTrackID else {
+                    return .none
+                }
+                state.failure = .playbackFailed
+                return .none
 
             case .reconcileSnapshot(let snapshot):
                 guard state.pendingProviderReset == nil else { return .none }
@@ -517,7 +522,7 @@ struct PlaybackFeature {
                         .send(.timeline(.reset)),
                         .send(.requestQueueDefaults),
                         .send(
-                            .timeline(.positionObserved(snapshot.currentTime))
+                            .timeline(.positionObserved(snapshot.position))
                         )
                     )
                 }
@@ -557,7 +562,7 @@ struct PlaybackFeature {
                             ),
                             .send(
                                 .timeline(
-                                    .positionObserved(snapshot.currentTime)
+                                    .positionObserved(snapshot.position)
                                 )
                             )
                         )
@@ -572,7 +577,7 @@ struct PlaybackFeature {
                     ),
                     .send(
                         .timeline(
-                            .positionObserved(snapshot.currentTime)
+                            .positionObserved(snapshot.position)
                         )
                     )
                 )

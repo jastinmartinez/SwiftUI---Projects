@@ -110,10 +110,10 @@ actor FakeMusicProvider {
 
     func playbackObservationClient() -> PlaybackObservationClient {
         PlaybackObservationClient(
-            playbackSnapshots: { [weak self] in
+            observations: { [weak self] in
                 let currentSnapshot = await self?.playbackSnapshot ?? .idle
                 return AsyncStream { continuation in
-                    continuation.yield(currentSnapshot)
+                    continuation.yield(.snapshot(currentSnapshot))
                     continuation.finish()
                 }
             }
@@ -138,10 +138,8 @@ actor FakeMusicProvider {
         playbackSnapshot = PlaybackSnapshot(
             currentTrackID: itemIDs[startingIndex],
             status: .playing,
-            currentTime: 0,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
+            position: 0,
+            duration: nil
         )
     }
 
@@ -160,35 +158,17 @@ actor FakeMusicProvider {
         playbackSnapshot = PlaybackSnapshot(
             currentTrackID: queueItemIDs[destinationIndex],
             status: playbackSnapshot.status,
-            currentTime: 0,
-            playbackRate: playbackSnapshot.playbackRate,
-            repeatMode: playbackSnapshot.repeatMode,
-            shuffleMode: playbackSnapshot.shuffleMode
+            position: 0,
+            duration: nil
         )
         return .accepted
     }
 
-    private func setRepeat(_ mode: PlaybackRepeatMode) {
-        playbackSnapshot = PlaybackSnapshot(
-            currentTrackID: playbackSnapshot.currentTrackID,
-            status: playbackSnapshot.status,
-            currentTime: playbackSnapshot.currentTime,
-            playbackRate: playbackSnapshot.playbackRate,
-            repeatMode: mode,
-            shuffleMode: playbackSnapshot.shuffleMode
-        )
-    }
+    /// Repeat mode is confirmed via the queue command response, not the player snapshot.
+    private func setRepeat(_ mode: PlaybackRepeatMode) {}
 
-    private func setShuffle(_ mode: PlaybackShuffleMode) {
-        playbackSnapshot = PlaybackSnapshot(
-            currentTrackID: playbackSnapshot.currentTrackID,
-            status: playbackSnapshot.status,
-            currentTime: playbackSnapshot.currentTime,
-            playbackRate: playbackSnapshot.playbackRate,
-            repeatMode: playbackSnapshot.repeatMode,
-            shuffleMode: mode
-        )
-    }
+    /// Shuffle mode is confirmed via the queue command response, not the player snapshot.
+    private func setShuffle(_ mode: PlaybackShuffleMode) {}
 
     private func searchPage(offset: Int, limit: Int) -> SearchPage {
         let tracks = Array(
@@ -213,10 +193,8 @@ actor FakeMusicProvider {
         playbackSnapshot = PlaybackSnapshot(
             currentTrackID: playbackSnapshot.currentTrackID,
             status: status,
-            currentTime: playbackSnapshot.currentTime,
-            playbackRate: playbackSnapshot.playbackRate,
-            repeatMode: playbackSnapshot.repeatMode,
-            shuffleMode: playbackSnapshot.shuffleMode
+            position: playbackSnapshot.position,
+            duration: playbackSnapshot.duration
         )
     }
 
@@ -224,10 +202,8 @@ actor FakeMusicProvider {
         playbackSnapshot = PlaybackSnapshot(
             currentTrackID: playbackSnapshot.currentTrackID,
             status: .stopped,
-            currentTime: 0,
-            playbackRate: playbackSnapshot.playbackRate,
-            repeatMode: playbackSnapshot.repeatMode,
-            shuffleMode: playbackSnapshot.shuffleMode
+            position: 0,
+            duration: playbackSnapshot.duration
         )
     }
 
@@ -235,10 +211,8 @@ actor FakeMusicProvider {
         playbackSnapshot = PlaybackSnapshot(
             currentTrackID: playbackSnapshot.currentTrackID,
             status: playbackSnapshot.status,
-            currentTime: time,
-            playbackRate: playbackSnapshot.playbackRate,
-            repeatMode: playbackSnapshot.repeatMode,
-            shuffleMode: playbackSnapshot.shuffleMode
+            position: time,
+            duration: playbackSnapshot.duration
         )
     }
 }

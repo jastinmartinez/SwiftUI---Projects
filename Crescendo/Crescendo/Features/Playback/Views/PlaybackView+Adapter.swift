@@ -33,6 +33,8 @@ extension PlaybackView.Model {
             switch store.status {
             case .idle:
                 statusText = Locs.Playback.Status.idle
+            case .waiting:
+                statusText = Locs.Playback.Status.loading
             case .playing:
                 statusText = Locs.Playback.Status.playing
             case .paused:

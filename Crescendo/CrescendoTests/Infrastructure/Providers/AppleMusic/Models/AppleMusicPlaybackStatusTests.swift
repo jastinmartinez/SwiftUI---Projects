@@ -7,7 +7,7 @@ struct AppleMusicPlaybackStatusTests {
         (AppleMusicPlaybackStatus.playing, PlaybackStatus.playing),
         (.paused, .paused),
         (.stopped, .stopped),
-        (.interrupted, .paused),
+        (.interrupted, .waiting),
     ])
     func initializesPlaybackStatus(
         appleMusicStatus: AppleMusicPlaybackStatus,

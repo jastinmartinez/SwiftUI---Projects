@@ -70,7 +70,7 @@ struct FakeMusicProviderTests {
         #expect(queuedItemIDs == tracks.map(\.id))
         #expect(playbackSnapshot?.currentTrackID == tracks[1].id)
         #expect(playbackSnapshot?.status == .playing)
-        #expect(playbackSnapshot?.currentTime == 0)
+        #expect(playbackSnapshot?.position == 0)
     }
 
     @Test
@@ -93,7 +93,7 @@ struct FakeMusicProviderTests {
         #expect(nextResult == .accepted)
         #expect(previousResult == .accepted)
         #expect(nextSnapshot?.currentTrackID == tracks[2].id)
-        #expect(nextSnapshot?.currentTime == 0)
+        #expect(nextSnapshot?.position == 0)
         #expect(previousSnapshot?.currentTrackID == tracks[1].id)
         #expect(await fake.queuedItemIDs() == tracks.map(\.id))
     }
@@ -125,19 +125,20 @@ struct FakeMusicProviderTests {
     }
 
     @Test
-    func queueClientUpdatesProviderConfirmedModes() async throws {
+    func queueClientAcceptsRepeatAndShuffleCommandsWithoutChangingTheSnapshot() async throws {
         let song = makeTrack(nativeID: "1")
         let fake = makeFakeProvider(searchResults: [song])
         let queue = await fake.playbackQueueClient()
         let observation = await fake.playbackObservationClient()
 
         try await queue.replace([song.id], song.id)
+        let previousSnapshot = await nextPlaybackSnapshot(from: observation)
+
         try await queue.setRepeat(.one)
         try await queue.setShuffle(.songs)
 
-        let snapshot = await nextPlaybackSnapshot(from: observation)
-        #expect(snapshot?.repeatMode == .one)
-        #expect(snapshot?.shuffleMode == .songs)
+        let currentSnapshot = await nextPlaybackSnapshot(from: observation)
+        #expect(currentSnapshot == previousSnapshot)
     }
 
     @Test
@@ -207,9 +208,9 @@ struct FakeMusicProviderTests {
         )
 
         #expect(pausedPlaybackSnapshot?.status == .paused)
-        #expect(pausedPlaybackSnapshot?.currentTime == 42)
+        #expect(pausedPlaybackSnapshot?.position == 42)
         #expect(resumedPlaybackSnapshot?.status == .playing)
-        #expect(resumedPlaybackSnapshot?.currentTime == 42)
+        #expect(resumedPlaybackSnapshot?.position == 42)
     }
 
     @Test
@@ -227,7 +228,7 @@ struct FakeMusicProviderTests {
         let playbackSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
         #expect(playbackSnapshot?.status == .stopped)
-        #expect(playbackSnapshot?.currentTime == 0)
+        #expect(playbackSnapshot?.position == 0)
     }
 
     // MARK: - Helpers
@@ -267,9 +268,12 @@ struct FakeMusicProviderTests {
     private func nextPlaybackSnapshot(
         from playbackObservation: PlaybackObservationClient
     ) async -> PlaybackSnapshot? {
-        let snapshots = await playbackObservation.playbackSnapshots()
-        var iterator = snapshots.makeAsyncIterator()
-        return await iterator.next()
+        let observations = await playbackObservation.observations()
+        var iterator = observations.makeAsyncIterator()
+        guard case .snapshot(let snapshot) = await iterator.next() else {
+            return nil
+        }
+        return snapshot
     }
 
     private func assertUnavailableQueueDoesNotChangePlayback(

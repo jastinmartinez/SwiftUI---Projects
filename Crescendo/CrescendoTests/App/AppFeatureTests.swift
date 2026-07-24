@@ -24,7 +24,7 @@ struct AppFeatureTests {
         )
         let store = makeStore {
             $0.providerAccess.currentAccess = { _ in access }
-            $0.playbackObservation.playbackSnapshots = {
+            $0.playbackObservation.observations = {
                 AsyncStream { $0.finish() }
             }
         }
@@ -178,8 +178,8 @@ struct AppFeatureTests {
             )
         )
         let store = makeStore(state: state) {
-            $0.playbackObservation.playbackSnapshots =
-                observationProbe.playbackSnapshots
+            $0.playbackObservation.observations =
+                observationProbe.observations
             $0.playbackTransport.pause = operationProbe.run
             $0.playbackTimeline.seek = { _ in
                 try await seekProbe.run()
@@ -338,15 +338,13 @@ struct AppFeatureTests {
         let replacementSnapshot = PlaybackSnapshot(
             currentTrackID: nil,
             status: .playing,
-            currentTime: 27,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
+            position: 27,
+            duration: nil
         )
         observationProbe.yield(replacementSnapshot, toSubscription: 2)
-        await store.receive(.playback(.snapshotReceived(replacementSnapshot)))
-        await store.receive(.playback(.queue(.repeatModeObserved(.off))))
-        await store.receive(.playback(.queue(.shuffleModeObserved(.off))))
+        await store.receive(
+            .playback(.observationReceived(.snapshot(replacementSnapshot)))
+        )
         await store.receive(.playback(.reconcileSnapshot(replacementSnapshot))) {
             $0.playback.status = .playing
         }
@@ -384,8 +382,8 @@ struct AppFeatureTests {
         )
         let observationProbe = PlaybackObservationLifecycleProbe()
         let store = makeStore(state: state) {
-            $0.playbackObservation.playbackSnapshots =
-                observationProbe.playbackSnapshots
+            $0.playbackObservation.observations =
+                observationProbe.observations
         }
 
         await store.send(
@@ -419,15 +417,11 @@ struct AppFeatureTests {
         let snapshot = PlaybackSnapshot(
             currentTrackID: nil,
             status: .paused,
-            currentTime: 14,
-            playbackRate: .normal,
-            repeatMode: .off,
-            shuffleMode: .off
+            position: 14,
+            duration: nil
         )
         observationProbe.yield(snapshot, toSubscription: 1)
-        await store.receive(.playback(.snapshotReceived(snapshot)))
-        await store.receive(.playback(.queue(.repeatModeObserved(.off))))
-        await store.receive(.playback(.queue(.shuffleModeObserved(.off))))
+        await store.receive(.playback(.observationReceived(.snapshot(snapshot))))
         await store.receive(.playback(.reconcileSnapshot(snapshot))) {
             $0.playback.status = .paused
         }
@@ -594,17 +588,18 @@ private struct PlaybackObservationLifecycleProbe: Sendable {
     private let subscriptionsContinuation: AsyncStream<Int>.Continuation
     private let cancellations: AsyncStream<Int>
     private let cancellationsContinuation: AsyncStream<Int>.Continuation
-    private let snapshotContinuations = LockIsolated<[AsyncStream<PlaybackSnapshot>.Continuation]>(
-        [])
+    private let observationContinuations = LockIsolated<
+        [AsyncStream<PlaybackObservation>.Continuation]
+    >([])
 
     init() {
         (subscriptions, subscriptionsContinuation) = AsyncStream<Int>.makeStream()
         (cancellations, cancellationsContinuation) = AsyncStream<Int>.makeStream()
     }
 
-    func playbackSnapshots() async -> AsyncStream<PlaybackSnapshot> {
+    func observations() async -> AsyncStream<PlaybackObservation> {
         return AsyncStream { continuation in
-            let subscription = snapshotContinuations.withValue {
+            let subscription = observationContinuations.withValue {
                 $0.append(continuation)
                 return $0.count
             }
@@ -633,10 +628,10 @@ private struct PlaybackObservationLifecycleProbe: Sendable {
         _ snapshot: PlaybackSnapshot,
         toSubscription subscription: Int
     ) {
-        snapshotContinuations.value[subscription - 1].yield(snapshot)
+        observationContinuations.value[subscription - 1].yield(.snapshot(snapshot))
     }
 
     func finish(subscription: Int) {
-        snapshotContinuations.value[subscription - 1].finish()
+        observationContinuations.value[subscription - 1].finish()
     }
 }

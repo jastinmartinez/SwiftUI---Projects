@@ -185,8 +185,8 @@ actor AppleMusicProvider {
         player.playbackTime = max(0, time)
     }
 
-    /// Polls the application player and yields provider-neutral playback snapshots.
-    func playbackSnapshots() -> AsyncStream<PlaybackSnapshot> {
+    /// Polls the application player and yields provider-neutral playback observations.
+    func playbackObservations() -> AsyncStream<PlaybackObservation> {
         AsyncStream { continuation in
             let observationTask = Task { [weak self] in
                 guard let self else {
@@ -195,7 +195,7 @@ actor AppleMusicProvider {
                 }
 
                 while !Task.isCancelled {
-                    continuation.yield(await self.playbackSnapshot())
+                    continuation.yield(.snapshot(await self.playbackSnapshot()))
                     do {
                         try await Task.sleep(for: .milliseconds(500))
                     } catch {
@@ -255,19 +255,18 @@ actor AppleMusicProvider {
             appleMusicStatus = .interrupted
         }
 
-        let currentTime: TimeInterval
+        let position: TimeInterval
         if appleMusicStatus == .stopped {
-            currentTime = 0
+            position = 0
         } else {
-            currentTime = max(0, player.playbackTime)
+            position = max(0, player.playbackTime)
         }
+        let duration = currentTrackID.flatMap { songsByNativeID[$0.nativeID] }?.duration
         return PlaybackSnapshot(
             currentTrackID: currentTrackID,
             status: PlaybackStatus(appleMusicStatus),
-            currentTime: currentTime,
-            playbackRate: PlaybackRate(value: player.state.playbackRate),
-            repeatMode: PlaybackRepeatMode(player.state.repeatMode),
-            shuffleMode: PlaybackShuffleMode(player.state.shuffleMode)
+            position: position,
+            duration: duration
         )
     }
 }

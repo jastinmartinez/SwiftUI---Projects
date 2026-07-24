@@ -7,8 +7,8 @@ extension PlaybackObservationClient: DependencyKey {
 extension PlaybackObservationClient {
     static func appleMusic(_ provider: AppleMusicProvider) -> Self {
         Self(
-            playbackSnapshots: {
-                await provider.playbackSnapshots()
+            observations: {
+                await provider.playbackObservations()
             }
         )
     }
