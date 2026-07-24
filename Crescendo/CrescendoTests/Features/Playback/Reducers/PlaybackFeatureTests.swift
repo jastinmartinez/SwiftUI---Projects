@@ -890,6 +890,44 @@ struct PlaybackFeatureTests {
     }
 
     @Test
+    func stopTappedPausesThenSeeksToZeroInOrder() async {
+        let tracks = makeTracks()
+        let calls = LockIsolated<[String]>([])
+        let store = makeStore(
+            queue: .init(
+                tracks: IdentifiedArray(uniqueElements: tracks),
+                currentTrackID: tracks[0].id,
+                repeatMode: .off,
+                shuffleMode: .off,
+                pendingQueueTransition: nil,
+                pendingRepeatChange: nil,
+                pendingShuffleChange: nil
+            ),
+            status: .playing
+        ) {
+            $0.playbackTransport.pause = {
+                calls.withValue { $0.append("pause") }
+            }
+            $0.playbackTimeline.seek = { time in
+                calls.withValue { $0.append("seek:\(time)") }
+            }
+        }
+
+        await store.send(.stopTapped) {
+            $0.pendingOperation = .statusChange(
+                .init(requestID: UUID(0), target: .stopped)
+            )
+            $0.failure = nil
+        }
+        await store.receive(
+            .performStatusChange(requestID: UUID(0), target: .stopped)
+        )
+        await store.receive(.statusChangeSucceeded(requestID: UUID(0)))
+
+        #expect(calls.value == ["pause", "seek:0.0"])
+    }
+
+    @Test
     func playPauseIsIgnoredWhileAParentOperationIsPending() async {
         let tracks = makeTracks()
         let pending = PlaybackFeature.PendingStatusChange(
@@ -991,7 +1029,7 @@ struct PlaybackFeatureTests {
             case .paused:
                 $0.playbackTransport.pause = statusProbe.run
             case .stopped:
-                $0.playbackTransport.stop = statusProbe.run
+                $0.playbackTransport.pause = statusProbe.run
             }
             $0.playbackQueue.replace = { _, _ in
                 try await queueProbe.run()
@@ -1052,7 +1090,7 @@ struct PlaybackFeatureTests {
             $0.playbackQueue.replace = { _, _ in
                 try await queueProbe.run()
             }
-            $0.playbackTransport.stop = stopProbe.run
+            $0.playbackTransport.pause = stopProbe.run
         }
 
         await store.send(
@@ -1291,7 +1329,8 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 50)
             )
         ) {
-            $0.playbackTransport.stop = {}
+            $0.playbackTransport.pause = {}
+            $0.playbackTimeline.seek = { _ in }
         }
 
         await store.send(.stopTapped) {

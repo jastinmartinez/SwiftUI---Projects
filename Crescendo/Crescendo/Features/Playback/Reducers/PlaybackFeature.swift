@@ -110,6 +110,7 @@ struct PlaybackFeature {
 
     @Dependency(\.playbackQueue) var playbackQueue
     @Dependency(\.playbackTransport) var playbackTransport
+    @Dependency(\.playbackTimeline) var playbackTimeline
     @Dependency(\.playbackObservation) var playbackObservation
     @Dependency(\.uuid) var uuid
 
@@ -358,7 +359,8 @@ struct PlaybackFeature {
                         case .paused:
                             try await playbackTransport.pause()
                         case .stopped:
-                            try await playbackTransport.stop()
+                            try await playbackTransport.pause()
+                            try await playbackTimeline.seek(0)
                         }
                         try Task.checkCancellation()
                         await send(.statusChangeSucceeded(requestID: requestID))

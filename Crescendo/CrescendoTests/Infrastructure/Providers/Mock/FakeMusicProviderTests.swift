@@ -214,7 +214,7 @@ struct FakeMusicProviderTests {
     }
 
     @Test
-    func stopResetsPositionToZero() async throws {
+    func pauseThenSeekToZeroResetsPositionWhilePaused() async throws {
         let fake = makeFakeProvider()
         let playbackQueue = await fake.playbackQueueClient()
         let playbackTimeline = await fake.playbackTimelineClient()
@@ -224,10 +224,11 @@ struct FakeMusicProviderTests {
         let itemID = TrackID(providerID: "fake", nativeID: "1")
         try await playbackQueue.replace([itemID], itemID)
         try await playbackTimeline.seek(42)
-        try await playbackTransport.stop()
+        try await playbackTransport.pause()
+        try await playbackTimeline.seek(0)
         let playbackSnapshot = await nextPlaybackSnapshot(from: playbackObservation)
 
-        #expect(playbackSnapshot?.status == .stopped)
+        #expect(playbackSnapshot?.status == .paused)
         #expect(playbackSnapshot?.position == 0)
     }
 

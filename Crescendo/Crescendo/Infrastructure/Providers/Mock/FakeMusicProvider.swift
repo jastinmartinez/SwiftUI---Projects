@@ -61,10 +61,6 @@ actor FakeMusicProvider {
             pause: { [weak self] in
                 guard let self else { throw MusicProviderError.unavailable }
                 await self.setStatus(.paused)
-            },
-            stop: { [weak self] in
-                guard let self else { throw MusicProviderError.unavailable }
-                await self.stopPlayback()
             }
         )
     }
@@ -194,15 +190,6 @@ actor FakeMusicProvider {
             currentTrackID: playbackSnapshot.currentTrackID,
             status: status,
             position: playbackSnapshot.position,
-            duration: playbackSnapshot.duration
-        )
-    }
-
-    private func stopPlayback() {
-        playbackSnapshot = PlaybackSnapshot(
-            currentTrackID: playbackSnapshot.currentTrackID,
-            status: .stopped,
-            position: 0,
             duration: playbackSnapshot.duration
         )
     }

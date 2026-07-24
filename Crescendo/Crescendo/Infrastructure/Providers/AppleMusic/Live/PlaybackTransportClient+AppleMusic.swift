@@ -8,8 +8,7 @@ extension PlaybackTransportClient {
     static func appleMusic(_ provider: AppleMusicProvider) -> Self {
         Self(
             play: { try await provider.play() },
-            pause: { await provider.pause() },
-            stop: { await provider.stop() }
+            pause: { await provider.pause() }
         )
     }
 }
