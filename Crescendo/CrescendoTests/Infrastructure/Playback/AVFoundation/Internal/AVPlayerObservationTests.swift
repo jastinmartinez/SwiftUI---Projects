@@ -34,6 +34,7 @@ struct AVPlayerObservationTests {
             return
         }
         #expect(snapshot.currentTrackID == trackID)
+        #expect(snapshot.status == .paused)
     }
 
     /// Approach (a) from the brief: identity resolution follows

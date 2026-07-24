@@ -761,6 +761,25 @@ struct PlaybackFeatureTests {
     }
 
     @Test
+    func observedFailureForCurrentTrackSetsFailure() async {
+        let queue = makeQueue(duration: 180)
+        let store = makeStore(queue: queue)
+
+        await store.send(.observationReceived(.failed(queue.currentTrackID, .playbackFailed))) {
+            $0.failure = .playbackFailed
+        }
+    }
+
+    @Test
+    func observedFailureForDifferentTrackIsIgnored() async {
+        let queue = makeQueue(duration: 180)
+        let otherTrackID = TrackID(providerID: providerID, nativeID: "different-track")
+        let store = makeStore(queue: queue)
+
+        await store.send(.observationReceived(.failed(otherTrackID, .playbackFailed)))
+    }
+
+    @Test
     func matchingPlayingSnapshotConfirmsPendingQueueBeforeStaleResponse() async {
         let tracks = makeTracks()
         let queue = IdentifiedArray(uniqueElements: tracks)
