@@ -4,51 +4,6 @@ import Testing
 @testable import Crescendo
 
 struct ProviderSearchClientJamendoTests {
-    private static func makeConfiguration() throws -> JamendoConfiguration {
-        try #require(JamendoConfiguration(clientID: "test-client"))
-    }
-
-    private static func okResponse(for request: URLRequest) throws -> HTTPURLResponse {
-        let url = try #require(request.url)
-        return try #require(
-            HTTPURLResponse(
-                url: url,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )
-        )
-    }
-
-    private static func fixtureJSON(resultsFullCount: Int, trackCount: Int) -> String {
-        let results = (0..<trackCount)
-            .map { index in
-                """
-                {
-                  "id": "\(index)",
-                  "name": "Track \(index)",
-                  "artist_name": "Artist \(index)",
-                  "album_name": "Album \(index)",
-                  "image": "https://example.com/artwork\(index).jpg",
-                  "duration": "180",
-                  "audio": "https://example.com/audio\(index).mp3"
-                }
-                """
-            }
-            .joined(separator: ",")
-        return """
-            {
-              "headers": {
-                "status": "success",
-                "code": 0,
-                "results_count": \(trackCount),
-                "results_fullcount": \(resultsFullCount)
-              },
-              "results": [\(results)]
-            }
-            """
-    }
-
     @Test
     func nextCursorIsNilWhenOffsetAndResultsReachFullCount() async throws {
         let fixtureData = Data(
@@ -123,6 +78,53 @@ struct ProviderSearchClientJamendoTests {
         )
         let queryItems = try #require(components.queryItems)
         #expect(queryItems.contains(URLQueryItem(name: "limit", value: "37")))
+    }
+
+    // MARK: - Helpers
+
+    private static func makeConfiguration() throws -> JamendoConfiguration {
+        try #require(JamendoConfiguration(clientID: "test-client"))
+    }
+
+    private static func okResponse(for request: URLRequest) throws -> HTTPURLResponse {
+        let url = try #require(request.url)
+        return try #require(
+            HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )
+        )
+    }
+
+    private static func fixtureJSON(resultsFullCount: Int, trackCount: Int) -> String {
+        let results = (0..<trackCount)
+            .map { index in
+                """
+                {
+                  "id": "\(index)",
+                  "name": "Track \(index)",
+                  "artist_name": "Artist \(index)",
+                  "album_name": "Album \(index)",
+                  "image": "https://example.com/artwork\(index).jpg",
+                  "duration": "180",
+                  "audio": "https://example.com/audio\(index).mp3"
+                }
+                """
+            }
+            .joined(separator: ",")
+        return """
+            {
+              "headers": {
+                "status": "success",
+                "code": 0,
+                "results_count": \(trackCount),
+                "results_fullcount": \(resultsFullCount)
+              },
+              "results": [\(results)]
+            }
+            """
     }
 }
 

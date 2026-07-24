@@ -26,22 +26,6 @@ struct JamendoAPITests {
         }
         """
 
-    private static func makeConfiguration() throws -> JamendoConfiguration {
-        try #require(JamendoConfiguration(clientID: "test-client"))
-    }
-
-    private static func okResponse(for request: URLRequest) throws -> HTTPURLResponse {
-        let url = try #require(request.url)
-        return try #require(
-            HTTPURLResponse(
-                url: url,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )
-        )
-    }
-
     @Test
     func tracksSendsExactQueryItemsAndDecodesResponse() async throws {
         let fixtureData = Data(Self.fixtureJSON.utf8)
@@ -183,6 +167,24 @@ struct JamendoAPITests {
         await #expect(throws: MusicProviderError.network) {
             try await api.tracks(query: "jazz", offset: 0, limit: 10)
         }
+    }
+
+    // MARK: - Helpers
+
+    private static func makeConfiguration() throws -> JamendoConfiguration {
+        try #require(JamendoConfiguration(clientID: "test-client"))
+    }
+
+    private static func okResponse(for request: URLRequest) throws -> HTTPURLResponse {
+        let url = try #require(request.url)
+        return try #require(
+            HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )
+        )
     }
 }
 

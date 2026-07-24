@@ -4,26 +4,6 @@ import Testing
 @testable import Crescendo
 
 struct TrackJamendoAdapterTests {
-    private static func makeJamendoTrack(
-        id: String = "42",
-        name: String = "Signal",
-        artistName: String = "The Tests",
-        albumName: String = "Assertions",
-        image: String = "https://example.com/artwork.jpg",
-        duration: String = "180",
-        audio: String = "https://example.com/audio.mp3"
-    ) -> JamendoTrack {
-        JamendoTrack(
-            id: id,
-            name: name,
-            artistName: artistName,
-            albumName: albumName,
-            image: image,
-            duration: duration,
-            audio: audio
-        )
-    }
-
     @Test
     func idCombinesJamendoProviderAndNativeID() {
         let jamendoTrack = Self.makeJamendoTrack(id: "42")
@@ -71,5 +51,27 @@ struct TrackJamendoAdapterTests {
         let track = Track(jamendoTrack: jamendoTrack)
 
         #expect(track.duration == nil)
+    }
+
+    // MARK: - Helpers
+
+    private static func makeJamendoTrack(
+        id: String = "42",
+        name: String = "Signal",
+        artistName: String = "The Tests",
+        albumName: String = "Assertions",
+        image: String = "https://example.com/artwork.jpg",
+        duration: String = "180",
+        audio: String = "https://example.com/audio.mp3"
+    ) -> JamendoTrack {
+        JamendoTrack(
+            id: id,
+            name: name,
+            artistName: artistName,
+            albumName: albumName,
+            image: image,
+            duration: duration,
+            audio: audio
+        )
     }
 }

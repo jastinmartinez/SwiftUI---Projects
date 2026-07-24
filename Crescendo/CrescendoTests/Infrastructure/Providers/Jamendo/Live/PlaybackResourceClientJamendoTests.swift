@@ -4,40 +4,6 @@ import Testing
 @testable import Crescendo
 
 struct PlaybackResourceClientJamendoTests {
-    private static func makeConfiguration() throws -> JamendoConfiguration {
-        try #require(JamendoConfiguration(clientID: "test-client"))
-    }
-
-    private static func okResponse(for request: URLRequest) throws -> HTTPURLResponse {
-        let url = try #require(request.url)
-        return try #require(
-            HTTPURLResponse(
-                url: url,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )
-        )
-    }
-
-    private static func fixtureJSON(id: String, audio: String) -> String {
-        """
-        {
-          "headers": {
-            "status": "success",
-            "code": 0,
-            "results_count": 1,
-            "results_fullcount": 1
-          },
-          "results": [{
-            "id": "\(id)", "name": "Signal", "artist_name": "The Tests",
-            "album_name": "Assertions", "image": "https://example.com/artwork.jpg",
-            "duration": "180", "audio": "\(audio)"
-          }]
-        }
-        """
-    }
-
     @Test
     func resolvesProgressiveAudioURL() async throws {
         let api = JamendoAPI(
@@ -170,5 +136,41 @@ struct PlaybackResourceClientJamendoTests {
         await #expect(throws: PlaybackFailure.resourceUnavailable) {
             try await client.resolve(TrackID(providerID: .jamendo, nativeID: "missing"))
         }
+    }
+
+    // MARK: - Helpers
+
+    private static func makeConfiguration() throws -> JamendoConfiguration {
+        try #require(JamendoConfiguration(clientID: "test-client"))
+    }
+
+    private static func okResponse(for request: URLRequest) throws -> HTTPURLResponse {
+        let url = try #require(request.url)
+        return try #require(
+            HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )
+        )
+    }
+
+    private static func fixtureJSON(id: String, audio: String) -> String {
+        """
+        {
+          "headers": {
+            "status": "success",
+            "code": 0,
+            "results_count": 1,
+            "results_fullcount": 1
+          },
+          "results": [{
+            "id": "\(id)", "name": "Signal", "artist_name": "The Tests",
+            "album_name": "Assertions", "image": "https://example.com/artwork.jpg",
+            "duration": "180", "audio": "\(audio)"
+          }]
+        }
+        """
     }
 }
