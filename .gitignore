@@ -95,6 +95,7 @@ GuessTheFlag/.DS_Store
 
 # Secrets are externalized via gitignored xcconfig → Info.plist
 Secrets.xcconfig
+Crescendo/Config/Local.xcconfig
 
 # Superpowers design docs stay local
 docs/superpowers/

@@ -21,18 +21,27 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A6CD63AD4026EF5A06BDADAC /* Crescendo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Crescendo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		E12EA47845F2407A829FBCD9 /* CrescendoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CrescendoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A6CD63AD4026EF5A06BDADAC /* Crescendo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Crescendo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AADFB0527DA3DAEF28E2B4C9 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		E12EA47845F2407A829FBCD9 /* CrescendoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CrescendoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		27FDABCCBC426BEB37A50B04 /* Crescendo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
 			path = Crescendo;
 			sourceTree = "<group>";
 		};
 		33A9FB4EC25E6BE349E23A73 /* CrescendoTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
 			path = CrescendoTests;
 			sourceTree = "<group>";
 		};
@@ -62,10 +71,19 @@
 		98B76C28392EDD59604CAFB3 = {
 			isa = PBXGroup;
 			children = (
+				E5F0DE1C3FCAE265FD9734FC /* Config */,
 				27FDABCCBC426BEB37A50B04 /* Crescendo */,
 				33A9FB4EC25E6BE349E23A73 /* CrescendoTests */,
 				5EEDE3CAC2D70085E9BCD731 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		E5F0DE1C3FCAE265FD9734FC /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				AADFB0527DA3DAEF28E2B4C9 /* Base.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -124,6 +142,11 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					AC6E1A0DAFF421EF810CE742 = {
+						DevelopmentTeam = WQNY636DWS;
+					};
+				};
 			};
 			buildConfigurationList = 4DAE83520F5F9B3969248756 /* Build configuration list for PBXProject "Crescendo" */;
 			developmentRegion = en;
@@ -193,6 +216,7 @@
 /* Begin XCBuildConfiguration section */
 		320DD59373F3AA5F70E5B0C6 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AADFB0527DA3DAEF28E2B4C9 /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -282,6 +306,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = WQNY636DWS;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_JamendoClientID = "$(JAMENDO_CLIENT_ID)";
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Crescendo uses Apple Music access to search and play catalog songs in this learning demo.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -304,6 +329,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = WQNY636DWS;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_JamendoClientID = "$(JAMENDO_CLIENT_ID)";
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Crescendo uses Apple Music access to search and play catalog songs in this learning demo.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -338,6 +364,7 @@
 		};
 		EB6CD61128CDE4FF04D79A00 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AADFB0527DA3DAEF28E2B4C9 /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;

@@ -14,6 +14,10 @@ packages:
     url: https://github.com/pointfreeco/swift-composable-architecture
     exactVersion: 1.26.0
 
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+
 settings:
   base:
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
@@ -35,6 +39,7 @@ targets:
       base:
         DEVELOPMENT_TEAM: WQNY636DWS
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_JamendoClientID: $(JAMENDO_CLIENT_ID)
         INFOPLIST_KEY_NSAppleMusicUsageDescription: Crescendo uses Apple Music access to search and play catalog songs in this learning demo.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
