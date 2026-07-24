@@ -62,4 +62,5 @@ schemes:
         CrescendoTests: [test]
     test:
       targets:
-        - CrescendoTests
+        - name: CrescendoTests
+          randomExecutionOrder: true
