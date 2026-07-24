@@ -4,28 +4,6 @@ import Testing
 @testable import Crescendo
 
 struct JamendoAPITests {
-    private static let fixtureJSON = """
-        {
-          "headers": {
-            "status": "success",
-            "code": 0,
-            "results_count": 1,
-            "results_fullcount": 41
-          },
-          "results": [
-            {
-              "id": "42",
-              "name": "Signal",
-              "artist_name": "The Tests",
-              "album_name": "Assertions",
-              "image": "https://example.com/artwork.jpg",
-              "duration": "180",
-              "audio": "https://example.com/audio.mp3"
-            }
-          ]
-        }
-        """
-
     @Test
     func tracksSendsExactQueryItemsAndDecodesResponse() async throws {
         let fixtureData = Data(Self.fixtureJSON.utf8)
@@ -170,6 +148,28 @@ struct JamendoAPITests {
     }
 
     // MARK: - Helpers
+
+    private static let fixtureJSON = """
+        {
+          "headers": {
+            "status": "success",
+            "code": 0,
+            "results_count": 1,
+            "results_fullcount": 41
+          },
+          "results": [
+            {
+              "id": "42",
+              "name": "Signal",
+              "artist_name": "The Tests",
+              "album_name": "Assertions",
+              "image": "https://example.com/artwork.jpg",
+              "duration": "180",
+              "audio": "https://example.com/audio.mp3"
+            }
+          ]
+        }
+        """
 
     private static func makeConfiguration() throws -> JamendoConfiguration {
         try #require(JamendoConfiguration(clientID: "test-client"))
