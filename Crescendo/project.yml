@@ -4,7 +4,7 @@ options:
   defaultSourceDirectoryType: syncedFolder
   deploymentTarget:
     iOS: "18.0"
-  minimumXcodeGenVersion: 2.45.4
+  minimumXcodeGenVersion: 2.46.0
 
 attributes:
   LastUpgradeCheck: "2660"
