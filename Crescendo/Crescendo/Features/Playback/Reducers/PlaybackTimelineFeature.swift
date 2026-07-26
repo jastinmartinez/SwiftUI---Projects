@@ -23,12 +23,12 @@ struct PlaybackTimelineFeature {
         case seekRequested(TimeInterval)
         case reset
         case seekSucceeded(requestID: UUID)
-        case seekFailed(requestID: UUID, error: MusicProviderError)
+        case seekFailed(requestID: UUID, failure: PlaybackFailure)
         case delegate(Delegate)
     }
 
     enum Delegate: Equatable {
-        case transportFailed(MusicProviderError)
+        case transportFailed(PlaybackFailure)
     }
 
     private enum CancelID {
@@ -69,17 +69,17 @@ struct PlaybackTimelineFeature {
                         await send(.seekSucceeded(requestID: requestID))
                     } catch is CancellationError {
                         return
-                    } catch let error as MusicProviderError {
+                    } catch let failure as PlaybackFailure {
                         guard !Task.isCancelled else { return }
                         await send(
-                            .seekFailed(requestID: requestID, error: error)
+                            .seekFailed(requestID: requestID, failure: failure)
                         )
                     } catch {
                         guard !Task.isCancelled else { return }
                         await send(
                             .seekFailed(
                                 requestID: requestID,
-                                error: .playbackFailed
+                                failure: .playbackFailed
                             )
                         )
                     }
@@ -102,7 +102,7 @@ struct PlaybackTimelineFeature {
                 state.interaction = .idle
                 return .none
 
-            case .seekFailed(let requestID, let error):
+            case .seekFailed(let requestID, let failure):
                 guard
                     case .seeking(let activeRequestID, _) = state.interaction,
                     activeRequestID == requestID
@@ -110,7 +110,7 @@ struct PlaybackTimelineFeature {
                     return .none
                 }
                 state.interaction = .idle
-                return .send(.delegate(.transportFailed(error)))
+                return .send(.delegate(.transportFailed(failure)))
 
             case .delegate:
                 return .none

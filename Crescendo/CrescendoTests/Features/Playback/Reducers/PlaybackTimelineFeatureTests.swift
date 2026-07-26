@@ -105,10 +105,10 @@ struct PlaybackTimelineFeatureTests {
     }
 
     @Test
-    func seekFailureClearsMatchingRequestAndDelegatesError() async {
+    func seekFailureClearsMatchingRequestAndDelegatesFailureVerbatim() async {
         let store = makeStore(
             interaction: .dragging(position: 20),
-            seekError: .network
+            seekFailure: .resourceUnavailable
         )
 
         await store.send(.dragEnded)
@@ -119,11 +119,35 @@ struct PlaybackTimelineFeatureTests {
             )
         }
         await store.receive(
-            .seekFailed(requestID: UUID(0), error: .network)
+            .seekFailed(requestID: UUID(0), failure: .resourceUnavailable)
         ) {
             $0.interaction = .idle
         }
-        await store.receive(.delegate(.transportFailed(.network)))
+        await store.receive(
+            .delegate(.transportFailed(.resourceUnavailable))
+        )
+    }
+
+    @Test
+    func unrecognizedSeekErrorIsReportedAsAPlaybackFailure() async {
+        let store = makeStore(
+            interaction: .dragging(position: 20),
+            seekOperation: { _ in throw MusicProviderError.network }
+        )
+
+        await store.send(.dragEnded)
+        await store.receive(.seekRequested(20)) {
+            $0.interaction = .seeking(
+                requestID: UUID(0),
+                position: 20
+            )
+        }
+        await store.receive(
+            .seekFailed(requestID: UUID(0), failure: .playbackFailed)
+        ) {
+            $0.interaction = .idle
+        }
+        await store.receive(.delegate(.transportFailed(.playbackFailed)))
     }
 
     @Test
@@ -164,7 +188,7 @@ struct PlaybackTimelineFeatureTests {
         }
         #expect(suspendedSeek.hasObservedCancellation)
 
-        suspendedSeek.fail(with: MusicProviderError.network)
+        suspendedSeek.fail(with: PlaybackFailure.playbackFailed)
         await store.finish()
         #expect(store.state.interaction == .idle)
     }
@@ -211,7 +235,7 @@ struct PlaybackTimelineFeatureTests {
     private func makeStore(
         interaction: PlaybackTimelineFeature.Interaction = .idle,
         seekPositions: LockIsolated<[TimeInterval]> = LockIsolated([]),
-        seekError: MusicProviderError? = nil,
+        seekFailure: PlaybackFailure? = nil,
         finishSeek: AsyncStream<Void>? = nil,
         seekOperation: (@Sendable (TimeInterval) async throws -> Void)? = nil
     ) -> TestStoreOf<PlaybackTimelineFeature> {
@@ -230,8 +254,8 @@ struct PlaybackTimelineFeatureTests {
                     try await seekOperation(position)
                     return
                 }
-                if let seekError {
-                    throw seekError
+                if let seekFailure {
+                    throw seekFailure
                 }
                 if let finishSeek {
                     for await _ in finishSeek { break }
