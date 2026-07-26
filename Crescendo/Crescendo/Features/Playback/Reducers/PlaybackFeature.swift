@@ -213,7 +213,8 @@ struct PlaybackFeature {
                 state.pendingPlaybackTransition = PendingPlaybackTransition(
                     requestID: requestID,
                     queue: loadedResults,
-                    targetTrackID: trackID
+                    targetTrackID: trackID,
+                    origin: .selection
                 )
                 state.playbackEligibility = .eligible
                 state.failureNotice = nil
@@ -330,6 +331,9 @@ struct PlaybackFeature {
                 guard
                     state.pendingPlaybackTransition?.requestID == requestID
                 else { return .none }
+                // The player now holds the target item, so a snapshot bearing
+                // the target identity can finally be trusted as installation.
+                state.pendingPlaybackTransition?.hasLoadedItem = true
                 return .send(.playTransition(requestID: requestID))
 
             case .playTransition(let requestID):
@@ -607,7 +611,12 @@ struct PlaybackFeature {
                     && snapshot.currentTrackID == state.queue.currentTrackID
                     && snapshot.status == .paused
 
+                // Identity alone cannot confirm a target that is already the
+                // confirmed track, because the player still holds the old item
+                // until loading completes. Requiring the loaded stage keeps a
+                // stale snapshot from confirming a restart or a Repeat one.
                 if let pending = state.pendingPlaybackTransition,
+                    pending.hasLoadedItem,
                     let observedTrackID = snapshot.currentTrackID,
                     observedTrackID == pending.targetTrackID
                 {
@@ -618,15 +627,26 @@ struct PlaybackFeature {
                     if !preservesStoppedStatus {
                         state.status = snapshot.status
                     }
-                    return .concatenate(
-                        .send(
+                    // Only a genuinely new queue may reset traversal order and
+                    // the confirmed Repeat and Shuffle modes.
+                    let queueEffect: Effect<Action>
+                    switch pending.origin {
+                    case .selection:
+                        queueEffect = .send(
                             .queue(
                                 .replace(
                                     pending.queue,
                                     startingAt: observedTrackID
                                 )
                             )
-                        ),
+                        )
+                    case .navigation:
+                        queueEffect = .send(
+                            .queue(.currentTrackConfirmed(observedTrackID))
+                        )
+                    }
+                    return .concatenate(
+                        queueEffect,
                         .send(
                             .timeline(.positionObserved(snapshot.position))
                         ),
@@ -715,7 +735,8 @@ struct PlaybackFeature {
                 state.pendingPlaybackTransition = PendingPlaybackTransition(
                     requestID: requestID,
                     queue: state.queue.tracks,
-                    targetTrackID: trackID
+                    targetTrackID: trackID,
+                    origin: .navigation
                 )
                 state.failureNotice = nil
                 // A newer transition supersedes an older transport request.
