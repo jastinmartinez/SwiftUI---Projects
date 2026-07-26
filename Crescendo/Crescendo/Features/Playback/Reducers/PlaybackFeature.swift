@@ -90,7 +90,6 @@ struct PlaybackFeature {
         case nextTapped
         case repeatTapped
         case shuffleTapped
-        case requestQueueDefaults
         case setPlayerPresented(Bool)
         case observationReceived(PlaybackObservation)
         case reconcileSnapshot(PlaybackSnapshot)
@@ -213,18 +212,13 @@ struct PlaybackFeature {
                 )
                 state.playbackEligibility = .eligible
                 state.failure = nil
-                let replacementAction = Action.performQueueReplacement(
-                    requestID: requestID,
-                    itemIDs: Array(loadedResults.ids),
-                    startingItemID: track.id
-                )
-                if state.queue.pendingQueueTransition != nil {
-                    return .concatenate(
-                        .send(.queue(.cancelQueueTransition)),
-                        .send(replacementAction)
+                return .send(
+                    .performQueueReplacement(
+                        requestID: requestID,
+                        itemIDs: Array(loadedResults.ids),
+                        startingItemID: track.id
                     )
-                }
-                return .send(replacementAction)
+                )
 
             case .performQueueReplacement(
                 let requestID,
@@ -290,8 +284,7 @@ struct PlaybackFeature {
                             )
                         )
                     ),
-                    .send(.timeline(.reset)),
-                    .send(.requestQueueDefaults)
+                    .send(.timeline(.reset))
                 )
 
             case .queueReplacementFailed(let requestID, let error):
@@ -409,46 +402,22 @@ struct PlaybackFeature {
             case .previousTapped:
                 guard state.commandPolicy.allows(.previous) else { return .none }
                 state.failure = nil
-                return .send(.queue(.queueTransitionRequested(.previous)))
+                return .send(.queue(.previousTapped))
 
             case .nextTapped:
                 guard state.commandPolicy.allows(.next) else { return .none }
                 state.failure = nil
-                return .send(.queue(.queueTransitionRequested(.next)))
+                return .send(.queue(.nextTapped))
 
             case .repeatTapped:
                 guard state.commandPolicy.allows(.repeatMode) else { return .none }
                 state.failure = nil
-                return .send(
-                    .queue(
-                        .cycleRepeatModeRequested(
-                            state.capabilities.supportedRepeatModes
-                        )
-                    )
-                )
+                return .send(.queue(.repeatTapped))
 
             case .shuffleTapped:
                 guard state.commandPolicy.allows(.shuffleMode) else { return .none }
                 state.failure = nil
-                return .send(.queue(.toggleShuffleRequested))
-
-            case .requestQueueDefaults:
-                let supportsRepeatReset =
-                    state.capabilities.supportedRepeatModes.count > 1
-                    && state.capabilities.supportedRepeatModes.contains(.off)
-                switch (supportsRepeatReset, state.capabilities.supportsShuffle) {
-                case (true, true):
-                    return .concatenate(
-                        .send(.queue(.repeatModeChangeRequested(.off))),
-                        .send(.queue(.shuffleModeChangeRequested(.off)))
-                    )
-                case (true, false):
-                    return .send(.queue(.repeatModeChangeRequested(.off)))
-                case (false, true):
-                    return .send(.queue(.shuffleModeChangeRequested(.off)))
-                case (false, false):
-                    return .none
-                }
+                return .send(.queue(.shuffleTapped))
 
             case .timelinePositionChanged(let requestedPosition):
                 guard state.commandPolicy.allows(.seek),
@@ -522,7 +491,6 @@ struct PlaybackFeature {
                             )
                         ),
                         .send(.timeline(.reset)),
-                        .send(.requestQueueDefaults),
                         .send(
                             .timeline(.positionObserved(snapshot.position))
                         )
@@ -542,46 +510,45 @@ struct PlaybackFeature {
                     if matchesTarget {
                         state.pendingOperation = nil
                         state.failure = nil
+                        let confirmationEffects: [Effect<Action>] =
+                            snapshot.currentTrackID.map {
+                                [.send(.queue(.currentTrackConfirmed($0)))]
+                            } ?? []
                         if change.target == .stopped {
                             return .concatenate(
-                                .cancel(id: CancelID.parentOperation),
-                                .send(.timeline(.reset)),
-                                .send(
-                                    .queue(
-                                        .currentItemObserved(
-                                            snapshot.currentTrackID
-                                        )
-                                    )
-                                )
+                                [
+                                    .cancel(id: CancelID.parentOperation),
+                                    .send(.timeline(.reset)),
+                                ] + confirmationEffects
                             )
                         }
                         return .concatenate(
-                            .cancel(id: CancelID.parentOperation),
-                            .send(
-                                .queue(
-                                    .currentItemObserved(snapshot.currentTrackID)
-                                )
-                            ),
+                            [.cancel(id: CancelID.parentOperation)]
+                                + confirmationEffects
+                                + [
+                                    .send(
+                                        .timeline(
+                                            .positionObserved(snapshot.position)
+                                        )
+                                    )
+                                ]
+                        )
+                    }
+                }
+
+                let confirmationEffects: [Effect<Action>] =
+                    snapshot.currentTrackID.map {
+                        [.send(.queue(.currentTrackConfirmed($0)))]
+                    } ?? []
+                return .concatenate(
+                    confirmationEffects
+                        + [
                             .send(
                                 .timeline(
                                     .positionObserved(snapshot.position)
                                 )
                             )
-                        )
-                    }
-                }
-
-                return .concatenate(
-                    .send(
-                        .queue(
-                            .currentItemObserved(snapshot.currentTrackID)
-                        )
-                    ),
-                    .send(
-                        .timeline(
-                            .positionObserved(snapshot.position)
-                        )
-                    )
+                        ]
                 )
 
             case .setPlayerPresented(let isPresented):
@@ -592,12 +559,8 @@ struct PlaybackFeature {
                 state.failure = error
                 return .none
 
-            case .queue(.delegate(.queueTransitionFailed(let error))):
-                state.failure = error
-                return .none
-
-            case .queue(.delegate(.modeChangeFailed(let error))):
-                state.failure = error
+            case .queue(.delegate(.transitionRequested)):
+                // Task 3 wires this to the resolve, load, and play workflow.
                 return .none
 
             case .queue, .timeline:

@@ -7,48 +7,20 @@ import Testing
 @MainActor
 struct PlaybackFeatureTests {
     @Test
-    func repeatTapCyclesOnlyThroughSupportedModes() async {
+    func repeatTapRoutesTheCycleToTheQueueChild() async {
         let song = makeTrack(nativeID: "song")
-        let capabilities = MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: true,
-            supportsQueueReplacement: true,
-            supportsQueueTransitions: true,
-            supportedRepeatModes: [.off, .one],
-            supportsShuffle: true
-        )
         let queue = PlaybackQueueFeature.State(
             tracks: .init(uniqueElements: [song]),
+            playbackOrder: PlaybackQueueOrder(trackIDs: [song.id]),
             currentTrackID: song.id,
             repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
+            shuffleMode: .off
         )
-        let store = makeStore(
-            queue: queue,
-            capabilities: capabilities
-        ) {
-            $0.playbackQueue.setRepeat = { _ in }
-        }
+        let store = makeStore(queue: queue)
 
         await store.send(.repeatTapped)
-        await store.receive(
-            .queue(.cycleRepeatModeRequested([.off, .one]))
-        )
-        await store.receive(.queue(.repeatModeChangeRequested(.one))) {
-            $0.queue.pendingRepeatChange = .init(
-                requestID: UUID(0),
-                target: .one
-            )
-        }
-        await store.receive(
-            .queue(.repeatModeChangeSucceeded(requestID: UUID(0)))
-        ) {
-            $0.queue.repeatMode = .one
-            $0.queue.pendingRepeatChange = nil
+        await store.receive(.queue(.repeatTapped)) {
+            $0.queue.repeatMode = .all
         }
     }
 
@@ -57,95 +29,57 @@ struct PlaybackFeatureTests {
         let song = makeTrack(nativeID: "song")
         let queue = PlaybackQueueFeature.State(
             tracks: .init(uniqueElements: [song]),
+            playbackOrder: PlaybackQueueOrder(trackIDs: [song.id]),
             currentTrackID: song.id,
             repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
+            shuffleMode: .off
         )
         let store = makeStore(queue: queue) {
-            $0.playbackQueue.setShuffle = { _ in }
+            $0.playbackShuffle.shuffle = { $0 }
         }
 
         await store.send(.shuffleTapped)
-        await store.receive(.queue(.toggleShuffleRequested))
-        await store.receive(.queue(.shuffleModeChangeRequested(.songs))) {
-            $0.queue.pendingShuffleChange = .init(
-                requestID: UUID(0),
-                target: .songs
-            )
-        }
-        await store.receive(
-            .queue(.shuffleModeChangeSucceeded(requestID: UUID(0)))
-        ) {
-            $0.queue.shuffleMode = .songs
-            $0.queue.pendingShuffleChange = nil
+        await store.receive(.queue(.shuffleTapped)) {
+            $0.queue.shuffleMode = .tracks
         }
     }
 
     @Test
-    func repeatRequestLeavesIndependentCommandsAuthorized() async {
+    func repeatChangeLeavesIndependentCommandsAuthorized() async {
         let song = makeTrack(nativeID: "song")
-        let repeatProbe = SuspendedOperationProbe<Void>()
         let queue = PlaybackQueueFeature.State(
             tracks: .init(uniqueElements: [song]),
+            playbackOrder: PlaybackQueueOrder(trackIDs: [song.id]),
             currentTrackID: song.id,
             repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
+            shuffleMode: .off
         )
-        let store = makeStore(queue: queue) {
-            $0.playbackQueue.setRepeat = { _ in
-                try await repeatProbe.run()
-            }
-        }
+        let store = makeStore(queue: queue)
 
         await store.send(.repeatTapped)
-        await store.receive(
-            .queue(.cycleRepeatModeRequested([.off, .all, .one]))
-        )
-        await store.receive(.queue(.repeatModeChangeRequested(.all))) {
-            $0.queue.pendingRepeatChange = .init(
-                requestID: UUID(0),
-                target: .all
-            )
+        await store.receive(.queue(.repeatTapped)) {
+            $0.queue.repeatMode = .all
         }
-        await repeatProbe.waitUntilStarted()
 
-        #expect(!store.state.commandPolicy.allows(.repeatMode))
+        #expect(store.state.commandPolicy.allows(.repeatMode))
         #expect(store.state.commandPolicy.allows(.shuffleMode))
         #expect(store.state.commandPolicy.allows(.next))
         #expect(store.state.commandPolicy.allows(.seek))
-
-        repeatProbe.succeed()
-        await store.receive(
-            .queue(.repeatModeChangeSucceeded(requestID: UUID(0)))
-        ) {
-            $0.queue.repeatMode = .all
-            $0.queue.pendingRepeatChange = nil
-        }
     }
 
     @Test
-    func commandConfirmedReplacementRequestsExplicitQueueDefaultsAfterReset() async {
+    func commandConfirmedReplacementResetsQueueModes() async {
         let tracks = makeTracks()
         let queue = IdentifiedArray(uniqueElements: tracks)
-        let repeatProbe = SuspendedOperationProbe<Void>()
-        let shuffleProbe = SuspendedOperationProbe<Void>()
-        let repeatTargets = LockIsolated<[PlaybackRepeatMode]>([])
-        let shuffleTargets = LockIsolated<[PlaybackShuffleMode]>([])
         let store = makeStore(
             queue: .init(
                 tracks: queue,
+                playbackOrder: PlaybackQueueOrder(
+                    trackIDs: tracks.reversed().map(\.id)
+                ),
                 currentTrackID: tracks[0].id,
-                repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                repeatMode: .one,
+                shuffleMode: .tracks
             ),
             pendingOperation: .queueReplacement(
                 .init(
@@ -154,16 +88,7 @@ struct PlaybackFeatureTests {
                     targetTrackID: tracks[1].id
                 )
             )
-        ) {
-            $0.playbackQueue.setRepeat = { target in
-                repeatTargets.withValue { $0.append(target) }
-                try await repeatProbe.run()
-            }
-            $0.playbackQueue.setShuffle = { target in
-                shuffleTargets.withValue { $0.append(target) }
-                try await shuffleProbe.run()
-            }
-        }
+        )
 
         await store.send(.queueReplacementSucceeded(requestID: UUID(7))) {
             $0.pendingOperation = nil
@@ -173,62 +98,26 @@ struct PlaybackFeatureTests {
         await store.receive(
             .queue(.replace(queue, startingAt: tracks[1].id))
         ) {
+            $0.queue.playbackOrder = PlaybackQueueOrder(
+                trackIDs: tracks.map(\.id)
+            )
             $0.queue.currentTrackID = tracks[1].id
+            $0.queue.repeatMode = .off
+            $0.queue.shuffleMode = .off
         }
         await store.receive(.timeline(.reset))
-        await store.receive(.requestQueueDefaults)
-        await store.receive(.queue(.repeatModeChangeRequested(.off))) {
-            $0.queue.pendingRepeatChange = .init(
-                requestID: UUID(0),
-                target: .off
-            )
-        }
-        await store.receive(.queue(.shuffleModeChangeRequested(.off))) {
-            $0.queue.pendingShuffleChange = .init(
-                requestID: UUID(1),
-                target: .off
-            )
-        }
-        await repeatProbe.waitUntilStarted()
-        await shuffleProbe.waitUntilStarted()
-
-        #expect(repeatTargets.value == [.off])
-        #expect(shuffleTargets.value == [.off])
-
-        repeatProbe.succeed()
-        await store.receive(
-            .queue(.repeatModeChangeSucceeded(requestID: UUID(0)))
-        ) {
-            $0.queue.pendingRepeatChange = nil
-        }
-        shuffleProbe.succeed()
-        await store.receive(
-            .queue(.shuffleModeChangeSucceeded(requestID: UUID(1)))
-        ) {
-            $0.queue.pendingShuffleChange = nil
-        }
     }
 
     @Test
-    func snapshotConfirmedReplacementRequestsQueueDefaultsAfterReset() async {
+    func snapshotConfirmedReplacementResetsQueueModes() async {
         let tracks = makeTracks()
         let queue = IdentifiedArray(uniqueElements: tracks)
-        let capabilities = MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: true,
-            supportsQueueReplacement: true,
-            supportsQueueTransitions: true,
-            supportedRepeatModes: [.off],
-            supportsShuffle: false
-        )
         let snapshot = makeSnapshot(
             itemID: tracks[1].id,
             status: .playing,
             position: 7
         )
         let store = makeStore(
-            capabilities: capabilities,
             pendingOperation: .queueReplacement(
                 .init(
                     requestID: UUID(7),
@@ -248,141 +137,15 @@ struct PlaybackFeatureTests {
             .queue(.replace(queue, startingAt: tracks[1].id))
         ) {
             $0.queue.tracks = queue
+            $0.queue.playbackOrder = PlaybackQueueOrder(
+                trackIDs: tracks.map(\.id)
+            )
             $0.queue.currentTrackID = tracks[1].id
         }
         await store.receive(.timeline(.reset))
-        await store.receive(.requestQueueDefaults)
         await store.receive(.timeline(.positionObserved(7))) {
             $0.timeline.confirmedPosition = 7
         }
-    }
-
-    @Test
-    func queueDefaultsRequestSendsOnlySupportedResets() async {
-        let song = makeTrack(nativeID: "song")
-        let queue = PlaybackQueueFeature.State(
-            tracks: .init(uniqueElements: [song]),
-            currentTrackID: song.id,
-            repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
-        )
-        let repeatOnlyCapabilities = MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: true,
-            supportsQueueReplacement: true,
-            supportsQueueTransitions: true,
-            supportedRepeatModes: [.off, .one],
-            supportsShuffle: false
-        )
-        let repeatOnlyStore = makeStore(
-            queue: queue,
-            capabilities: repeatOnlyCapabilities
-        ) {
-            $0.playbackQueue.setRepeat = { _ in }
-        }
-
-        await repeatOnlyStore.send(.requestQueueDefaults)
-        await repeatOnlyStore.receive(
-            .queue(.repeatModeChangeRequested(.off))
-        ) {
-            $0.queue.pendingRepeatChange = .init(
-                requestID: UUID(0),
-                target: .off
-            )
-        }
-        await repeatOnlyStore.receive(
-            .queue(.repeatModeChangeSucceeded(requestID: UUID(0)))
-        ) {
-            $0.queue.pendingRepeatChange = nil
-        }
-
-        let shuffleOnlyCapabilities = MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: true,
-            supportsQueueReplacement: true,
-            supportsQueueTransitions: true,
-            supportedRepeatModes: [.off],
-            supportsShuffle: true
-        )
-        let shuffleOnlyStore = makeStore(
-            queue: queue,
-            capabilities: shuffleOnlyCapabilities
-        ) {
-            $0.playbackQueue.setShuffle = { _ in }
-        }
-
-        await shuffleOnlyStore.send(.requestQueueDefaults)
-        await shuffleOnlyStore.receive(
-            .queue(.shuffleModeChangeRequested(.off))
-        ) {
-            $0.queue.pendingShuffleChange = .init(
-                requestID: UUID(0),
-                target: .off
-            )
-        }
-        await shuffleOnlyStore.receive(
-            .queue(.shuffleModeChangeSucceeded(requestID: UUID(0)))
-        ) {
-            $0.queue.pendingShuffleChange = nil
-        }
-
-        let unsupportedCapabilities = MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: true,
-            supportsQueueReplacement: true,
-            supportsQueueTransitions: true,
-            supportedRepeatModes: [.off],
-            supportsShuffle: false
-        )
-        let unsupportedStore = makeStore(
-            queue: queue,
-            capabilities: unsupportedCapabilities
-        )
-
-        await unsupportedStore.send(.requestQueueDefaults)
-    }
-
-    @Test
-    func modeChangeFailureSurfacesThroughTheParent() async {
-        let song = makeTrack(nativeID: "song")
-        let store = makeStore(
-            queue: .init(
-                tracks: .init(uniqueElements: [song]),
-                currentTrackID: song.id,
-                repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: .init(
-                    requestID: UUID(0),
-                    target: .one
-                ),
-                pendingShuffleChange: nil
-            )
-        )
-
-        await store.send(
-            .queue(
-                .repeatModeChangeFailed(
-                    requestID: UUID(0),
-                    error: .playbackFailed
-                )
-            )
-        ) {
-            $0.queue.pendingRepeatChange = nil
-        }
-        await store.receive(
-            .queue(.delegate(.modeChangeFailed(.playbackFailed)))
-        ) {
-            $0.failure = .playbackFailed
-        }
-
-        #expect(store.state.queue.repeatMode == .off)
     }
 
     @Test
@@ -439,10 +202,12 @@ struct PlaybackFeatureTests {
             .queue(.replace(loadedResults, startingAt: tracks[1].id))
         ) {
             $0.queue.tracks = loadedResults
+            $0.queue.playbackOrder = PlaybackQueueOrder(
+                trackIDs: Array(loadedResults.ids)
+            )
             $0.queue.currentTrackID = tracks[1].id
         }
         await store.receive(.timeline(.reset))
-        await store.receive(.requestQueueDefaults)
 
         let expectedCalls = [
             PlaybackQueueCall(
@@ -463,12 +228,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: PlaybackQueueFeature.State(
                 tracks: confirmedQueue,
+                playbackOrder: PlaybackQueueOrder(trackIDs: Array(confirmedQueue.ids)),
                 currentTrackID: confirmedSongs[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing
         ) {
@@ -584,10 +347,12 @@ struct PlaybackFeatureTests {
             .queue(.replace(secondQueue, startingAt: secondSongs[1].id))
         ) {
             $0.queue.tracks = secondQueue
+            $0.queue.playbackOrder = PlaybackQueueOrder(
+                trackIDs: Array(secondQueue.ids)
+            )
             $0.queue.currentTrackID = secondSongs[1].id
         }
         await store.receive(.timeline(.reset))
-        await store.receive(.requestQueueDefaults)
         await store.send(.cancelPendingOperation)
     }
 
@@ -604,12 +369,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: queue,
+                playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
                 currentTrackID: tracks[1].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .paused,
             failure: .network,
@@ -635,12 +398,10 @@ struct PlaybackFeatureTests {
 
         let expectedQueue = PlaybackQueueFeature.State(
             tracks: queue,
+            playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
             currentTrackID: tracks[1].id,
             repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
+            shuffleMode: .off
         )
         #expect(store.state.queue == expectedQueue)
         #expect(store.state.status == .paused)
@@ -739,12 +500,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: queue,
+                playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             )
         )
 
@@ -752,7 +511,7 @@ struct PlaybackFeatureTests {
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .playing
         }
-        await store.receive(.queue(.currentItemObserved(unknownID)))
+        await store.receive(.queue(.currentTrackConfirmed(unknownID)))
         await store.receive(.timeline(.positionObserved(12))) {
             $0.timeline.confirmedPosition = 12
         }
@@ -808,10 +567,12 @@ struct PlaybackFeatureTests {
             .queue(.replace(queue, startingAt: tracks[1].id))
         ) {
             $0.queue.tracks = queue
+            $0.queue.playbackOrder = PlaybackQueueOrder(
+                trackIDs: Array(queue.ids)
+            )
             $0.queue.currentTrackID = tracks[1].id
         }
         await store.receive(.timeline(.reset))
-        await store.receive(.requestQueueDefaults)
         await store.receive(.timeline(.positionObserved(7))) {
             $0.timeline.confirmedPosition = 7
         }
@@ -827,12 +588,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing
         ) {
@@ -872,12 +631,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: status
         ) {
@@ -915,12 +672,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing
         ) {
@@ -956,12 +711,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing,
             pendingOperation: .statusChange(pending)
@@ -979,12 +732,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing,
             pendingOperation: .statusChange(
@@ -1033,12 +784,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: status
         ) {
@@ -1176,12 +925,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing,
             pendingOperation: .statusChange(pending)
@@ -1204,7 +951,7 @@ struct PlaybackFeatureTests {
             $0.status = .paused
             $0.failure = nil
         }
-        await store.receive(.queue(.currentItemObserved(tracks[0].id)))
+        await store.receive(.queue(.currentTrackConfirmed(tracks[0].id)))
         await store.receive(.timeline(.positionObserved(12))) {
             $0.timeline.confirmedPosition = 12
         }
@@ -1220,12 +967,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing,
             timeline: .init(confirmedPosition: 4, interaction: .idle),
@@ -1241,7 +986,7 @@ struct PlaybackFeatureTests {
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .paused
         }
-        await store.receive(.queue(.currentItemObserved(tracks[0].id)))
+        await store.receive(.queue(.currentTrackConfirmed(tracks[0].id)))
         await store.receive(.timeline(.positionObserved(7))) {
             $0.timeline.confirmedPosition = 7
         }
@@ -1260,12 +1005,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing,
             timeline: .init(confirmedPosition: 42, interaction: .dragging(position: 50)),
@@ -1287,7 +1030,7 @@ struct PlaybackFeatureTests {
             $0.timeline.confirmedPosition = 0
             $0.timeline.interaction = .idle
         }
-        await store.receive(.queue(.currentItemObserved(tracks[0].id)))
+        await store.receive(.queue(.currentTrackConfirmed(tracks[0].id)))
 
         #expect(store.state.timeline.confirmedPosition == 0)
     }
@@ -1306,12 +1049,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .paused,
             timeline: timeline,
@@ -1335,12 +1076,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing,
             timeline: .init(
@@ -1381,7 +1120,7 @@ struct PlaybackFeatureTests {
             $0.timeline.confirmedPosition = 0
             $0.timeline.interaction = .idle
         }
-        await store.receive(.queue(.currentItemObserved(tracks[0].id)))
+        await store.receive(.queue(.currentTrackConfirmed(tracks[0].id)))
     }
 
     @Test
@@ -1391,12 +1130,10 @@ struct PlaybackFeatureTests {
             providerID: providerID,
             queue: .init(
                 tracks: tracks,
+                playbackOrder: PlaybackQueueOrder(trackIDs: Array(tracks.ids)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing,
             failure: nil,
@@ -1411,12 +1148,10 @@ struct PlaybackFeatureTests {
             providerID: providerID,
             queue: .init(
                 tracks: [],
+                playbackOrder: PlaybackQueueOrder(trackIDs: []),
                 currentTrackID: nil,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .stopped,
             failure: nil,
@@ -1490,12 +1225,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: tracks,
+                playbackOrder: PlaybackQueueOrder(trackIDs: Array(tracks.ids)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing,
             pendingProviderReset: pendingProviderReset
@@ -1533,12 +1266,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: tracks,
+                playbackOrder: PlaybackQueueOrder(trackIDs: Array(tracks.ids)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing,
             pendingOperation: pendingOperation,
@@ -1823,50 +1554,35 @@ struct PlaybackFeatureTests {
         await store.send(.seekForwardTapped)
     }
 
-    @Test(arguments: [
-        PlaybackQueueNavigationDirection.previous,
-        .next,
-    ])
-    func parentRoutesAuthorizedQueueTransitionToTheQueueChild(
-        direction: PlaybackQueueNavigationDirection
-    ) async {
+    @Test
+    func parentRoutesAuthorizedQueueTransitionsToTheQueueChild() async {
         let tracks = makeTracks()
-        let calls = LockIsolated<[PlaybackQueueNavigationDirection]>([])
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[1].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             )
-        ) {
-            $0.playbackQueue.navigate = { direction in
-                calls.withValue { $0.append(direction) }
-                return .accepted
-            }
-        }
+        )
 
-        let action: PlaybackFeature.Action =
-            direction == .previous ? .previousTapped : .nextTapped
-        await store.send(action)
-        await store.receive(.queue(.queueTransitionRequested(direction))) {
-            $0.queue.pendingQueueTransition = .init(
-                requestID: UUID(0),
-                direction: direction
-            )
-        }
-        await store.finish()
+        await store.send(.previousTapped)
+        await store.receive(.queue(.previousTapped))
+        await store.receive(
+            .queue(.delegate(.transitionRequested(tracks[0].id)))
+        )
+        await store.send(.nextTapped)
+        await store.receive(.queue(.nextTapped))
+        await store.receive(
+            .queue(.delegate(.transitionRequested(tracks[2].id)))
+        )
 
-        #expect(calls.value == [direction])
         #expect(store.state.queue.currentTrackID == tracks[1].id)
-        #expect(store.state.queue.pendingQueueTransition != nil)
     }
 
     @Test
-    func unsupportedAndUnresolvedQueueTransitionsAreTrueNoOps() async {
+    func unsupportedAndBoundedQueueTransitionsAreTrueNoOps() async {
         let tracks = makeTracks()
         let unsupported = MusicProviderCapabilities(
             supportsCatalogSearch: true,
@@ -1880,52 +1596,40 @@ struct PlaybackFeatureTests {
         let unsupportedStore = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             capabilities: unsupported
         )
-        let pending = PlaybackQueueFeature.PendingQueueTransition(
-            requestID: UUID(7),
-            direction: .next
-        )
-        let unresolvedStore = makeStore(
+        let boundedStore = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
-                currentTrackID: tracks[0].id,
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
+                currentTrackID: tracks[2].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: pending,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             )
         )
 
         #expect(!unsupportedStore.state.commandPolicy.allows(.previous))
-        #expect(!unresolvedStore.state.commandPolicy.allows(.next))
+        #expect(boundedStore.state.commandPolicy.allows(.next))
         await unsupportedStore.send(.nextTapped)
-        await unresolvedStore.send(.previousTapped)
+        await boundedStore.send(.nextTapped)
+        await boundedStore.receive(.queue(.nextTapped))
     }
 
     @Test
-    func providerSnapshotAloneConfirmsTheQueueTransition() async {
+    func providerSnapshotConfirmsTheCurrentTrack() async {
         let tracks = makeTracks()
         let store = makeStore(
             queue: .init(
                 tracks: IdentifiedArray(uniqueElements: tracks),
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: .init(
-                    requestID: UUID(0),
-                    direction: .next
-                ),
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing
         )
@@ -1937,9 +1641,8 @@ struct PlaybackFeatureTests {
         )
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot))
-        await store.receive(.queue(.currentItemObserved(tracks[1].id))) {
+        await store.receive(.queue(.currentTrackConfirmed(tracks[1].id))) {
             $0.queue.currentTrackID = tracks[1].id
-            $0.queue.pendingQueueTransition = nil
         }
         await store.receive(.timeline(.positionObserved(0)))
 
@@ -1947,45 +1650,7 @@ struct PlaybackFeatureTests {
     }
 
     @Test
-    func queueTransitionFailureSurfacesThroughTheParentWithoutChangingQueue() async {
-        let tracks = makeTracks()
-        let pending = PlaybackQueueFeature.PendingQueueTransition(
-            requestID: UUID(0),
-            direction: .next
-        )
-        let store = makeStore(
-            queue: .init(
-                tracks: IdentifiedArray(uniqueElements: tracks),
-                currentTrackID: tracks[0].id,
-                repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: pending,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
-            )
-        )
-
-        await store.send(
-            .queue(
-                .queueTransitionFailed(
-                    requestID: UUID(0),
-                    error: .playbackFailed
-                )
-            )
-        ) {
-            $0.queue.pendingQueueTransition = nil
-        }
-        await store.receive(
-            .queue(.delegate(.queueTransitionFailed(.playbackFailed)))
-        ) {
-            $0.failure = .playbackFailed
-        }
-
-        #expect(store.state.queue.currentTrackID == tracks[0].id)
-    }
-
-    @Test
-    func queueReplacementCancelsPendingQueueTransitionBeforeProviderWork() async {
+    func queueReplacementStartsProviderWorkWithoutCancellingQueueState() async {
         let tracks = makeTracks()
         let currentQueue = IdentifiedArray(uniqueElements: tracks)
         let replacementSongs = makeTracks(prefix: "replacement")
@@ -1994,15 +1659,10 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: .init(
                 tracks: currentQueue,
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
                 currentTrackID: tracks[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: .init(
-                    requestID: UUID(99),
-                    direction: .next
-                ),
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .playing
         ) {
@@ -2028,9 +1688,6 @@ struct PlaybackFeatureTests {
             )
             $0.playbackEligibility = .eligible
             $0.failure = nil
-        }
-        await store.receive(.queue(.cancelQueueTransition)) {
-            $0.queue.pendingQueueTransition = nil
         }
         await store.receive(
             .performQueueReplacement(
@@ -2075,24 +1732,20 @@ struct PlaybackFeatureTests {
         )
         return PlaybackQueueFeature.State(
             tracks: IdentifiedArray(uniqueElements: [song]),
+            playbackOrder: PlaybackQueueOrder(trackIDs: [song.id]),
             currentTrackID: song.id,
             repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
+            shuffleMode: .off
         )
     }
 
     private func makeStore(
         queue: PlaybackQueueFeature.State = .init(
             tracks: [],
+            playbackOrder: PlaybackQueueOrder(trackIDs: []),
             currentTrackID: nil,
             repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
+            shuffleMode: .off
         ),
         status: PlaybackStatus = .idle,
         failure: MusicProviderError? = nil,

@@ -6,7 +6,7 @@ import Testing
 struct PlaybackShuffleModeAppleMusicTests {
     @Test(arguments: [
         (PlaybackShuffleMode.off, MusicPlayer.ShuffleMode.off),
-        (.songs, .songs),
+        (.tracks, .songs),
     ])
     func mapsShuffleModeInBothDirections(
         playbackMode: PlaybackShuffleMode,

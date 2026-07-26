@@ -20,12 +20,10 @@ struct AppPlaybackPresentationTests {
             providerID: "fake",
             queue: PlaybackQueueFeature.State(
                 tracks: queue,
+                playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
                 currentTrackID: song.id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             status: .paused,
             failure: .playbackFailed,

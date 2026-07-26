@@ -7,7 +7,7 @@ extension PlaybackShuffleMode {
         case nil, .some(.off):
             self = .off
         case .some(.songs):
-            self = .songs
+            self = .tracks
         @unknown default:
             self = .off
         }
@@ -20,7 +20,7 @@ extension MusicPlayer.ShuffleMode {
         switch playbackShuffleMode {
         case .off:
             self = .off
-        case .songs:
+        case .tracks:
             self = .songs
         }
     }

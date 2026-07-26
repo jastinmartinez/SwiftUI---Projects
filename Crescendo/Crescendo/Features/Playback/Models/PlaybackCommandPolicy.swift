@@ -71,8 +71,7 @@ private extension PlaybackCommandPolicy {
 
     var allowsQueueTransition: Bool {
         guard capabilities.supportsQueueTransitions,
-            queue.currentTrackID != nil,
-            queue.pendingQueueTransition == nil
+            queue.currentTrackID != nil
         else { return false }
         guard case .queueReplacement = pendingOperation else {
             return true
@@ -82,7 +81,6 @@ private extension PlaybackCommandPolicy {
 
     var allowsRepeatChange: Bool {
         guard queue.currentTrackID != nil,
-            queue.pendingRepeatChange == nil,
             capabilities.supportedRepeatModes.count > 1
         else { return false }
         guard case .queueReplacement = pendingOperation else {
@@ -93,8 +91,7 @@ private extension PlaybackCommandPolicy {
 
     var allowsShuffleChange: Bool {
         guard capabilities.supportsShuffle,
-            queue.currentTrackID != nil,
-            queue.pendingShuffleChange == nil
+            queue.currentTrackID != nil
         else { return false }
         guard case .queueReplacement = pendingOperation else {
             return true

@@ -144,12 +144,10 @@ struct AppProviderSwitchingTests {
         await store.receive(.playback(.queue(.reset))) {
             $0.playback.queue = PlaybackQueueFeature.State(
                 tracks: [],
+                playbackOrder: PlaybackQueueOrder(trackIDs: []),
                 currentTrackID: nil,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             )
         }
         await store.receive(.playback(.timeline(.reset))) {
@@ -393,12 +391,10 @@ struct AppProviderSwitchingTests {
                 providerID: .appleMusic,
                 queue: PlaybackQueueFeature.State(
                     tracks: queue,
+                    playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
                     currentTrackID: song.id,
                     repeatMode: .off,
-                    shuffleMode: .off,
-                    pendingQueueTransition: nil,
-                    pendingRepeatChange: nil,
-                    pendingShuffleChange: nil
+                    shuffleMode: .off
                 ),
                 status: .playing,
                 failure: nil,

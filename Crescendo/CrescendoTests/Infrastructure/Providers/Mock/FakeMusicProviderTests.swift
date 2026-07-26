@@ -135,7 +135,7 @@ struct FakeMusicProviderTests {
         let previousSnapshot = await nextPlaybackSnapshot(from: observation)
 
         try await queue.setRepeat(.one)
-        try await queue.setShuffle(.songs)
+        try await queue.setShuffle(.tracks)
 
         let currentSnapshot = await nextPlaybackSnapshot(from: observation)
         #expect(currentSnapshot == previousSnapshot)

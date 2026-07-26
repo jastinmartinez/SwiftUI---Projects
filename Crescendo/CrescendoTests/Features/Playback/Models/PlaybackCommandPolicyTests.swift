@@ -52,23 +52,6 @@ struct PlaybackCommandPolicyTests {
         )
     }
 
-    @Test(arguments: commandsUnaffectedByPendingRepeat)
-    func pendingRepeatDoesNotBlockUnrelatedCommands(
-        command: PlaybackCommand
-    ) {
-        let policy = makePolicy(queue: .changingRepeat)
-
-        #expect(policy.allows(command))
-    }
-
-    @Test(arguments: commandsUnaffectedByPendingShuffle)
-    func pendingShuffleDoesNotBlockUnrelatedCommands(
-        command: PlaybackCommand
-    ) {
-        let policy = makePolicy(queue: .changingShuffle)
-
-        #expect(policy.allows(command))
-    }
 }
 
 // MARK: - Command Policy Cases
@@ -225,12 +208,6 @@ private let queueTransitionCases = [
         expected: false
     ),
     CommandPolicyCase(
-        name: "blocked during a pending queue transition",
-        command: .previous,
-        policy: makePolicy(queue: .transitioning),
-        expected: false
-    ),
-    CommandPolicyCase(
         name: "allowed during a pending status change",
         command: .next,
         policy: makePolicy(pendingOperation: .playing),
@@ -258,22 +235,10 @@ private let repeatChangeCases = [
         expected: false
     ),
     CommandPolicyCase(
-        name: "blocked during a pending Repeat change",
-        command: .repeatMode,
-        policy: makePolicy(queue: .changingRepeat),
-        expected: false
-    ),
-    CommandPolicyCase(
         name: "blocked with only one supported Repeat mode",
         command: .repeatMode,
         policy: makePolicy(capabilities: .withOneRepeatMode),
         expected: false
-    ),
-    CommandPolicyCase(
-        name: "allowed during a pending Shuffle change",
-        command: .repeatMode,
-        policy: makePolicy(queue: .changingShuffle),
-        expected: true
     ),
 ]
 
@@ -297,41 +262,11 @@ private let shuffleChangeCases = [
         expected: false
     ),
     CommandPolicyCase(
-        name: "blocked during a pending Shuffle change",
-        command: .shuffleMode,
-        policy: makePolicy(queue: .changingShuffle),
-        expected: false
-    ),
-    CommandPolicyCase(
         name: "blocked without Shuffle support",
         command: .shuffleMode,
         policy: makePolicy(capabilities: .withoutShuffle),
         expected: false
     ),
-    CommandPolicyCase(
-        name: "allowed during a pending Repeat change",
-        command: .shuffleMode,
-        policy: makePolicy(queue: .changingRepeat),
-        expected: true
-    ),
-]
-
-private let commandsUnaffectedByPendingRepeat: [PlaybackCommand] = [
-    .shuffleMode,
-    .previous,
-    .next,
-    .seek,
-    .playPause,
-    .stop,
-]
-
-private let commandsUnaffectedByPendingShuffle: [PlaybackCommand] = [
-    .repeatMode,
-    .previous,
-    .next,
-    .seek,
-    .playPause,
-    .stop,
 ]
 
 struct CommandPolicyCase: CustomTestStringConvertible {
@@ -439,54 +374,13 @@ extension PlaybackFeature.PendingOperation {
 extension PlaybackQueueFeature.State {
     fileprivate static let empty = Self(
         tracks: [],
+        playbackOrder: PlaybackQueueOrder(trackIDs: []),
         currentTrackID: nil,
         repeatMode: .off,
-        shuffleMode: .off,
-        pendingQueueTransition: nil,
-        pendingRepeatChange: nil,
-        pendingShuffleChange: nil
+        shuffleMode: .off
     )
 
     fileprivate static let populated = populated(duration: 180)
-
-    fileprivate static let transitioning = Self(
-        tracks: populated.tracks,
-        currentTrackID: populated.currentTrackID,
-        repeatMode: .off,
-        shuffleMode: .off,
-        pendingQueueTransition: .init(
-            requestID: UUID(0),
-            direction: .next
-        ),
-        pendingRepeatChange: nil,
-        pendingShuffleChange: nil
-    )
-
-    fileprivate static let changingRepeat = Self(
-        tracks: populated.tracks,
-        currentTrackID: populated.currentTrackID,
-        repeatMode: .off,
-        shuffleMode: .off,
-        pendingQueueTransition: nil,
-        pendingRepeatChange: .init(
-            requestID: UUID(0),
-            target: .all
-        ),
-        pendingShuffleChange: nil
-    )
-
-    fileprivate static let changingShuffle = Self(
-        tracks: populated.tracks,
-        currentTrackID: populated.currentTrackID,
-        repeatMode: .off,
-        shuffleMode: .off,
-        pendingQueueTransition: nil,
-        pendingRepeatChange: nil,
-        pendingShuffleChange: .init(
-            requestID: UUID(0),
-            target: .songs
-        )
-    )
 
     fileprivate static func populated(duration: TimeInterval?) -> Self {
         let song = Track(
@@ -499,12 +393,10 @@ extension PlaybackQueueFeature.State {
         )
         return Self(
             tracks: IdentifiedArray(uniqueElements: [song]),
+            playbackOrder: PlaybackQueueOrder(trackIDs: [song.id]),
             currentTrackID: song.id,
             repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
+            shuffleMode: .off
         )
     }
 }

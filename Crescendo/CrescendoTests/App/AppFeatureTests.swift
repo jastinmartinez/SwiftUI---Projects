@@ -157,12 +157,10 @@ struct AppFeatureTests {
                 providerID: .appleMusic,
                 queue: .init(
                     tracks: queue,
+                    playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
                     currentTrackID: song.id,
                     repeatMode: .off,
-                    shuffleMode: .off,
-                    pendingQueueTransition: nil,
-                    pendingRepeatChange: nil,
-                    pendingShuffleChange: nil
+                    shuffleMode: .off
                 ),
                 status: .playing,
                 failure: .network,
@@ -250,12 +248,10 @@ struct AppFeatureTests {
         await store.receive(.playback(.queue(.reset))) {
             $0.playback.queue = .init(
                 tracks: [],
+                playbackOrder: PlaybackQueueOrder(trackIDs: []),
                 currentTrackID: nil,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             )
         }
         await store.receive(.playback(.timeline(.reset))) {
@@ -348,7 +344,6 @@ struct AppFeatureTests {
         await store.receive(.playback(.reconcileSnapshot(replacementSnapshot))) {
             $0.playback.status = .playing
         }
-        await store.receive(.playback(.queue(.currentItemObserved(nil))))
         await store.receive(.playback(.timeline(.positionObserved(27)))) {
             $0.playback.timeline.confirmedPosition = 27
         }
@@ -425,7 +420,6 @@ struct AppFeatureTests {
         await store.receive(.playback(.reconcileSnapshot(snapshot))) {
             $0.playback.status = .paused
         }
-        await store.receive(.playback(.queue(.currentItemObserved(nil))))
         await store.receive(.playback(.timeline(.positionObserved(14)))) {
             $0.playback.timeline.confirmedPosition = 14
         }
@@ -532,12 +526,10 @@ struct AppFeatureTests {
                     providerID: nil,
                     queue: .init(
                         tracks: [],
+                        playbackOrder: PlaybackQueueOrder(trackIDs: []),
                         currentTrackID: nil,
                         repeatMode: .off,
-                        shuffleMode: .off,
-                        pendingQueueTransition: nil,
-                        pendingRepeatChange: nil,
-                        pendingShuffleChange: nil
+                        shuffleMode: .off
                     ),
                     status: .idle,
                     failure: nil,

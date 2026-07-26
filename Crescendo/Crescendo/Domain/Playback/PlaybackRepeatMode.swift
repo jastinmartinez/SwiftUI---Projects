@@ -1,4 +1,4 @@
-/// The provider-confirmed repeat behavior of the active playback queue.
+/// The reducer-owned repeat behavior applied when a track finishes playing.
 enum PlaybackRepeatMode: Equatable, Hashable, Sendable {
     case off
     case all
@@ -6,6 +6,6 @@ enum PlaybackRepeatMode: Equatable, Hashable, Sendable {
 }
 
 extension PlaybackRepeatMode {
-    /// Defines the stable order used to select a provider-supported successor.
+    /// Defines the stable order the reducer cycles through on each Repeat tap.
     static let cycleOrder: [Self] = [.off, .all, .one]
 }

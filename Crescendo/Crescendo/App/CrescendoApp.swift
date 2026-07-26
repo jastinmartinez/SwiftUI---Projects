@@ -25,12 +25,10 @@ struct CrescendoApp: App {
                     providerID: nil,
                     queue: PlaybackQueueFeature.State(
                         tracks: [],
+                        playbackOrder: PlaybackQueueOrder(trackIDs: []),
                         currentTrackID: nil,
                         repeatMode: .off,
-                        shuffleMode: .off,
-                        pendingQueueTransition: nil,
-                        pendingRepeatChange: nil,
-                        pendingShuffleChange: nil
+                        shuffleMode: .off
                     ),
                     status: .idle,
                     failure: nil,

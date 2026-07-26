@@ -35,10 +35,10 @@ extension PlaybackControlsView.Model {
             shuffle: PlaybackModeButtonView.Model(
                 systemImage: "shuffle",
                 accessibilityLabel: Locs.Playback.shuffle,
-                accessibilityValue: store.queue.shuffleMode == .songs
+                accessibilityValue: store.queue.shuffleMode == .tracks
                     ? Locs.Playback.Mode.on
                     : Locs.Playback.Mode.off,
-                isSelected: store.queue.shuffleMode == .songs,
+                isSelected: store.queue.shuffleMode == .tracks,
                 isEnabled: store.commandPolicy.allows(.shuffleMode),
                 perform: { store.send(.shuffleTapped) }
             ),

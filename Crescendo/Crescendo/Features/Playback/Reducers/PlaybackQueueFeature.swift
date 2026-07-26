@@ -1,41 +1,19 @@
 import ComposableArchitecture
-import Foundation
 
-/// Owns the confirmed playback queue order, current item identity, and modes.
+/// Owns the playback queue contents, traversal order, current identity, and modes.
 @Reducer
 struct PlaybackQueueFeature {
     @ObservableState
     struct State: Equatable {
         var tracks: IdentifiedArrayOf<Track>
+        var playbackOrder: PlaybackQueueOrder
         var currentTrackID: TrackID?
         var repeatMode: PlaybackRepeatMode
         var shuffleMode: PlaybackShuffleMode
-        var pendingQueueTransition: PendingQueueTransition?
-        var pendingRepeatChange: PendingRepeatChange?
-        var pendingShuffleChange: PendingShuffleChange?
-    }
-
-    /// Identifies one queue transition awaiting provider observation.
-    struct PendingQueueTransition: Equatable {
-        let requestID: UUID
-        let direction: PlaybackQueueNavigationDirection
-    }
-
-    /// Identifies one Repeat request awaiting completion or observation.
-    struct PendingRepeatChange: Equatable {
-        let requestID: UUID
-        let target: PlaybackRepeatMode
-    }
-
-    /// Identifies one Shuffle request awaiting completion or observation.
-    struct PendingShuffleChange: Equatable {
-        let requestID: UUID
-        let target: PlaybackShuffleMode
     }
 
     enum Delegate: Equatable {
-        case queueTransitionFailed(MusicProviderError)
-        case modeChangeFailed(MusicProviderError)
+        case transitionRequested(TrackID)
     }
 
     enum Action: Equatable {
@@ -43,295 +21,99 @@ struct PlaybackQueueFeature {
             IdentifiedArrayOf<Track>,
             startingAt: TrackID
         )
-        case currentItemObserved(TrackID?)
-        case cycleRepeatModeRequested(Set<PlaybackRepeatMode>)
-        case repeatModeChangeRequested(PlaybackRepeatMode)
-        case repeatModeChangeSucceeded(requestID: UUID)
-        case repeatModeChangeFailed(
-            requestID: UUID,
-            error: MusicProviderError
-        )
-        case repeatModeObserved(PlaybackRepeatMode)
-        case toggleShuffleRequested
-        case shuffleModeChangeRequested(PlaybackShuffleMode)
-        case shuffleModeChangeSucceeded(requestID: UUID)
-        case shuffleModeChangeFailed(
-            requestID: UUID,
-            error: MusicProviderError
-        )
-        case shuffleModeObserved(PlaybackShuffleMode)
-        case queueTransitionRequested(PlaybackQueueNavigationDirection)
-        case queueTransitionFailed(
-            requestID: UUID,
-            error: MusicProviderError
-        )
-        case queueTransitionReachedBoundary(requestID: UUID)
-        case cancelQueueTransition
+        case currentTrackConfirmed(TrackID)
+        case previousTapped
+        case nextTapped
+        case currentTrackCompleted(TrackID)
+        case repeatTapped
+        case shuffleTapped
         case reset
         case delegate(Delegate)
     }
 
-    private enum CancelID {
-        case queueTransition
-        case repeatModeChange
-        case shuffleModeChange
-    }
-
-    @Dependency(\.playbackQueue) var playbackQueue
-    @Dependency(\.uuid) var uuid
+    @Dependency(\.playbackShuffle) var playbackShuffle
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .replace(let tracks, let startingItemID):
-                guard tracks[id: startingItemID] != nil else {
+            case .replace(let tracks, let startingTrackID):
+                guard tracks[id: startingTrackID] != nil else {
                     return .none
                 }
                 state.tracks = tracks
-                state.currentTrackID = startingItemID
-                state.pendingQueueTransition = nil
-                state.pendingRepeatChange = nil
-                state.pendingShuffleChange = nil
-                return .merge(
-                    .cancel(id: CancelID.queueTransition),
-                    .cancel(id: CancelID.repeatModeChange),
-                    .cancel(id: CancelID.shuffleModeChange)
+                state.playbackOrder = PlaybackQueueOrder(
+                    trackIDs: Array(tracks.ids)
                 )
-
-            case .currentItemObserved(let itemID):
-                guard let itemID,
-                    state.tracks[id: itemID] != nil
-                else { return .none }
-                guard itemID != state.currentTrackID else { return .none }
-                state.currentTrackID = itemID
-                state.pendingQueueTransition = nil
+                state.currentTrackID = startingTrackID
+                state.repeatMode = .off
+                state.shuffleMode = .off
                 return .none
 
-            case .cycleRepeatModeRequested(let supportedModes):
-                let cycleOrder = PlaybackRepeatMode.cycleOrder
-                guard state.pendingRepeatChange == nil,
-                    let currentIndex = cycleOrder.firstIndex(
-                        of: state.repeatMode
+            case .currentTrackConfirmed(let trackID):
+                guard state.tracks[id: trackID] != nil else { return .none }
+                state.currentTrackID = trackID
+                return .none
+
+            case .previousTapped:
+                guard let targetTrackID = state.previousTrackID else {
+                    return .none
+                }
+                return .send(.delegate(.transitionRequested(targetTrackID)))
+
+            case .nextTapped:
+                guard let targetTrackID = state.nextTrackID else {
+                    return .none
+                }
+                return .send(.delegate(.transitionRequested(targetTrackID)))
+
+            case .currentTrackCompleted(let completedTrackID):
+                guard
+                    let targetTrackID = state.automaticTrackID(
+                        after: completedTrackID
                     )
                 else { return .none }
+                return .send(.delegate(.transitionRequested(targetTrackID)))
 
-                for offset in 1..<cycleOrder.count {
-                    let index = (currentIndex + offset) % cycleOrder.count
-                    let target = cycleOrder[index]
-                    if supportedModes.contains(target) {
-                        return .send(.repeatModeChangeRequested(target))
-                    }
-                }
-
+            case .repeatTapped:
+                let cycleOrder = PlaybackRepeatMode.cycleOrder
+                guard
+                    let index = cycleOrder.firstIndex(of: state.repeatMode)
+                else { return .none }
+                let nextIndex = (index + 1) % cycleOrder.count
+                state.repeatMode = cycleOrder[nextIndex]
                 return .none
 
-            case .repeatModeChangeRequested(let target):
-                guard !state.tracks.isEmpty,
-                    state.currentTrackID != nil,
-                    state.pendingRepeatChange == nil
-                else { return .none }
-                let requestID = uuid()
-                state.pendingRepeatChange = PendingRepeatChange(
-                    requestID: requestID,
-                    target: target
-                )
-                return .run { send in
-                    do {
-                        try await playbackQueue.setRepeat(target)
-                        try Task.checkCancellation()
-                        await send(
-                            .repeatModeChangeSucceeded(requestID: requestID)
-                        )
-                    } catch is CancellationError {
-                        return
-                    } catch let error as MusicProviderError {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .repeatModeChangeFailed(
-                                requestID: requestID,
-                                error: error
-                            )
-                        )
-                    } catch {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .repeatModeChangeFailed(
-                                requestID: requestID,
-                                error: .playbackFailed
-                            )
-                        )
-                    }
-                }
-                .cancellable(id: CancelID.repeatModeChange)
-
-            case .repeatModeChangeSucceeded(let requestID):
-                guard let pending = state.pendingRepeatChange,
-                    pending.requestID == requestID
-                else { return .none }
-                state.repeatMode = pending.target
-                state.pendingRepeatChange = nil
-                return .none
-
-            case .repeatModeChangeFailed(let requestID, let error):
-                guard state.pendingRepeatChange?.requestID == requestID else {
+            case .shuffleTapped:
+                let canonicalTrackIDs = Array(state.tracks.ids)
+                switch state.shuffleMode {
+                case .tracks:
+                    state.playbackOrder = PlaybackQueueOrder(
+                        trackIDs: canonicalTrackIDs
+                    )
+                    state.shuffleMode = .off
+                    return .none
+                case .off:
+                    let shuffledTrackIDs = playbackShuffle.shuffle(
+                        canonicalTrackIDs
+                    )
+                    guard
+                        shuffledTrackIDs.count == canonicalTrackIDs.count,
+                        Set(shuffledTrackIDs) == Set(canonicalTrackIDs)
+                    else { return .none }
+                    state.playbackOrder = PlaybackQueueOrder(
+                        trackIDs: shuffledTrackIDs
+                    )
+                    state.shuffleMode = .tracks
                     return .none
                 }
-                state.pendingRepeatChange = nil
-                return .send(.delegate(.modeChangeFailed(error)))
-
-            case .repeatModeObserved(let mode):
-                state.repeatMode = mode
-                guard state.pendingRepeatChange?.target == mode else {
-                    return .none
-                }
-                state.pendingRepeatChange = nil
-                return .cancel(id: CancelID.repeatModeChange)
-
-            case .toggleShuffleRequested:
-                guard state.pendingShuffleChange == nil else {
-                    return .none
-                }
-                let target: PlaybackShuffleMode =
-                    state.shuffleMode == .off ? .songs : .off
-                return .send(.shuffleModeChangeRequested(target))
-
-            case .shuffleModeChangeRequested(let target):
-                guard !state.tracks.isEmpty,
-                    state.currentTrackID != nil,
-                    state.pendingShuffleChange == nil
-                else { return .none }
-                let requestID = uuid()
-                state.pendingShuffleChange = PendingShuffleChange(
-                    requestID: requestID,
-                    target: target
-                )
-                return .run { send in
-                    do {
-                        try await playbackQueue.setShuffle(target)
-                        try Task.checkCancellation()
-                        await send(
-                            .shuffleModeChangeSucceeded(requestID: requestID)
-                        )
-                    } catch is CancellationError {
-                        return
-                    } catch let error as MusicProviderError {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .shuffleModeChangeFailed(
-                                requestID: requestID,
-                                error: error
-                            )
-                        )
-                    } catch {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .shuffleModeChangeFailed(
-                                requestID: requestID,
-                                error: .playbackFailed
-                            )
-                        )
-                    }
-                }
-                .cancellable(id: CancelID.shuffleModeChange)
-
-            case .shuffleModeChangeSucceeded(let requestID):
-                guard let pending = state.pendingShuffleChange,
-                    pending.requestID == requestID
-                else { return .none }
-                state.shuffleMode = pending.target
-                state.pendingShuffleChange = nil
-                return .none
-
-            case .shuffleModeChangeFailed(let requestID, let error):
-                guard state.pendingShuffleChange?.requestID == requestID else {
-                    return .none
-                }
-                state.pendingShuffleChange = nil
-                return .send(.delegate(.modeChangeFailed(error)))
-
-            case .shuffleModeObserved(let mode):
-                state.shuffleMode = mode
-                guard state.pendingShuffleChange?.target == mode else {
-                    return .none
-                }
-                state.pendingShuffleChange = nil
-                return .cancel(id: CancelID.shuffleModeChange)
-
-            case .queueTransitionRequested(let direction):
-                guard !state.tracks.isEmpty,
-                    state.currentTrackID != nil,
-                    state.pendingQueueTransition == nil
-                else { return .none }
-                let requestID = uuid()
-                state.pendingQueueTransition = PendingQueueTransition(
-                    requestID: requestID,
-                    direction: direction
-                )
-                return .run { send in
-                    do {
-                        let result = try await playbackQueue.navigate(
-                            direction
-                        )
-                        if result == .boundaryReached {
-                            await send(
-                                .queueTransitionReachedBoundary(
-                                    requestID: requestID
-                                )
-                            )
-                        }
-                    } catch is CancellationError {
-                        return
-                    } catch let error as MusicProviderError {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .queueTransitionFailed(
-                                requestID: requestID,
-                                error: error
-                            )
-                        )
-                    } catch {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .queueTransitionFailed(
-                                requestID: requestID,
-                                error: .playbackFailed
-                            )
-                        )
-                    }
-                }
-                .cancellable(id: CancelID.queueTransition)
-
-            case .queueTransitionReachedBoundary(let requestID):
-                guard state.pendingQueueTransition?.requestID == requestID else {
-                    return .none
-                }
-                state.pendingQueueTransition = nil
-                return .none
-
-            case .queueTransitionFailed(let requestID, let error):
-                guard state.pendingQueueTransition?.requestID == requestID else {
-                    return .none
-                }
-                state.pendingQueueTransition = nil
-                return .send(.delegate(.queueTransitionFailed(error)))
-
-            case .cancelQueueTransition:
-                state.pendingQueueTransition = nil
-                return .cancel(id: CancelID.queueTransition)
 
             case .reset:
                 state.tracks = []
+                state.playbackOrder = PlaybackQueueOrder(trackIDs: [])
                 state.currentTrackID = nil
                 state.repeatMode = .off
                 state.shuffleMode = .off
-                state.pendingQueueTransition = nil
-                state.pendingRepeatChange = nil
-                state.pendingShuffleChange = nil
-                return .merge(
-                    .cancel(id: CancelID.queueTransition),
-                    .cancel(id: CancelID.repeatModeChange),
-                    .cancel(id: CancelID.shuffleModeChange)
-                )
+                return .none
 
             case .delegate:
                 return .none
@@ -344,5 +126,37 @@ extension PlaybackQueueFeature.State {
     var currentTrack: Track? {
         guard let currentTrackID else { return nil }
         return tracks[id: currentTrackID]
+    }
+
+    var previousTrackID: TrackID? {
+        guard let currentTrackID else { return nil }
+        return playbackOrder.previousTrackID(before: currentTrackID)
+    }
+
+    var nextTrackID: TrackID? {
+        guard let currentTrackID else { return nil }
+        return playbackOrder.nextTrackID(after: currentTrackID)
+    }
+
+    var upNextTrackIDs: [TrackID] {
+        guard let currentTrackID else { return [] }
+        return playbackOrder.trackIDs(after: currentTrackID)
+    }
+
+    /// Returns the identity playback should advance to after a track finishes.
+    ///
+    /// - Parameter completedTrackID: The identity reported as finished.
+    /// - Returns: The next identity under the confirmed Repeat mode, or `nil`
+    ///   when the report is stale or the queue has ended.
+    func automaticTrackID(after completedTrackID: TrackID) -> TrackID? {
+        guard completedTrackID == currentTrackID else { return nil }
+        switch repeatMode {
+        case .one:
+            return currentTrackID
+        case .all:
+            return nextTrackID ?? playbackOrder.firstTrackID
+        case .off:
+            return nextTrackID
+        }
     }
 }

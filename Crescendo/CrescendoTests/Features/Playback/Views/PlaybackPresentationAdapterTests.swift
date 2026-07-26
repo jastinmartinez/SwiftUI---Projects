@@ -352,12 +352,13 @@ struct PlaybackPresentationAdapterTests {
             makePlaybackStore(song: song),
             providerName: nil
         )
-        let pendingModel = PlaybackView.Model(
+        let resettingModel = PlaybackView.Model(
             makePlaybackStore(
                 song: song,
-                pendingQueueTransition: .init(
+                pendingProviderReset: .init(
                     requestID: UUID(0),
-                    direction: .next
+                    providerID: song.id.providerID,
+                    capabilities: .allEnabled
                 )
             ),
             providerName: nil
@@ -365,8 +366,8 @@ struct PlaybackPresentationAdapterTests {
 
         #expect(enabledModel.controls.previous.isEnabled)
         #expect(enabledModel.controls.next.isEnabled)
-        #expect(!pendingModel.controls.previous.isEnabled)
-        #expect(!pendingModel.controls.next.isEnabled)
+        #expect(!resettingModel.controls.previous.isEnabled)
+        #expect(!resettingModel.controls.next.isEnabled)
         #expect(enabledModel.controls.previous.systemImage == "backward.fill")
         #expect(enabledModel.controls.next.systemImage == "forward.fill")
         #expect(enabledModel.controls.primary.state == .play)
@@ -383,11 +384,7 @@ struct PlaybackPresentationAdapterTests {
         let store = makePlaybackStore(
             song: makeTrack(),
             repeatMode: .one,
-            shuffleMode: .songs,
-            pendingRepeatChange: .init(
-                requestID: UUID(0),
-                target: .off
-            )
+            shuffleMode: .tracks
         )
         let controls = PlaybackControlsView.Model(store)
 
@@ -398,7 +395,7 @@ struct PlaybackPresentationAdapterTests {
         #expect(controls.repeatMode.systemImage == "repeat.1")
         #expect(controls.repeatMode.isSelected)
         #expect(controls.repeatMode.accessibilityValue == Locs.Playback.Mode.one)
-        #expect(!controls.repeatMode.isEnabled)
+        #expect(controls.repeatMode.isEnabled)
     }
 
     @Test(arguments: [
@@ -495,9 +492,6 @@ struct PlaybackPresentationAdapterTests {
         timelineInteraction: PlaybackTimelineFeature.Interaction = .idle,
         repeatMode: PlaybackRepeatMode = .off,
         shuffleMode: PlaybackShuffleMode = .off,
-        pendingQueueTransition: PlaybackQueueFeature.PendingQueueTransition? = nil,
-        pendingRepeatChange: PlaybackQueueFeature.PendingRepeatChange? = nil,
-        pendingShuffleChange: PlaybackQueueFeature.PendingShuffleChange? = nil,
         pendingOperation: PlaybackFeature.PendingOperation? = nil,
         pendingProviderReset: PlaybackFeature.PendingProviderReset? = nil
     ) -> StoreOf<PlaybackFeature> {
@@ -507,12 +501,10 @@ struct PlaybackPresentationAdapterTests {
                 providerID: song?.id.providerID ?? "fake",
                 queue: PlaybackQueueFeature.State(
                     tracks: tracks,
+                    playbackOrder: PlaybackQueueOrder(trackIDs: Array(tracks.ids)),
                     currentTrackID: song?.id,
                     repeatMode: repeatMode,
-                    shuffleMode: shuffleMode,
-                    pendingQueueTransition: pendingQueueTransition,
-                    pendingRepeatChange: pendingRepeatChange,
-                    pendingShuffleChange: pendingShuffleChange
+                    shuffleMode: shuffleMode
                 ),
                 status: status,
                 failure: failure,
@@ -541,12 +533,10 @@ struct PlaybackPresentationAdapterTests {
                 providerID: song.id.providerID,
                 queue: .init(
                     tracks: tracks,
+                    playbackOrder: PlaybackQueueOrder(trackIDs: Array(tracks.ids)),
                     currentTrackID: song.id,
                     repeatMode: .off,
-                    shuffleMode: .off,
-                    pendingQueueTransition: nil,
-                    pendingRepeatChange: nil,
-                    pendingShuffleChange: nil
+                    shuffleMode: .off
                 ),
                 status: .playing,
                 failure: nil,

@@ -115,12 +115,10 @@ struct AppPlaybackCoordinationTests {
         let store = makeStore(
             playbackQueue: .init(
                 tracks: currentQueue,
+                playbackOrder: PlaybackQueueOrder(trackIDs: Array(currentQueue.ids)),
                 currentTrackID: currentSongs[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             ),
             isPlayerPresented: false
         ) {
@@ -188,12 +186,10 @@ struct AppPlaybackCoordinationTests {
         var state = makeState(
             playbackQueue: PlaybackQueueFeature.State(
                 tracks: firstPage,
+                playbackOrder: PlaybackQueueOrder(trackIDs: Array(firstPage.ids)),
                 currentTrackID: firstPageSongs[0].id,
                 repeatMode: .off,
-                shuffleMode: .off,
-                pendingQueueTransition: nil,
-                pendingRepeatChange: nil,
-                pendingShuffleChange: nil
+                shuffleMode: .off
             )
         )
         state.search.status = .loaded(
@@ -344,12 +340,10 @@ struct AppPlaybackCoordinationTests {
         ),
         playbackQueue: PlaybackQueueFeature.State = .init(
             tracks: [],
+            playbackOrder: PlaybackQueueOrder(trackIDs: []),
             currentTrackID: nil,
             repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
+            shuffleMode: .off
         ),
         isPlayerPresented: Bool = false,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
@@ -376,12 +370,10 @@ struct AppPlaybackCoordinationTests {
         ),
         playbackQueue: PlaybackQueueFeature.State = .init(
             tracks: [],
+            playbackOrder: PlaybackQueueOrder(trackIDs: []),
             currentTrackID: nil,
             repeatMode: .off,
-            shuffleMode: .off,
-            pendingQueueTransition: nil,
-            pendingRepeatChange: nil,
-            pendingShuffleChange: nil
+            shuffleMode: .off
         ),
         isPlayerPresented: Bool = false,
         providerSwitch: ProviderSwitchFeature.State? = nil
