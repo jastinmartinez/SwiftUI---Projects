@@ -215,8 +215,16 @@ struct PlaybackFeature {
                 )
                 state.playbackEligibility = .eligible
                 state.failureNotice = nil
-                return .send(
-                    .resolveTransition(requestID: requestID, trackID: trackID)
+                // A newer selection supersedes an older transport request.
+                state.pendingStatusChange = nil
+                return .concatenate(
+                    .cancel(id: CancelID.statusChange),
+                    .send(
+                        .resolveTransition(
+                            requestID: requestID,
+                            trackID: trackID
+                        )
+                    )
                 )
 
             case .resolveTransition(let requestID, let trackID):
@@ -405,10 +413,15 @@ struct PlaybackFeature {
                     target: .stopped
                 )
                 state.failureNotice = nil
-                return .send(
-                    .performStatusChange(
-                        requestID: requestID,
-                        target: .stopped
+                // Stopping abandons the track that is about to play.
+                state.pendingPlaybackTransition = nil
+                return .concatenate(
+                    .cancel(id: CancelID.playbackTransition),
+                    .send(
+                        .performStatusChange(
+                            requestID: requestID,
+                            target: .stopped
+                        )
                     )
                 )
 
