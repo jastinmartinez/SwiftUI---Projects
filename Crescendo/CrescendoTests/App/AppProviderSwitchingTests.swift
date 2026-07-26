@@ -153,6 +153,7 @@ struct AppProviderSwitchingTests {
         await store.receive(.playback(.timeline(.reset))) {
             $0.playback.timeline = PlaybackTimelineFeature.State(
                 confirmedPosition: 0,
+                duration: nil,
                 interaction: .idle
             )
         }
@@ -331,12 +332,27 @@ struct AppProviderSwitchingTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackTransport.pause = { try await Task.sleep(for: .seconds(60)) }
-            $0.providerAccess.currentAccess = { _ in
-                return MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
-                )
-            }
+            let accessClient = ProviderAccessClient(
+                currentAccess: {
+                    MusicProviderAccess(
+                        authorization: .authorized,
+                        playbackEligibility: .eligible
+                    )
+                },
+                requestAccess: {
+                    MusicProviderAccess(
+                        authorization: .authorized,
+                        playbackEligibility: .eligible
+                    )
+                }
+            )
+            $0.providerAccessClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: accessClient,
+                    "future": accessClient,
+                    "third": accessClient,
+                ]
+            )
             $0.playbackObservation.observations = {
                 AsyncStream { $0.finish() }
             }
@@ -401,6 +417,7 @@ struct AppProviderSwitchingTests {
                 capabilities: .allEnabled,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: 42,
+                    duration: nil,
                     interaction: .idle
                 ),
                 pendingPlaybackTransition: pendingPlaybackTransition,

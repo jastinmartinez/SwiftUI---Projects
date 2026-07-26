@@ -3,8 +3,10 @@
 @MainActor
 struct AVPlayerItemPreparer {
     let loadIsPlayable: (AVURLAsset) async throws -> Bool
+    let makeItem: (AVURLAsset) -> AVPlayerItem
 
-    /// Validates a resolved resource before creating its player item.
+    /// Validates a resolved resource before creating its player item with the
+    /// configured item factory.
     ///
     /// - Parameter resource: The provider-resolved location to inspect.
     /// - Returns: An item whose asset reported that it is playable.
@@ -16,7 +18,7 @@ struct AVPlayerItemPreparer {
             guard try await loadIsPlayable(asset) else {
                 throw PlaybackFailure.unsupportedResource
             }
-            return AVPlayerItem(asset: asset)
+            return makeItem(asset)
         } catch let failure as PlaybackFailure {
             throw failure
         } catch {
@@ -26,10 +28,19 @@ struct AVPlayerItemPreparer {
 }
 
 extension AVPlayerItemPreparer {
+    /// Creates the production preparer backed by AVFoundation asset loading and
+    /// player-item creation.
+    ///
+    /// Item creation is injected explicitly so tests can use deterministic
+    /// in-memory items without loading network resources. Installation remains
+    /// the separate responsibility of `AVPlayerItemInstaller`.
     static func live() -> Self {
         Self(
             loadIsPlayable: { asset in
                 try await asset.load(.isPlayable)
+            },
+            makeItem: { asset in
+                AVPlayerItem(asset: asset)
             }
         )
     }

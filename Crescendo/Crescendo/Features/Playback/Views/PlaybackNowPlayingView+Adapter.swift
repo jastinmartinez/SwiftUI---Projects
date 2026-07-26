@@ -1,16 +1,24 @@
 import ComposableArchitecture
 
 extension PlaybackNowPlayingView.Model {
-    /// Projects a selected song and playback state into compact-player presentation.
+    /// Projects compact playback only when a confirmed queue item exists.
     ///
-    /// A pending status change takes precedence over confirmed status so the visible
-    /// Play/Pause action responds immediately while the provider confirms the request.
+    /// Pending targets are intentionally ignored so compact playback never replaces
+    /// confirmed metadata before the player reports the transition.
     ///
-    /// - Parameters:
-    ///   - store: The playback store supplying state and receiving callbacks.
-    ///   - song: The confirmed queue item represented by the compact player.
+    /// - Parameter store: The playback store supplying confirmed state and actions.
     @MainActor
-    init(_ store: StoreOf<PlaybackFeature>, song: Track) {
+    init?(_ store: StoreOf<PlaybackFeature>) {
+        guard let track = store.queue.currentTrack else { return nil }
+        self.init(store, track: track, strings: .localized)
+    }
+
+    @MainActor
+    private init(
+        _ store: StoreOf<PlaybackFeature>,
+        track: Track,
+        strings: Strings
+    ) {
         let isPlaying: Bool
         if let change = store.pendingStatusChange {
             isPlaying = change.target == .playing
@@ -19,17 +27,25 @@ extension PlaybackNowPlayingView.Model {
         }
 
         self.init(
-            title: song.title,
-            artistName: song.artistName,
-            artworkURL: song.artworkURL,
+            title: track.title,
+            artistName: track.artistName,
+            artworkURL: track.artworkURL,
             isPlaying: isPlaying,
-            isPlayEnabled: store.canRequestPlayPause,
+            isPlayPauseEnabled: store.canRequestPlayPause,
             playPauseAccessibilityLabel: isPlaying
-                ? Locs.Playback.pause
-                : Locs.Playback.play,
+                ? strings.pause
+                : strings.play,
             timeline: PlaybackTimelineView.Model(store),
             onOpenPlayer: { store.send(.setPlayerPresented(true)) },
             onTogglePlayPause: { store.send(.playPauseTapped) }
         )
     }
+}
+
+extension PlaybackNowPlayingView.Model.Strings {
+    /// Production localization wiring for compact playback.
+    static let localized = Self(
+        play: Locs.Playback.play,
+        pause: Locs.Playback.pause
+    )
 }

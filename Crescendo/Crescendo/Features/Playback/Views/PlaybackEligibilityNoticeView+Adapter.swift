@@ -29,7 +29,7 @@ extension PlaybackEligibilityNoticeView.Model {
                 .hidden
             }
 
-        self.init(presentation: presentation)
+        self.init(presentation: presentation, strings: .localized)
     }
 
     /// Projects expanded-player eligibility into its user-facing presentation.
@@ -47,6 +47,14 @@ extension PlaybackEligibilityNoticeView.Model {
                 .availabilityUnknown
             }
 
-        self.init(presentation: presentation)
+        self.init(presentation: presentation, strings: .localized)
     }
+}
+
+extension PlaybackEligibilityNoticeView.Model.Strings {
+    /// Production localization wiring for playback eligibility.
+    static let localized = Self(
+        subscriptionRequired: Locs.MusicAccess.subscriptionRequired,
+        availabilityUnknown: Locs.MusicAccess.availabilityUnknown
+    )
 }

@@ -13,6 +13,28 @@ extension PlaybackView.Model {
     ///     when no attribution should be rendered.
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>, providerName: String?) {
+        self.init(
+            store,
+            providerName: providerName,
+            strings: .localized
+        )
+    }
+
+    /// Projects playback state using an explicitly supplied localization bundle.
+    ///
+    /// This initializer keeps failure wording outside reducer state and makes the
+    /// projection independently testable.
+    ///
+    /// - Parameters:
+    ///   - store: The playback store supplying domain state and receiving callbacks.
+    ///   - providerName: The connected provider name shown as attribution, or `nil`.
+    ///   - strings: Localized transient-state strings used by the projection.
+    @MainActor
+    init(
+        _ store: StoreOf<PlaybackFeature>,
+        providerName: String?,
+        strings: Strings
+    ) {
         let statusText: String
         if let change = store.pendingStatusChange {
             switch change.target {
@@ -24,11 +46,19 @@ extension PlaybackView.Model {
                 statusText = Locs.Playback.Status.stopped
             }
         } else if store.pendingPlaybackTransition != nil {
-            statusText = Locs.Playback.Status.loading
-        } else if store.failureNotice?.failure == .resourceUnavailable {
-            statusText = Locs.Playback.Status.unavailable
-        } else if store.failureNotice != nil {
-            statusText = Locs.Playback.Status.failed
+            statusText = strings.loading
+        } else if let failure = store.failureNotice?.failure {
+            statusText =
+                switch failure {
+                case .resourceUnavailable:
+                    strings.resourceUnavailable
+                case .unsupportedResource:
+                    strings.unsupportedResource
+                case .preparationFailed:
+                    strings.preparationFailed
+                case .playbackFailed:
+                    strings.playbackFailed
+                }
         } else {
             switch store.status {
             case .idle:
@@ -44,15 +74,19 @@ extension PlaybackView.Model {
             }
         }
 
-        let song = store.queue.currentTrack
+        let confirmedTrack = store.queue.currentTrack
+        let pendingTrack = store.pendingPlaybackTransition.flatMap {
+            $0.queue[id: $0.targetTrackID]
+        }
+        let displayedTrack = confirmedTrack ?? pendingTrack
 
         let timeline = PlaybackTimelineView.Model(store)
 
         self.init(
-            artworkURL: song?.artworkURL,
+            artworkURL: displayedTrack?.artworkURL,
             metadata: PlaybackMetadataView.Model(
-                title: song?.title ?? Locs.Playback.noSelection,
-                artistName: song?.artistName,
+                title: displayedTrack?.title ?? Locs.Playback.noSelection,
+                artistName: displayedTrack?.artistName,
                 providerAttribution: providerName.map(Locs.Playback.playingFrom),
                 statusText: statusText
             ),
@@ -62,7 +96,19 @@ extension PlaybackView.Model {
             },
             controls: PlaybackControlsView.Model(store),
             utilityControls: PlaybackUtilityControlsView.Model(store),
+            upNext: PlaybackUpNextView.Model(store),
             eligibility: PlaybackEligibilityNoticeView.Model(store)
         )
     }
+}
+
+extension PlaybackView.Model.Strings {
+    /// Production localization wiring for transient playback presentation.
+    static let localized = Self(
+        loading: Locs.Playback.Status.loading,
+        resourceUnavailable: Locs.Playback.Failure.resourceUnavailable,
+        unsupportedResource: Locs.Playback.Failure.unsupportedResource,
+        preparationFailed: Locs.Playback.Failure.preparationFailed,
+        playbackFailed: Locs.Playback.Failure.playbackFailed
+    )
 }

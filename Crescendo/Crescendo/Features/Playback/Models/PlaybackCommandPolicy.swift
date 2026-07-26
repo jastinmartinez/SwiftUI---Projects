@@ -1,8 +1,11 @@
+import Foundation
+
 /// Derives playback-command validity from confirmed state and pending workflows.
 struct PlaybackCommandPolicy: Equatable {
     let capabilities: MusicProviderCapabilities
     let queue: PlaybackQueueFeature.State
     let status: PlaybackStatus
+    let duration: TimeInterval?
     let pendingPlaybackTransition: PendingPlaybackTransition?
     let pendingStatusChange: PlaybackFeature.PendingStatusChange?
     let isResettingProvider: Bool
@@ -29,7 +32,8 @@ struct PlaybackCommandPolicy: Equatable {
                 && pendingStatusChange == nil
         case .seek:
             return capabilities.supportsSeeking
-                && queue.currentTrack?.duration.map { $0 > 0 } == true
+                && queue.currentTrackID != nil
+                && duration.map { $0 > 0 } == true
                 && pendingPlaybackTransition == nil
         case .previous:
             return pendingPlaybackTransition == nil

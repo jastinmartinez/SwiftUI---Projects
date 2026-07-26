@@ -17,17 +17,43 @@ struct SearchPaginationFeatureTests {
             tracks: [duplicate, second],
             nextCursor: nextCursor
         )
-        let store = makeStore(
-            tracks: [first],
-            nextCursor: cursor,
-            status: .idle,
-            nextPage: page
-        )
+        let appleMusicSearchCount = LockIsolated(0)
+        let jamendoSearchCount = LockIsolated(0)
+        let store = TestStore(
+            initialState: SearchPaginationFeature.State(
+                tracks: [first],
+                nextCursor: cursor,
+                status: .idle,
+                providerID: .jamendo
+            )
+        ) {
+            SearchPaginationFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.providerSearchClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderSearchClient(
+                        searchPage: { _, _ in
+                            appleMusicSearchCount.withValue { $0 += 1 }
+                            return SearchPage(tracks: [], nextCursor: nil)
+                        }
+                    ),
+                    .jamendo: ProviderSearchClient(
+                        searchPage: { request, limit in
+                            jamendoSearchCount.withValue { $0 += 1 }
+                            #expect(request == .continuation(cursor))
+                            #expect(limit == 20)
+                            return page
+                        }
+                    ),
+                ]
+            )
+        }
 
         await store.send(.nextPageRequested)
         await store.receive(
             .continueSearch(
-                providerID: .appleMusic,
+                providerID: .jamendo,
                 cursor: cursor,
                 requestID: UUID(0)
             )
@@ -41,6 +67,55 @@ struct SearchPaginationFeatureTests {
             $0.nextCursor = nextCursor
             $0.status = .idle
         }
+
+        #expect(appleMusicSearchCount.value == 0)
+        #expect(jamendoSearchCount.value == 1)
+    }
+
+    @Test
+    func missingSearchRegistrationFailsClosedWithoutUsingAnotherProvider() async {
+        let appleMusicSearchCount = LockIsolated(0)
+        let cursor = SearchCursor(value: "page-2")
+        let store = TestStore(
+            initialState: SearchPaginationFeature.State(
+                tracks: [],
+                nextCursor: cursor,
+                status: .idle,
+                providerID: .jamendo
+            )
+        ) {
+            SearchPaginationFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.providerSearchClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderSearchClient(
+                        searchPage: { _, _ in
+                            appleMusicSearchCount.withValue { $0 += 1 }
+                            return SearchPage(tracks: [], nextCursor: nil)
+                        }
+                    )
+                ]
+            )
+        }
+
+        await store.send(.nextPageRequested)
+        await store.receive(
+            .continueSearch(
+                providerID: .jamendo,
+                cursor: cursor,
+                requestID: UUID(0)
+            )
+        ) {
+            $0.status = .loading(requestID: UUID(0))
+        }
+        await store.receive(
+            .searchPageResponse(UUID(0), .failure(.noActiveProvider))
+        ) {
+            $0.status = .failed(.noActiveProvider)
+        }
+
+        #expect(appleMusicSearchCount.value == 0)
     }
 
     @Test
@@ -54,10 +129,18 @@ struct SearchPaginationFeatureTests {
         let store = TestStore(initialState: state) {
             SearchPaginationFeature()
         } withDependencies: {
-            $0.providerSearch.searchPage = { _, _, _ in
-                Issue.record("An exhausted search must not request another page")
-                return SearchPage(tracks: [], nextCursor: nil)
-            }
+            $0.providerSearchClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderSearchClient(
+                        searchPage: { _, _ in
+                            Issue.record(
+                                "An exhausted search must not request another page"
+                            )
+                            return SearchPage(tracks: [], nextCursor: nil)
+                        }
+                    )
+                ]
+            )
         }
 
         await store.send(.nextPageRequested)
@@ -76,10 +159,18 @@ struct SearchPaginationFeatureTests {
         let store = TestStore(initialState: state) {
             SearchPaginationFeature()
         } withDependencies: {
-            $0.providerSearch.searchPage = { _, _, _ in
-                Issue.record("An unresolved request must reject duplicate work")
-                return SearchPage(tracks: [], nextCursor: nil)
-            }
+            $0.providerSearchClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderSearchClient(
+                        searchPage: { _, _ in
+                            Issue.record(
+                                "An unresolved request must reject duplicate work"
+                            )
+                            return SearchPage(tracks: [], nextCursor: nil)
+                        }
+                    )
+                ]
+            )
         }
 
         await store.send(.nextPageRequested)
@@ -140,14 +231,19 @@ struct SearchPaginationFeatureTests {
             SearchPaginationFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { providerID, request, _ in
-                #expect(providerID == .appleMusic)
-                let expectedRequest = SearchPageRequest.continuation(
-                    SearchCursor(value: "page-2")
-                )
-                #expect(request == expectedRequest)
-                return try await Task.never()
-            }
+            $0.providerSearchClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderSearchClient(
+                        searchPage: { request, _ in
+                            let expectedRequest = SearchPageRequest.continuation(
+                                SearchCursor(value: "page-2")
+                            )
+                            #expect(request == expectedRequest)
+                            return try await Task.never()
+                        }
+                    )
+                ]
+            )
         }
 
         await store.send(.nextPageRequested)
@@ -184,16 +280,23 @@ struct SearchPaginationFeatureTests {
             SearchPaginationFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { providerID, request, limit in
-                #expect(providerID == .appleMusic)
-                guard let nextCursor else {
-                    Issue.record("Pagination requires a continuation cursor")
-                    return SearchPage(tracks: [], nextCursor: nil)
-                }
-                #expect(request == .continuation(nextCursor))
-                #expect(limit == 20)
-                return nextPage
-            }
+            $0.providerSearchClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderSearchClient(
+                        searchPage: { request, limit in
+                            guard let nextCursor else {
+                                Issue.record(
+                                    "Pagination requires a continuation cursor"
+                                )
+                                return SearchPage(tracks: [], nextCursor: nil)
+                            }
+                            #expect(request == .continuation(nextCursor))
+                            #expect(limit == 20)
+                            return nextPage
+                        }
+                    )
+                ]
+            )
         }
     }
 

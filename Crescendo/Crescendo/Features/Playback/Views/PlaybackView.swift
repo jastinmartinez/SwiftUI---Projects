@@ -38,6 +38,10 @@ struct PlaybackView: View {
                     PlaybackUtilityControlsView(model: model.utilityControls)
                 }
 
+                if let upNext = model.upNext {
+                    PlaybackUpNextView(model: upNext)
+                }
+
                 PlaybackEligibilityNoticeView(model: model.eligibility)
             }
             .frame(maxWidth: .infinity)
@@ -60,6 +64,18 @@ extension PlaybackView {
         let skipControls: PlaybackSkipControlsView.Model?
         let controls: PlaybackControlsView.Model
         let utilityControls: PlaybackUtilityControlsView.Model
+        let upNext: PlaybackUpNextView.Model?
         let eligibility: PlaybackEligibilityNoticeView.Model
+    }
+}
+
+extension PlaybackView.Model {
+    /// Localized copy used while projecting transient playback state.
+    struct Strings {
+        let loading: String
+        let resourceUnavailable: String
+        let unsupportedResource: String
+        let preparationFailed: String
+        let playbackFailed: String
     }
 }

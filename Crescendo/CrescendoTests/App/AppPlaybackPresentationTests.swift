@@ -34,6 +34,7 @@ struct AppPlaybackPresentationTests {
             capabilities: .allEnabled,
             timeline: PlaybackTimelineFeature.State(
                 confirmedPosition: 42,
+                duration: nil,
                 interaction: .idle
             ),
             pendingPlaybackTransition: nil,

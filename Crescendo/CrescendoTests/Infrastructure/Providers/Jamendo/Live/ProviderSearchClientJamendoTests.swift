@@ -15,7 +15,7 @@ struct ProviderSearchClientJamendoTests {
         )
         let client = ProviderSearchClient.live(jamendo: api)
 
-        let page = try await client.searchPage(.jamendo, .initial(query: "x"), 10)
+        let page = try await client.searchPage(.initial(query: "x"), 10)
 
         #expect(page.tracks.count == 1)
         #expect(page.nextCursor == nil)
@@ -37,7 +37,7 @@ struct ProviderSearchClientJamendoTests {
         let client = ProviderSearchClient.live(jamendo: api)
         let cursor = try JamendoSearchCursor(query: "jazz", offset: 20).searchCursor()
 
-        let page = try await client.searchPage(.jamendo, .continuation(cursor), 5)
+        let page = try await client.searchPage(.continuation(cursor), 5)
 
         let request = try #require(await capturedRequest.request)
         let url = try #require(request.url)
@@ -69,7 +69,7 @@ struct ProviderSearchClientJamendoTests {
         )
         let client = ProviderSearchClient.live(jamendo: api)
 
-        _ = try await client.searchPage(.jamendo, .initial(query: "x"), 37)
+        _ = try await client.searchPage(.initial(query: "x"), 37)
 
         let request = try #require(await capturedRequest.request)
         let url = try #require(request.url)

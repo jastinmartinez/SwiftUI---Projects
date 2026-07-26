@@ -9,6 +9,23 @@
 struct AVPlayerObservation {
     let player: AVPlayer
     let registry: AVPlayerItemRegistry
+    private let itemStatusObserver: AVPlayerItemStatusObserver
+
+    /// Creates a mapper with an explicit item-status registration mechanism.
+    ///
+    /// - Parameters:
+    ///   - player: The shared player whose state is mapped.
+    ///   - registry: The shared item-to-track identity registry.
+    ///   - itemStatusObserver: The AVFoundation status-observation boundary.
+    init(
+        player: AVPlayer,
+        registry: AVPlayerItemRegistry,
+        itemStatusObserver: AVPlayerItemStatusObserver
+    ) {
+        self.player = player
+        self.registry = registry
+        self.itemStatusObserver = itemStatusObserver
+    }
 
     /// Creates a playback-observation stream backed by one cancellable subscription.
     ///
@@ -19,7 +36,8 @@ struct AVPlayerObservation {
     func observations() -> AsyncStream<PlaybackObservation> {
         AsyncStream { continuation in
             let subscription = AVPlayerObservationSubscription(
-                player: player
+                player: player,
+                itemStatusObserver: itemStatusObserver
             ) { [self] event in
                 guard let observation = observation(for: event) else { return }
                 continuation.yield(observation)

@@ -4,23 +4,16 @@ import Testing
 @testable import Crescendo
 
 struct AVPlayerObservationTests {
-    /// Collects observations delivered on the Main Actor so a terminated stream
-    /// can be inspected without capturing a mutable local in a `@Sendable` task.
-    @MainActor
-    private final class Recorder {
-        private(set) var observations: [PlaybackObservation] = []
-
-        func append(_ observation: PlaybackObservation) {
-            observations.append(observation)
-        }
-    }
-
     @Test
     @MainActor
     func initialSnapshotReportsRegisteredTrackID() async throws {
         let player = AVPlayer()
         let registry = AVPlayerItemRegistry()
-        let observation = AVPlayerObservation(player: player, registry: registry)
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: .live
+        )
         let item = AVPlayerItemFixture.make()
         let trackID = TrackID(providerID: .jamendo, nativeID: "initial")
         registry.register(item, trackID: trackID)
@@ -48,7 +41,11 @@ struct AVPlayerObservationTests {
     func identityFollowsCurrentItemIndependentlyOfTransportStatus() async throws {
         let player = AVPlayer()
         let registry = AVPlayerItemRegistry()
-        let observation = AVPlayerObservation(player: player, registry: registry)
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: .live
+        )
 
         let itemA = AVPlayerItemFixture.make()
         let trackA = TrackID(providerID: .jamendo, nativeID: "a")
@@ -88,7 +85,11 @@ struct AVPlayerObservationTests {
     func completionNotificationYieldsCompletedTrackID() async throws {
         let player = AVPlayer()
         let registry = AVPlayerItemRegistry()
-        let observation = AVPlayerObservation(player: player, registry: registry)
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: .live
+        )
         let item = AVPlayerItemFixture.make()
         let trackID = TrackID(providerID: .jamendo, nativeID: "completed")
         registry.register(item, trackID: trackID)
@@ -116,7 +117,11 @@ struct AVPlayerObservationTests {
     func failureNotificationYieldsFailedTrackIDWithPlaybackFailed() async throws {
         let player = AVPlayer()
         let registry = AVPlayerItemRegistry()
-        let observation = AVPlayerObservation(player: player, registry: registry)
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: .live
+        )
         let item = AVPlayerItemFixture.make()
         let trackID = TrackID(providerID: .jamendo, nativeID: "failed")
         registry.register(item, trackID: trackID)
@@ -139,6 +144,275 @@ struct AVPlayerObservationTests {
         #expect(failed == .failed(trackID, .playbackFailed))
     }
 
+    @Test
+    @MainActor
+    func activeItemStatusFailureYieldsFailedTrackIDExactlyOnce() async throws {
+        let player = AVPlayer()
+        let registry = AVPlayerItemRegistry()
+        let statusProbe = ItemStatusObservationProbe()
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: statusProbe.observer
+        )
+        let item = AVPlayerItemFixture.make()
+        let trackID = TrackID(providerID: .jamendo, nativeID: "status-failed")
+        registry.register(item, trackID: trackID)
+        player.replaceCurrentItem(with: item)
+
+        var iterator = observation.observations().makeAsyncIterator()
+        _ = await iterator.next()
+
+        statusProbe.send(.failed, for: item)
+        NotificationCenter.default.post(
+            name: AVPlayerItem.failedToPlayToEndTimeNotification,
+            object: item
+        )
+        NotificationCenter.default.post(
+            name: AVPlayerItem.didPlayToEndTimeNotification,
+            object: item
+        )
+
+        var failures: [PlaybackObservation] = []
+        while let next = await iterator.next() {
+            if case .failed = next {
+                failures.append(next)
+            }
+            if case .completed = next {
+                break
+            }
+        }
+
+        #expect(failures == [.failed(trackID, .playbackFailed)])
+    }
+
+    @Test
+    @MainActor
+    func replacingCurrentItemInvalidatesOldStatusObservation() async throws {
+        let player = AVPlayer()
+        let registry = AVPlayerItemRegistry()
+        let statusProbe = ItemStatusObservationProbe()
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: statusProbe.observer
+        )
+        let oldItem = AVPlayerItemFixture.make()
+        let oldTrackID = TrackID(providerID: .jamendo, nativeID: "old")
+        registry.register(oldItem, trackID: oldTrackID)
+        let currentItem = AVPlayerItemFixture.make()
+        let currentTrackID = TrackID(providerID: .localMusic, nativeID: "current")
+        registry.register(currentItem, trackID: currentTrackID)
+        player.replaceCurrentItem(with: oldItem)
+
+        var iterator = observation.observations().makeAsyncIterator()
+        _ = await iterator.next()
+
+        statusProbe.queue(.failed, for: oldItem)
+        player.replaceCurrentItem(with: currentItem)
+        var installedCurrentItem = false
+        while let next = await iterator.next() {
+            guard case .snapshot(let snapshot) = next else { continue }
+            if snapshot.currentTrackID == currentTrackID {
+                installedCurrentItem = true
+                break
+            }
+        }
+        #expect(installedCurrentItem)
+        #expect(statusProbe.invalidationCount(for: oldItem) == 1)
+        #expect(statusProbe.activeRegistrationCount(for: oldItem) == 0)
+        #expect(statusProbe.activeRegistrationCount(for: currentItem) == 1)
+
+        statusProbe.send(.failed, for: oldItem)
+        statusProbe.send(.failed, for: currentItem)
+        NotificationCenter.default.post(
+            name: AVPlayerItem.didPlayToEndTimeNotification,
+            object: currentItem
+        )
+
+        var failures: [PlaybackObservation] = []
+        while let next = await iterator.next() {
+            if case .failed = next {
+                failures.append(next)
+            }
+            if case .completed = next {
+                break
+            }
+        }
+
+        #expect(failures == [.failed(currentTrackID, .playbackFailed)])
+    }
+
+    @Test
+    @MainActor
+    func cancellingInvalidatesStatusObservationAndDropsQueuedCallback() async {
+        let player = AVPlayer()
+        let item = AVPlayerItemFixture.make()
+        let statusProbe = ItemStatusObservationProbe()
+        player.replaceCurrentItem(with: item)
+
+        let invalidatedRecorder = SubscriptionRecorder()
+        let invalidatedSubscription = AVPlayerObservationSubscription(
+            player: player,
+            itemStatusObserver: statusProbe.observer,
+            receive: invalidatedRecorder.receive
+        )
+        let queuedRecorder = SubscriptionRecorder()
+        let queuedSubscription = AVPlayerObservationSubscription(
+            player: player,
+            itemStatusObserver: statusProbe.observer,
+            receive: queuedRecorder.receive
+        )
+        let liveRecorder = SubscriptionRecorder()
+        let liveSubscription = AVPlayerObservationSubscription(
+            player: player,
+            itemStatusObserver: statusProbe.observer,
+            receive: liveRecorder.receive
+        )
+        await invalidatedRecorder.waitForStateChange()
+        await queuedRecorder.waitForStateChange()
+        await liveRecorder.waitForStateChange()
+
+        invalidatedSubscription.cancel()
+        #expect(statusProbe.invalidationCount == 1)
+        #expect(statusProbe.activeRegistrationCount == 2)
+
+        statusProbe.queue(.failed, for: item)
+        queuedSubscription.cancel()
+        await Task.yield()
+        await Task.yield()
+
+        #expect(invalidatedRecorder.failedItems.isEmpty)
+        #expect(queuedRecorder.failedItems.isEmpty)
+        #expect(liveRecorder.failedItems.count == 1)
+        #expect(statusProbe.invalidationCount == 2)
+        #expect(statusProbe.activeRegistrationCount == 1)
+
+        liveSubscription.cancel()
+        #expect(statusProbe.invalidationCount == 3)
+        #expect(statusProbe.activeRegistrationCount == 0)
+    }
+
+    @Test
+    @MainActor
+    func queuedCurrentItemChangeCannotRegisterStatusAfterCancellation() async {
+        let player = AVPlayer()
+        let initialItem = AVPlayerItemFixture.make()
+        player.replaceCurrentItem(with: initialItem)
+        let statusProbe = ItemStatusObservationProbe()
+        let subscription = AVPlayerObservationSubscription(
+            player: player,
+            itemStatusObserver: statusProbe.observer
+        ) { _ in }
+        let replacementItem = AVPlayerItemFixture.make()
+
+        player.replaceCurrentItem(with: replacementItem)
+        subscription.cancel()
+        await Task.yield()
+        await Task.yield()
+
+        #expect(statusProbe.registrationCount == 1)
+        #expect(statusProbe.invalidationCount == 1)
+        #expect(statusProbe.activeRegistrationCount == 0)
+        #expect(statusProbe.registrationCount(for: replacementItem) == 0)
+    }
+
+    @Test
+    @MainActor
+    func rapidReplacementBackToSameItemStartsANewFailureLifecycle() async {
+        let player = AVPlayer()
+        let itemA = AVPlayerItemFixture.make()
+        let itemB = AVPlayerItemFixture.make()
+        player.replaceCurrentItem(with: itemA)
+        let statusProbe = ItemStatusObservationProbe()
+        let recorder = SubscriptionRecorder()
+        let subscription = AVPlayerObservationSubscription(
+            player: player,
+            itemStatusObserver: statusProbe.observer,
+            receive: recorder.receive
+        )
+
+        statusProbe.send(.failed, for: itemA)
+        #expect(recorder.failedItems.count == 1)
+
+        player.replaceCurrentItem(with: itemB)
+        player.replaceCurrentItem(with: itemA)
+        await Task.yield()
+        await Task.yield()
+
+        #expect(statusProbe.registrationCount(for: itemA) == 2)
+        #expect(statusProbe.invalidationCount(for: itemA) == 1)
+        #expect(statusProbe.registrationCount(for: itemB) == 1)
+        #expect(statusProbe.invalidationCount(for: itemB) == 1)
+        #expect(statusProbe.activeRegistrationCount(for: itemA) == 1)
+        #expect(statusProbe.activeRegistrationCount(for: itemB) == 0)
+
+        statusProbe.send(.failed, for: itemA)
+
+        #expect(recorder.failedItems.count == 2)
+        #expect(recorder.failedItems.allSatisfy { $0 === itemA })
+        subscription.cancel()
+    }
+
+    @Test
+    @MainActor
+    func reinstallingItemStartsANewFailureLifecycle() async {
+        let player = AVPlayer()
+        let registry = AVPlayerItemRegistry()
+        let statusProbe = ItemStatusObservationProbe()
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: statusProbe.observer
+        )
+        let item = AVPlayerItemFixture.make()
+        let trackID = TrackID(providerID: .jamendo, nativeID: "reinstalled")
+        registry.register(item, trackID: trackID)
+        let alternateItem = AVPlayerItemFixture.make()
+        let alternateTrackID = TrackID(providerID: .localMusic, nativeID: "alternate")
+        registry.register(alternateItem, trackID: alternateTrackID)
+        player.replaceCurrentItem(with: item)
+
+        var iterator = observation.observations().makeAsyncIterator()
+        _ = await iterator.next()
+
+        statusProbe.send(.failed, for: item)
+        let firstFailure = await iterator.next()
+        #expect(firstFailure == .failed(trackID, .playbackFailed))
+
+        player.replaceCurrentItem(with: alternateItem)
+        while let next = await iterator.next() {
+            guard case .snapshot(let snapshot) = next else { continue }
+            if snapshot.currentTrackID == alternateTrackID {
+                break
+            }
+        }
+        player.replaceCurrentItem(with: item)
+        while let next = await iterator.next() {
+            guard case .snapshot(let snapshot) = next else { continue }
+            if snapshot.currentTrackID == trackID {
+                break
+            }
+        }
+
+        statusProbe.send(.failed, for: item)
+        NotificationCenter.default.post(
+            name: AVPlayerItem.didPlayToEndTimeNotification,
+            object: item
+        )
+        var failures: [PlaybackObservation] = []
+        while let next = await iterator.next() {
+            if case .failed = next {
+                failures.append(next)
+            }
+            if case .completed = next {
+                break
+            }
+        }
+
+        #expect(failures == [.failed(trackID, .playbackFailed)])
+    }
+
     /// Proves the negative (an unregistered item is ignored) by posting the
     /// unregistered notification first, then a registered sentinel. The
     /// unregistered item resolves to no track, so it can never reach the stream;
@@ -148,7 +422,11 @@ struct AVPlayerObservationTests {
     func notificationsForUnregisteredItemsAreIgnored() async throws {
         let player = AVPlayer()
         let registry = AVPlayerItemRegistry()
-        let observation = AVPlayerObservation(player: player, registry: registry)
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: .live
+        )
 
         let registeredItem = AVPlayerItemFixture.make()
         let registeredTrackID = TrackID(providerID: .jamendo, nativeID: "sentinel")
@@ -184,7 +462,10 @@ struct AVPlayerObservationTests {
     @MainActor
     func cancellingTwiceRemainsSafe() async throws {
         let player = AVPlayer()
-        let subscription = AVPlayerObservationSubscription(player: player) { _ in }
+        let subscription = AVPlayerObservationSubscription(
+            player: player,
+            itemStatusObserver: .live
+        ) { _ in }
 
         subscription.cancel()
         subscription.cancel()
@@ -198,7 +479,10 @@ struct AVPlayerObservationTests {
     func cancellingRemovesObserversAndPeriodicObservation() async throws {
         let player = AVPlayer()
         let recorder = Recorder()
-        let subscription = AVPlayerObservationSubscription(player: player) { event in
+        let subscription = AVPlayerObservationSubscription(
+            player: player,
+            itemStatusObserver: .live
+        ) { event in
             recorder.append(Self.map(event))
         }
 
@@ -220,7 +504,11 @@ struct AVPlayerObservationTests {
     func noQueuedCallbackEmitsAfterCancellation() async throws {
         let player = AVPlayer()
         let registry = AVPlayerItemRegistry()
-        let observation = AVPlayerObservation(player: player, registry: registry)
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: .live
+        )
 
         let itemA = AVPlayerItemFixture.make()
         registry.register(itemA, trackID: TrackID(providerID: .jamendo, nativeID: "a"))
@@ -248,6 +536,145 @@ struct AVPlayerObservationTests {
         await Task.yield()
 
         #expect(recorder.observations.count == 1)
+    }
+
+    // MARK: - Helpers
+
+    /// Collects observations delivered on the Main Actor so a terminated stream
+    /// can be inspected without capturing a mutable local in a `@Sendable` task.
+    @MainActor
+    private final class Recorder {
+        private(set) var observations: [PlaybackObservation] = []
+
+        func append(_ observation: PlaybackObservation) {
+            observations.append(observation)
+        }
+    }
+
+    /// Records raw subscription events and allows tests to wait until initializer
+    /// registration has delivered its initial player-state callback.
+    @MainActor
+    private final class SubscriptionRecorder {
+        private(set) var failedItems: [AVPlayerItem] = []
+        private var receivedStateChange = false
+        private var stateChangeWaiters: [CheckedContinuation<Void, Never>] = []
+
+        func receive(_ event: AVPlayerObservationSubscription.Event) {
+            switch event {
+            case .stateChanged:
+                receivedStateChange = true
+                for waiter in stateChangeWaiters {
+                    waiter.resume()
+                }
+                stateChangeWaiters.removeAll()
+
+            case .completed:
+                break
+
+            case .failed(let item):
+                failedItems.append(item)
+            }
+        }
+
+        func waitForStateChange() async {
+            guard !receivedStateChange else { return }
+            await withCheckedContinuation { continuation in
+                stateChangeWaiters.append(continuation)
+            }
+        }
+    }
+
+    /// Provides deterministic status callbacks and lifecycle-shaped tokens while
+    /// tests retain real in-memory AVPlayerItem instances.
+    @MainActor
+    private final class ItemStatusObservationProbe {
+        private final class Registration {
+            let item: AVPlayerItem
+            let receive: @MainActor (AVPlayerItem.Status) -> Void
+            var isInvalidated = false
+
+            init(
+                item: AVPlayerItem,
+                receive: @escaping @MainActor (AVPlayerItem.Status) -> Void
+            ) {
+                self.item = item
+                self.receive = receive
+            }
+        }
+
+        private var registrations: [Registration] = []
+
+        var registrationCount: Int {
+            registrations.count
+        }
+
+        var invalidationCount: Int {
+            registrations.count(where: \.isInvalidated)
+        }
+
+        var activeRegistrationCount: Int {
+            registrations.count { !$0.isInvalidated }
+        }
+
+        var observer: AVPlayerItemStatusObserver {
+            AVPlayerItemStatusObserver { [weak self] item, receive in
+                guard let self else {
+                    return AVPlayerItemStatusObserver.Token(invalidate: {})
+                }
+                let registration = Registration(
+                    item: item,
+                    receive: receive
+                )
+                registrations.append(registration)
+                return AVPlayerItemStatusObserver.Token {
+                    registration.isInvalidated = true
+                }
+            }
+        }
+
+        func registrationCount(for item: AVPlayerItem) -> Int {
+            registrations.count { $0.item === item }
+        }
+
+        func invalidationCount(for item: AVPlayerItem) -> Int {
+            registrations.count {
+                $0.item === item && $0.isInvalidated
+            }
+        }
+
+        func activeRegistrationCount(for item: AVPlayerItem) -> Int {
+            registrations.count {
+                $0.item === item && !$0.isInvalidated
+            }
+        }
+
+        func send(
+            _ status: AVPlayerItem.Status,
+            for item: AVPlayerItem
+        ) {
+            let receives =
+                registrations
+                .filter { !$0.isInvalidated && $0.item === item }
+                .map(\.receive)
+            for receive in receives {
+                receive(status)
+            }
+        }
+
+        func queue(
+            _ status: AVPlayerItem.Status,
+            for item: AVPlayerItem
+        ) {
+            let receives =
+                registrations
+                .filter { !$0.isInvalidated && $0.item === item }
+                .map(\.receive)
+            Task { @MainActor in
+                for receive in receives {
+                    receive(status)
+                }
+            }
+        }
     }
 
     /// Mirrors `AVPlayerObservation`'s private mapping so the subscription-level

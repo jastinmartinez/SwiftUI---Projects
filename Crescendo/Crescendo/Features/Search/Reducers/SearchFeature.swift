@@ -48,7 +48,7 @@ struct SearchFeature {
 
     enum CancelID { case search }
 
-    @Dependency(\.providerSearch) var providerSearch
+    @Dependency(\.providerSearchClients) var providerSearchClients
     @Dependency(\.uuid) var uuid
 
     var body: some ReducerOf<Self> {
@@ -88,8 +88,12 @@ struct SearchFeature {
                 state.status = .searching(requestID: requestID)
                 return .run { send in
                     do {
-                        let page = try await providerSearch.searchPage(
-                            providerID,
+                        guard
+                            let searchClient = providerSearchClients[providerID]
+                        else {
+                            throw MusicProviderError.noActiveProvider
+                        }
+                        let page = try await searchClient.searchPage(
                             .initial(query: query),
                             20
                         )

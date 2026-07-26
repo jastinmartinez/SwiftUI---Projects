@@ -12,9 +12,9 @@ struct PlaybackEligibilityNoticeView: View {
         case .hidden:
             EmptyView()
         case .subscriptionRequired:
-            Text(Locs.MusicAccess.subscriptionRequired)
+            Text(model.strings.subscriptionRequired)
         case .availabilityUnknown:
-            Text(Locs.MusicAccess.availabilityUnknown)
+            Text(model.strings.availabilityUnknown)
         }
     }
 }
@@ -23,6 +23,15 @@ extension PlaybackEligibilityNoticeView {
     /// The immutable presentation contract for playback eligibility messaging.
     struct Model: Equatable {
         let presentation: Presentation
+        let strings: Strings
+    }
+}
+
+extension PlaybackEligibilityNoticeView.Model {
+    /// Localized messages rendered for playback eligibility outcomes.
+    struct Strings: Equatable {
+        let subscriptionRequired: String
+        let availabilityUnknown: String
     }
 }
 

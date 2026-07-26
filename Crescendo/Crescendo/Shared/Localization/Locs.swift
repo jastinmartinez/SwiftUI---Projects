@@ -72,6 +72,7 @@ extension Locs {
         static let forwardFifteenSeconds = String(
             localized: "music_playback.forward_fifteen_seconds"
         )
+        static let upNext = String(localized: "music_playback.up_next")
 
         static func positionValue(
             elapsedTime: String,
@@ -105,8 +106,21 @@ extension Locs {
             static let playing = String(localized: "music_playback.status.playing")
             static let paused = String(localized: "music_playback.status.paused")
             static let stopped = String(localized: "music_playback.status.stopped")
-            static let failed = String(localized: "music_playback.status.failed")
-            static let unavailable = String(localized: "music_playback.status.unavailable")
+        }
+
+        enum Failure {
+            static let resourceUnavailable = String(
+                localized: "music_playback.failure.resource_unavailable"
+            )
+            static let unsupportedResource = String(
+                localized: "music_playback.failure.unsupported_resource"
+            )
+            static let preparationFailed = String(
+                localized: "music_playback.failure.preparation_failed"
+            )
+            static let playbackFailed = String(
+                localized: "music_playback.failure.playback_failed"
+            )
         }
     }
 

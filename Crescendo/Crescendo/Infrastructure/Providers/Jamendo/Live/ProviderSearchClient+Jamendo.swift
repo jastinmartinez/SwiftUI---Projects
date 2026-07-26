@@ -1,7 +1,7 @@
 extension ProviderSearchClient {
     static func live(jamendo api: JamendoAPI) -> Self {
         Self(
-            searchPage: { _, request, limit in
+            searchPage: { request, limit in
                 let query: String
                 let offset: Int
                 switch request {

@@ -88,7 +88,8 @@ struct SearchPresentationAdapterTests {
                     title: "Result",
                     artistName: "Artist",
                     artworkURL: song.artworkURL,
-                    durationText: "3:35"
+                    durationText: "3:35",
+                    accessory: .disclosure
                 ),
                 paginationTriggerID: "next"
             )
@@ -197,13 +198,19 @@ struct SearchPresentationAdapterTests {
             SearchFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerSearch.searchPage = { _, request, _ in
-                let expectedRequest = SearchPageRequest.continuation(
-                    SearchCursor(value: "next")
-                )
-                #expect(request == expectedRequest)
-                return try await Task.never()
-            }
+            $0.providerSearchClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderSearchClient(
+                        searchPage: { request, _ in
+                            let expectedRequest = SearchPageRequest.continuation(
+                                SearchCursor(value: "next")
+                            )
+                            #expect(request == expectedRequest)
+                            return try await Task.never()
+                        }
+                    )
+                ]
+            )
         }
         let model = SearchResultsView.Model(
             store,

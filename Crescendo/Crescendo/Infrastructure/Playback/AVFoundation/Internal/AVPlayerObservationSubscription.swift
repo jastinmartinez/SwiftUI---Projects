@@ -5,10 +5,14 @@ import Foundation
 @MainActor
 final class AVPlayerObservationSubscription {
     private let player: AVPlayer
+    private let itemStatusObserver: AVPlayerItemStatusObserver
     private var receive: (@MainActor (Event) -> Void)?
     private var keyValueObservations: [NSKeyValueObservation] = []
     private var notificationTokens: [NSObjectProtocol] = []
     private var periodicTimeObserver: Any?
+    private var activeItem: AVPlayerItem?
+    private var activeItemStatusObservation: AVPlayerItemStatusObserver.Token?
+    private var didEmitActiveItemFailure = false
     private var isCancelled = false
 
     /// Starts every observation required by a playback-observation stream.
@@ -18,14 +22,19 @@ final class AVPlayerObservationSubscription {
     ///
     /// - Parameters:
     ///   - player: The shared player whose state and current item are observed.
+    ///   - itemStatusObserver: The mechanism that registers active-item status
+    ///     callbacks and returns their owned invalidation.
     ///   - receive: The callback that receives raw AVFoundation events.
     init(
         player: AVPlayer,
+        itemStatusObserver: AVPlayerItemStatusObserver,
         receive: @escaping @MainActor (Event) -> Void
     ) {
         self.player = player
+        self.itemStatusObserver = itemStatusObserver
         self.receive = receive
 
+        replaceActiveItemStatusObservation(with: player.currentItem)
         registerKeyValueObservations()
         registerPeriodicTimeObserver()
         registerNotificationObservers()
@@ -38,6 +47,9 @@ final class AVPlayerObservationSubscription {
         guard !isCancelled else { return }
         isCancelled = true
         receive = nil
+        activeItemStatusObservation?.invalidate()
+        activeItemStatusObservation = nil
+        activeItem = nil
         for observation in keyValueObservations { observation.invalidate() }
         keyValueObservations.removeAll()
         for token in notificationTokens { NotificationCenter.default.removeObserver(token) }
@@ -55,8 +67,10 @@ final class AVPlayerObservationSubscription {
     private func registerKeyValueObservations() {
         keyValueObservations = [
             player.observe(\.currentItem, options: [.initial, .new]) {
-                [weak self] _, _ in
-                Task { @MainActor [weak self] in
+                [weak self] _, change in
+                let item = change.newValue ?? nil
+                DispatchQueue.main.async { @MainActor [weak self, item] in
+                    self?.replaceActiveItemStatusObservation(with: item)
                     self?.send(.stateChanged)
                 }
             },
@@ -67,6 +81,38 @@ final class AVPlayerObservationSubscription {
                 }
             },
         ]
+    }
+
+    /// Replaces the status observation whenever the player's active item changes.
+    ///
+    /// The previous token is invalidated before the new item is observed. An
+    /// initial status value is included so a failure that occurs between the
+    /// current-item callback and registration is not lost.
+    ///
+    /// - Parameter item: The item identity captured by the current-item KVO
+    ///   transition, including transient items that are replaced before the
+    ///   Main Actor handles the callback.
+    private func replaceActiveItemStatusObservation(
+        with item: AVPlayerItem?
+    ) {
+        guard !isCancelled else { return }
+        guard activeItem !== item else { return }
+
+        activeItemStatusObservation?.invalidate()
+        activeItemStatusObservation = nil
+        activeItem = item
+        didEmitActiveItemFailure = false
+
+        guard let item else { return }
+        activeItemStatusObservation = itemStatusObserver.observe(item) {
+            [weak self, weak item] status in
+            guard
+                status == .failed,
+                let self,
+                let item
+            else { return }
+            self.sendFailureOnce(for: item)
+        }
     }
 
     /// Emits state-change events while the current item's timeline advances.
@@ -107,11 +153,24 @@ final class AVPlayerObservationSubscription {
         ) { [weak self] notification in
             guard let item = notification.object as? AVPlayerItem else { return }
             Task { @MainActor [weak self] in
-                self?.send(.failed(item))
+                self?.sendFailureOnce(for: item)
             }
         }
 
         notificationTokens = [completed, failed]
+    }
+
+    /// Emits at most one failure for the active item's current installed lifetime.
+    ///
+    /// - Parameter item: The player item whose terminal failure was observed.
+    private func sendFailureOnce(for item: AVPlayerItem) {
+        guard
+            activeItem === item,
+            player.currentItem === item,
+            !didEmitActiveItemFailure
+        else { return }
+        didEmitActiveItemFailure = true
+        send(.failed(item))
     }
 
     /// Delivers an event only while the subscription remains active.

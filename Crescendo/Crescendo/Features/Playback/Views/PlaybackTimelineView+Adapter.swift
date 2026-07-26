@@ -11,7 +11,7 @@ extension PlaybackTimelineView.Model {
     ///   actions.
     @MainActor
     init?(_ store: StoreOf<PlaybackFeature>) {
-        guard let duration = store.queue.currentTrack?.duration,
+        guard let duration = store.timelineDuration,
             duration > 0
         else { return nil }
 

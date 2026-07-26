@@ -33,10 +33,12 @@ struct TrackRowView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
+            if model.accessory == .disclosure {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -46,12 +48,21 @@ struct TrackRowView: View {
 }
 
 extension TrackRowView {
-    /// The immutable presentation contract for a catalog result row.
+    /// The immutable presentation contract for provider-neutral track metadata.
     struct Model: Equatable, Identifiable {
         let id: TrackID
         let title: String
         let artistName: String
         let artworkURL: URL?
         let durationText: String?
+        let accessory: Accessory
+    }
+}
+
+extension TrackRowView.Model {
+    /// Identifies the optional trailing affordance rendered by the row.
+    enum Accessory: Equatable {
+        case none
+        case disclosure
     }
 }

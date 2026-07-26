@@ -51,7 +51,7 @@ struct PlaybackNowPlayingView: View {
                         .background(LinearGradient.crescendoSpectrum, in: Circle())
                 }
                 .accessibilityLabel(model.playPauseAccessibilityLabel)
-                .disabled(!model.isPlaying && !model.isPlayEnabled)
+                .disabled(!model.isPlayPauseEnabled)
             }
 
             if let timeline = model.timeline {
@@ -70,17 +70,25 @@ struct PlaybackNowPlayingView: View {
 extension PlaybackNowPlayingView {
     /// The immutable presentation contract for compact playback.
     ///
-    /// `isPlaying` controls the visible transport action, while `isPlayEnabled`
-    /// determines whether playback may be requested from a nonplaying state.
+    /// `isPlaying` controls the visible transport action, while
+    /// `isPlayPauseEnabled` applies the reducer-owned permission to either action.
     struct Model {
         let title: String
         let artistName: String
         let artworkURL: URL?
         let isPlaying: Bool
-        let isPlayEnabled: Bool
+        let isPlayPauseEnabled: Bool
         let playPauseAccessibilityLabel: String
         let timeline: PlaybackTimelineView.Model?
         let onOpenPlayer: () -> Void
         let onTogglePlayPause: () -> Void
+    }
+}
+
+extension PlaybackNowPlayingView.Model {
+    /// Localized actions rendered by compact playback.
+    struct Strings {
+        let play: String
+        let pause: String
     }
 }

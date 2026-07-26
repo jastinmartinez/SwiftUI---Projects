@@ -43,7 +43,10 @@ extension SearchResultsView.Model {
                         rows: pagination.tracks.map { song in
                             SearchResultListView.Model.Row(
                                 id: song.id,
-                                song: TrackRowView.Model(song),
+                                song: TrackRowView.Model(
+                                    song,
+                                    accessory: .disclosure
+                                ),
                                 paginationTriggerID: song.id == lastSongID
                                     ? paginationTriggerID
                                     : nil

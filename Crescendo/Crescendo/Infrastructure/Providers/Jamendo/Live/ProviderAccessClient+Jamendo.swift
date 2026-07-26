@@ -5,8 +5,8 @@ extension ProviderAccessClient {
             playbackEligibility: .eligible
         )
         return Self(
-            currentAccess: { _ in access },
-            requestAccess: { _ in access }
+            currentAccess: { access },
+            requestAccess: { access }
         )
     }
 }

@@ -28,3 +28,19 @@ extension PlaybackControlsView {
         let repeatMode: PlaybackModeButtonView.Model
     }
 }
+
+extension PlaybackControlsView.Model {
+    /// Localized labels and values projected into the primary controls.
+    struct Strings {
+        let play: String
+        let pause: String
+        let previous: String
+        let next: String
+        let shuffle: String
+        let repeatMode: String
+        let modeOff: String
+        let modeOn: String
+        let modeAll: String
+        let modeOne: String
+    }
+}

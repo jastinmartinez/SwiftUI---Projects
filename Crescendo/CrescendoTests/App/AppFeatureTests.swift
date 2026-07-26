@@ -23,7 +23,14 @@ struct AppFeatureTests {
             playbackEligibility: .eligible
         )
         let store = makeStore {
-            $0.providerAccess.currentAccess = { _ in access }
+            $0.providerAccessClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderAccessClient(
+                        currentAccess: { access },
+                        requestAccess: { access }
+                    )
+                ]
+            )
             $0.playbackObservation.observations = {
                 AsyncStream { $0.finish() }
             }
@@ -171,6 +178,7 @@ struct AppFeatureTests {
                 capabilities: .allEnabled,
                 timeline: .init(
                     confirmedPosition: 42,
+                    duration: nil,
                     interaction: .dragging(position: 50)
                 ),
                 pendingPlaybackTransition: nil,
@@ -261,6 +269,7 @@ struct AppFeatureTests {
         await store.receive(.playback(.timeline(.reset))) {
             $0.playback.timeline = .init(
                 confirmedPosition: 0,
+                duration: nil,
                 interaction: .idle
             )
         }
@@ -543,6 +552,7 @@ struct AppFeatureTests {
                     capabilities: .allEnabled,
                     timeline: .init(
                         confirmedPosition: 0,
+                        duration: nil,
                         interaction: .idle
                     ),
                     pendingPlaybackTransition: nil,

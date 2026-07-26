@@ -204,12 +204,20 @@ struct AppPlaybackCoordinationTests {
             )
         )
         let store = makeStore(state: state) {
-            $0.providerSearch.searchPage = { requestProviderID, request, limit in
-                #expect(requestProviderID == providerID)
-                #expect(request == .continuation(cursor))
-                #expect(limit == 20)
-                return SearchPage(tracks: [laterSong], nextCursor: nil)
-            }
+            $0.providerSearchClients = ProviderClientRegistry(
+                clients: [
+                    providerID: ProviderSearchClient(
+                        searchPage: { request, limit in
+                            #expect(request == .continuation(cursor))
+                            #expect(limit == 20)
+                            return SearchPage(
+                                tracks: [laterSong],
+                                nextCursor: nil
+                            )
+                        }
+                    )
+                ]
+            )
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 try await probe.run()
             }
@@ -409,6 +417,7 @@ struct AppPlaybackCoordinationTests {
                 capabilities: .allEnabled,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: 0,
+                    duration: nil,
                     interaction: .idle
                 ),
                 pendingPlaybackTransition: nil,

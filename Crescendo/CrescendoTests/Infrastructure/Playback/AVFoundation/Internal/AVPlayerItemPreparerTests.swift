@@ -13,7 +13,8 @@ struct AVPlayerItemPreparerTests {
             location: .progressive(url)
         )
         let preparer = AVPlayerItemPreparer(
-            loadIsPlayable: { _ in false }
+            loadIsPlayable: { _ in false },
+            makeItem: { _ in AVPlayerItemFixture.make() }
         )
 
         await #expect(throws: PlaybackFailure.self) {

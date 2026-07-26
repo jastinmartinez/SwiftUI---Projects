@@ -164,6 +164,7 @@ struct PlaybackTimelineFeatureTests {
     func resetCancelsLiveSeekAndDropsLateFailure() async {
         let suspendedSeek = SuspendedOperationProbe<Void>()
         let store = makeStore(
+            duration: 120,
             interaction: .dragging(position: 20),
             seekOperation: { _ in
                 try await suspendedSeek.run()
@@ -184,6 +185,7 @@ struct PlaybackTimelineFeatureTests {
         }
         await store.send(.reset) {
             $0.confirmedPosition = 0
+            $0.duration = nil
             $0.interaction = .idle
         }
         #expect(suspendedSeek.hasObservedCancellation)
@@ -233,6 +235,7 @@ struct PlaybackTimelineFeatureTests {
     // MARK: - Helpers
 
     private func makeStore(
+        duration: TimeInterval? = nil,
         interaction: PlaybackTimelineFeature.Interaction = .idle,
         seekPositions: LockIsolated<[TimeInterval]> = LockIsolated([]),
         seekFailure: PlaybackFailure? = nil,
@@ -242,6 +245,7 @@ struct PlaybackTimelineFeatureTests {
         TestStore(
             initialState: PlaybackTimelineFeature.State(
                 confirmedPosition: 0,
+                duration: duration,
                 interaction: interaction
             )
         ) {

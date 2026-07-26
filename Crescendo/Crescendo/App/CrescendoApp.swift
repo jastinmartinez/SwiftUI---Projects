@@ -1,4 +1,6 @@
+@preconcurrency import AVFoundation
 import ComposableArchitecture
+import Foundation
 import SwiftUI
 
 /// The Crescendo application entry point and composition root.
@@ -7,54 +9,18 @@ struct CrescendoApp: App {
     let store: StoreOf<AppFeature>
 
     init() {
-        let appleMusicProvider = AppleMusicProvider()
-
-        self.store = Store(
-            initialState: AppFeature.State(
-                providerConnection: ProviderConnectionFeature.State(
-                    providers: [.appleMusic],
-                    connection: .disconnected
-                ),
-                search: SearchFeature.State(
-                    query: "",
-                    status: .idle,
-                    providerAccess: nil,
-                    providerID: .appleMusic
-                ),
-                playback: PlaybackFeature.State(
-                    providerID: nil,
-                    queue: PlaybackQueueFeature.State(
-                        tracks: [],
-                        playbackOrder: PlaybackQueueOrder(trackIDs: []),
-                        currentTrackID: nil,
-                        repeatMode: .off,
-                        shuffleMode: .off
-                    ),
-                    status: .idle,
-                    failureNotice: nil,
-                    playbackEligibility: .unknown,
-                    capabilities: .allEnabled,
-                    timeline: PlaybackTimelineFeature.State(
-                        confirmedPosition: 0,
-                        interaction: .idle
-                    ),
-                    pendingPlaybackTransition: nil,
-                    pendingStatusChange: nil,
-                    pendingProviderReset: nil,
-                    isPlayerPresented: false
-                ),
-                providerSwitch: nil
-            )
-        ) {
-            AppFeature()
-        } withDependencies: {
-            $0.providerAccess = .appleMusic(appleMusicProvider)
-            $0.providerSearch = .appleMusic(appleMusicProvider)
-            $0.playbackTransport = .appleMusic(appleMusicProvider)
-            $0.playbackTimeline = .appleMusic(appleMusicProvider)
-            $0.playbackQueue = .appleMusic(appleMusicProvider)
-            $0.playbackObservation = .appleMusic(appleMusicProvider)
-        }
+        let player = AVPlayer()
+        let preparer = AVPlayerItemPreparer.live()
+        let jamendoClientID =
+            Bundle.main.object(forInfoDictionaryKey: "JamendoClientID")
+            as? String
+        let composition = CrescendoAppComposition.live(
+            jamendoClientID: jamendoClientID,
+            player: player,
+            preparer: preparer,
+            data: { try await URLSession.shared.data(for: $0) }
+        )
+        self.store = composition.store()
     }
 
     var body: some Scene {

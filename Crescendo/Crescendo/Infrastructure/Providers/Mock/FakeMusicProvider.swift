@@ -19,11 +19,11 @@ actor FakeMusicProvider {
 
     func accessClient() -> ProviderAccessClient {
         ProviderAccessClient(
-            currentAccess: { [weak self] _ in
+            currentAccess: { [weak self] in
                 self?.configuredAccess
                     ?? .init(authorization: .denied, playbackEligibility: .unknown)
             },
-            requestAccess: { [weak self] _ in
+            requestAccess: { [weak self] in
                 self?.configuredAccess
                     ?? .init(authorization: .denied, playbackEligibility: .unknown)
             }
@@ -32,7 +32,7 @@ actor FakeMusicProvider {
 
     func searchClient() -> ProviderSearchClient {
         ProviderSearchClient(
-            searchPage: { [weak self] _, request, limit in
+            searchPage: { [weak self] request, limit in
                 guard let self else { throw MusicProviderError.unavailable }
                 let offset: Int
                 switch request {

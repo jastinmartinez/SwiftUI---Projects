@@ -48,7 +48,7 @@ struct ProviderConnectionFeature {
     }
 
     @Dependency(\.uuid) var uuid
-    @Dependency(\.providerAccess) var providerAccess
+    @Dependency(\.providerAccessClients) var providerAccessClients
     @Dependency(\.openURL) var openURL
 
     var body: some ReducerOf<Self> {
@@ -82,7 +82,23 @@ struct ProviderConnectionFeature {
                         )
                     ),
                     .run { send in
-                        let access = await providerAccess.currentAccess(provider.id)
+                        let unavailableAccess = MusicProviderAccess(
+                            authorization: .restricted,
+                            playbackEligibility: .unknown
+                        )
+                        guard
+                            let accessClient = providerAccessClients[provider.id]
+                        else {
+                            await send(
+                                .currentAccessResponse(
+                                    requestID: requestID,
+                                    providerID: provider.id,
+                                    access: unavailableAccess
+                                )
+                            )
+                            return
+                        }
+                        let access = await accessClient.currentAccess()
                         await send(
                             .currentAccessResponse(
                                 requestID: requestID,
@@ -133,7 +149,23 @@ struct ProviderConnectionFeature {
                 }
 
                 return .run { send in
-                    let requestedAccess = await providerAccess.requestAccess(providerID)
+                    let unavailableAccess = MusicProviderAccess(
+                        authorization: .restricted,
+                        playbackEligibility: .unknown
+                    )
+                    guard
+                        let accessClient = providerAccessClients[providerID]
+                    else {
+                        await send(
+                            .requestedAccessResponse(
+                                requestID: requestID,
+                                providerID: providerID,
+                                access: unavailableAccess
+                            )
+                        )
+                        return
+                    }
+                    let requestedAccess = await accessClient.requestAccess()
                     await send(
                         .requestedAccessResponse(
                             requestID: requestID,

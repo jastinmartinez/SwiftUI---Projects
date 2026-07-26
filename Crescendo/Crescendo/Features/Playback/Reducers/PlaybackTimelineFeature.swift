@@ -7,6 +7,7 @@ struct PlaybackTimelineFeature {
     @ObservableState
     struct State: Equatable {
         var confirmedPosition: TimeInterval
+        var duration: TimeInterval?
         var interaction: Interaction
     }
 
@@ -21,6 +22,7 @@ struct PlaybackTimelineFeature {
         case positionChanged(TimeInterval)
         case dragEnded
         case seekRequested(TimeInterval)
+        case resetPosition
         case reset
         case seekSucceeded(requestID: UUID)
         case seekFailed(requestID: UUID, failure: PlaybackFailure)
@@ -86,8 +88,14 @@ struct PlaybackTimelineFeature {
                 }
                 .cancellable(id: CancelID.seek, cancelInFlight: true)
 
+            case .resetPosition:
+                state.confirmedPosition = 0
+                state.interaction = .idle
+                return .cancel(id: CancelID.seek)
+
             case .reset:
                 state.confirmedPosition = 0
+                state.duration = nil
                 state.interaction = .idle
                 return .cancel(id: CancelID.seek)
 

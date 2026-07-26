@@ -16,11 +16,11 @@ struct ProviderConnectionFeatureTests {
             playbackEligibility: .eligible
         )
         let store = makeStore(
-            currentAccess: { _ in
+            currentAccess: {
                 currentAccessCount.withValue { $0 += 1 }
                 return access
             },
-            requestAccess: { _ in
+            requestAccess: {
                 requestAccessCount.withValue { $0 += 1 }
                 return access
             }
@@ -76,47 +76,54 @@ struct ProviderConnectionFeatureTests {
     }
 
     @Test
-    func connectionRoutesTheValidatedProviderIDToAccessOperations() async {
-        let receivedProviderIDs = LockIsolated<[ProviderID]>([])
+    func missingAccessRegistrationFailsClosedWithoutUsingAnotherProvider() async {
+        let appleMusicAccessCount = LockIsolated(0)
+        let unavailableAccess = MusicProviderAccess(
+            authorization: .restricted,
+            playbackEligibility: .unknown
+        )
 
         let store = TestStore(
             initialState: ProviderConnectionFeature.State(
-                providers: [.appleMusic],
+                providers: [.appleMusic, .jamendo],
                 connection: .disconnected
             )
         ) {
             ProviderConnectionFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerAccess = ProviderAccessClient(
-                currentAccess: { providerID in
-                    receivedProviderIDs.withValue { $0.append(providerID) }
-                    return MusicProviderAccess(
-                        authorization: .authorized,
-                        playbackEligibility: .eligible
+            $0.providerAccessClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderAccessClient(
+                        currentAccess: {
+                            appleMusicAccessCount.withValue { $0 += 1 }
+                            return MusicProviderAccess(
+                                authorization: .authorized,
+                                playbackEligibility: .eligible
+                            )
+                        },
+                        requestAccess: {
+                            Issue.record(
+                                "A missing Jamendo registration must not request Apple Music access"
+                            )
+                            return unavailableAccess
+                        }
                     )
-                },
-                requestAccess: { providerID in
-                    receivedProviderIDs.withValue { $0.append(providerID) }
-                    return MusicProviderAccess(
-                        authorization: .authorized,
-                        playbackEligibility: .eligible
-                    )
-                }
+                ]
             )
         }
 
-        await store.send(.connect(.appleMusic))
-        await store.receive(.startConnection(.appleMusic)) {
+        await store.send(.connect(.jamendo))
+        await store.receive(.startConnection(.jamendo)) {
             $0.connection = .connecting(
-                providerID: .appleMusic,
+                providerID: .jamendo,
                 requestID: UUID(0)
             )
         }
         await store.receive(
             .delegate(
                 .connectionStarted(
-                    providerID: .appleMusic,
+                    providerID: .jamendo,
                     providerChanged: true
                 )
             )
@@ -124,46 +131,26 @@ struct ProviderConnectionFeatureTests {
         await store.receive(
             .currentAccessResponse(
                 requestID: UUID(0),
-                providerID: .appleMusic,
-                access: MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
-                )
+                providerID: .jamendo,
+                access: unavailableAccess
             )
         )
         await store.receive(
             .accessResolved(
                 requestID: UUID(0),
-                providerID: .appleMusic,
-                access: MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
-                )
+                providerID: .jamendo,
+                access: unavailableAccess
             )
         ) {
-            $0.connection = .connected(
-                providerID: .appleMusic,
-                access: MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
-                )
-            )
+            $0.connection = .restricted(providerID: .jamendo)
         }
         await store.receive(
             .delegate(
-                .connectionResolved(
-                    .connected(
-                        providerID: .appleMusic,
-                        access: MusicProviderAccess(
-                            authorization: .authorized,
-                            playbackEligibility: .eligible
-                        )
-                    )
-                )
+                .connectionResolved(.restricted(providerID: .jamendo))
             )
         )
 
-        #expect(receivedProviderIDs.value == [.appleMusic])
+        #expect(appleMusicAccessCount.value == 0)
     }
 
     @Test
@@ -175,8 +162,8 @@ struct ProviderConnectionFeatureTests {
             playbackEligibility: .ineligible
         )
         let store = makeStore(
-            currentAccess: { _ in currentAccess },
-            requestAccess: { _ in
+            currentAccess: { currentAccess },
+            requestAccess: {
                 requestAccessCount.withValue { $0 += 1 }
                 return requestedAccess
             }
@@ -252,7 +239,7 @@ struct ProviderConnectionFeatureTests {
         expectedConnection: ProviderConnection
     ) async {
         let access = makeAccess(authorization: authorization)
-        let store = makeStore(currentAccess: { _ in access })
+        let store = makeStore(currentAccess: { access })
 
         await store.send(.connect(.appleMusic))
         await store.receive(.startConnection(.appleMusic)) {
@@ -297,8 +284,8 @@ struct ProviderConnectionFeatureTests {
             providerID: .appleMusic
         )
         let store = makeStore(
-            currentAccess: { _ in access },
-            requestAccess: { _ in access }
+            currentAccess: { access },
+            requestAccess: { access }
         )
 
         await store.send(.connect(.appleMusic))
@@ -351,7 +338,7 @@ struct ProviderConnectionFeatureTests {
             AsyncStream<Void>.makeStream()
         let store = makeStore(
             connection: .failed(providerID: .appleMusic),
-            currentAccess: { _ in
+            currentAccess: {
                 for await _ in resumeAccess { break }
                 return access
             }
@@ -500,13 +487,13 @@ struct ProviderConnectionFeatureTests {
 
     private func makeStore(
         connection: ProviderConnection = .disconnected,
-        currentAccess: @escaping @Sendable (ProviderID) async -> MusicProviderAccess = { _ in
+        currentAccess: @escaping @Sendable () async -> MusicProviderAccess = {
             MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .unknown
             )
         },
-        requestAccess: @escaping @Sendable (ProviderID) async -> MusicProviderAccess = { _ in
+        requestAccess: @escaping @Sendable () async -> MusicProviderAccess = {
             MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .unknown
@@ -527,13 +514,13 @@ struct ProviderConnectionFeatureTests {
 
     private func makeStore(
         state: ProviderConnectionFeature.State,
-        currentAccess: @escaping @Sendable (ProviderID) async -> MusicProviderAccess = { _ in
+        currentAccess: @escaping @Sendable () async -> MusicProviderAccess = {
             MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .unknown
             )
         },
-        requestAccess: @escaping @Sendable (ProviderID) async -> MusicProviderAccess = { _ in
+        requestAccess: @escaping @Sendable () async -> MusicProviderAccess = {
             MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .unknown
@@ -545,8 +532,14 @@ struct ProviderConnectionFeatureTests {
             ProviderConnectionFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.providerAccess.currentAccess = currentAccess
-            $0.providerAccess.requestAccess = requestAccess
+            $0.providerAccessClients = ProviderClientRegistry(
+                clients: [
+                    .appleMusic: ProviderAccessClient(
+                        currentAccess: currentAccess,
+                        requestAccess: requestAccess
+                    )
+                ]
+            )
             configureDependencies(&$0)
         }
     }

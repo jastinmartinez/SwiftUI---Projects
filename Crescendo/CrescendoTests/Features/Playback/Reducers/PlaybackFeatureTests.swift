@@ -260,6 +260,7 @@ struct PlaybackFeatureTests {
         let nextResults = IdentifiedArray(uniqueElements: nextSongs)
         let timeline = PlaybackTimelineFeature.State(
             confirmedPosition: 42,
+            duration: nil,
             interaction: .idle
         )
         let probe = SuspendedOperationProbe<PlaybackResource>()
@@ -321,6 +322,7 @@ struct PlaybackFeatureTests {
         let resource = makeResource(for: nextSongs[1].id)
         let timeline = PlaybackTimelineFeature.State(
             confirmedPosition: 42,
+            duration: nil,
             interaction: .idle
         )
         let probe = SuspendedOperationProbe<Void>()
@@ -728,6 +730,7 @@ struct PlaybackFeatureTests {
         let nextResults = IdentifiedArray(uniqueElements: nextSongs)
         let timeline = PlaybackTimelineFeature.State(
             confirmedPosition: 42,
+            duration: nil,
             interaction: .dragging(position: 50)
         )
         let store = makeStore(
@@ -904,7 +907,11 @@ struct PlaybackFeatureTests {
         }
         await store.receive(.playTransition(requestID: UUID(0)))
         await store.receive(
-            .transitionPlayFailed(requestID: UUID(0), failure: .playbackFailed)
+            .transitionPlayFailed(
+                requestID: UUID(0),
+                trackID: nextSongs[0].id,
+                failure: .playbackFailed
+            )
         ) {
             $0.failureNotice = PlaybackFailureNotice(
                 trackID: nextSongs[0].id,
@@ -916,6 +923,88 @@ struct PlaybackFeatureTests {
         #expect(store.state.queue.tracks == confirmedQueue)
         #expect(store.state.queue.currentTrack == confirmedSongs[1])
         #expect(store.state.status == .playing)
+    }
+
+    @Test
+    func playFailureAfterIdentityConfirmationStillSurfacesTheFailure() async throws {
+        let tracks = makeTracks()
+        let queue = IdentifiedArray(uniqueElements: tracks)
+        let resource = makeResource(for: tracks[1].id)
+        let playProbe = SuspendedOperationProbe<Void>()
+        let store = makeStore {
+            $0.playbackResourceClients = self.makeResourceClients { _ in
+                resource
+            }
+            $0.playbackItem.load = { _ in }
+            $0.playbackTransport.play = {
+                try await playProbe.run()
+            }
+        }
+
+        await store.send(
+            .selectionReceived(
+                tracks[1].id,
+                loadedResults: queue,
+                providerID: providerID,
+                playbackEligibility: .eligible
+            )
+        ) {
+            $0.isPlayerPresented = true
+            $0.pendingPlaybackTransition = PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: queue,
+                targetTrackID: tracks[1].id
+            )
+            $0.playbackEligibility = .eligible
+        }
+        await store.receive(
+            .resolveTransition(requestID: UUID(0), trackID: tracks[1].id)
+        )
+        await store.receive(
+            .transitionResourceResolved(requestID: UUID(0), resource: resource)
+        )
+        await store.receive(
+            .loadTransition(requestID: UUID(0), resource: resource)
+        )
+        await store.receive(.transitionItemLoaded(requestID: UUID(0))) {
+            $0.pendingPlaybackTransition?.hasLoadedItem = true
+        }
+        await store.receive(.playTransition(requestID: UUID(0)))
+        await playProbe.waitUntilStarted()
+
+        let snapshot = makeSnapshot(
+            itemID: tracks[1].id,
+            status: .waiting,
+            position: 0
+        )
+        await store.send(.observationReceived(.snapshot(snapshot)))
+        await store.receive(.reconcileSnapshot(snapshot)) {
+            $0.status = .waiting
+            $0.pendingPlaybackTransition = nil
+        }
+        await store.receive(.queue(.replace(queue, startingAt: tracks[1].id))) {
+            $0.queue.tracks = queue
+            $0.queue.playbackOrder = PlaybackQueueOrder(
+                trackIDs: tracks.map(\.id)
+            )
+            $0.queue.currentTrackID = tracks[1].id
+        }
+        await store.receive(.timeline(.positionObserved(0)))
+
+        try #require(!playProbe.hasObservedCancellation)
+        playProbe.fail(with: PlaybackFailure.playbackFailed)
+        await store.receive(
+            .transitionPlayFailed(
+                requestID: UUID(0),
+                trackID: tracks[1].id,
+                failure: .playbackFailed
+            )
+        ) {
+            $0.failureNotice = PlaybackFailureNotice(
+                trackID: tracks[1].id,
+                failure: .playbackFailed
+            )
+        }
     }
 
     @Test
@@ -1471,7 +1560,7 @@ struct PlaybackFeatureTests {
             $0.status = .stopped
             $0.pendingStatusChange = nil
         }
-        await store.receive(.timeline(.reset))
+        await store.receive(.timeline(.resetPosition))
 
         #expect(calls.value == ["pause", "seek:0.0"])
     }
@@ -1581,7 +1670,11 @@ struct PlaybackFeatureTests {
                 shuffleMode: .off
             ),
             status: .playing,
-            timeline: .init(confirmedPosition: 4, interaction: .idle),
+            timeline: .init(
+                confirmedPosition: 4,
+                duration: nil,
+                interaction: .idle
+            ),
             pendingStatusChange: pending
         )
 
@@ -1621,6 +1714,7 @@ struct PlaybackFeatureTests {
             status: .playing,
             timeline: .init(
                 confirmedPosition: 42,
+                duration: nil,
                 interaction: .dragging(position: 50)
             ),
             pendingStatusChange: pending
@@ -1636,7 +1730,7 @@ struct PlaybackFeatureTests {
             $0.status = .stopped
             $0.pendingStatusChange = nil
         }
-        await store.receive(.timeline(.reset)) {
+        await store.receive(.timeline(.resetPosition)) {
             $0.timeline.confirmedPosition = 0
             $0.timeline.interaction = .idle
         }
@@ -1650,6 +1744,7 @@ struct PlaybackFeatureTests {
         let tracks = makeTracks()
         let timeline = PlaybackTimelineFeature.State(
             confirmedPosition: 42,
+            duration: nil,
             interaction: .dragging(position: 50)
         )
         let pending = PlaybackFeature.PendingStatusChange(
@@ -1702,6 +1797,7 @@ struct PlaybackFeatureTests {
             status: .playing,
             timeline: .init(
                 confirmedPosition: 42,
+                duration: nil,
                 interaction: .dragging(position: 50)
             )
         ) {
@@ -1728,10 +1824,70 @@ struct PlaybackFeatureTests {
             $0.status = .stopped
             $0.pendingStatusChange = nil
         }
-        await store.receive(.timeline(.reset)) {
+        await store.receive(.timeline(.resetPosition)) {
             $0.timeline.confirmedPosition = 0
             $0.timeline.interaction = .idle
         }
+    }
+
+    @Test(arguments: [TimeInterval?(180), TimeInterval?.none])
+    func stopPreservesObservedDurationWhenCatalogDurationIsInaccurateOrMissing(
+        catalogDuration: TimeInterval?
+    ) async throws {
+        let queue = makeQueue(duration: catalogDuration)
+        let trackID = try #require(queue.currentTrackID)
+        let stopProbe = SuspendedOperationProbe<Void>()
+        let store = makeStore(
+            queue: queue,
+            status: .playing,
+            timeline: .init(
+                confirmedPosition: 42,
+                duration: nil,
+                interaction: .dragging(position: 50)
+            )
+        ) {
+            $0.playbackTransport.pause = {}
+            $0.playbackTimeline.seek = { _ in try await stopProbe.run() }
+        }
+
+        await store.send(.stopTapped) {
+            $0.pendingStatusChange = PlaybackFeature.PendingStatusChange(
+                requestID: UUID(0),
+                target: .stopped
+            )
+        }
+        await store.receive(
+            .performStatusChange(requestID: UUID(0), target: .stopped)
+        )
+        await stopProbe.waitUntilStarted()
+
+        let snapshot = makeSnapshot(
+            itemID: trackID,
+            status: .paused,
+            position: 0,
+            duration: 120
+        )
+        await store.send(.observationReceived(.snapshot(snapshot)))
+        await store.receive(.reconcileSnapshot(snapshot)) {
+            $0.status = .paused
+            $0.timeline.duration = 120
+        }
+        await store.receive(.queue(.currentTrackConfirmed(trackID)))
+        await store.receive(.timeline(.positionObserved(0))) {
+            $0.timeline.confirmedPosition = 0
+        }
+
+        stopProbe.succeed()
+        await store.receive(.statusChangeSucceeded(requestID: UUID(0))) {
+            $0.status = .stopped
+            $0.pendingStatusChange = nil
+        }
+        await store.receive(.timeline(.resetPosition)) {
+            $0.timeline.interaction = .idle
+        }
+
+        #expect(store.state.timeline.duration == 120)
+        #expect(store.state.timelineDuration == 120)
     }
 
     @Test
@@ -1806,7 +1962,11 @@ struct PlaybackFeatureTests {
             failureNotice: nil,
             playbackEligibility: .eligible,
             capabilities: .allEnabled,
-            timeline: .init(confirmedPosition: 0, interaction: .idle),
+            timeline: .init(
+                confirmedPosition: 0,
+                duration: nil,
+                interaction: .idle
+            ),
             pendingPlaybackTransition: nil,
             pendingStatusChange: nil,
             pendingProviderReset: nil,
@@ -1825,7 +1985,11 @@ struct PlaybackFeatureTests {
             failureNotice: nil,
             playbackEligibility: .eligible,
             capabilities: .allEnabled,
-            timeline: .init(confirmedPosition: 0, interaction: .idle),
+            timeline: .init(
+                confirmedPosition: 0,
+                duration: nil,
+                interaction: .idle
+            ),
             pendingPlaybackTransition: PendingPlaybackTransition(
                 requestID: UUID(0),
                 queue: tracks,
@@ -2033,6 +2197,44 @@ struct PlaybackFeatureTests {
 
     // MARK: - Timeline
 
+    @Test(arguments: [TimeInterval?(180), TimeInterval?.none])
+    func observedDurationControlsSeekBoundsWhenCatalogDurationDiffersOrIsMissing(
+        catalogDuration: TimeInterval?
+    ) async throws {
+        let queue = makeQueue(duration: catalogDuration)
+        let trackID = try #require(queue.currentTrackID)
+        let seekPositions = LockIsolated<[TimeInterval]>([])
+        let store = makeStore(
+            queue: queue,
+            status: .playing,
+            timeline: .init(
+                confirmedPosition: 110,
+                duration: nil,
+                interaction: .idle
+            )
+        ) {
+            $0.playbackTimeline.seek = { position in
+                seekPositions.withValue { $0.append(position) }
+            }
+        }
+        store.exhaustivity = .off(showSkippedAssertions: false)
+
+        await store.send(
+            .reconcileSnapshot(
+                makeSnapshot(
+                    itemID: trackID,
+                    status: .playing,
+                    position: 110,
+                    duration: 120
+                )
+            )
+        )
+        await store.send(.seekForwardTapped)
+        await store.finish()
+
+        #expect(seekPositions.value == [120])
+    }
+
     @Test
     func continuousTimelineIntentIsClampedByTheParent() async {
         let store = makeStore(queue: makeQueue(duration: 180))
@@ -2050,6 +2252,7 @@ struct PlaybackFeatureTests {
             queue: makeQueue(duration: 180),
             timeline: .init(
                 confirmedPosition: 40,
+                duration: nil,
                 interaction: .dragging(position: 300)
             )
         ) {
@@ -2086,6 +2289,7 @@ struct PlaybackFeatureTests {
             queue: makeQueue(duration: 180),
             timeline: .init(
                 confirmedPosition: 40,
+                duration: nil,
                 interaction: .dragging(position: 30)
             )
         ) {
@@ -2143,6 +2347,7 @@ struct PlaybackFeatureTests {
             queue: makeQueue(duration: 180),
             timeline: .init(
                 confirmedPosition: 40,
+                duration: nil,
                 interaction: .dragging(position: 300)
             )
         ) {
@@ -2167,7 +2372,11 @@ struct PlaybackFeatureTests {
         let seekPositions = LockIsolated<[TimeInterval]>([])
         let store = makeStore(
             queue: makeQueue(duration: 180),
-            timeline: .init(confirmedPosition: 175, interaction: .idle)
+            timeline: .init(
+                confirmedPosition: 175,
+                duration: nil,
+                interaction: .idle
+            )
         ) {
             $0.playbackTimeline.seek = { position in
                 seekPositions.withValue { $0.append(position) }
@@ -2447,7 +2656,11 @@ struct PlaybackFeatureTests {
                 trackID: nextSongs[1].id,
                 failure: .playbackFailed
             ),
-            timeline: .init(confirmedPosition: 42, interaction: .idle),
+            timeline: .init(
+                confirmedPosition: 42,
+                duration: nil,
+                interaction: .idle
+            ),
             pendingPlaybackTransition: PendingPlaybackTransition(
                 requestID: UUID(0),
                 queue: nextResults,
@@ -2466,6 +2679,7 @@ struct PlaybackFeatureTests {
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .waiting
             $0.failureNotice = nil
+            $0.timeline.duration = 180
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(
@@ -2490,7 +2704,11 @@ struct PlaybackFeatureTests {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
         let store = makeStore(
-            timeline: .init(confirmedPosition: 99, interaction: .idle),
+            timeline: .init(
+                confirmedPosition: 99,
+                duration: nil,
+                interaction: .idle
+            ),
             pendingPlaybackTransition: PendingPlaybackTransition(
                 requestID: UUID(0),
                 queue: loadedResults,
@@ -2508,6 +2726,7 @@ struct PlaybackFeatureTests {
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .playing
+            $0.timeline.duration = 180
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(
@@ -2615,6 +2834,98 @@ struct PlaybackFeatureTests {
     }
 
     // MARK: - Automatic Completion
+
+    @Test
+    func delayedCompletionDoesNotReplaceAPendingUserSelection() async {
+        let tracks = makeTracks()
+        let queue = IdentifiedArray(uniqueElements: tracks)
+        let targetTrackID = tracks[2].id
+        let resource = makeResource(for: targetTrackID)
+        let resolveProbe = SuspendedOperationProbe<PlaybackResource>()
+        let store = makeStore(
+            queue: .init(
+                tracks: queue,
+                playbackOrder: PlaybackQueueOrder(trackIDs: tracks.map(\.id)),
+                currentTrackID: tracks[0].id,
+                repeatMode: .off,
+                shuffleMode: .off
+            ),
+            status: .playing
+        ) {
+            $0.playbackResourceClients = self.makeResourceClients { _ in
+                try await resolveProbe.run()
+            }
+            $0.playbackItem.load = { _ in }
+            $0.playbackTransport.play = {}
+        }
+
+        await store.send(
+            .selectionReceived(
+                targetTrackID,
+                loadedResults: queue,
+                providerID: providerID,
+                playbackEligibility: .eligible
+            )
+        ) {
+            $0.pendingPlaybackTransition = PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: queue,
+                targetTrackID: targetTrackID,
+                origin: .selection
+            )
+            $0.playbackEligibility = .eligible
+        }
+        await store.receive(
+            .resolveTransition(
+                requestID: UUID(0),
+                trackID: targetTrackID
+            )
+        )
+        await resolveProbe.waitUntilStarted()
+
+        await store.send(.observationReceived(.completed(tracks[0].id)))
+        await store.receive(.currentTrackCompleted(tracks[0].id))
+
+        #expect(!resolveProbe.hasObservedCancellation)
+        #expect(store.state.queue.currentTrackID == tracks[0].id)
+
+        resolveProbe.succeed(with: resource)
+        await store.receive(
+            .transitionResourceResolved(
+                requestID: UUID(0),
+                resource: resource
+            )
+        )
+        await store.receive(
+            .loadTransition(requestID: UUID(0), resource: resource)
+        )
+        await store.receive(.transitionItemLoaded(requestID: UUID(0))) {
+            $0.pendingPlaybackTransition?.hasLoadedItem = true
+        }
+        await store.receive(.playTransition(requestID: UUID(0)))
+        await store.receive(.transitionPlayRequested(requestID: UUID(0)))
+
+        let snapshot = makeSnapshot(
+            itemID: targetTrackID,
+            status: .playing,
+            position: 0,
+            duration: 120
+        )
+        await store.send(.observationReceived(.snapshot(snapshot)))
+        await store.receive(.reconcileSnapshot(snapshot)) {
+            $0.timeline.duration = 120
+            $0.pendingPlaybackTransition = nil
+        }
+        await store.receive(
+            .queue(.replace(queue, startingAt: targetTrackID))
+        ) {
+            $0.queue.currentTrackID = targetTrackID
+        }
+        await store.receive(.timeline(.positionObserved(0)))
+
+        #expect(store.state.queue.currentTrackID == targetTrackID)
+        #expect(!resolveProbe.hasObservedCancellation)
+    }
 
     @Test
     func completionForAStaleTrackIsIgnored() async {
@@ -2866,7 +3177,11 @@ struct PlaybackFeatureTests {
                 shuffleMode: .off
             ),
             status: .playing,
-            timeline: .init(confirmedPosition: 180, interaction: .idle)
+            timeline: .init(
+                confirmedPosition: 180,
+                duration: nil,
+                interaction: .idle
+            )
         ) {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
@@ -3051,7 +3366,11 @@ struct PlaybackFeatureTests {
                 shuffleMode: .off
             ),
             status: .playing,
-            timeline: .init(confirmedPosition: 42, interaction: .idle)
+            timeline: .init(
+                confirmedPosition: 42,
+                duration: nil,
+                interaction: .idle
+            )
         ) {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
@@ -3166,6 +3485,7 @@ struct PlaybackFeatureTests {
         capabilities: MusicProviderCapabilities = .allEnabled,
         timeline: PlaybackTimelineFeature.State = .init(
             confirmedPosition: 0,
+            duration: nil,
             interaction: .idle
         ),
         pendingPlaybackTransition: PendingPlaybackTransition? = nil,

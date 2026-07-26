@@ -61,6 +61,46 @@
         }
       }
     },
+    "music_playback.failure.playback_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playback failed."
+          }
+        }
+      }
+    },
+    "music_playback.failure.preparation_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crescendo couldn't prepare this track."
+          }
+        }
+      }
+    },
+    "music_playback.failure.resource_unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This track isn't available with your account or region."
+          }
+        }
+      }
+    },
+    "music_playback.failure.unsupported_resource" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This playback source isn't supported."
+          }
+        }
+      }
+    },
     "music_playback.mode.all" : {
       "localizations" : {
         "en" : {
@@ -201,16 +241,6 @@
         }
       }
     },
-    "music_playback.status.failed" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Failed"
-          }
-        }
-      }
-    },
     "music_playback.status.idle" : {
       "localizations" : {
         "en" : {
@@ -261,16 +291,6 @@
         }
       }
     },
-    "music_playback.status.unavailable" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This song isn't available with your account or region."
-          }
-        }
-      }
-    },
     "music_playback.status.waiting" : {
       "localizations" : {
         "en" : {
@@ -297,6 +317,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stop"
+          }
+        }
+      }
+    },
+    "music_playback.up_next" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up Next"
           }
         }
       }

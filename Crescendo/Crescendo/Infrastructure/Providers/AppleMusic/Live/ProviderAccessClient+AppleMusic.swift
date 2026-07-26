@@ -1,14 +1,8 @@
-import ComposableArchitecture
-
-extension ProviderAccessClient: DependencyKey {
-    static let liveValue = Self.appleMusic(AppleMusicProvider())
-}
-
 extension ProviderAccessClient {
-    static func appleMusic(_ provider: AppleMusicProvider) -> Self {
+    static func live(appleMusic provider: AppleMusicProvider) -> Self {
         Self(
-            currentAccess: { _ in await provider.currentAccess() },
-            requestAccess: { _ in await provider.requestAccess() }
+            currentAccess: { await provider.currentAccess() },
+            requestAccess: { await provider.requestAccess() }
         )
     }
 }

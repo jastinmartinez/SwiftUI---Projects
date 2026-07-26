@@ -14,8 +14,8 @@ struct FakeMusicProviderTests {
             searchResults: []
         )
         let accessClient = await fake.accessClient()
-        let currentAccess = await accessClient.currentAccess("fake")
-        let requestedAccess = await accessClient.requestAccess("fake")
+        let currentAccess = await accessClient.currentAccess()
+        let requestedAccess = await accessClient.requestAccess()
 
         #expect(currentAccess == expectedAccess)
         #expect(requestedAccess == expectedAccess)
@@ -34,13 +34,11 @@ struct FakeMusicProviderTests {
         let client = await fake.searchClient()
 
         let firstPage = try await client.searchPage(
-            "fake",
             .initial(query: "test"),
             2
         )
         let cursor = try #require(firstPage.nextCursor)
         let continuation = try await client.searchPage(
-            "fake",
             .continuation(cursor),
             2
         )

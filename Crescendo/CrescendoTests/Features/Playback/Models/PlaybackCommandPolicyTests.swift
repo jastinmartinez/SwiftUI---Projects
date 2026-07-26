@@ -31,6 +31,21 @@ struct PlaybackCommandPolicyTests {
         )
     }
 
+    @Test
+    func seekRequiresACurrentTrackEvenWhenDurationWasObserved() {
+        let policy = PlaybackCommandPolicy(
+            capabilities: .allEnabled,
+            queue: .empty,
+            status: .paused,
+            duration: 120,
+            pendingPlaybackTransition: nil,
+            pendingStatusChange: nil,
+            isResettingProvider: false
+        )
+
+        #expect(!policy.allows(.seek))
+    }
+
     @Test(arguments: queueTransitionCases)
     func queueTransitionsFollowSharedPolicy(_ testCase: CommandPolicyCase) {
         #expect(
@@ -321,6 +336,7 @@ private func makePolicy(
         capabilities: capabilities,
         queue: queue,
         status: status,
+        duration: queue.currentTrack?.duration,
         pendingPlaybackTransition: pendingPlaybackTransition,
         pendingStatusChange: pendingStatusChange,
         isResettingProvider: isResettingProvider
