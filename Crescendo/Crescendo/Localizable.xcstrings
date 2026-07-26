@@ -26,7 +26,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Music playback availability could not be determined."
+            "value" : "Playback availability could not be determined."
           }
         }
       }
@@ -36,7 +36,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Music playback requires an eligible subscription."
+            "value" : "Playback isn’t available for this account."
           }
         }
       }
@@ -506,7 +506,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search Apple Music"
+            "value" : "Search tracks"
           }
         }
       }
@@ -516,7 +516,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connect Apple Music to search the catalog and play songs."
+            "value" : "Connect a provider to search its catalog and play tracks."
           }
         }
       }
@@ -526,7 +526,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connect a Music Provider"
+            "value" : "Connect a Provider"
           }
         }
       }

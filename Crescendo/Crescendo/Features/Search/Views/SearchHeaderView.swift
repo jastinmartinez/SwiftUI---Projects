@@ -4,7 +4,7 @@ struct SearchHeaderView: View {
     let model: Model
 
     var body: some View {
-        AccessibilityLayoutReader { layout in
+        AccessibilityLayoutReaderView { layout in
             VStack(spacing: 16) {
                 identity(layout: layout)
                 searchControls(layout: layout)
@@ -45,7 +45,7 @@ struct SearchHeaderView: View {
     }
 
     private var title: some View {
-        Text(Locs.App.title)
+        Text(model.strings.title)
             .font(.largeTitle.bold())
     }
 
@@ -55,7 +55,7 @@ struct SearchHeaderView: View {
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             TextField(
-                Locs.Search.prompt,
+                model.strings.prompt,
                 text: Binding(
                     get: { model.query },
                     set: { model.onQueryChanged($0) }
@@ -72,7 +72,7 @@ struct SearchHeaderView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel(Locs.Search.clear)
+                .accessibilityLabel(model.strings.clear)
             }
         }
         .padding(.leading, 16)
@@ -85,7 +85,7 @@ struct SearchHeaderView: View {
 
     private func searchButton(layout: AccessibilityLayout) -> some View {
         Button(action: model.onSubmit) {
-            Text(Locs.Search.action)
+            Text(model.strings.action)
                 .font(.headline)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 18)
@@ -108,7 +108,18 @@ extension SearchHeaderView {
         let query: String
         let providerSelection: ProviderSelectionView.Model
         let isSearchEnabled: Bool
+        let strings: Strings
         let onQueryChanged: (String) -> Void
         let onSubmit: () -> Void
+    }
+}
+
+extension SearchHeaderView.Model {
+    /// Contains every localized string rendered by the search header.
+    struct Strings {
+        let title: String
+        let prompt: String
+        let clear: String
+        let action: String
     }
 }

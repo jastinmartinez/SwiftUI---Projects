@@ -25,7 +25,6 @@ struct AppFeatureView: View {
         }
         .task {
             await store.send(.task).finish()
-            await store.send(.playback(.task)).finish()
         }
         .sheet(
             isPresented: Binding(

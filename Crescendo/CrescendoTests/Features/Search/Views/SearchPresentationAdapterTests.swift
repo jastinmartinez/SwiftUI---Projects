@@ -28,6 +28,10 @@ struct SearchPresentationAdapterTests {
         #expect(enabledModel.isSearchEnabled)
         #expect(!emptyQueryModel.isSearchEnabled)
         #expect(!disconnectedModel.isSearchEnabled)
+        #expect(enabledModel.strings.title == "Crescendo")
+        #expect(enabledModel.strings.prompt == "Search tracks")
+        #expect(enabledModel.strings.clear == "Clear search")
+        #expect(enabledModel.strings.action == "Search")
     }
 
     @Test
@@ -41,6 +45,11 @@ struct SearchPresentationAdapterTests {
             Issue.record("Expected provider connection content")
             return
         }
+        #expect(model.strings.requiresProviderTitle == "Connect a Provider")
+        #expect(
+            model.strings.requiresProviderMessage
+                == "Connect a provider to search its catalog and play tracks."
+        )
     }
 
     @Test
@@ -337,6 +346,7 @@ struct SearchPresentationAdapterTests {
             providerRows: [
                 .init(
                     id: provider.id,
+                    icon: .appleMusic,
                     label: provider.name,
                     statusLabel: nil,
                     isSelected: true,

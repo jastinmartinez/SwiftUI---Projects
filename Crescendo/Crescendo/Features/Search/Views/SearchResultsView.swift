@@ -7,21 +7,24 @@ struct SearchResultsView: View {
     var body: some View {
         switch model.content {
         case .idle:
-            ContentUnavailableView(Locs.Search.emptyTitle, systemImage: "music.note")
+            ContentUnavailableView(
+                model.strings.emptyTitle,
+                systemImage: "music.note"
+            )
         case .requiresProvider:
             ContentUnavailableView(
-                Locs.Search.requiresProviderTitle,
+                model.strings.requiresProviderTitle,
                 systemImage: "music.note",
-                description: Text(Locs.Search.requiresProviderMessage)
+                description: Text(model.strings.requiresProviderMessage)
             )
         case .loading:
-            ProgressView(Locs.Search.searching)
+            ProgressView(model.strings.searching)
         case .empty(let query):
             ContentUnavailableView.search(text: query)
         case .results(let results):
             SearchResultListView(model: results)
         case .failed:
-            Button(Locs.Common.retry, action: model.onRetry)
+            Button(model.strings.retry, action: model.onRetry)
         }
     }
 }
@@ -30,6 +33,7 @@ extension SearchResultsView {
     /// The immutable presentation contract for mutually exclusive search content.
     struct Model {
         let content: Content
+        let strings: Strings
         let onRetry: () -> Void
     }
 }
@@ -42,5 +46,14 @@ extension SearchResultsView.Model {
         case empty(query: String)
         case results(SearchResultListView.Model)
         case failed
+    }
+
+    /// Contains every localized string rendered by the search results state.
+    struct Strings {
+        let emptyTitle: String
+        let requiresProviderTitle: String
+        let requiresProviderMessage: String
+        let searching: String
+        let retry: String
     }
 }

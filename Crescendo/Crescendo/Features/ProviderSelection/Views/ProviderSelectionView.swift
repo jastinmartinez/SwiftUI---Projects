@@ -4,7 +4,7 @@ struct ProviderSelectionView: View {
     let model: Model
 
     var body: some View {
-        AccessibilityLayoutReader { layout in
+        AccessibilityLayoutReaderView { layout in
             providerMenu(layout: layout)
         }
     }
@@ -17,11 +17,7 @@ struct ProviderSelectionView: View {
                 ForEach(model.providerRows) { row in
                     Button(action: row.onSelect) {
                         HStack(spacing: 10) {
-                            Image("AppleMusicProviderIcon")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 22, height: 22)
-                                .accessibilityHidden(true)
+                            providerIcon(row.icon, dimension: 22)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(row.label)
@@ -48,19 +44,7 @@ struct ProviderSelectionView: View {
             }
         } label: {
             HStack(spacing: 8) {
-                switch model.collapsedIcon {
-                case .generic:
-                    Image(systemName: "link")
-                        .foregroundStyle(.secondary)
-                        .frame(width: 18, height: 18)
-                        .accessibilityHidden(true)
-                case .appleMusic:
-                    Image("AppleMusicProviderIcon")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 18, height: 18)
-                        .accessibilityHidden(true)
-                }
+                providerIcon(model.collapsedIcon, dimension: 18)
                 Text(model.collapsedLabel)
                     .lineLimit(layout == .expanded ? 2 : 1)
                 Image(systemName: "chevron.down")
@@ -83,6 +67,26 @@ struct ProviderSelectionView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(model.menuTitle)
         .accessibilityValue(model.accessibilityValue)
+    }
+
+    @ViewBuilder
+    private func providerIcon(
+        _ icon: Model.Icon,
+        dimension: CGFloat
+    ) -> some View {
+        switch icon {
+        case .generic:
+            Image(systemName: "link")
+                .foregroundStyle(.secondary)
+                .frame(width: dimension, height: dimension)
+                .accessibilityHidden(true)
+        case .appleMusic:
+            Image("AppleMusicProviderIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: dimension, height: dimension)
+                .accessibilityHidden(true)
+        }
     }
 }
 
@@ -118,6 +122,7 @@ extension ProviderSelectionView.Model {
 
     struct ProviderRow: Identifiable {
         let id: ProviderID
+        let icon: Icon
         let label: String
         let statusLabel: String?
         let isSelected: Bool

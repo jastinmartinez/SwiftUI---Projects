@@ -74,4 +74,55 @@ struct AVFoundationPlaybackClientCompositionTests {
         }
         #expect(snapshot.currentTrackID == trackID)
     }
+
+    /// A rejected asset must not replace or register over the last confirmed
+    /// player item.
+    @Test
+    @MainActor
+    func failedPreparationPreservesInstalledItemAndRegistry() async throws {
+        let player = AVPlayer()
+        let registry = AVPlayerItemRegistry()
+        let sentinelItem = AVPlayerItemFixture.make()
+        let sentinelTrackID = TrackID(
+            providerID: .jamendo,
+            nativeID: "sentinel"
+        )
+        registry.register(sentinelItem, trackID: sentinelTrackID)
+        player.replaceCurrentItem(with: sentinelItem)
+
+        let makeItemCallCount = LockIsolated(0)
+        let preparer = AVPlayerItemPreparer(
+            loadIsPlayable: { _ in false },
+            makeItem: { _ in
+                makeItemCallCount.withValue { $0 += 1 }
+                return AVPlayerItemFixture.make()
+            }
+        )
+        let client = PlaybackItemClient.live(
+            preparer: preparer,
+            installer: AVPlayerItemInstaller(
+                player: player,
+                registry: registry
+            )
+        )
+        let rejectedTrackID = TrackID(
+            providerID: .jamendo,
+            nativeID: "rejected"
+        )
+        let resource = PlaybackResource(
+            trackID: rejectedTrackID,
+            location: .progressive(
+                try #require(URL(string: "memory://rejected"))
+            )
+        )
+
+        await #expect(throws: PlaybackFailure.unsupportedResource) {
+            try await client.load(resource)
+        }
+
+        #expect(makeItemCallCount.value == 0)
+        #expect(player.currentItem === sentinelItem)
+        #expect(registry.trackID(for: sentinelItem) == sentinelTrackID)
+        #expect(registry.trackID(for: player.currentItem) != rejectedTrackID)
+    }
 }

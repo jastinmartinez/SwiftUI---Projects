@@ -108,6 +108,26 @@ struct AppProviderSelectionPresentationTests {
     }
 
     @Test
+    func jamendoUsesGenericProviderArtwork() {
+        let connection = ProviderConnection.connected(
+            providerID: .jamendo,
+            access: MusicProviderAccess(
+                authorization: .authorized,
+                playbackEligibility: .eligible
+            )
+        )
+        let model = ProviderSelectionView.Model(
+            makeStore(
+                connection: connection,
+                providers: [.jamendo]
+            )
+        )
+
+        #expect(model.collapsedIcon == .generic)
+        #expect(model.providerRows.map(\.icon) == [.generic])
+    }
+
+    @Test
     func playbackOperationDisablesProviderSelection() {
         let song = Track(
             id: .init(providerID: .appleMusic, nativeID: "selected"),
@@ -179,13 +199,14 @@ struct AppProviderSelectionPresentationTests {
 
     private func makeStore(
         connection: ProviderConnection,
+        providers: [ProviderDescriptor] = [.appleMusic],
         pendingPlaybackTransition: PendingPlaybackTransition? = nil,
         actions: LockIsolated<[AppFeature.Action]>? = nil
     ) -> StoreOf<AppFeature> {
         Store(
             initialState: AppFeature.State(
                 providerConnection: ProviderConnectionFeature.State(
-                    providers: [.appleMusic],
+                    providers: providers,
                     connection: connection
                 ),
                 search: SearchFeature.State(

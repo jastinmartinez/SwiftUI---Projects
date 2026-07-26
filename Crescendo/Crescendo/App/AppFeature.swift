@@ -36,7 +36,7 @@ struct AppFeature {
         Reduce { state, action in
             switch action {
             case .task:
-                return .none
+                return .send(.playback(.task))
 
             case .providerSelected(let providerID):
                 guard state.playback.pendingPlaybackTransition == nil,

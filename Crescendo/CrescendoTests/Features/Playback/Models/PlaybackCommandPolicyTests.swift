@@ -313,15 +313,6 @@ private let shuffleChangeCases = [
     ),
 ]
 
-struct CommandPolicyCase: CustomTestStringConvertible {
-    let name: String
-    let command: PlaybackCommand
-    let policy: PlaybackCommandPolicy
-    let expected: Bool
-
-    var testDescription: String { name }
-}
-
 // MARK: - Policy Factory
 
 private func makePolicy(

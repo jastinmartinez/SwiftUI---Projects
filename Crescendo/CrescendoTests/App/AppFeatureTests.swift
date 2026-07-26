@@ -7,10 +7,15 @@ import Testing
 @MainActor
 struct AppFeatureTests {
     @Test
-    func taskLeavesSoleProviderDisconnected() async {
-        let store = makeStore()
+    func taskStartsPlaybackObservationAndLeavesProviderDisconnected() async {
+        let store = makeStore {
+            $0.playbackObservation.observations = {
+                AsyncStream { $0.finish() }
+            }
+        }
 
         await store.send(.task)
+        await store.receive(.playback(.task))
 
         #expect(store.state.providerConnection.connection == .disconnected)
         #expect(store.state.requiresProviderSelection)
@@ -589,58 +594,5 @@ struct AppFeatureTests {
             artworkURL: nil,
             duration: 180
         )
-    }
-}
-
-private struct PlaybackObservationLifecycleProbe: Sendable {
-    private let subscriptions: AsyncStream<Int>
-    private let subscriptionsContinuation: AsyncStream<Int>.Continuation
-    private let cancellations: AsyncStream<Int>
-    private let cancellationsContinuation: AsyncStream<Int>.Continuation
-    private let observationContinuations = LockIsolated<
-        [AsyncStream<PlaybackObservation>.Continuation]
-    >([])
-
-    init() {
-        (subscriptions, subscriptionsContinuation) = AsyncStream<Int>.makeStream()
-        (cancellations, cancellationsContinuation) = AsyncStream<Int>.makeStream()
-    }
-
-    func observations() async -> AsyncStream<PlaybackObservation> {
-        return AsyncStream { continuation in
-            let subscription = observationContinuations.withValue {
-                $0.append(continuation)
-                return $0.count
-            }
-            subscriptionsContinuation.yield(subscription)
-            continuation.onTermination = { _ in
-                cancellationsContinuation.yield(subscription)
-            }
-        }
-    }
-
-    func waitForSubscription(_ expectedSubscription: Int) async {
-        var iterator = subscriptions.makeAsyncIterator()
-        while let subscription = await iterator.next() {
-            if subscription == expectedSubscription { return }
-        }
-    }
-
-    func waitForCancellation(_ expectedSubscription: Int) async {
-        var iterator = cancellations.makeAsyncIterator()
-        while let subscription = await iterator.next() {
-            if subscription == expectedSubscription { return }
-        }
-    }
-
-    func yield(
-        _ snapshot: PlaybackSnapshot,
-        toSubscription subscription: Int
-    ) {
-        observationContinuations.value[subscription - 1].yield(.snapshot(snapshot))
-    }
-
-    func finish(subscription: Int) {
-        observationContinuations.value[subscription - 1].finish()
     }
 }

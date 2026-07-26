@@ -77,6 +77,13 @@ extension SearchResultsView.Model {
 
         self.init(
             content: content,
+            strings: Strings(
+                emptyTitle: Locs.Search.emptyTitle,
+                requiresProviderTitle: Locs.Search.requiresProviderTitle,
+                requiresProviderMessage: Locs.Search.requiresProviderMessage,
+                searching: Locs.Search.searching,
+                retry: Locs.Common.retry
+            ),
             onRetry: { store.send(.retryButtonTapped) }
         )
     }
