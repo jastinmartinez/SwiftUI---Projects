@@ -12,7 +12,7 @@ extension PlaybackNowPlayingView.Model {
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>, song: Track) {
         let isPlaying: Bool
-        if case .statusChange(let change) = store.pendingOperation {
+        if let change = store.pendingStatusChange {
             isPlaying = change.target == .playing
         } else {
             isPlaying = store.status == .playing
@@ -23,7 +23,7 @@ extension PlaybackNowPlayingView.Model {
             artistName: song.artistName,
             artworkURL: song.artworkURL,
             isPlaying: isPlaying,
-            isPlayEnabled: store.commandPolicy.allows(.playPause),
+            isPlayEnabled: store.canRequestPlayPause,
             playPauseAccessibilityLabel: isPlaying
                 ? Locs.Playback.pause
                 : Locs.Playback.play,

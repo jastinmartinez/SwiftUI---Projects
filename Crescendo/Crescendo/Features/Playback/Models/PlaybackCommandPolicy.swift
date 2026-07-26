@@ -1,9 +1,10 @@
-/// Derives playback-command validity from confirmed state and pending work.
+/// Derives playback-command validity from confirmed state and pending workflows.
 struct PlaybackCommandPolicy: Equatable {
     let capabilities: MusicProviderCapabilities
     let queue: PlaybackQueueFeature.State
     let status: PlaybackStatus
-    let pendingOperation: PlaybackFeature.PendingOperation?
+    let pendingPlaybackTransition: PendingPlaybackTransition?
+    let pendingStatusChange: PlaybackFeature.PendingStatusChange?
     let isResettingProvider: Bool
 
     /// Reports whether a command can begin from the represented domain state.
@@ -17,85 +18,28 @@ struct PlaybackCommandPolicy: Equatable {
 
         switch command {
         case .playPause:
-            return allowsPlayPause
+            return capabilities.supportsEmbeddedPlayback
+                && queue.currentTrackID != nil
+                && pendingPlaybackTransition == nil
+                && pendingStatusChange == nil
         case .stop:
-            return allowsStop
+            return capabilities.supportsEmbeddedPlayback
+                && queue.currentTrackID != nil
+                && status != .stopped
+                && pendingStatusChange == nil
         case .seek:
-            return allowsSeek
-        case .previous, .next:
-            return allowsQueueTransition
-        case .repeatMode:
-            return allowsRepeatChange
-        case .shuffleMode:
-            return allowsShuffleChange
+            return capabilities.supportsSeeking
+                && queue.currentTrack?.duration.map { $0 > 0 } == true
+                && pendingPlaybackTransition == nil
+        case .previous:
+            return pendingPlaybackTransition == nil
+                && queue.previousTrackID != nil
+        case .next:
+            return pendingPlaybackTransition == nil
+                && queue.nextTrackID != nil
+        case .repeatMode, .shuffleMode:
+            return pendingPlaybackTransition == nil
+                && queue.currentTrackID != nil
         }
-    }
-}
-
-// swift-format-ignore: NoAccessLevelOnExtensionDeclaration
-private extension PlaybackCommandPolicy {
-    var allowsPlayPause: Bool {
-        guard capabilities.supportsEmbeddedPlayback,
-            !queue.tracks.isEmpty
-        else { return false }
-
-        switch pendingOperation {
-        case .statusChange(let change):
-            return change.target == .stopped
-        case .queueReplacement:
-            return false
-        case nil:
-            return true
-        }
-    }
-
-    var allowsStop: Bool {
-        guard capabilities.supportsEmbeddedPlayback else { return false }
-
-        switch pendingOperation {
-        case .queueReplacement:
-            return true
-        case .statusChange:
-            return false
-        case nil:
-            return !queue.tracks.isEmpty && status != .stopped
-        }
-    }
-
-    var allowsSeek: Bool {
-        guard capabilities.supportsSeeking,
-            let duration = queue.currentTrack?.duration
-        else { return false }
-        return duration > 0
-    }
-
-    var allowsQueueTransition: Bool {
-        guard capabilities.supportsQueueTransitions,
-            queue.currentTrackID != nil
-        else { return false }
-        guard case .queueReplacement = pendingOperation else {
-            return true
-        }
-        return false
-    }
-
-    var allowsRepeatChange: Bool {
-        guard queue.currentTrackID != nil,
-            capabilities.supportedRepeatModes.count > 1
-        else { return false }
-        guard case .queueReplacement = pendingOperation else {
-            return true
-        }
-        return false
-    }
-
-    var allowsShuffleChange: Bool {
-        guard capabilities.supportsShuffle,
-            queue.currentTrackID != nil
-        else { return false }
-        guard case .queueReplacement = pendingOperation else {
-            return true
-        }
-        return false
     }
 }

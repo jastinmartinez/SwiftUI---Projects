@@ -55,7 +55,7 @@ struct PlaybackPresentationAdapterTests {
             PlaybackFeature.PendingStatusChange.Target.stopped,
             Locs.Playback.Status.stopped,
             PlaybackPrimaryButtonView.Model.State.play,
-            true
+            false
         ),
     ])
     func pendingStatusTargetProjectsImmediatePresentation(
@@ -69,8 +69,9 @@ struct PlaybackPresentationAdapterTests {
             makePlaybackStore(
                 song: makeTrack(),
                 status: confirmedStatus,
-                pendingOperation: .statusChange(
-                    .init(requestID: UUID(0), target: target)
+                pendingStatusChange: .init(
+                    requestID: UUID(0),
+                    target: target
                 )
             ),
             providerName: nil
@@ -110,12 +111,10 @@ struct PlaybackPresentationAdapterTests {
         let tracks = IdentifiedArray(uniqueElements: [song])
         let store = makePlaybackStore(
             song: nil,
-            pendingOperation: .queueReplacement(
-                .init(
-                    requestID: UUID(0),
-                    tracks: tracks,
-                    targetTrackID: song.id
-                )
+            pendingPlaybackTransition: PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: tracks,
+                targetTrackID: song.id
             )
         )
 
@@ -129,15 +128,24 @@ struct PlaybackPresentationAdapterTests {
     }
 
     @Test(arguments: [
-        (MusicProviderError.unavailable, Locs.Playback.Status.unavailable),
+        (PlaybackFailure.resourceUnavailable, Locs.Playback.Status.unavailable),
+        (.unsupportedResource, Locs.Playback.Status.failed),
+        (.preparationFailed, Locs.Playback.Status.failed),
         (.playbackFailed, Locs.Playback.Status.failed),
     ])
     func playbackFailureMapsToLocalizedStatus(
-        failure: MusicProviderError,
+        failure: PlaybackFailure,
         expectedText: String
     ) {
+        let song = makeTrack()
         let model = PlaybackView.Model(
-            makePlaybackStore(song: makeTrack(), failure: failure),
+            makePlaybackStore(
+                song: song,
+                failureNotice: PlaybackFailureNotice(
+                    trackID: song.id,
+                    failure: failure
+                )
+            ),
             providerName: nil
         )
 
@@ -324,37 +332,62 @@ struct PlaybackPresentationAdapterTests {
         let store = makePlaybackStore(
             song: song,
             status: .playing,
-            pendingOperation: .statusChange(
-                .init(requestID: UUID(0), target: .paused)
-            )
+            pendingStatusChange: .init(requestID: UUID(0), target: .paused)
         )
         let model = PlaybackView.Model(store, providerName: nil)
 
         #expect(!model.controls.primary.isEnabled)
         #expect(!model.utilityControls.controls[1].isEnabled)
 
-        let replacingStore = makePlaybackStore(
-            song: nil,
-            status: .stopped,
-            pendingOperation: .queueReplacement(
-                .init(requestID: UUID(0), tracks: tracks, targetTrackID: song.id)
+        let transitioningStore = makePlaybackStore(
+            song: song,
+            status: .playing,
+            pendingPlaybackTransition: PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: tracks,
+                targetTrackID: song.id
             )
         )
-        let replacingModel = PlaybackView.Model(replacingStore, providerName: nil)
-        #expect(!replacingModel.controls.primary.isEnabled)
-        #expect(replacingModel.utilityControls.controls[1].isEnabled)
+        let transitioningModel = PlaybackView.Model(
+            transitioningStore,
+            providerName: nil
+        )
+        #expect(!transitioningModel.controls.primary.isEnabled)
+        #expect(transitioningModel.utilityControls.controls[1].isEnabled)
+
+        let unconfirmedStore = makePlaybackStore(
+            song: nil,
+            status: .stopped,
+            pendingPlaybackTransition: PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: tracks,
+                targetTrackID: song.id
+            )
+        )
+        let unconfirmedModel = PlaybackView.Model(
+            unconfirmedStore,
+            providerName: nil
+        )
+        #expect(!unconfirmedModel.controls.primary.isEnabled)
+        #expect(!unconfirmedModel.utilityControls.controls[1].isEnabled)
     }
 
     @Test
     func queueControlsProjectPermissionsLabelsAndSymbols() {
         let song = makeTrack()
+        let queueTracks = [
+            makeTrack(nativeID: "previous"),
+            song,
+            makeTrack(nativeID: "next"),
+        ]
         let enabledModel = PlaybackView.Model(
-            makePlaybackStore(song: song),
+            makePlaybackStore(song: song, queueTracks: queueTracks),
             providerName: nil
         )
         let resettingModel = PlaybackView.Model(
             makePlaybackStore(
                 song: song,
+                queueTracks: queueTracks,
                 pendingProviderReset: .init(
                     requestID: UUID(0),
                     providerID: song.id.providerID,
@@ -484,18 +517,22 @@ struct PlaybackPresentationAdapterTests {
 
     private func makePlaybackStore(
         song: Track?,
+        queueTracks: [Track]? = nil,
         status: PlaybackStatus = .idle,
-        failure: MusicProviderError? = nil,
+        failureNotice: PlaybackFailureNotice? = nil,
         playbackEligibility: CatalogPlaybackEligibility = .eligible,
         capabilities: MusicProviderCapabilities = .allEnabled,
         confirmedPosition: TimeInterval = 0,
         timelineInteraction: PlaybackTimelineFeature.Interaction = .idle,
         repeatMode: PlaybackRepeatMode = .off,
         shuffleMode: PlaybackShuffleMode = .off,
-        pendingOperation: PlaybackFeature.PendingOperation? = nil,
+        pendingPlaybackTransition: PendingPlaybackTransition? = nil,
+        pendingStatusChange: PlaybackFeature.PendingStatusChange? = nil,
         pendingProviderReset: PlaybackFeature.PendingProviderReset? = nil
     ) -> StoreOf<PlaybackFeature> {
-        let tracks = IdentifiedArray(uniqueElements: song.map { [$0] } ?? [])
+        let tracks = IdentifiedArray(
+            uniqueElements: queueTracks ?? song.map { [$0] } ?? []
+        )
         return Store(
             initialState: PlaybackFeature.State(
                 providerID: song?.id.providerID ?? "fake",
@@ -507,14 +544,15 @@ struct PlaybackPresentationAdapterTests {
                     shuffleMode: shuffleMode
                 ),
                 status: status,
-                failure: failure,
+                failureNotice: failureNotice,
                 playbackEligibility: playbackEligibility,
                 capabilities: capabilities,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: confirmedPosition,
                     interaction: timelineInteraction
                 ),
-                pendingOperation: pendingOperation,
+                pendingPlaybackTransition: pendingPlaybackTransition,
+                pendingStatusChange: pendingStatusChange,
                 pendingProviderReset: pendingProviderReset,
                 isPlayerPresented: false
             )
@@ -539,14 +577,15 @@ struct PlaybackPresentationAdapterTests {
                     shuffleMode: .off
                 ),
                 status: .playing,
-                failure: nil,
+                failureNotice: nil,
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
                 timeline: .init(
                     confirmedPosition: 43,
                     interaction: .idle
                 ),
-                pendingOperation: nil,
+                pendingPlaybackTransition: nil,
+                pendingStatusChange: nil,
                 pendingProviderReset: nil,
                 isPlayerPresented: false
             )
@@ -558,9 +597,12 @@ struct PlaybackPresentationAdapterTests {
         }
     }
 
-    private func makeTrack(duration: TimeInterval? = 180) -> Track {
+    private func makeTrack(
+        nativeID: String = "song",
+        duration: TimeInterval? = 180
+    ) -> Track {
         Track(
-            id: .init(providerID: "fake", nativeID: "song"),
+            id: .init(providerID: "fake", nativeID: nativeID),
             title: "Song",
             artistName: "Artist",
             albumTitle: nil,

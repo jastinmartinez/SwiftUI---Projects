@@ -163,10 +163,11 @@ struct AppProviderSwitchingTests {
         ) {
             $0.playback.providerID = "future"
             $0.playback.status = .idle
-            $0.playback.failure = nil
+            $0.playback.failureNotice = nil
             $0.playback.playbackEligibility = .unknown
             $0.playback.capabilities = futureCapabilities
-            $0.playback.pendingOperation = nil
+            $0.playback.pendingPlaybackTransition = nil
+            $0.playback.pendingStatusChange = nil
             $0.playback.pendingProviderReset = nil
             $0.playback.isPlayerPresented = false
         }
@@ -262,16 +263,14 @@ struct AppProviderSwitchingTests {
     }
 
     @Test
-    func providerSelectionIsRejectedDuringPlaybackOperation() async {
+    func providerSelectionIsRejectedDuringAPendingPlaybackTransition() async {
         let song = makeTrack()
         let tracks = IdentifiedArray(uniqueElements: [song])
         let state = makeState(
-            pendingOperation: .queueReplacement(
-                PlaybackFeature.PendingQueueReplacement(
-                    requestID: UUID(0),
-                    tracks: tracks,
-                    targetTrackID: song.id
-                )
+            pendingPlaybackTransition: PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: tracks,
+                targetTrackID: song.id
             )
         )
         let store = makeStore(state: state)
@@ -349,7 +348,7 @@ struct AppProviderSwitchingTests {
 
     private func makeState(
         providerSwitch: ProviderSwitchFeature.State? = nil,
-        pendingOperation: PlaybackFeature.PendingOperation? = nil
+        pendingPlaybackTransition: PendingPlaybackTransition? = nil
     ) -> AppFeature.State {
         let song = makeTrack()
         let queue = IdentifiedArray(uniqueElements: [song])
@@ -397,14 +396,15 @@ struct AppProviderSwitchingTests {
                     shuffleMode: .off
                 ),
                 status: .playing,
-                failure: nil,
+                failureNotice: nil,
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: 42,
                     interaction: .idle
                 ),
-                pendingOperation: pendingOperation,
+                pendingPlaybackTransition: pendingPlaybackTransition,
+                pendingStatusChange: nil,
                 pendingProviderReset: nil,
                 isPlayerPresented: true
             ),

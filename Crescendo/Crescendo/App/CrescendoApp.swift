@@ -31,14 +31,15 @@ struct CrescendoApp: App {
                         shuffleMode: .off
                     ),
                     status: .idle,
-                    failure: nil,
+                    failureNotice: nil,
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled,
                     timeline: PlaybackTimelineFeature.State(
                         confirmedPosition: 0,
                         interaction: .idle
                     ),
-                    pendingOperation: nil,
+                    pendingPlaybackTransition: nil,
+                    pendingStatusChange: nil,
                     pendingProviderReset: nil,
                     isPlayerPresented: false
                 ),

@@ -9,24 +9,14 @@ struct PlaybackFeature {
         var providerID: ProviderID?
         var queue: PlaybackQueueFeature.State
         var status: PlaybackStatus
-        var failure: MusicProviderError?
+        var failureNotice: PlaybackFailureNotice?
         var playbackEligibility: CatalogPlaybackEligibility
         var capabilities: MusicProviderCapabilities
         var timeline: PlaybackTimelineFeature.State
-        var pendingOperation: PendingOperation?
+        var pendingPlaybackTransition: PendingPlaybackTransition?
+        var pendingStatusChange: PendingStatusChange?
         var pendingProviderReset: PendingProviderReset?
         var isPlayerPresented: Bool
-    }
-
-    enum PendingOperation: Equatable {
-        case queueReplacement(PendingQueueReplacement)
-        case statusChange(PendingStatusChange)
-    }
-
-    struct PendingQueueReplacement: Equatable {
-        let requestID: UUID
-        let tracks: IdentifiedArrayOf<Track>
-        let targetTrackID: TrackID
     }
 
     struct PendingStatusChange: Equatable {
@@ -59,22 +49,33 @@ struct PlaybackFeature {
         case applyReset(requestID: UUID)
         case delegate(Delegate)
         case selectionReceived(
-            Track,
+            TrackID,
             loadedResults: IdentifiedArrayOf<Track>,
             providerID: ProviderID,
             playbackEligibility: CatalogPlaybackEligibility
         )
-        case performQueueReplacement(
+        case resolveTransition(requestID: UUID, trackID: TrackID)
+        case transitionResourceResolved(
             requestID: UUID,
-            itemIDs: [TrackID],
-            startingItemID: TrackID
+            resource: PlaybackResource
         )
-        case queueReplacementSucceeded(requestID: UUID)
-        case queueReplacementFailed(
+        case transitionResolutionFailed(
             requestID: UUID,
-            error: MusicProviderError
+            failure: PlaybackFailure
         )
-        case cancelPendingOperation
+        case loadTransition(requestID: UUID, resource: PlaybackResource)
+        case transitionItemLoaded(requestID: UUID)
+        case transitionItemLoadFailed(
+            requestID: UUID,
+            failure: PlaybackFailure
+        )
+        case playTransition(requestID: UUID)
+        case transitionPlayRequested(requestID: UUID)
+        case transitionPlayFailed(
+            requestID: UUID,
+            failure: PlaybackFailure
+        )
+        case cancelPlaybackTransition
         case playPauseTapped
         case stopTapped
         case performStatusChange(
@@ -104,10 +105,12 @@ struct PlaybackFeature {
 
     private enum CancelID {
         case playbackObservation
-        case parentOperation
+        case playbackTransition
+        case statusChange
     }
 
-    @Dependency(\.playbackQueue) var playbackQueue
+    @Dependency(\.playbackResourceClients) var playbackResourceClients
+    @Dependency(\.playbackItem) var playbackItem
     @Dependency(\.playbackTransport) var playbackTransport
     @Dependency(\.playbackTimeline) var playbackTimeline
     @Dependency(\.playbackObservation) var playbackObservation
@@ -145,7 +148,8 @@ struct PlaybackFeature {
                 return .concatenate(
                     .merge(
                         .cancel(id: CancelID.playbackObservation),
-                        .cancel(id: CancelID.parentOperation)
+                        .cancel(id: CancelID.playbackTransition),
+                        .cancel(id: CancelID.statusChange)
                     ),
                     .send(.queue(.reset)),
                     .send(.timeline(.reset)),
@@ -159,10 +163,11 @@ struct PlaybackFeature {
 
                 state.providerID = pendingProviderReset.providerID
                 state.status = .idle
-                state.failure = nil
+                state.failureNotice = nil
                 state.playbackEligibility = .unknown
                 state.capabilities = pendingProviderReset.capabilities
-                state.pendingOperation = nil
+                state.pendingPlaybackTransition = nil
+                state.pendingStatusChange = nil
                 state.pendingProviderReset = nil
                 state.isPlayerPresented = false
                 return .send(
@@ -173,7 +178,7 @@ struct PlaybackFeature {
                 return .none
 
             case .selectionReceived(
-                let track,
+                let trackID,
                 let loadedResults,
                 let providerID,
                 let playbackEligibility
@@ -184,7 +189,7 @@ struct PlaybackFeature {
                     playbackEligibility == .eligible,
                     state.capabilities.supportsEmbeddedPlayback,
                     state.capabilities.supportsQueueReplacement,
-                    loadedResults[id: track.id] != nil,
+                    loadedResults[id: trackID] != nil,
                     loadedResults.allSatisfy({ $0.id.providerID == providerID })
                 else {
                     if state.pendingProviderReset == nil,
@@ -193,7 +198,7 @@ struct PlaybackFeature {
                         !hasNowPlaying
                     {
                         state.playbackEligibility = playbackEligibility
-                        state.failure = nil
+                        state.failureNotice = nil
                         state.isPlayerPresented = true
                     }
                     return .none
@@ -203,120 +208,188 @@ struct PlaybackFeature {
                     state.isPlayerPresented = true
                 }
                 let requestID = uuid()
-                state.pendingOperation = .queueReplacement(
-                    PendingQueueReplacement(
-                        requestID: requestID,
-                        tracks: loadedResults,
-                        targetTrackID: track.id
-                    )
+                state.pendingPlaybackTransition = PendingPlaybackTransition(
+                    requestID: requestID,
+                    queue: loadedResults,
+                    targetTrackID: trackID
                 )
                 state.playbackEligibility = .eligible
-                state.failure = nil
+                state.failureNotice = nil
                 return .send(
-                    .performQueueReplacement(
-                        requestID: requestID,
-                        itemIDs: Array(loadedResults.ids),
-                        startingItemID: track.id
-                    )
+                    .resolveTransition(requestID: requestID, trackID: trackID)
                 )
 
-            case .performQueueReplacement(
-                let requestID,
-                let itemIDs,
-                let startingItemID
-            ):
+            case .resolveTransition(let requestID, let trackID):
                 guard state.pendingProviderReset == nil,
-                    case .queueReplacement(let replacement) =
-                        state.pendingOperation,
-                    replacement.requestID == requestID
+                    let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID,
+                    pending.targetTrackID == trackID
                 else { return .none }
+
+                let resourceClient = playbackResourceClients[trackID.providerID]
                 return .run { send in
-                    do {
-                        try await playbackQueue.replace(
-                            itemIDs,
-                            startingItemID
+                    guard let resourceClient else {
+                        await send(
+                            .transitionResolutionFailed(
+                                requestID: requestID,
+                                failure: .resourceUnavailable
+                            )
                         )
+                        return
+                    }
+                    do {
+                        let resource = try await resourceClient.resolve(trackID)
                         try Task.checkCancellation()
                         await send(
-                            .queueReplacementSucceeded(requestID: requestID)
+                            .transitionResourceResolved(
+                                requestID: requestID,
+                                resource: resource
+                            )
                         )
                     } catch is CancellationError {
                         return
-                    } catch let error as MusicProviderError {
+                    } catch let failure as PlaybackFailure {
                         guard !Task.isCancelled else { return }
                         await send(
-                            .queueReplacementFailed(
+                            .transitionResolutionFailed(
                                 requestID: requestID,
-                                error: error
+                                failure: failure
                             )
                         )
                     } catch {
                         guard !Task.isCancelled else { return }
                         await send(
-                            .queueReplacementFailed(
+                            .transitionResolutionFailed(
                                 requestID: requestID,
-                                error: .playbackFailed
+                                failure: .resourceUnavailable
                             )
                         )
                     }
                 }
                 .cancellable(
-                    id: CancelID.parentOperation,
+                    id: CancelID.playbackTransition,
                     cancelInFlight: true
                 )
 
-            case .queueReplacementSucceeded(let requestID):
-                guard
-                    case .queueReplacement(let replacement) =
-                        state.pendingOperation,
-                    replacement.requestID == requestID
+            case .transitionResourceResolved(let requestID, let resource):
+                guard let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID,
+                    pending.targetTrackID == resource.trackID
                 else { return .none }
+                return .send(
+                    .loadTransition(requestID: requestID, resource: resource)
+                )
 
-                state.pendingOperation = nil
-                state.status = .playing
-                state.failure = nil
-                return .concatenate(
-                    .send(
-                        .queue(
-                            .replace(
-                                replacement.tracks,
-                                startingAt: replacement.targetTrackID
+            case .loadTransition(let requestID, let resource):
+                guard state.pendingProviderReset == nil,
+                    let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID,
+                    pending.targetTrackID == resource.trackID
+                else { return .none }
+                return .run { send in
+                    do {
+                        try await playbackItem.load(resource)
+                        try Task.checkCancellation()
+                        await send(.transitionItemLoaded(requestID: requestID))
+                    } catch is CancellationError {
+                        return
+                    } catch let failure as PlaybackFailure {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .transitionItemLoadFailed(
+                                requestID: requestID,
+                                failure: failure
                             )
                         )
-                    ),
-                    .send(.timeline(.reset))
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .transitionItemLoadFailed(
+                                requestID: requestID,
+                                failure: .preparationFailed
+                            )
+                        )
+                    }
+                }
+                .cancellable(
+                    id: CancelID.playbackTransition,
+                    cancelInFlight: true
                 )
 
-            case .queueReplacementFailed(let requestID, let error):
+            case .transitionItemLoaded(let requestID):
                 guard
-                    case .queueReplacement(let replacement) =
-                        state.pendingOperation,
-                    replacement.requestID == requestID
+                    state.pendingPlaybackTransition?.requestID == requestID
                 else { return .none }
+                return .send(.playTransition(requestID: requestID))
 
-                state.pendingOperation = nil
-                state.failure = error
+            case .playTransition(let requestID):
+                guard state.pendingProviderReset == nil,
+                    state.pendingPlaybackTransition?.requestID == requestID
+                else { return .none }
+                return .run { send in
+                    do {
+                        try await playbackTransport.play()
+                        try Task.checkCancellation()
+                        await send(
+                            .transitionPlayRequested(requestID: requestID)
+                        )
+                    } catch is CancellationError {
+                        return
+                    } catch let failure as PlaybackFailure {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .transitionPlayFailed(
+                                requestID: requestID,
+                                failure: failure
+                            )
+                        )
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .transitionPlayFailed(
+                                requestID: requestID,
+                                failure: .playbackFailed
+                            )
+                        )
+                    }
+                }
+                .cancellable(
+                    id: CancelID.playbackTransition,
+                    cancelInFlight: true
+                )
+
+            case .transitionPlayRequested:
+                // Observation stays authoritative; nothing is confirmed here.
                 return .none
 
-            case .cancelPendingOperation:
-                state.pendingOperation = nil
-                return .cancel(id: CancelID.parentOperation)
+            case .transitionResolutionFailed(let requestID, let failure),
+                .transitionItemLoadFailed(let requestID, let failure),
+                .transitionPlayFailed(let requestID, let failure):
+                guard let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID
+                else { return .none }
+
+                state.failureNotice = PlaybackFailureNotice(
+                    trackID: pending.targetTrackID,
+                    failure: failure
+                )
+                state.pendingPlaybackTransition = nil
+                return .none
+
+            case .cancelPlaybackTransition:
+                state.pendingPlaybackTransition = nil
+                return .cancel(id: CancelID.playbackTransition)
 
             case .playPauseTapped:
-                guard state.commandPolicy.allows(.playPause) else { return .none }
-                let target: PendingStatusChange.Target
-                if case .statusChange(let change) = state.pendingOperation,
-                    change.target == .stopped
-                {
-                    target = .playing
-                } else {
-                    target = state.status == .playing ? .paused : .playing
-                }
+                guard state.canRequestPlayPause else { return .none }
+                let target: PendingStatusChange.Target =
+                    state.status == .playing ? .paused : .playing
                 let requestID = uuid()
-                state.pendingOperation = .statusChange(
-                    PendingStatusChange(requestID: requestID, target: target)
+                state.pendingStatusChange = PendingStatusChange(
+                    requestID: requestID,
+                    target: target
                 )
-                state.failure = nil
+                state.failureNotice = nil
                 return .send(
                     .performStatusChange(
                         requestID: requestID,
@@ -325,12 +398,13 @@ struct PlaybackFeature {
                 )
 
             case .stopTapped:
-                guard state.commandPolicy.allows(.stop) else { return .none }
+                guard state.canRequestStop else { return .none }
                 let requestID = uuid()
-                state.pendingOperation = .statusChange(
-                    PendingStatusChange(requestID: requestID, target: .stopped)
+                state.pendingStatusChange = PendingStatusChange(
+                    requestID: requestID,
+                    target: .stopped
                 )
-                state.failure = nil
+                state.failureNotice = nil
                 return .send(
                     .performStatusChange(
                         requestID: requestID,
@@ -340,7 +414,7 @@ struct PlaybackFeature {
 
             case .performStatusChange(let requestID, let target):
                 guard state.pendingProviderReset == nil,
-                    case .statusChange(let change) = state.pendingOperation,
+                    let change = state.pendingStatusChange,
                     change.requestID == requestID,
                     change.target == target
                 else { return .none }
@@ -378,56 +452,59 @@ struct PlaybackFeature {
                     }
                 }
                 .cancellable(
-                    id: CancelID.parentOperation,
+                    id: CancelID.statusChange,
                     cancelInFlight: true
                 )
 
-            case .statusChangeSucceeded(let requestID):
-                guard
-                    case .statusChange(let change) = state.pendingOperation,
-                    change.requestID == requestID
-                else { return .none }
+            case .statusChangeSucceeded:
+                // Observation stays authoritative; nothing is confirmed here.
                 return .none
 
             case .statusChangeFailed(let requestID, let error):
-                guard
-                    case .statusChange(let change) = state.pendingOperation,
+                guard let change = state.pendingStatusChange,
                     change.requestID == requestID
                 else { return .none }
 
-                state.pendingOperation = nil
-                state.failure = error
+                state.pendingStatusChange = nil
+                if let trackID = state.queue.currentTrackID {
+                    state.failureNotice = PlaybackFailureNotice(
+                        trackID: trackID,
+                        failure: error == .unavailable
+                            ? .resourceUnavailable
+                            : .playbackFailed
+                    )
+                }
                 return .none
 
             case .previousTapped:
-                guard state.commandPolicy.allows(.previous) else { return .none }
-                state.failure = nil
+                guard state.canRequestPrevious else { return .none }
+                state.failureNotice = nil
                 return .send(.queue(.previousTapped))
 
             case .nextTapped:
-                guard state.commandPolicy.allows(.next) else { return .none }
-                state.failure = nil
+                guard state.canRequestNext else { return .none }
+                state.failureNotice = nil
                 return .send(.queue(.nextTapped))
 
             case .repeatTapped:
-                guard state.commandPolicy.allows(.repeatMode) else { return .none }
-                state.failure = nil
+                guard state.canRequestRepeat else { return .none }
+                state.failureNotice = nil
                 return .send(.queue(.repeatTapped))
 
             case .shuffleTapped:
-                guard state.commandPolicy.allows(.shuffleMode) else { return .none }
-                state.failure = nil
+                guard state.canRequestShuffle else { return .none }
+                state.failureNotice = nil
                 return .send(.queue(.shuffleTapped))
 
             case .timelinePositionChanged(let requestedPosition):
-                guard state.commandPolicy.allows(.seek),
+                guard state.canRequestSeek,
                     let duration = state.queue.currentTrack?.duration
                 else { return .none }
                 let position = min(max(requestedPosition, 0), duration)
                 return .send(.timeline(.positionChanged(position)))
 
             case .timelineInteractionEnded:
-                guard state.commandPolicy.allows(.seek),
+                guard state.canRequestSeek,
                     let duration = state.queue.currentTrack?.duration
                 else { return .none }
                 let position = min(max(state.timeline.position, 0), duration)
@@ -440,18 +517,18 @@ struct PlaybackFeature {
                 )
 
             case .restartTapped:
-                guard state.commandPolicy.allows(.seek) else { return .none }
+                guard state.canRequestSeek else { return .none }
                 return .send(.timeline(.seekRequested(0)))
 
             case .seekBackwardTapped:
-                guard state.commandPolicy.allows(.seek),
+                guard state.canRequestSeek,
                     let duration = state.queue.currentTrack?.duration
                 else { return .none }
                 let target = min(max(state.timeline.position - 15, 0), duration)
                 return .send(.timeline(.seekRequested(target)))
 
             case .seekForwardTapped:
-                guard state.commandPolicy.allows(.seek),
+                guard state.canRequestSeek,
                     let duration = state.queue.currentTrack?.duration
                 else { return .none }
                 let target = min(state.timeline.position + 15, duration)
@@ -463,41 +540,21 @@ struct PlaybackFeature {
             case .observationReceived(.completed):
                 return .none
 
-            case .observationReceived(.failed(let trackID, _)):
-                guard trackID == nil || trackID == state.queue.currentTrackID else {
-                    return .none
-                }
-                state.failure = .playbackFailed
+            case .observationReceived(.failed(let trackID, let failure)):
+                guard trackID == nil || trackID == state.queue.currentTrackID,
+                    let noticeTrackID = trackID ?? state.queue.currentTrackID
+                else { return .none }
+                state.failureNotice = PlaybackFailureNotice(
+                    trackID: noticeTrackID,
+                    failure: failure
+                )
                 return .none
 
             case .reconcileSnapshot(let snapshot):
                 guard state.pendingProviderReset == nil else { return .none }
                 state.status = snapshot.status
 
-                if case .queueReplacement(let replacement) = state.pendingOperation,
-                    snapshot.status == .playing,
-                    snapshot.currentTrackID == replacement.targetTrackID
-                {
-                    state.pendingOperation = nil
-                    state.failure = nil
-                    return .concatenate(
-                        .cancel(id: CancelID.parentOperation),
-                        .send(
-                            .queue(
-                                .replace(
-                                    replacement.tracks,
-                                    startingAt: replacement.targetTrackID
-                                )
-                            )
-                        ),
-                        .send(.timeline(.reset)),
-                        .send(
-                            .timeline(.positionObserved(snapshot.position))
-                        )
-                    )
-                }
-
-                if case .statusChange(let change) = state.pendingOperation {
+                if let change = state.pendingStatusChange {
                     let matchesTarget: Bool
                     switch change.target {
                     case .playing:
@@ -508,8 +565,8 @@ struct PlaybackFeature {
                         matchesTarget = snapshot.status == .stopped
                     }
                     if matchesTarget {
-                        state.pendingOperation = nil
-                        state.failure = nil
+                        state.pendingStatusChange = nil
+                        state.failureNotice = nil
                         let confirmationEffects: [Effect<Action>] =
                             snapshot.currentTrackID.map {
                                 [.send(.queue(.currentTrackConfirmed($0)))]
@@ -517,13 +574,13 @@ struct PlaybackFeature {
                         if change.target == .stopped {
                             return .concatenate(
                                 [
-                                    .cancel(id: CancelID.parentOperation),
+                                    .cancel(id: CancelID.statusChange),
                                     .send(.timeline(.reset)),
                                 ] + confirmationEffects
                             )
                         }
                         return .concatenate(
-                            [.cancel(id: CancelID.parentOperation)]
+                            [.cancel(id: CancelID.statusChange)]
                                 + confirmationEffects
                                 + [
                                     .send(
@@ -556,7 +613,15 @@ struct PlaybackFeature {
                 return .none
 
             case .timeline(.delegate(.transportFailed(let error))):
-                state.failure = error
+                guard let trackID = state.queue.currentTrackID else {
+                    return .none
+                }
+                state.failureNotice = PlaybackFailureNotice(
+                    trackID: trackID,
+                    failure: error == .unavailable
+                        ? .resourceUnavailable
+                        : .playbackFailed
+                )
                 return .none
 
             case .queue(.delegate(.transitionRequested)):
@@ -576,8 +641,17 @@ extension PlaybackFeature.State {
             capabilities: capabilities,
             queue: queue,
             status: status,
-            pendingOperation: pendingOperation,
+            pendingPlaybackTransition: pendingPlaybackTransition,
+            pendingStatusChange: pendingStatusChange,
             isResettingProvider: pendingProviderReset != nil
         )
     }
+
+    var canRequestPlayPause: Bool { commandPolicy.allows(.playPause) }
+    var canRequestStop: Bool { commandPolicy.allows(.stop) }
+    var canRequestSeek: Bool { commandPolicy.allows(.seek) }
+    var canRequestPrevious: Bool { commandPolicy.allows(.previous) }
+    var canRequestNext: Bool { commandPolicy.allows(.next) }
+    var canRequestRepeat: Bool { commandPolicy.allows(.repeatMode) }
+    var canRequestShuffle: Bool { commandPolicy.allows(.shuffleMode) }
 }

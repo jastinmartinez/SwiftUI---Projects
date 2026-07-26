@@ -13,14 +13,14 @@ extension PlaybackSkipControlsView.Model {
                     id: .backward,
                     systemImage: "gobackward.15",
                     accessibilityLabel: Locs.Playback.backwardFifteenSeconds,
-                    isEnabled: store.commandPolicy.allows(.seek),
+                    isEnabled: store.canRequestSeek,
                     perform: { store.send(.seekBackwardTapped) }
                 ),
                 Control(
                     id: .forward,
                     systemImage: "goforward.15",
                     accessibilityLabel: Locs.Playback.forwardFifteenSeconds,
-                    isEnabled: store.commandPolicy.allows(.seek),
+                    isEnabled: store.canRequestSeek,
                     perform: { store.send(.seekForwardTapped) }
                 ),
             ]

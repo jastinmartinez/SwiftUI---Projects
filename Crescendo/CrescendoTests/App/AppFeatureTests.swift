@@ -127,7 +127,7 @@ struct AppFeatureTests {
         let observationProbe = PlaybackObservationLifecycleProbe()
         let operationProbe = SuspendedOperationProbe<Void>()
         let seekProbe = SuspendedOperationProbe<Void>()
-        let pendingOperation = PlaybackFeature.PendingStatusChange(
+        let pendingStatusChange = PlaybackFeature.PendingStatusChange(
             requestID: UUID(0),
             target: .paused
         )
@@ -163,14 +163,18 @@ struct AppFeatureTests {
                     shuffleMode: .off
                 ),
                 status: .playing,
-                failure: .network,
+                failureNotice: PlaybackFailureNotice(
+                    trackID: song.id,
+                    failure: .playbackFailed
+                ),
                 playbackEligibility: .eligible,
                 capabilities: .allEnabled,
                 timeline: .init(
                     confirmedPosition: 42,
                     interaction: .dragging(position: 50)
                 ),
-                pendingOperation: .statusChange(pendingOperation),
+                pendingPlaybackTransition: nil,
+                pendingStatusChange: pendingStatusChange,
                 pendingProviderReset: nil,
                 isPlayerPresented: true
             )
@@ -189,8 +193,8 @@ struct AppFeatureTests {
         await store.send(
             .playback(
                 .performStatusChange(
-                    requestID: pendingOperation.requestID,
-                    target: pendingOperation.target
+                    requestID: pendingStatusChange.requestID,
+                    target: pendingStatusChange.target
                 )
             )
         )
@@ -267,10 +271,11 @@ struct AppFeatureTests {
         ) {
             $0.playback.providerID = futureProvider.id
             $0.playback.status = .idle
-            $0.playback.failure = nil
+            $0.playback.failureNotice = nil
             $0.playback.playbackEligibility = .unknown
             $0.playback.capabilities = futureProvider.musicCapabilities
-            $0.playback.pendingOperation = nil
+            $0.playback.pendingPlaybackTransition = nil
+            $0.playback.pendingStatusChange = nil
             $0.playback.pendingProviderReset = nil
             $0.playback.isPlayerPresented = false
         }
@@ -388,10 +393,11 @@ struct AppFeatureTests {
         ) {
             $0.playback.providerID = futureProvider.id
             $0.playback.status = .idle
-            $0.playback.failure = nil
+            $0.playback.failureNotice = nil
             $0.playback.playbackEligibility = .unknown
             $0.playback.capabilities = futureProvider.musicCapabilities
-            $0.playback.pendingOperation = nil
+            $0.playback.pendingPlaybackTransition = nil
+            $0.playback.pendingStatusChange = nil
             $0.playback.pendingProviderReset = nil
             $0.playback.isPlayerPresented = false
         }
@@ -532,14 +538,15 @@ struct AppFeatureTests {
                         shuffleMode: .off
                     ),
                     status: .idle,
-                    failure: nil,
+                    failureNotice: nil,
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled,
                     timeline: .init(
                         confirmedPosition: 0,
                         interaction: .idle
                     ),
-                    pendingOperation: nil,
+                    pendingPlaybackTransition: nil,
+                    pendingStatusChange: nil,
                     pendingProviderReset: nil,
                     isPlayerPresented: isPlayerPresented
                 ),

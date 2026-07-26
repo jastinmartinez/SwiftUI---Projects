@@ -14,7 +14,7 @@ extension PlaybackUtilityControlsView.Model {
                     systemImage: "arrow.counterclockwise",
                     title: Locs.Playback.restart,
                     accessibilityLabel: Locs.Playback.restart,
-                    isEnabled: store.commandPolicy.allows(.seek),
+                    isEnabled: store.canRequestSeek,
                     perform: { store.send(.restartTapped) }
                 ),
                 Control(
@@ -22,7 +22,7 @@ extension PlaybackUtilityControlsView.Model {
                     systemImage: "stop.fill",
                     title: Locs.Playback.stop,
                     accessibilityLabel: Locs.Playback.stop,
-                    isEnabled: store.commandPolicy.allows(.stop),
+                    isEnabled: store.canRequestStop,
                     perform: { store.send(.stopTapped) }
                 ),
             ]

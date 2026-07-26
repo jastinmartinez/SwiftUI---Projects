@@ -24,7 +24,7 @@ extension PlaybackTimelineView.Model {
                 value: position,
                 scale: .init(range: 0...duration),
                 accessibilityStep: 15,
-                isEnabled: store.commandPolicy.allows(.seek),
+                isEnabled: store.canRequestSeek,
                 strings: .init(
                     accessibilityLabel: Locs.Playback.position,
                     accessibilityValue: Locs.Playback.positionValue(

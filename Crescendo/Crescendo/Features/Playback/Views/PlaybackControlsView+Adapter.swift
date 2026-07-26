@@ -10,7 +10,7 @@ extension PlaybackControlsView.Model {
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>) {
         let primaryState: PlaybackPrimaryButtonView.Model.State
-        if case .statusChange(let change) = store.pendingOperation {
+        if let change = store.pendingStatusChange {
             switch change.target {
             case .playing:
                 primaryState = .pause
@@ -39,13 +39,13 @@ extension PlaybackControlsView.Model {
                     ? Locs.Playback.Mode.on
                     : Locs.Playback.Mode.off,
                 isSelected: store.queue.shuffleMode == .tracks,
-                isEnabled: store.commandPolicy.allows(.shuffleMode),
+                isEnabled: store.canRequestShuffle,
                 perform: { store.send(.shuffleTapped) }
             ),
             previous: PlaybackIconButtonView.Model(
                 systemImage: "backward.fill",
                 accessibilityLabel: Locs.Playback.previous,
-                isEnabled: store.commandPolicy.allows(.previous),
+                isEnabled: store.canRequestPrevious,
                 perform: { store.send(.previousTapped) }
             ),
             primary: PlaybackPrimaryButtonView.Model(
@@ -53,13 +53,13 @@ extension PlaybackControlsView.Model {
                 accessibilityLabel: primaryState == .play
                     ? Locs.Playback.play
                     : Locs.Playback.pause,
-                isEnabled: store.commandPolicy.allows(.playPause),
+                isEnabled: store.canRequestPlayPause,
                 perform: { store.send(.playPauseTapped) }
             ),
             next: PlaybackIconButtonView.Model(
                 systemImage: "forward.fill",
                 accessibilityLabel: Locs.Playback.next,
-                isEnabled: store.commandPolicy.allows(.next),
+                isEnabled: store.canRequestNext,
                 perform: { store.send(.nextTapped) }
             ),
             repeatMode: PlaybackModeButtonView.Model(
@@ -69,7 +69,7 @@ extension PlaybackControlsView.Model {
                 accessibilityLabel: Locs.Playback.repeatMode,
                 accessibilityValue: repeatAccessibilityValue,
                 isSelected: store.queue.repeatMode != .off,
-                isEnabled: store.commandPolicy.allows(.repeatMode),
+                isEnabled: store.canRequestRepeat,
                 perform: { store.send(.repeatTapped) }
             )
         )

@@ -39,7 +39,9 @@ struct AppFeature {
                 return .none
 
             case .providerSelected(let providerID):
-                guard state.playback.pendingOperation == nil else {
+                guard state.playback.pendingPlaybackTransition == nil,
+                    state.playback.pendingStatusChange == nil
+                else {
                     return .none
                 }
                 guard
@@ -188,7 +190,7 @@ struct AppFeature {
                 return .send(
                     .playback(
                         .selectionReceived(
-                            track,
+                            track.id,
                             loadedResults: loadedResults,
                             providerID: providerID,
                             playbackEligibility: access.playbackEligibility

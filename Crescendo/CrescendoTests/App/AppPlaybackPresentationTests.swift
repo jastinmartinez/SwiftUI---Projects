@@ -26,14 +26,18 @@ struct AppPlaybackPresentationTests {
                 shuffleMode: .off
             ),
             status: .paused,
-            failure: .playbackFailed,
+            failureNotice: PlaybackFailureNotice(
+                trackID: song.id,
+                failure: .playbackFailed
+            ),
             playbackEligibility: .eligible,
             capabilities: .allEnabled,
             timeline: PlaybackTimelineFeature.State(
                 confirmedPosition: 42,
                 interaction: .idle
             ),
-            pendingOperation: nil,
+            pendingPlaybackTransition: nil,
+            pendingStatusChange: nil,
             pendingProviderReset: nil,
             isPlayerPresented: true
         )

@@ -121,12 +121,10 @@ struct AppProviderSelectionPresentationTests {
         let model = ProviderSelectionView.Model(
             makeStore(
                 connection: connectedConnection,
-                pendingOperation: .queueReplacement(
-                    .init(
-                        requestID: UUID(0),
-                        tracks: tracks,
-                        targetTrackID: song.id
-                    )
+                pendingPlaybackTransition: PendingPlaybackTransition(
+                    requestID: UUID(0),
+                    queue: tracks,
+                    targetTrackID: song.id
                 )
             )
         )
@@ -181,7 +179,7 @@ struct AppProviderSelectionPresentationTests {
 
     private func makeStore(
         connection: ProviderConnection,
-        pendingOperation: PlaybackFeature.PendingOperation? = nil,
+        pendingPlaybackTransition: PendingPlaybackTransition? = nil,
         actions: LockIsolated<[AppFeature.Action]>? = nil
     ) -> StoreOf<AppFeature> {
         Store(
@@ -206,14 +204,15 @@ struct AppProviderSelectionPresentationTests {
                         shuffleMode: .off
                     ),
                     status: .idle,
-                    failure: nil,
+                    failureNotice: nil,
                     playbackEligibility: .unknown,
                     capabilities: .allEnabled,
                     timeline: PlaybackTimelineFeature.State(
                         confirmedPosition: 0,
                         interaction: .idle
                     ),
-                    pendingOperation: pendingOperation,
+                    pendingPlaybackTransition: pendingPlaybackTransition,
+                    pendingStatusChange: nil,
                     pendingProviderReset: nil,
                     isPlayerPresented: false
                 ),

@@ -11,7 +11,8 @@ extension ProviderSelectionView.Model {
         let collapsedLabel = Self.collapsedLabel(for: status)
         let isSelectionEnabled =
             store.providerSwitch == nil
-            && store.playback.pendingOperation == nil
+            && store.playback.pendingPlaybackTransition == nil
+            && store.playback.pendingStatusChange == nil
             && !Self.isConnecting(status)
 
         self.init(

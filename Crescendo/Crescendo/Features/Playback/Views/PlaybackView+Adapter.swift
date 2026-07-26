@@ -14,7 +14,7 @@ extension PlaybackView.Model {
     @MainActor
     init(_ store: StoreOf<PlaybackFeature>, providerName: String?) {
         let statusText: String
-        if case .statusChange(let change) = store.pendingOperation {
+        if let change = store.pendingStatusChange {
             switch change.target {
             case .playing:
                 statusText = Locs.Playback.Status.playing
@@ -23,11 +23,11 @@ extension PlaybackView.Model {
             case .stopped:
                 statusText = Locs.Playback.Status.stopped
             }
-        } else if store.pendingOperation != nil {
+        } else if store.pendingPlaybackTransition != nil {
             statusText = Locs.Playback.Status.loading
-        } else if store.failure == .unavailable {
+        } else if store.failureNotice?.failure == .resourceUnavailable {
             statusText = Locs.Playback.Status.unavailable
-        } else if store.failure != nil {
+        } else if store.failureNotice != nil {
             statusText = Locs.Playback.Status.failed
         } else {
             switch store.status {
