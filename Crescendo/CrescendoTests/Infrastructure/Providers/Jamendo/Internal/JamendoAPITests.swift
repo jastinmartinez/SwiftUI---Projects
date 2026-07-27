@@ -82,6 +82,40 @@ struct JamendoAPITests {
     }
 
     @Test
+    func trackDecodesResponseWithoutFullCount() async throws {
+        let fixtureData = Data(Self.trackWithoutFullCountJSON.utf8)
+        let api = JamendoAPI(
+            configuration: try Self.makeConfiguration(),
+            data: { request in
+                (fixtureData, try Self.okResponse(for: request))
+            }
+        )
+
+        let track = try await api.track(id: "42")
+
+        #expect(track.id == "42")
+    }
+
+    @Test
+    func tracksDecodesNumericDuration() async throws {
+        let fixtureData = Data(Self.numericDurationJSON.utf8)
+        let api = JamendoAPI(
+            configuration: try Self.makeConfiguration(),
+            data: { request in
+                (fixtureData, try Self.okResponse(for: request))
+            }
+        )
+
+        let response = try await api.tracks(
+            query: "jazz",
+            offset: 0,
+            limit: 1
+        )
+
+        #expect(response.results.first?.id == "42")
+    }
+
+    @Test
     func trackThrowsUnavailableWhenResultsAreEmpty() async throws {
         let emptyResultsJSON = """
             {
@@ -132,6 +166,21 @@ struct JamendoAPITests {
     }
 
     @Test
+    func tracksThrowsNetworkErrorForJamendoFailureResponse() async throws {
+        let fixtureData = Data(Self.failureJSON.utf8)
+        let api = JamendoAPI(
+            configuration: try Self.makeConfiguration(),
+            data: { request in
+                (fixtureData, try Self.okResponse(for: request))
+            }
+        )
+
+        await #expect(throws: MusicProviderError.network) {
+            try await api.tracks(query: "jazz", offset: 0, limit: 10)
+        }
+    }
+
+    @Test
     func tracksThrowsNetworkErrorOnUndecodableResponseBody() async throws {
         let malformedData = Data("not valid json at all".utf8)
 
@@ -156,6 +205,66 @@ struct JamendoAPITests {
             "code": 0,
             "results_count": 1,
             "results_fullcount": 41
+          },
+          "results": [
+            {
+              "id": "42",
+              "name": "Signal",
+              "artist_name": "The Tests",
+              "album_name": "Assertions",
+              "image": "https://example.com/artwork.jpg",
+              "duration": "180",
+              "audio": "https://example.com/audio.mp3"
+            }
+          ]
+        }
+        """
+
+    private static let failureJSON = """
+        {
+          "headers": {
+            "status": "failed",
+            "code": 11,
+            "error_message": "The application is suspended.",
+            "warnings": "",
+            "results_count": 0
+          },
+          "results": []
+        }
+        """
+
+    private static let numericDurationJSON = """
+        {
+          "headers": {
+            "status": "success",
+            "code": 0,
+            "error_message": "",
+            "warnings": "",
+            "results_count": 1,
+            "results_fullcount": 1
+          },
+          "results": [
+            {
+              "id": "42",
+              "name": "Signal",
+              "artist_name": "The Tests",
+              "album_name": "Assertions",
+              "image": "https://example.com/artwork.jpg",
+              "duration": 180,
+              "audio": "https://example.com/audio.mp3"
+            }
+          ]
+        }
+        """
+
+    private static let trackWithoutFullCountJSON = """
+        {
+          "headers": {
+            "status": "success",
+            "code": 0,
+            "error_message": "",
+            "warnings": "",
+            "results_count": 1
           },
           "results": [
             {

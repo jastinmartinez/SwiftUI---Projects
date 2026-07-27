@@ -21,10 +21,13 @@ extension ProviderSearchClient {
                     offset: offset,
                     limit: limit
                 )
+                guard let resultsFullCount = response.headers.resultsFullCount else {
+                    throw MusicProviderError.network
+                }
                 let tracks = response.results.map(Track.init(jamendoTrack:))
                 let nextOffset = offset + tracks.count
                 let nextCursor =
-                    nextOffset < response.headers.resultsFullCount
+                    nextOffset < resultsFullCount
                     ? try JamendoSearchCursor(
                         query: query,
                         offset: nextOffset

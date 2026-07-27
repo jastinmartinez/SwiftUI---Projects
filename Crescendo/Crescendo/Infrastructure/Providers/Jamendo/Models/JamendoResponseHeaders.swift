@@ -2,7 +2,7 @@ struct JamendoResponseHeaders: Decodable, Sendable {
     let status: String
     let code: Int
     let resultsCount: Int
-    let resultsFullCount: Int
+    let resultsFullCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case status

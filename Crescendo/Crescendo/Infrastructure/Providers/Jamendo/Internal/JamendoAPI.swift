@@ -62,10 +62,14 @@ struct JamendoAPI: Sendable {
             else {
                 throw MusicProviderError.network
             }
-            return try JSONDecoder().decode(
+            let jamendoResponse = try JSONDecoder().decode(
                 JamendoTracksResponse.self,
                 from: data
             )
+            guard jamendoResponse.headers.code == 0 else {
+                throw MusicProviderError.network
+            }
+            return jamendoResponse
         } catch let error as MusicProviderError {
             throw error
         } catch {
