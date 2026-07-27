@@ -1,9 +1,14 @@
 import ComposableArchitecture
 
 /// Exposes provider-neutral controls for the current playback item.
+@DependencyClient
 struct PlaybackTransportClient: Sendable {
     var play: @Sendable () async throws -> Void
     var pause: @Sendable () async throws -> Void
+}
+
+extension PlaybackTransportClient: DependencyKey {
+    static let liveValue = Self()
 }
 
 extension DependencyValues {

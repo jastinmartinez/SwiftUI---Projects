@@ -1,24 +1,10 @@
 import Foundation
 @preconcurrency import MusicKit
 
-/// Owns Apple Music authorization, catalog access, playback, mapping, and session caches.
+/// Owns Apple Music authorization, catalog search, and provider mapping.
 actor AppleMusicProvider {
     /// The stable application-owned identifier for Apple Music.
     static let providerID: ProviderID = .appleMusic
-
-    private let player = ApplicationMusicPlayer.shared
-    private var songsByNativeID: [String: Song] = [:]
-
-    /// Resolves the player's current queue entry into provider-neutral identity.
-    private var currentTrackID: TrackID? {
-        guard let nativeID = player.queue.currentEntry?.item?.id.rawValue else {
-            return nil
-        }
-        return TrackID(
-            providerID: Self.providerID,
-            nativeID: nativeID
-        )
-    }
 
     /// Returns the current authorization and catalog-playback access snapshot.
     func currentAccess() async -> MusicProviderAccess {
@@ -52,7 +38,7 @@ actor AppleMusicProvider {
         }
     }
 
-    /// Searches one catalog page and updates the session caches used by playback.
+    /// Searches one catalog page and maps its tracks into application-owned values.
     private func search(
         _ query: String,
         limit: Int,
@@ -73,7 +59,6 @@ actor AppleMusicProvider {
                 artworkURL: appleMusicSong.artwork?.url(width: 300, height: 300),
                 duration: appleMusicSong.duration
             )
-            songsByNativeID[nativeID] = appleMusicSong
             return track
         }
 
@@ -91,123 +76,6 @@ actor AppleMusicProvider {
             tracks: tracks,
             nextCursor: nextCursor
         )
-    }
-
-    /// Replaces the application queue with cached songs and begins at the requested item.
-    func replaceQueue(
-        itemIDs: [TrackID],
-        startingItemID: TrackID
-    ) async throws {
-        guard !itemIDs.isEmpty,
-            itemIDs.allSatisfy({ $0.providerID == Self.providerID }),
-            let startingIndex = itemIDs.firstIndex(of: startingItemID)
-        else {
-            throw MusicProviderError.unavailable
-        }
-
-        var songs: [Song] = []
-        songs.reserveCapacity(itemIDs.count)
-        for itemID in itemIDs {
-            guard let song = songsByNativeID[itemID.nativeID] else {
-                throw MusicProviderError.unavailable
-            }
-            songs.append(song)
-        }
-
-        let startingSong = songs[startingIndex]
-        try Task.checkCancellation()
-        player.queue = ApplicationMusicPlayer.Queue(
-            for: songs,
-            startingAt: startingSong
-        )
-        try await player.prepareToPlay()
-        try Task.checkCancellation()
-        try await player.play()
-    }
-
-    /// Resumes the existing application-player queue without replacing its item or position.
-    func play() async throws {
-        try await player.play()
-    }
-
-    /// Requests movement through the active queue when another entry exists.
-    ///
-    /// - Parameter direction: The provider-relative movement to request.
-    /// - Returns: Whether MusicKit accepted a transition or the queue boundary
-    ///   prevented one from being requested.
-    func navigate(
-        _ direction: PlaybackQueueNavigationDirection
-    ) async throws -> PlaybackQueueNavigationResult {
-        guard currentQueuePosition.canTransition(direction) else {
-            return .boundaryReached
-        }
-
-        switch direction {
-        case .previous:
-            try await player.skipToPreviousEntry()
-        case .next:
-            try await player.skipToNextEntry()
-        }
-        return .accepted
-    }
-
-    /// Sets repeat behavior for the active Apple Music queue.
-    func setRepeat(_ mode: PlaybackRepeatMode) {
-        player.state.repeatMode = MusicPlayer.RepeatMode(mode)
-    }
-
-    /// Sets shuffle behavior for the active Apple Music queue.
-    func setShuffle(_ mode: PlaybackShuffleMode) {
-        player.state.shuffleMode = MusicPlayer.ShuffleMode(mode)
-    }
-
-    /// Resolves the native queue into the boundary information required for transitions.
-    private var currentQueuePosition: PlaybackQueuePosition {
-        PlaybackQueuePosition(
-            entryIDs: player.queue.entries.map(\.id),
-            currentEntryID: player.queue.currentEntry?.id
-        )
-    }
-
-    /// Pauses playback while preserving the current position.
-    func pause() {
-        player.pause()
-    }
-
-    /// Stops playback and resets the transport position.
-    func stop() {
-        player.stop()
-        player.playbackTime = 0
-    }
-
-    /// Moves playback to a nonnegative position.
-    func seek(to time: TimeInterval) {
-        player.playbackTime = max(0, time)
-    }
-
-    /// Polls the application player and yields provider-neutral playback observations.
-    func playbackObservations() -> AsyncStream<PlaybackObservation> {
-        AsyncStream { continuation in
-            let observationTask = Task { [weak self] in
-                guard let self else {
-                    continuation.finish()
-                    return
-                }
-
-                while !Task.isCancelled {
-                    continuation.yield(.snapshot(await self.playbackSnapshot()))
-                    do {
-                        try await Task.sleep(for: .milliseconds(500))
-                    } catch {
-                        break
-                    }
-                }
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in
-                observationTask.cancel()
-            }
-        }
     }
 
     /// Preserves authorized status with unknown playback eligibility when subscription lookup fails.
@@ -237,37 +105,6 @@ actor AppleMusicProvider {
                 playbackEligibility: .unknown
             )
         }
-    }
-
-    /// Reads the player as the transport source of truth and normalizes its state.
-    private func playbackSnapshot() -> PlaybackSnapshot {
-        let appleMusicStatus: AppleMusicPlaybackStatus
-        switch player.state.playbackStatus {
-        case .playing, .seekingForward, .seekingBackward:
-            appleMusicStatus = .playing
-        case .paused:
-            appleMusicStatus = .paused
-        case .stopped:
-            appleMusicStatus = .stopped
-        case .interrupted:
-            appleMusicStatus = .interrupted
-        @unknown default:
-            appleMusicStatus = .interrupted
-        }
-
-        let position: TimeInterval
-        if appleMusicStatus == .stopped {
-            position = 0
-        } else {
-            position = max(0, player.playbackTime)
-        }
-        let duration = currentTrackID.flatMap { songsByNativeID[$0.nativeID] }?.duration
-        return PlaybackSnapshot(
-            currentTrackID: currentTrackID,
-            status: PlaybackStatus(appleMusicStatus),
-            position: position,
-            duration: duration
-        )
     }
 }
 

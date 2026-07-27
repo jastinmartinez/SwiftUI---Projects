@@ -6,14 +6,6 @@ struct MusicProviderCapabilities: Equatable, Sendable {
     let supportsEmbeddedPlayback: Bool
     /// Whether playback supports changing the current position.
     let supportsSeeking: Bool
-    /// Whether playback can replace the active queue.
-    let supportsQueueReplacement: Bool
-    /// Whether playback can move between items in the active queue.
-    let supportsQueueTransitions: Bool
-    /// The repeat behaviors the provider can apply to its active queue.
-    let supportedRepeatModes: Set<PlaybackRepeatMode>
-    /// Whether the provider can shuffle the active queue.
-    let supportsShuffle: Bool
 }
 
 extension MusicProviderCapabilities {
@@ -21,10 +13,6 @@ extension MusicProviderCapabilities {
     static let allEnabled = Self(
         supportsCatalogSearch: true,
         supportsEmbeddedPlayback: true,
-        supportsSeeking: true,
-        supportsQueueReplacement: true,
-        supportsQueueTransitions: true,
-        supportedRepeatModes: [.off, .all, .one],
-        supportsShuffle: true
+        supportsSeeking: true
     )
 }

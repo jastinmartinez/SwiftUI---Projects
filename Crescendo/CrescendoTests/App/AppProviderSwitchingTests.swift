@@ -315,11 +315,7 @@ struct AppProviderSwitchingTests {
         MusicProviderCapabilities(
             supportsCatalogSearch: true,
             supportsEmbeddedPlayback: true,
-            supportsSeeking: false,
-            supportsQueueReplacement: true,
-            supportsQueueTransitions: true,
-            supportedRepeatModes: [.off, .all, .one],
-            supportsShuffle: true
+            supportsSeeking: false
         )
     }
 

@@ -419,11 +419,7 @@ struct PlaybackPresentationAdapterTests {
         let capabilities = MusicProviderCapabilities(
             supportsCatalogSearch: true,
             supportsEmbeddedPlayback: true,
-            supportsSeeking: false,
-            supportsQueueReplacement: true,
-            supportsQueueTransitions: true,
-            supportedRepeatModes: [.off, .all, .one],
-            supportsShuffle: true
+            supportsSeeking: false
         )
         let store = makePlaybackStore(
             song: makeTrack(duration: 215),

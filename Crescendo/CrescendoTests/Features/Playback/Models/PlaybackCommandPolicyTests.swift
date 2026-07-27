@@ -278,12 +278,6 @@ private let repeatChangeCases = [
         policy: makePolicy(pendingPlaybackTransition: .resolving),
         expected: false
     ),
-    CommandPolicyCase(
-        name: "allowed while the provider supports one Repeat mode",
-        command: .repeatMode,
-        policy: makePolicy(capabilities: .withOneRepeatMode),
-        expected: true
-    ),
 ]
 
 private let shuffleChangeCases = [
@@ -304,12 +298,6 @@ private let shuffleChangeCases = [
         command: .shuffleMode,
         policy: makePolicy(pendingPlaybackTransition: .resolving),
         expected: false
-    ),
-    CommandPolicyCase(
-        name: "allowed without provider Shuffle support",
-        command: .shuffleMode,
-        policy: makePolicy(capabilities: .withoutShuffle),
-        expected: true
     ),
 ]
 
@@ -340,41 +328,13 @@ extension MusicProviderCapabilities {
     fileprivate static let withoutEmbeddedPlayback = Self(
         supportsCatalogSearch: true,
         supportsEmbeddedPlayback: false,
-        supportsSeeking: true,
-        supportsQueueReplacement: true,
-        supportsQueueTransitions: true,
-        supportedRepeatModes: [.off, .all, .one],
-        supportsShuffle: true
+        supportsSeeking: true
     )
 
     fileprivate static let withoutSeeking = Self(
         supportsCatalogSearch: true,
         supportsEmbeddedPlayback: true,
-        supportsSeeking: false,
-        supportsQueueReplacement: true,
-        supportsQueueTransitions: true,
-        supportedRepeatModes: [.off, .all, .one],
-        supportsShuffle: true
-    )
-
-    fileprivate static let withOneRepeatMode = Self(
-        supportsCatalogSearch: true,
-        supportsEmbeddedPlayback: true,
-        supportsSeeking: true,
-        supportsQueueReplacement: true,
-        supportsQueueTransitions: true,
-        supportedRepeatModes: [.off],
-        supportsShuffle: true
-    )
-
-    fileprivate static let withoutShuffle = Self(
-        supportsCatalogSearch: true,
-        supportsEmbeddedPlayback: true,
-        supportsSeeking: true,
-        supportsQueueReplacement: true,
-        supportsQueueTransitions: true,
-        supportedRepeatModes: [.off, .all, .one],
-        supportsShuffle: false
+        supportsSeeking: false
     )
 }
 

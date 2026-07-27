@@ -1,8 +1,17 @@
 import ComposableArchitecture
 
 /// Exposes provider-confirmed playback observations.
+@DependencyClient
 struct PlaybackObservationClient: Sendable {
-    var observations: @Sendable () async -> AsyncStream<PlaybackObservation>
+    var observations: @Sendable () async -> AsyncStream<PlaybackObservation> = {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+}
+
+extension PlaybackObservationClient: DependencyKey {
+    static let liveValue = Self()
 }
 
 extension DependencyValues {

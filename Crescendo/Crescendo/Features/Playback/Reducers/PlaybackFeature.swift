@@ -191,7 +191,6 @@ struct PlaybackFeature {
                     state.providerID == providerID,
                     playbackEligibility == .eligible,
                     state.capabilities.supportsEmbeddedPlayback,
-                    state.capabilities.supportsQueueReplacement,
                     loadedResults[id: trackID] != nil,
                     loadedResults.allSatisfy({ $0.id.providerID == providerID })
                 else {

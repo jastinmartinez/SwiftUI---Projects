@@ -1103,31 +1103,6 @@ struct PlaybackFeatureTests {
             $0.isPlayerPresented = true
         }
 
-        let unsupportedStore = makeStore(
-            capabilities: MusicProviderCapabilities(
-                supportsCatalogSearch: true,
-                supportsEmbeddedPlayback: true,
-                supportsSeeking: true,
-                supportsQueueReplacement: false,
-                supportsQueueTransitions: true,
-                supportedRepeatModes: [.off, .all, .one],
-                supportsShuffle: true
-            )
-        ) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                resolveCalls.withValue { $0 += 1 }
-                return resource
-            }
-        }
-        await unsupportedStore.send(
-            .selectionReceived(
-                tracks[0].id,
-                loadedResults: queue,
-                providerID: providerID,
-                playbackEligibility: .eligible
-            )
-        )
-
         #expect(resolveCalls.value == 0)
     }
 
@@ -2415,11 +2390,7 @@ struct PlaybackFeatureTests {
         let capabilities = MusicProviderCapabilities(
             supportsCatalogSearch: true,
             supportsEmbeddedPlayback: true,
-            supportsSeeking: false,
-            supportsQueueReplacement: true,
-            supportsQueueTransitions: true,
-            supportedRepeatModes: [.off, .all, .one],
-            supportsShuffle: true
+            supportsSeeking: false
         )
         let store = makeStore(
             queue: makeQueue(duration: 180),

@@ -35,16 +35,26 @@ targets:
     dependencies:
       - package: ComposableArchitecture
         product: ComposableArchitecture
+    info:
+      path: Crescendo/Info.plist
+      properties:
+        JamendoClientID: $(JAMENDO_CLIENT_ID)
+        UIBackgroundModes:
+          - audio
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIUserInterfaceStyle: Light
     settings:
       base:
         DEVELOPMENT_TEAM: WQNY636DWS
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_JamendoClientID: $(JAMENDO_CLIENT_ID)
-        INFOPLIST_KEY_NSAppleMusicUsageDescription: Crescendo uses Apple Music access to search and play catalog songs in this learning demo.
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
-        INFOPLIST_KEY_UIUserInterfaceStyle: Light
         PRODUCT_BUNDLE_IDENTIFIER: com.jastin.crescendo
 
   CrescendoTests:
