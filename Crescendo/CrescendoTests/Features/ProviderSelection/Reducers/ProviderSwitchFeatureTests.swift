@@ -130,7 +130,7 @@ struct ProviderSwitchFeatureTests {
     @Test
     func stalePauseResponsesCannotCompleteNewerTransaction() async {
         let state = ProviderSwitchFeature.State(
-            sourceProviderID: .appleMusic,
+            sourceProviderID: .testProvider,
             phase: .pausing(targetProviderID: "third", requestID: UUID(1))
         )
         let store = makeStore(state: state)
@@ -145,7 +145,7 @@ struct ProviderSwitchFeatureTests {
 
     private func makeStore(
         state: ProviderSwitchFeature.State = ProviderSwitchFeature.State(
-            sourceProviderID: .appleMusic,
+            sourceProviderID: .testProvider,
             phase: .ready(targetProviderID: "future")
         ),
         pause: @escaping @Sendable () async throws -> Void = {}

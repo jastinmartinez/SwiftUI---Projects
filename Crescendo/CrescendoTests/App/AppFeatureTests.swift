@@ -30,7 +30,7 @@ struct AppFeatureTests {
         let store = makeStore {
             $0.providerAccessClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderAccessClient(
+                    .testProvider: ProviderAccessClient(
                         currentAccess: { access },
                         requestAccess: { access }
                     )
@@ -41,13 +41,13 @@ struct AppFeatureTests {
             }
         }
 
-        await store.send(.providerSelected(.appleMusic))
-        await store.receive(.providerConnection(.connect(.appleMusic)))
+        await store.send(.providerSelected(.testProvider))
+        await store.receive(.providerConnection(.connect(.testProvider)))
         await store.receive(
-            .providerConnection(.startConnection(.appleMusic))
+            .providerConnection(.startConnection(.testProvider))
         ) {
             $0.providerConnection.connection = .connecting(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 requestID: UUID(0)
             )
         }
@@ -55,25 +55,25 @@ struct AppFeatureTests {
             .providerConnection(
                 .delegate(
                     .connectionStarted(
-                        providerID: .appleMusic,
+                        providerID: .testProvider,
                         providerChanged: true
                     )
                 )
             )
         )
-        await store.receive(.resetProviderOwnedState(.appleMusic))
+        await store.receive(.resetProviderOwnedState(.testProvider))
         await store.receive(.search(.cancelSearch))
         await store.receive(
             .playback(
                 .reset(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     capabilities: .allEnabled
                 )
             )
         ) {
             $0.playback.pendingProviderReset = .init(
                 requestID: UUID(1),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 capabilities: .allEnabled
             )
         }
@@ -84,18 +84,18 @@ struct AppFeatureTests {
                 .applyReset(requestID: UUID(1))
             )
         ) {
-            $0.playback.providerID = .appleMusic
+            $0.playback.providerID = .testProvider
             $0.playback.pendingProviderReset = nil
         }
         await store.receive(
-            .playback(.delegate(.resetCompleted(.appleMusic)))
+            .playback(.delegate(.resetCompleted(.testProvider)))
         )
-        await store.receive(.replaceProviderOwnedState(.appleMusic))
+        await store.receive(.replaceProviderOwnedState(.testProvider))
         await store.receive(
             .providerConnection(
                 .currentAccessResponse(
                     requestID: UUID(0),
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     access: access
                 )
             )
@@ -104,13 +104,13 @@ struct AppFeatureTests {
             .providerConnection(
                 .accessResolved(
                     requestID: UUID(0),
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     access: access
                 )
             )
         ) {
             $0.providerConnection.connection = .connected(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         }
@@ -119,7 +119,7 @@ struct AppFeatureTests {
                 .delegate(
                     .connectionResolved(
                         .connected(
-                            providerID: .appleMusic,
+                            providerID: .testProvider,
                             access: access
                         )
                     )
@@ -144,7 +144,7 @@ struct AppFeatureTests {
             target: .paused
         )
         let state = makeState(
-            providers: [.appleMusic, futureProvider],
+            providers: [.testProvider, futureProvider],
             connection: .connecting(
                 providerID: futureProvider.id,
                 requestID: UUID(0)
@@ -156,17 +156,17 @@ struct AppFeatureTests {
                         tracks: queue,
                         nextCursor: nil,
                         status: .idle,
-                        providerID: .appleMusic
+                        providerID: .testProvider
                     )
                 ),
                 providerAccess: .init(
                     authorization: .authorized,
                     playbackEligibility: .eligible
                 ),
-                providerID: .appleMusic
+                providerID: .testProvider
             ),
             playback: PlaybackFeature.State(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 queue: .init(
                     tracks: queue,
                     playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
@@ -387,7 +387,7 @@ struct AppFeatureTests {
         var playback = makeState().playback
         playback.pendingProviderReset = pendingProviderReset
         let state = makeState(
-            providers: [.appleMusic, futureProvider],
+            providers: [.testProvider, futureProvider],
             connection: .connected(
                 providerID: futureProvider.id,
                 access: access
@@ -453,7 +453,7 @@ struct AppFeatureTests {
     func unchangedProviderConnectionStartPreservesProviderOwnedState() async {
         let state = makeState(
             connection: .connecting(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 requestID: UUID(0)
             )
         )
@@ -463,7 +463,7 @@ struct AppFeatureTests {
             .providerConnection(
                 .delegate(
                     .connectionStarted(
-                        providerID: .appleMusic,
+                        providerID: .testProvider,
                         providerChanged: false
                     )
                 )
@@ -484,7 +484,7 @@ struct AppFeatureTests {
                 query: "Song",
                 status: .idle,
                 providerAccess: access,
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         )
         let store = makeStore(state: state)
@@ -523,7 +523,7 @@ struct AppFeatureTests {
     }
 
     private func makeState(
-        providers: [ProviderDescriptor] = [.appleMusic],
+        providers: [ProviderDescriptor] = [.testProvider],
         connection: ProviderConnection = .disconnected,
         search: SearchFeature.State? = nil,
         playback: PlaybackFeature.State? = nil,
@@ -539,7 +539,7 @@ struct AppFeatureTests {
                     query: "",
                     status: .idle,
                     providerAccess: nil,
-                    providerID: .appleMusic
+                    providerID: .testProvider
                 ),
             playback: playback
                 ?? PlaybackFeature.State(
@@ -583,7 +583,7 @@ struct AppFeatureTests {
 
     private func makeTrack() -> Track {
         Track(
-            id: .init(providerID: .appleMusic, nativeID: "selected"),
+            id: .init(providerID: .testProvider, nativeID: "selected"),
             title: "Selected song",
             artistName: "Artist",
             albumTitle: nil,

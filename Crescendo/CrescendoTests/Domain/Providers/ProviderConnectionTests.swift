@@ -14,17 +14,17 @@ struct ProviderConnectionTests {
 
     @Test(arguments: [
         ProviderConnection.connecting(
-            providerID: .appleMusic,
+            providerID: .testProvider,
             requestID: UUID(0)
         ),
-        .denied(providerID: .appleMusic),
-        .restricted(providerID: .appleMusic),
-        .failed(providerID: .appleMusic),
+        .denied(providerID: .testProvider),
+        .restricted(providerID: .testProvider),
+        .failed(providerID: .testProvider),
     ])
     func unresolvedConnectionExposesOnlyProvider(
         connection: ProviderConnection
     ) {
-        #expect(connection.providerID == .appleMusic)
+        #expect(connection.providerID == .testProvider)
         #expect(connection.access == nil)
     }
 
@@ -35,11 +35,11 @@ struct ProviderConnectionTests {
             playbackEligibility: .eligible
         )
         let connection = ProviderConnection.connected(
-            providerID: .appleMusic,
+            providerID: .testProvider,
             access: access
         )
 
-        #expect(connection.providerID == .appleMusic)
+        #expect(connection.providerID == .testProvider)
         #expect(connection.access == access)
     }
 }

@@ -12,7 +12,7 @@ struct AppProviderSwitchingTests {
 
         await store.send(.providerSelected("future")) {
             $0.providerSwitch = ProviderSwitchFeature.State(
-                sourceProviderID: .appleMusic,
+                sourceProviderID: .testProvider,
                 phase: .ready(targetProviderID: "future")
             )
         }
@@ -27,7 +27,7 @@ struct AppProviderSwitchingTests {
                 requestID: UUID(0)
             )
         }
-        await store.send(.providerSelected(.appleMusic))
+        await store.send(.providerSelected(.testProvider))
         await store.receive(.providerSwitch(.cancel))
         await store.receive(.providerSwitch(.delegate(.cancelled))) {
             $0.providerSwitch = nil
@@ -39,7 +39,7 @@ struct AppProviderSwitchingTests {
         let store = makeStore(
             state: makeState(
                 providerSwitch: ProviderSwitchFeature.State(
-                    sourceProviderID: .appleMusic,
+                    sourceProviderID: .testProvider,
                     phase: .pausing(
                         targetProviderID: "future",
                         requestID: UUID(0)
@@ -48,7 +48,7 @@ struct AppProviderSwitchingTests {
             )
         )
 
-        await store.send(.providerSelected(.appleMusic))
+        await store.send(.providerSelected(.testProvider))
         await store.receive(.providerSwitch(.cancel))
         await store.receive(.providerSwitch(.delegate(.cancelled))) {
             $0.providerSwitch = nil
@@ -60,7 +60,7 @@ struct AppProviderSwitchingTests {
         let store = makeStore(
             state: makeState(
                 providerSwitch: ProviderSwitchFeature.State(
-                    sourceProviderID: .appleMusic,
+                    sourceProviderID: .testProvider,
                     phase: .pausing(
                         targetProviderID: "future",
                         requestID: UUID(0)
@@ -81,7 +81,7 @@ struct AppProviderSwitchingTests {
                 requestID: UUID(0)
             )
         }
-        await store.send(.providerSelected(.appleMusic))
+        await store.send(.providerSelected(.testProvider))
         await store.receive(.providerSwitch(.cancel))
         await store.receive(.providerSwitch(.delegate(.cancelled))) {
             $0.providerSwitch = nil
@@ -93,7 +93,7 @@ struct AppProviderSwitchingTests {
         let store = makeStore(
             state: makeState(
                 providerSwitch: ProviderSwitchFeature.State(
-                    sourceProviderID: .appleMusic,
+                    sourceProviderID: .testProvider,
                     phase: .pausing(
                         targetProviderID: "future",
                         requestID: UUID(0)
@@ -234,7 +234,7 @@ struct AppProviderSwitchingTests {
 
         await store.send(.providerSelected("future")) {
             $0.providerSwitch = ProviderSwitchFeature.State(
-                sourceProviderID: .appleMusic,
+                sourceProviderID: .testProvider,
                 phase: .ready(targetProviderID: "future")
             )
         }
@@ -286,7 +286,7 @@ struct AppProviderSwitchingTests {
         let song = makeTrack(nativeID: "next")
         let state = makeState(
             providerSwitch: ProviderSwitchFeature.State(
-                sourceProviderID: .appleMusic,
+                sourceProviderID: .testProvider,
                 phase: .pausing(
                     targetProviderID: "future",
                     requestID: UUID(0)
@@ -344,7 +344,7 @@ struct AppProviderSwitchingTests {
             )
             $0.providerAccessClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: accessClient,
+                    .testProvider: accessClient,
                     "future": accessClient,
                     "third": accessClient,
                 ]
@@ -367,7 +367,7 @@ struct AppProviderSwitchingTests {
         return AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
                 providers: [
-                    .appleMusic,
+                    .testProvider,
                     makeProvider(
                         id: "future",
                         musicCapabilities: futureCapabilities
@@ -375,7 +375,7 @@ struct AppProviderSwitchingTests {
                     makeProvider(id: "third", musicCapabilities: .allEnabled),
                 ],
                 connection: .connected(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     access: MusicProviderAccess(
                         authorization: .authorized,
                         playbackEligibility: .eligible
@@ -389,17 +389,17 @@ struct AppProviderSwitchingTests {
                         tracks: [makeTrack()],
                         nextCursor: nil,
                         status: .idle,
-                        providerID: .appleMusic
+                        providerID: .testProvider
                     )
                 ),
                 providerAccess: MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
                 ),
-                providerID: .appleMusic
+                providerID: .testProvider
             ),
             playback: PlaybackFeature.State(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 queue: PlaybackQueueFeature.State(
                     tracks: queue,
                     playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
@@ -438,7 +438,7 @@ struct AppProviderSwitchingTests {
 
     private func makeTrack(nativeID: String = "selected") -> Track {
         Track(
-            id: .init(providerID: .appleMusic, nativeID: nativeID),
+            id: .init(providerID: .testProvider, nativeID: nativeID),
             title: "Selected song",
             artistName: "Artist",
             albumTitle: nil,

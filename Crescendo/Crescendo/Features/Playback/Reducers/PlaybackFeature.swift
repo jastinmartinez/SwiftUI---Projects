@@ -131,7 +131,8 @@ struct PlaybackFeature {
             case .task:
                 guard state.pendingProviderReset == nil else { return .none }
                 return .run { send in
-                    let observations = await playbackObservation.observations()
+                    let observations =
+                        try await playbackObservation.observations()
                     for await observation in observations {
                         await send(.observationReceived(observation))
                     }

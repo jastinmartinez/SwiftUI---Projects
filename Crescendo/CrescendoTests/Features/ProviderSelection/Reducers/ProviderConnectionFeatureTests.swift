@@ -26,17 +26,17 @@ struct ProviderConnectionFeatureTests {
             }
         )
 
-        await store.send(.connect(.appleMusic))
-        await store.receive(.startConnection(.appleMusic)) {
+        await store.send(.connect(.testProvider))
+        await store.receive(.startConnection(.testProvider)) {
             $0.connection = .connecting(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 requestID: UUID(0)
             )
         }
         await store.receive(
             .delegate(
                 .connectionStarted(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     providerChanged: true
                 )
             )
@@ -44,19 +44,19 @@ struct ProviderConnectionFeatureTests {
         await store.receive(
             .currentAccessResponse(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         )
         await store.receive(
             .accessResolved(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         ) {
             $0.connection = .connected(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         }
@@ -64,7 +64,7 @@ struct ProviderConnectionFeatureTests {
             .delegate(
                 .connectionResolved(
                     .connected(
-                        providerID: .appleMusic,
+                        providerID: .testProvider,
                         access: access
                     )
                 )
@@ -77,7 +77,7 @@ struct ProviderConnectionFeatureTests {
 
     @Test
     func missingAccessRegistrationFailsClosedWithoutUsingAnotherProvider() async {
-        let appleMusicAccessCount = LockIsolated(0)
+        let testProviderAccessCount = LockIsolated(0)
         let unavailableAccess = MusicProviderAccess(
             authorization: .restricted,
             playbackEligibility: .unknown
@@ -85,7 +85,7 @@ struct ProviderConnectionFeatureTests {
 
         let store = TestStore(
             initialState: ProviderConnectionFeature.State(
-                providers: [.appleMusic, .jamendo],
+                providers: [.testProvider, .jamendo],
                 connection: .disconnected
             )
         ) {
@@ -94,9 +94,9 @@ struct ProviderConnectionFeatureTests {
             $0.uuid = .incrementing
             $0.providerAccessClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderAccessClient(
+                    .testProvider: ProviderAccessClient(
                         currentAccess: {
-                            appleMusicAccessCount.withValue { $0 += 1 }
+                            testProviderAccessCount.withValue { $0 += 1 }
                             return MusicProviderAccess(
                                 authorization: .authorized,
                                 playbackEligibility: .eligible
@@ -104,7 +104,7 @@ struct ProviderConnectionFeatureTests {
                         },
                         requestAccess: {
                             Issue.record(
-                                "A missing Jamendo registration must not request Apple Music access"
+                                "A missing Jamendo registration must not request Test Provider access"
                             )
                             return unavailableAccess
                         }
@@ -150,7 +150,7 @@ struct ProviderConnectionFeatureTests {
             )
         )
 
-        #expect(appleMusicAccessCount.value == 0)
+        #expect(testProviderAccessCount.value == 0)
     }
 
     @Test
@@ -169,17 +169,17 @@ struct ProviderConnectionFeatureTests {
             }
         )
 
-        await store.send(.connect(.appleMusic))
-        await store.receive(.startConnection(.appleMusic)) {
+        await store.send(.connect(.testProvider))
+        await store.receive(.startConnection(.testProvider)) {
             $0.connection = .connecting(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 requestID: UUID(0)
             )
         }
         await store.receive(
             .delegate(
                 .connectionStarted(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     providerChanged: true
                 )
             )
@@ -187,26 +187,26 @@ struct ProviderConnectionFeatureTests {
         await store.receive(
             .currentAccessResponse(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: currentAccess
             )
         )
         await store.receive(
             .requestedAccessResponse(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: requestedAccess
             )
         )
         await store.receive(
             .accessResolved(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: requestedAccess
             )
         ) {
             $0.connection = .connected(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: requestedAccess
             )
         }
@@ -214,7 +214,7 @@ struct ProviderConnectionFeatureTests {
             .delegate(
                 .connectionResolved(
                     .connected(
-                        providerID: .appleMusic,
+                        providerID: .testProvider,
                         access: requestedAccess
                     )
                 )
@@ -227,11 +227,11 @@ struct ProviderConnectionFeatureTests {
     @Test(arguments: [
         (
             MusicAuthorizationStatus.denied,
-            ProviderConnection.denied(providerID: .appleMusic)
+            ProviderConnection.denied(providerID: .testProvider)
         ),
         (
             MusicAuthorizationStatus.restricted,
-            ProviderConnection.restricted(providerID: .appleMusic)
+            ProviderConnection.restricted(providerID: .testProvider)
         ),
     ])
     func currentAccessMapsUnavailableAuthorization(
@@ -241,17 +241,17 @@ struct ProviderConnectionFeatureTests {
         let access = makeAccess(authorization: authorization)
         let store = makeStore(currentAccess: { access })
 
-        await store.send(.connect(.appleMusic))
-        await store.receive(.startConnection(.appleMusic)) {
+        await store.send(.connect(.testProvider))
+        await store.receive(.startConnection(.testProvider)) {
             $0.connection = .connecting(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 requestID: UUID(0)
             )
         }
         await store.receive(
             .delegate(
                 .connectionStarted(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     providerChanged: true
                 )
             )
@@ -259,14 +259,14 @@ struct ProviderConnectionFeatureTests {
         await store.receive(
             .currentAccessResponse(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         )
         await store.receive(
             .accessResolved(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         ) {
@@ -281,24 +281,24 @@ struct ProviderConnectionFeatureTests {
     func secondUndeterminedResponseFailsConnection() async {
         let access = makeAccess(authorization: .notDetermined)
         let expectedConnection = ProviderConnection.failed(
-            providerID: .appleMusic
+            providerID: .testProvider
         )
         let store = makeStore(
             currentAccess: { access },
             requestAccess: { access }
         )
 
-        await store.send(.connect(.appleMusic))
-        await store.receive(.startConnection(.appleMusic)) {
+        await store.send(.connect(.testProvider))
+        await store.receive(.startConnection(.testProvider)) {
             $0.connection = .connecting(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 requestID: UUID(0)
             )
         }
         await store.receive(
             .delegate(
                 .connectionStarted(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     providerChanged: true
                 )
             )
@@ -306,21 +306,21 @@ struct ProviderConnectionFeatureTests {
         await store.receive(
             .currentAccessResponse(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         )
         await store.receive(
             .requestedAccessResponse(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         )
         await store.receive(
             .accessResolved(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         ) {
@@ -337,7 +337,7 @@ struct ProviderConnectionFeatureTests {
         let (resumeAccess, resumeAccessContinuation) =
             AsyncStream<Void>.makeStream()
         let store = makeStore(
-            connection: .failed(providerID: .appleMusic),
+            connection: .failed(providerID: .testProvider),
             currentAccess: {
                 for await _ in resumeAccess { break }
                 return access
@@ -345,16 +345,16 @@ struct ProviderConnectionFeatureTests {
         )
 
         await store.send(.retryButtonTapped)
-        await store.receive(.startConnection(.appleMusic)) {
+        await store.receive(.startConnection(.testProvider)) {
             $0.connection = .connecting(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 requestID: UUID(0)
             )
         }
         await store.receive(
             .delegate(
                 .connectionStarted(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     providerChanged: false
                 )
             )
@@ -362,7 +362,7 @@ struct ProviderConnectionFeatureTests {
         await store.send(
             .currentAccessResponse(
                 requestID: UUID(99),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         )
@@ -372,19 +372,19 @@ struct ProviderConnectionFeatureTests {
         await store.receive(
             .currentAccessResponse(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         )
         await store.receive(
             .accessResolved(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         ) {
             $0.connection = .connected(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         }
@@ -392,7 +392,7 @@ struct ProviderConnectionFeatureTests {
             .delegate(
                 .connectionResolved(
                     .connected(
-                        providerID: .appleMusic,
+                        providerID: .testProvider,
                         access: access
                     )
                 )
@@ -403,9 +403,9 @@ struct ProviderConnectionFeatureTests {
     @Test
     func staleAccessActionsCannotResolveCurrentConnection() async {
         let state = ProviderConnectionFeature.State(
-            providers: [.appleMusic],
+            providers: [.testProvider],
             connection: .connecting(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 requestID: UUID(1)
             )
         )
@@ -414,14 +414,14 @@ struct ProviderConnectionFeatureTests {
         await store.send(
             .requestedAccessResponse(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: makeAccess(authorization: .authorized)
             )
         )
         await store.send(
             .accessResolved(
                 requestID: UUID(0),
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: makeAccess(authorization: .authorized)
             )
         )
@@ -448,15 +448,15 @@ struct ProviderConnectionFeatureTests {
     func activeProviderUsesConnectionIdentity() {
         let access = makeAccess(authorization: .authorized)
         var state = ProviderConnectionFeature.State(
-            providers: [.appleMusic],
+            providers: [.testProvider],
             connection: .connected(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: access
             )
         )
 
-        #expect(state.activeProvider?.name == "Apple Music")
-        #expect(state.provider(id: .appleMusic)?.id == .appleMusic)
+        #expect(state.activeProvider?.name == "Test Provider")
+        #expect(state.provider(id: .testProvider)?.id == .testProvider)
 
         state.connection = .disconnected
         #expect(state.activeProvider == nil)
@@ -503,7 +503,7 @@ struct ProviderConnectionFeatureTests {
     ) -> TestStoreOf<ProviderConnectionFeature> {
         makeStore(
             state: ProviderConnectionFeature.State(
-                providers: [.appleMusic],
+                providers: [.testProvider],
                 connection: connection
             ),
             currentAccess: currentAccess,
@@ -534,7 +534,7 @@ struct ProviderConnectionFeatureTests {
             $0.uuid = .incrementing
             $0.providerAccessClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderAccessClient(
+                    .testProvider: ProviderAccessClient(
                         currentAccess: currentAccess,
                         requestAccess: requestAccess
                     )

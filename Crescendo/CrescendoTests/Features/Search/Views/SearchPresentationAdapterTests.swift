@@ -88,7 +88,7 @@ struct SearchPresentationAdapterTests {
                 playbackEligibility: .eligible
             )
         )
-        let model = SearchResultsView.Model(store, providerName: "Apple Music")
+        let model = SearchResultsView.Model(store, providerName: "Test Provider")
         let expectedRows = [
             SearchResultListView.Model.Row(
                 id: song.id,
@@ -109,7 +109,7 @@ struct SearchPresentationAdapterTests {
             return
         }
 
-        #expect(results.summary == "1 song · Apple Music")
+        #expect(results.summary == "1 song · Test Provider")
         #expect(results.rows == expectedRows)
         #expect(results.footer.content == .hidden)
         let expectedStrings = SearchPaginationFooterView.Model.Strings(
@@ -144,7 +144,7 @@ struct SearchPresentationAdapterTests {
                     playbackEligibility: .eligible
                 )
             ),
-            providerName: "Apple Music"
+            providerName: "Test Provider"
         )
 
         guard case .results(let results) = model.content else {
@@ -201,7 +201,7 @@ struct SearchPresentationAdapterTests {
                     authorization: .authorized,
                     playbackEligibility: .eligible
                 ),
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         ) {
             SearchFeature()
@@ -209,7 +209,7 @@ struct SearchPresentationAdapterTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { request, _ in
                             let expectedRequest = SearchPageRequest.continuation(
                                 SearchCursor(value: "next")
@@ -223,7 +223,7 @@ struct SearchPresentationAdapterTests {
         }
         let model = SearchResultsView.Model(
             store,
-            providerName: "Apple Music"
+            providerName: "Test Provider"
         )
         let results = try results(from: model)
 
@@ -274,7 +274,7 @@ struct SearchPresentationAdapterTests {
                 query: query,
                 status: status,
                 providerAccess: providerAccess,
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         ) {
             SearchFeature()
@@ -291,7 +291,7 @@ struct SearchPresentationAdapterTests {
                 tracks: .init(uniqueElements: tracks),
                 nextCursor: nextCursor,
                 status: paginationStatus,
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         )
     }
@@ -313,7 +313,7 @@ struct SearchPresentationAdapterTests {
                     playbackEligibility: .eligible
                 )
             ),
-            providerName: "Apple Music"
+            providerName: "Test Provider"
         )
     }
 
@@ -333,20 +333,20 @@ struct SearchPresentationAdapterTests {
     }
 
     private func makeProviderSelection() -> ProviderSelectionView.Model {
-        let provider = ProviderDescriptor.appleMusic
+        let provider = ProviderDescriptor.testProvider
 
         return ProviderSelectionView.Model(
             status: .connected(providerName: provider.name),
             activeProviderName: provider.name,
             connectedProviderName: provider.name,
-            collapsedIcon: .appleMusic,
+            collapsedIcon: .generic,
             collapsedLabel: provider.name,
             accessibilityValue: provider.name,
             menuTitle: Locs.ProviderSelection.menuTitle,
             providerRows: [
                 .init(
                     id: provider.id,
-                    icon: .appleMusic,
+                    icon: .generic,
                     label: provider.name,
                     statusLabel: nil,
                     isSelected: true,

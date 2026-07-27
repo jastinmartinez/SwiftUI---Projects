@@ -13,7 +13,7 @@ struct SearchFeatureTests {
             tracks: [song],
             nextCursor: SearchCursor(value: "next")
         )
-        let appleMusicSearchCount = LockIsolated(0)
+        let testProviderSearchCount = LockIsolated(0)
         let jamendoSearchCount = LockIsolated(0)
         let access = makeAccess(
             authorization: .authorized,
@@ -32,9 +32,9 @@ struct SearchFeatureTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { _, _ in
-                            appleMusicSearchCount.withValue { $0 += 1 }
+                            testProviderSearchCount.withValue { $0 += 1 }
                             return SearchPage(tracks: [], nextCursor: nil)
                         }
                     ),
@@ -69,13 +69,13 @@ struct SearchFeatureTests {
             )
         }
 
-        #expect(appleMusicSearchCount.value == 0)
+        #expect(testProviderSearchCount.value == 0)
         #expect(jamendoSearchCount.value == 1)
     }
 
     @Test
     func missingSearchRegistrationFailsClosedWithoutUsingAnotherProvider() async {
-        let appleMusicSearchCount = LockIsolated(0)
+        let testProviderSearchCount = LockIsolated(0)
         let store = TestStore(
             initialState: makeState(
                 query: "result",
@@ -92,9 +92,9 @@ struct SearchFeatureTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { _, _ in
-                            appleMusicSearchCount.withValue { $0 += 1 }
+                            testProviderSearchCount.withValue { $0 += 1 }
                             return SearchPage(tracks: [], nextCursor: nil)
                         }
                     )
@@ -118,7 +118,7 @@ struct SearchFeatureTests {
             $0.status = .failed(.noActiveProvider)
         }
 
-        #expect(appleMusicSearchCount.value == 0)
+        #expect(testProviderSearchCount.value == 0)
     }
 
     @Test
@@ -134,7 +134,7 @@ struct SearchFeatureTests {
                 query: "result",
                 status: .idle,
                 providerAccess: access,
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         ) {
             SearchFeature()
@@ -142,7 +142,7 @@ struct SearchFeatureTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { request, _ in
                             #expect(request == .initial(query: "result"))
                             return page
@@ -155,7 +155,7 @@ struct SearchFeatureTests {
         await store.send(.submitButtonTapped)
         await store.receive(
             .startSearch(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 query: "result",
                 requestID: UUID(0)
             )
@@ -167,7 +167,7 @@ struct SearchFeatureTests {
                 tracks: page.tracks,
                 nextCursor: page.nextCursor,
                 paginationStatus: .idle,
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         }
 
@@ -192,17 +192,17 @@ struct SearchFeatureTests {
                     tracks: [song],
                     nextCursor: nil,
                     paginationStatus: .idle,
-                    providerID: .appleMusic
+                    providerID: .testProvider
                 ),
                 providerAccess: providerAccess,
-                providerID: .appleMusic
+                providerID: .testProvider
             )
             let store = TestStore(initialState: state) {
                 SearchFeature()
             } withDependencies: {
                 $0.providerSearchClients = ProviderClientRegistry(
                     clients: [
-                        .appleMusic: ProviderSearchClient(
+                        .testProvider: ProviderSearchClient(
                             searchPage: { _, _ in
                                 Issue.record(
                                     "Search must not run without authorized access"
@@ -230,7 +230,7 @@ struct SearchFeatureTests {
                 query: "old",
                 status: .idle,
                 providerAccess: access,
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         ) {
             SearchFeature()
@@ -238,7 +238,7 @@ struct SearchFeatureTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { request, _ in
                             #expect(request == .initial(query: "old"))
                             return try await Task.never()
@@ -251,7 +251,7 @@ struct SearchFeatureTests {
         await store.send(.submitButtonTapped)
         await store.receive(
             .startSearch(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 query: "old",
                 requestID: UUID(0)
             )
@@ -283,13 +283,13 @@ struct SearchFeatureTests {
                     tracks: [song, secondSong],
                     nextCursor: nil,
                     paginationStatus: .idle,
-                    providerID: .appleMusic
+                    providerID: .testProvider
                 ),
                 providerAccess: makeAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
                 ),
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         ) {
             SearchFeature()
@@ -316,13 +316,13 @@ struct SearchFeatureTests {
                     tracks: [song],
                     nextCursor: SearchCursor(value: "page-2"),
                     paginationStatus: .idle,
-                    providerID: .appleMusic
+                    providerID: .testProvider
                 ),
                 providerAccess: makeAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
                 ),
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         ) {
             SearchFeature()
@@ -330,7 +330,7 @@ struct SearchFeatureTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { request, _ in
                             let expectedRequest = SearchPageRequest.continuation(
                                 SearchCursor(value: "page-2")
@@ -347,7 +347,7 @@ struct SearchFeatureTests {
         await store.receive(
             .pagination(
                 .continueSearch(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     cursor: SearchCursor(value: "page-2"),
                     requestID: UUID(0)
                 )
@@ -357,7 +357,7 @@ struct SearchFeatureTests {
                 tracks: [song],
                 nextCursor: SearchCursor(value: "page-2"),
                 paginationStatus: .loading(requestID: UUID(0)),
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         }
         await store.send(.queryChanged("new")) {

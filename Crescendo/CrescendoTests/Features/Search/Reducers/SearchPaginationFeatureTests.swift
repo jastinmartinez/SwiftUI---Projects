@@ -17,7 +17,7 @@ struct SearchPaginationFeatureTests {
             tracks: [duplicate, second],
             nextCursor: nextCursor
         )
-        let appleMusicSearchCount = LockIsolated(0)
+        let testProviderSearchCount = LockIsolated(0)
         let jamendoSearchCount = LockIsolated(0)
         let store = TestStore(
             initialState: SearchPaginationFeature.State(
@@ -32,9 +32,9 @@ struct SearchPaginationFeatureTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { _, _ in
-                            appleMusicSearchCount.withValue { $0 += 1 }
+                            testProviderSearchCount.withValue { $0 += 1 }
                             return SearchPage(tracks: [], nextCursor: nil)
                         }
                     ),
@@ -68,13 +68,13 @@ struct SearchPaginationFeatureTests {
             $0.status = .idle
         }
 
-        #expect(appleMusicSearchCount.value == 0)
+        #expect(testProviderSearchCount.value == 0)
         #expect(jamendoSearchCount.value == 1)
     }
 
     @Test
     func missingSearchRegistrationFailsClosedWithoutUsingAnotherProvider() async {
-        let appleMusicSearchCount = LockIsolated(0)
+        let testProviderSearchCount = LockIsolated(0)
         let cursor = SearchCursor(value: "page-2")
         let store = TestStore(
             initialState: SearchPaginationFeature.State(
@@ -89,9 +89,9 @@ struct SearchPaginationFeatureTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { _, _ in
-                            appleMusicSearchCount.withValue { $0 += 1 }
+                            testProviderSearchCount.withValue { $0 += 1 }
                             return SearchPage(tracks: [], nextCursor: nil)
                         }
                     )
@@ -115,7 +115,7 @@ struct SearchPaginationFeatureTests {
             $0.status = .failed(.noActiveProvider)
         }
 
-        #expect(appleMusicSearchCount.value == 0)
+        #expect(testProviderSearchCount.value == 0)
     }
 
     @Test
@@ -124,14 +124,14 @@ struct SearchPaginationFeatureTests {
             tracks: [],
             nextCursor: nil,
             status: .idle,
-            providerID: .appleMusic
+            providerID: .testProvider
         )
         let store = TestStore(initialState: state) {
             SearchPaginationFeature()
         } withDependencies: {
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { _, _ in
                             Issue.record(
                                 "An exhausted search must not request another page"
@@ -154,14 +154,14 @@ struct SearchPaginationFeatureTests {
             tracks: [],
             nextCursor: cursor,
             status: .loading(requestID: UUID(0)),
-            providerID: .appleMusic
+            providerID: .testProvider
         )
         let store = TestStore(initialState: state) {
             SearchPaginationFeature()
         } withDependencies: {
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { _, _ in
                             Issue.record(
                                 "An unresolved request must reject duplicate work"
@@ -203,7 +203,7 @@ struct SearchPaginationFeatureTests {
         await store.send(.retryButtonTapped)
         await store.receive(
             .continueSearch(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 cursor: cursor,
                 requestID: UUID(0)
             )
@@ -225,7 +225,7 @@ struct SearchPaginationFeatureTests {
                 tracks: [],
                 nextCursor: SearchCursor(value: "page-2"),
                 status: .idle,
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         ) {
             SearchPaginationFeature()
@@ -233,7 +233,7 @@ struct SearchPaginationFeatureTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { request, _ in
                             let expectedRequest = SearchPageRequest.continuation(
                                 SearchCursor(value: "page-2")
@@ -249,7 +249,7 @@ struct SearchPaginationFeatureTests {
         await store.send(.nextPageRequested)
         await store.receive(
             .continueSearch(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 cursor: SearchCursor(value: "page-2"),
                 requestID: UUID(0)
             )
@@ -274,7 +274,7 @@ struct SearchPaginationFeatureTests {
                 tracks: .init(uniqueElements: tracks),
                 nextCursor: nextCursor,
                 status: status,
-                providerID: .appleMusic
+                providerID: .testProvider
             )
         ) {
             SearchPaginationFeature()
@@ -282,7 +282,7 @@ struct SearchPaginationFeatureTests {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    .appleMusic: ProviderSearchClient(
+                    .testProvider: ProviderSearchClient(
                         searchPage: { request, limit in
                             guard let nextCursor else {
                                 Issue.record(

@@ -1,20 +1,31 @@
 # Crescendo
 
-Crescendo is an iOS 18 application that keeps music-provider details behind app-owned domain and dependency boundaries. The first live provider is Apple Music, while features consume provider-neutral values and operations.
+Crescendo is an iOS 18 provider-neutral playback application built with SwiftUI and the Composable Architecture. Jamendo supplies the current catalog and streaming resources, while AVFoundation provides playback through app-owned client interfaces.
 
 ## Project structure
 
-- `Crescendo/App/` contains composition and root coordination.
-- `Crescendo/Features/` contains Search, Playback, and Provider Selection reducers and presentation.
-- `Crescendo/Clients/` defines provider-neutral operation interfaces.
-- `Crescendo/Domain/` contains provider-neutral business values.
-- `Crescendo/Providers/` contains concrete integrations and SDK mapping.
-- `Crescendo/Shared/` contains cross-feature Formatting, Localization, and Presentation.
-- `CrescendoTests/` mirrors production responsibilities with focused tests.
+- `Crescendo/App/` contains the application entry point, dependency composition, and root coordination.
+- `Crescendo/Features/` contains the Search, Playback, and Provider Selection reducers and presentation.
+- `Crescendo/Clients/` defines provider-neutral capability interfaces consumed by reducers.
+- `Crescendo/Domain/` contains provider-neutral catalog, playback, provider, and search values.
+- `Crescendo/Infrastructure/Providers/` contains provider implementations, including Jamendo API access and domain mapping.
+- `Crescendo/Infrastructure/Playback/` contains the AVFoundation implementation behind the playback clients.
+- `Crescendo/Shared/` contains cross-feature formatting, localization, and presentation utilities.
+- `CrescendoTests/` mirrors these production responsibilities with focused tests.
+
+## Local configuration
+
+Create the ignored local configuration file from the checked-in example:
+
+```sh
+cp Config/Local.example.xcconfig Config/Local.xcconfig
+```
+
+Replace the example value in `Config/Local.xcconfig` with your Jamendo client ID. `Config/Base.xcconfig` optionally includes that local file, so secrets remain outside source control.
 
 ## Project generation
 
-The checked-in Xcode project is generated from `project.yml` with XcodeGen 2.45.4 or newer:
+The checked-in Xcode project is generated from `project.yml` with XcodeGen 2.46.0 or newer:
 
 ```sh
 xcodegen generate --spec project.yml

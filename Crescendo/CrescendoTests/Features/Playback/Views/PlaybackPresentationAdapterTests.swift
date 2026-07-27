@@ -90,11 +90,11 @@ struct PlaybackPresentationAdapterTests {
             status: .playing,
             confirmedPosition: 43
         )
-        let model = PlaybackView.Model(store, providerName: "Apple Music")
+        let model = PlaybackView.Model(store, providerName: "Test Provider")
 
         #expect(model.metadata.title == song.title)
         #expect(model.metadata.artistName == song.artistName)
-        #expect(model.metadata.providerAttribution == "Playing from Apple Music")
+        #expect(model.metadata.providerAttribution == "Playing from Test Provider")
         #expect(model.artworkURL == song.artworkURL)
         #expect(model.timeline?.slider.value == 43)
         #expect(model.timeline?.slider.scale == .init(range: 0...215))
@@ -118,7 +118,7 @@ struct PlaybackPresentationAdapterTests {
             )
         )
 
-        let model = PlaybackView.Model(store, providerName: "Apple Music")
+        let model = PlaybackView.Model(store, providerName: "Test Provider")
 
         #expect(model.metadata.title == song.title)
         #expect(model.metadata.artistName == song.artistName)

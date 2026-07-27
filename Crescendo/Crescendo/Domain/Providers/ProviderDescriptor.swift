@@ -6,15 +6,6 @@ struct ProviderDescriptor: Equatable, Sendable {
 }
 
 extension ProviderDescriptor {
-    /// The Apple Music provider registered by the application composition root.
-    static let appleMusic = Self(
-        id: .appleMusic,
-        name: "Apple Music",
-        musicCapabilities: .allEnabled
-    )
-}
-
-extension ProviderDescriptor {
     /// The Jamendo provider registered by the application composition root.
     static let jamendo = Self(
         id: .jamendo,

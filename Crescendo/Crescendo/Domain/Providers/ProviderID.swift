@@ -7,11 +7,6 @@ struct ProviderID: Hashable, RawRepresentable, Sendable, ExpressibleByStringLite
 }
 
 extension ProviderID {
-    /// The identifier of Crescendo's Apple Music provider.
-    static let appleMusic = Self(rawValue: "apple-music")
-}
-
-extension ProviderID {
     static let jamendo = Self(rawValue: "jamendo")
     static let localMusic = Self(rawValue: "local-music")
 }

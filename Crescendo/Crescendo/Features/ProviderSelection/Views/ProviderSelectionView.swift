@@ -80,12 +80,6 @@ struct ProviderSelectionView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: dimension, height: dimension)
                 .accessibilityHidden(true)
-        case .appleMusic:
-            Image("AppleMusicProviderIcon")
-                .resizable()
-                .scaledToFit()
-                .frame(width: dimension, height: dimension)
-                .accessibilityHidden(true)
         }
     }
 }
@@ -108,7 +102,6 @@ extension ProviderSelectionView {
 extension ProviderSelectionView.Model {
     enum Icon: Equatable {
         case generic
-        case appleMusic
     }
 
     enum Status: Equatable {

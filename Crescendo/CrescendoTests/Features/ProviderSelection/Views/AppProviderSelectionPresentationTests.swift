@@ -34,40 +34,40 @@ struct AppProviderSelectionPresentationTests {
             ProviderSelectionView.Model.Icon.generic
         ),
         (
-            .connecting(providerID: .appleMusic, requestID: UUID(0)),
-            .connecting(providerName: "Apple Music"),
-            "Connecting to Apple Music…",
-            .appleMusic
+            .connecting(providerID: .testProvider, requestID: UUID(0)),
+            .connecting(providerName: "Test Provider"),
+            "Connecting to Test Provider…",
+            .generic
         ),
         (
             .connected(
-                providerID: .appleMusic,
+                providerID: .testProvider,
                 access: MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
                 )
             ),
-            .connected(providerName: "Apple Music"),
-            "Apple Music",
-            .appleMusic
+            .connected(providerName: "Test Provider"),
+            "Test Provider",
+            .generic
         ),
         (
-            .denied(providerID: .appleMusic),
-            .needsAccess(providerName: "Apple Music"),
-            "Apple Music · Needs Access",
-            .appleMusic
+            .denied(providerID: .testProvider),
+            .needsAccess(providerName: "Test Provider"),
+            "Test Provider · Needs Access",
+            .generic
         ),
         (
-            .restricted(providerID: .appleMusic),
-            .restricted(providerName: "Apple Music"),
-            "Apple Music · Restricted",
-            .appleMusic
+            .restricted(providerID: .testProvider),
+            .restricted(providerName: "Test Provider"),
+            "Test Provider · Restricted",
+            .generic
         ),
         (
-            .failed(providerID: .appleMusic),
-            .failed(providerName: "Apple Music"),
-            "Apple Music · Connection Failed",
-            .appleMusic
+            .failed(providerID: .testProvider),
+            .failed(providerName: "Test Provider"),
+            "Test Provider · Connection Failed",
+            .generic
         ),
     ])
     func providerSelectionPresentsEachConnectionStatus(
@@ -88,7 +88,7 @@ struct AppProviderSelectionPresentationTests {
         let model = ProviderSelectionView.Model(
             makeStore(
                 connection: .connecting(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     requestID: UUID(0)
                 )
             )
@@ -130,7 +130,7 @@ struct AppProviderSelectionPresentationTests {
     @Test
     func playbackOperationDisablesProviderSelection() {
         let song = Track(
-            id: .init(providerID: .appleMusic, nativeID: "selected"),
+            id: .init(providerID: .testProvider, nativeID: "selected"),
             title: "Selected",
             artistName: "Artist",
             albumTitle: nil,
@@ -165,20 +165,20 @@ struct AppProviderSelectionPresentationTests {
         disconnected.providerRows[0].onSelect()
 
         let failed = ProviderSelectionView.Model(
-            makeStore(connection: .failed(providerID: .appleMusic), actions: actions)
+            makeStore(connection: .failed(providerID: .testProvider), actions: actions)
         )
         #expect(failed.recoveryAction?.label == "Try Again")
         failed.recoveryAction?.perform()
 
         let needsAccess = ProviderSelectionView.Model(
-            makeStore(connection: .denied(providerID: .appleMusic), actions: actions)
+            makeStore(connection: .denied(providerID: .testProvider), actions: actions)
         )
         #expect(needsAccess.recoveryAction?.label == "Open Settings")
         needsAccess.recoveryAction?.perform()
 
         #expect(
             actions.value == [
-                .providerSelected(.appleMusic),
+                .providerSelected(.testProvider),
                 .providerConnection(.retryButtonTapped),
                 .providerConnection(.openSettingsButtonTapped),
             ]
@@ -189,7 +189,7 @@ struct AppProviderSelectionPresentationTests {
 
     private var connectedConnection: ProviderConnection {
         .connected(
-            providerID: .appleMusic,
+            providerID: .testProvider,
             access: MusicProviderAccess(
                 authorization: .authorized,
                 playbackEligibility: .eligible
@@ -199,7 +199,7 @@ struct AppProviderSelectionPresentationTests {
 
     private func makeStore(
         connection: ProviderConnection,
-        providers: [ProviderDescriptor] = [.appleMusic],
+        providers: [ProviderDescriptor] = [.testProvider],
         pendingPlaybackTransition: PendingPlaybackTransition? = nil,
         actions: LockIsolated<[AppFeature.Action]>? = nil
     ) -> StoreOf<AppFeature> {
@@ -213,7 +213,7 @@ struct AppProviderSelectionPresentationTests {
                     query: "",
                     status: .idle,
                     providerAccess: nil,
-                    providerID: .appleMusic
+                    providerID: .testProvider
                 ),
                 playback: PlaybackFeature.State(
                     providerID: connection.providerID,

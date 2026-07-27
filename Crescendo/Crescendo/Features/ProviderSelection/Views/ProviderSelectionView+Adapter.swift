@@ -19,14 +19,14 @@ extension ProviderSelectionView.Model {
             status: status,
             activeProviderName: Self.activeProviderName(for: status),
             connectedProviderName: Self.connectedProviderName(for: status),
-            collapsedIcon: Self.icon(for: state.connection.providerID),
+            collapsedIcon: .generic,
             collapsedLabel: collapsedLabel,
             accessibilityValue: collapsedLabel,
             menuTitle: Locs.ProviderSelection.menuTitle,
             providerRows: state.providers.map { provider in
                 ProviderRow(
                     id: provider.id,
-                    icon: Self.icon(for: provider.id),
+                    icon: .generic,
                     label: provider.name,
                     statusLabel: Self.statusLabel(for: status, provider: provider),
                     isSelected: Self.isSelected(provider: provider, status: status),
@@ -86,10 +86,6 @@ extension ProviderSelectionView.Model {
             return providerName(for: providerID).map(Status.failed)
                 ?? .disconnected
         }
-    }
-
-    private static func icon(for providerID: ProviderID?) -> Icon {
-        providerID == .appleMusic ? .appleMusic : .generic
     }
 
     private static func collapsedLabel(for status: Status) -> String {

@@ -44,9 +44,9 @@ struct AppPlaybackPresentationTests {
         )
         let state = AppFeature.State(
             providerConnection: ProviderConnectionFeature.State(
-                providers: [.appleMusic],
+                providers: [.testProvider],
                 connection: .connected(
-                    providerID: .appleMusic,
+                    providerID: .testProvider,
                     access: MusicProviderAccess(
                         authorization: .authorized,
                         playbackEligibility: .eligible
@@ -60,14 +60,14 @@ struct AppPlaybackPresentationTests {
                         tracks: [song],
                         nextCursor: nil,
                         status: .idle,
-                        providerID: .appleMusic
+                        providerID: .testProvider
                     )
                 ),
                 providerAccess: MusicProviderAccess(
                     authorization: .authorized,
                     playbackEligibility: .eligible
                 ),
-                providerID: .appleMusic
+                providerID: .testProvider
             ),
             playback: playback,
             providerSwitch: nil
