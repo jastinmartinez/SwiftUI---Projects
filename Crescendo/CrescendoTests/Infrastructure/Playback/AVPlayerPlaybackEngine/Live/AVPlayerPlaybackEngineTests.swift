@@ -5,12 +5,12 @@ import Testing
 
 @testable import Crescendo
 
-struct AVFoundationPlaybackClientCompositionTests {
-    /// Proves the four reducer-facing clients share one supplied player without
-    /// exposing it or performing network-backed playback.
+@MainActor
+struct AVPlayerPlaybackEngineTests {
+    /// Proves every reducer-facing client returned by the engine shares the
+    /// supplied player without exposing that implementation detail.
     @Test
-    @MainActor
-    func liveClientsShareOnePlayerWithoutExposingIt() async throws {
+    func liveEngineClientsShareOnePlayerWithoutExposingIt() async throws {
         let playCallCount = LockIsolated(0)
         let pauseCallCount = LockIsolated(0)
         let seekTimes = LockIsolated<[CMTime]>([])
@@ -19,57 +19,42 @@ struct AVFoundationPlaybackClientCompositionTests {
             pauseCallCount: pauseCallCount,
             seekTimes: seekTimes
         )
-        let registry = AVPlayerItemRegistry()
         let preparedItem = AVPlayerItemFixture.make()
         let preparer = AVPlayerItemPreparer(
             loadIsPlayable: { _ in true },
             makeItem: { _ in preparedItem }
         )
-        let installer = AVPlayerItemInstaller(player: player, registry: registry)
-        let transport = AVPlayerTransport(player: player)
-        let timeline = AVPlayerTimeline(player: player)
-        let observation = AVPlayerObservation(
+        let engine = AVPlayerPlaybackEngine.live(
             player: player,
-            registry: registry,
-            itemStatusObserver: .live
+            preparer: preparer
         )
-
-        let itemClient = PlaybackItemClient.live(
-            preparer: preparer,
-            installer: installer
-        )
-        let transportClient = PlaybackTransportClient.live(transport)
-        let timelineClient = PlaybackTimelineClient.live(timeline)
-        let observationClient = PlaybackObservationClient.live(observation)
-
-        let url = try #require(URL(string: "memory://shared"))
         let trackID = TrackID(providerID: .jamendo, nativeID: "shared")
         let resource = PlaybackResource(
             trackID: trackID,
-            location: .progressive(url)
+            location: .progressive(
+                try #require(URL(string: "memory://shared"))
+            )
         )
 
         #expect(player.currentItem == nil)
 
-        try await itemClient.load(resource)
+        try await engine.item.load(resource)
+        try await engine.transport.play()
+        try await engine.transport.stop()
+        try await engine.timeline.seek(0)
 
         #expect(player.currentItem === preparedItem)
-
-        try await transportClient.play()
-        try await transportClient.pause()
-        try await timelineClient.seek(0)
-
         #expect(playCallCount.value == 1)
         #expect(pauseCallCount.value == 1)
         #expect(seekTimes.value.map(\.seconds) == [0])
 
         var iterator =
-            await observationClient.observations().makeAsyncIterator()
+            await engine.observation.observations().makeAsyncIterator()
         let first = await iterator.next()
 
         guard case .snapshot(let snapshot) = first else {
             Issue.record(
-                "expected an initial snapshot reporting the shared player's registered track identity, got \(String(describing: first))"
+                "expected the shared player to emit its registered track identity"
             )
             return
         }
@@ -79,7 +64,6 @@ struct AVFoundationPlaybackClientCompositionTests {
     /// A rejected asset must not replace or register over the last confirmed
     /// player item.
     @Test
-    @MainActor
     func failedPreparationPreservesInstalledItemAndRegistry() async throws {
         let player = AVPlayer()
         let registry = AVPlayerItemRegistry()
@@ -99,12 +83,10 @@ struct AVFoundationPlaybackClientCompositionTests {
                 return AVPlayerItemFixture.make()
             }
         )
-        let client = PlaybackItemClient.live(
+        let engine = AVPlayerPlaybackEngine.live(
+            player: player,
             preparer: preparer,
-            installer: AVPlayerItemInstaller(
-                player: player,
-                registry: registry
-            )
+            registry: registry
         )
         let rejectedTrackID = TrackID(
             providerID: .jamendo,
@@ -118,7 +100,7 @@ struct AVFoundationPlaybackClientCompositionTests {
         )
 
         await #expect(throws: PlaybackFailure.unsupportedResource) {
-            try await client.load(resource)
+            try await engine.item.load(resource)
         }
 
         #expect(makeItemCallCount.value == 0)
