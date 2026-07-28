@@ -99,6 +99,7 @@ Crescendo/Config/Local.xcconfig
 
 # Superpowers design docs stay local
 docs/superpowers/
+Crescendo/.superpowers/
 
 # Crescendo verification artifacts stay local
 Crescendo/docs/verification/phase-1-checklist.md
