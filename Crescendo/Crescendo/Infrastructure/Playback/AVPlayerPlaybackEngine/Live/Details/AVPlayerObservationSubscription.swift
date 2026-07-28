@@ -191,8 +191,9 @@ final class AVPlayerObservationSubscription {
         send(.failed(item))
     }
 
-    /// Delivers the current player-confirmed seekability with each state event.
+    /// Delivers seekability only when the observed and installed items still match.
     private func sendStateChanged() {
+        guard activeItem === player.currentItem else { return }
         send(.stateChanged(isSeekable: activeItemIsSeekable))
     }
 

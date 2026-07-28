@@ -378,6 +378,34 @@ struct AVPlayerObservationTests {
 
     @Test
     @MainActor
+    func replacedItemCannotEmitSeekabilityBeforeQueuedReplacementHandling() async {
+        let player = AVPlayer()
+        let itemA = AVPlayerItemFixture.make()
+        player.replaceCurrentItem(with: itemA)
+        let seekabilityProbe = ItemSeekabilityObservationProbe(
+            initialValue: false
+        )
+        let recorder = SubscriptionRecorder()
+        let subscription = AVPlayerObservationSubscription(
+            player: player,
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: seekabilityProbe.observer,
+            receive: recorder.receive
+        )
+        await Task.yield()
+        await Task.yield()
+        recorder.resetStateChanges()
+
+        let itemB = AVPlayerItemFixture.make()
+        player.replaceCurrentItem(with: itemB)
+        seekabilityProbe.send(true, for: itemA)
+
+        #expect(recorder.seekabilityValues.isEmpty)
+        subscription.cancel()
+    }
+
+    @Test
+    @MainActor
     func rapidReplacementBackToSameItemStartsANewFailureLifecycle() async {
         let player = AVPlayer()
         let itemA = AVPlayerItemFixture.make()
@@ -636,12 +664,14 @@ struct AVPlayerObservationTests {
     @MainActor
     private final class SubscriptionRecorder {
         private(set) var failedItems: [AVPlayerItem] = []
+        private(set) var seekabilityValues: [Bool] = []
         private var receivedStateChange = false
         private var stateChangeWaiters: [CheckedContinuation<Void, Never>] = []
 
         func receive(_ event: AVPlayerObservationSubscription.Event) {
             switch event {
-            case .stateChanged(_):
+            case .stateChanged(let isSeekable):
+                seekabilityValues.append(isSeekable)
                 receivedStateChange = true
                 for waiter in stateChangeWaiters {
                     waiter.resume()
@@ -661,6 +691,11 @@ struct AVPlayerObservationTests {
             await withCheckedContinuation { continuation in
                 stateChangeWaiters.append(continuation)
             }
+        }
+
+        func resetStateChanges() {
+            seekabilityValues.removeAll()
+            receivedStateChange = false
         }
     }
 
@@ -759,22 +794,58 @@ struct AVPlayerObservationTests {
 
     @MainActor
     private final class ItemSeekabilityObservationProbe {
+        private final class Registration {
+            let item: AVPlayerItem
+            let receive: @MainActor (Bool) -> Void
+            var isInvalidated = false
+
+            init(
+                item: AVPlayerItem,
+                receive: @escaping @MainActor (Bool) -> Void
+            ) {
+                self.item = item
+                self.receive = receive
+            }
+        }
+
         private let initialValue: Bool
-        private(set) var invalidationCount = 0
+        private var registrations: [Registration] = []
+
+        var invalidationCount: Int {
+            registrations.count(where: \.isInvalidated)
+        }
 
         init(initialValue: Bool) {
             self.initialValue = initialValue
         }
 
         var observer: AVPlayerItemSeekabilityObserver {
-            AVPlayerItemSeekabilityObserver { [weak self] _, receive in
+            AVPlayerItemSeekabilityObserver { [weak self] item, receive in
                 guard let self else {
                     return AVPlayerItemSeekabilityObserver.Token(invalidate: {})
                 }
+                let registration = Registration(
+                    item: item,
+                    receive: receive
+                )
+                registrations.append(registration)
                 receive(initialValue)
-                return AVPlayerItemSeekabilityObserver.Token { [weak self] in
-                    self?.invalidationCount += 1
+                return AVPlayerItemSeekabilityObserver.Token {
+                    registration.isInvalidated = true
                 }
+            }
+        }
+
+        func send(
+            _ isSeekable: Bool,
+            for item: AVPlayerItem
+        ) {
+            let receives =
+                registrations
+                .filter { !$0.isInvalidated && $0.item === item }
+                .map(\.receive)
+            for receive in receives {
+                receive(isSeekable)
             }
         }
     }
