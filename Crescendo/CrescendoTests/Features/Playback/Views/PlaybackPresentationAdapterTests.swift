@@ -275,6 +275,24 @@ struct PlaybackPresentationAdapterTests {
     }
 
     @Test
+    func resourceUnavailableUsesProviderNeutralProductionCopy() {
+        let song = makeTrack()
+        let model = PlaybackView.Model(
+            makePlaybackStore(
+                song: song,
+                failureNotice: PlaybackFailureNotice(
+                    trackID: song.id,
+                    failure: .resourceUnavailable
+                )
+            )
+        )
+
+        #expect(
+            model.metadata.statusText == "This track is currently unavailable."
+        )
+    }
+
+    @Test
     func fullTimelineProjectsSliderControlsAndLocalizedLabels() throws {
         let song = makeTrack(duration: 215)
         let actions = LockIsolated<[PlaybackFeature.Action]>([])
