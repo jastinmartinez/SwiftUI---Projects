@@ -10,7 +10,6 @@ import Foundation
 @MainActor
 struct AppComposition {
     let initialState: AppFeature.State
-    let providerAccessClients: ProviderClientRegistry<ProviderAccessClient>
     let providerSearchClients: ProviderClientRegistry<ProviderSearchClient>
     let playbackResourceClients: ProviderClientRegistry<PlaybackResourceClient>
     let playbackItem: PlaybackItemClient
@@ -21,7 +20,7 @@ struct AppComposition {
 
     /// Assembles provider and playback implementations around one supplied player.
     ///
-    /// Invalid Jamendo configuration leaves each Jamendo client registry empty.
+    /// Invalid Jamendo configuration leaves the two Jamendo capability registries empty.
     ///
     /// - Parameters:
     ///   - jamendoClientID: The generated bundle value used to validate Jamendo.
@@ -34,12 +33,11 @@ struct AppComposition {
         player: AVPlayer,
         preparer: AVPlayerItemPreparer,
         data:
-            @escaping @Sendable (URLRequest) async throws -> (
-                Data,
-                URLResponse
-            )
+        @escaping @Sendable (URLRequest) async throws -> (
+            Data,
+            URLResponse
+        )
     ) -> Self {
-        var accessClientsByProvider: [ProviderID: ProviderAccessClient] = [:]
         var searchClientsByProvider: [ProviderID: ProviderSearchClient] = [:]
         var resourceClientsByProvider: [ProviderID: PlaybackResourceClient] = [:]
 
@@ -49,9 +47,6 @@ struct AppComposition {
             let jamendoAPI = JamendoAPI(
                 configuration: jamendoConfiguration,
                 data: data
-            )
-            accessClientsByProvider[.jamendo] = .live(
-                jamendo: jamendoConfiguration
             )
             searchClientsByProvider[.jamendo] = .live(jamendo: jamendoAPI)
             resourceClientsByProvider[.jamendo] = .live(jamendo: jamendoAPI)
@@ -90,9 +85,6 @@ struct AppComposition {
                     isPlayerPresented: false
                 )
             ),
-            providerAccessClients: ProviderClientRegistry(
-                clients: accessClientsByProvider
-            ),
             providerSearchClients: ProviderClientRegistry(
                 clients: searchClientsByProvider
             ),
@@ -116,7 +108,6 @@ struct AppComposition {
         Store(initialState: initialState) {
             AppFeature()
         } withDependencies: {
-            $0.providerAccessClients = providerAccessClients
             $0.providerSearchClients = providerSearchClients
             $0.playbackResourceClients = playbackResourceClients
             $0.playbackItem = playbackItem

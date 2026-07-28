@@ -21,21 +21,14 @@ extension Locs {
         static let searching = String(localized: "search.searching")
         static let loadingMore = String(localized: "search.loading_more")
         static let loadMoreFailed = String(localized: "search.load_more_failed")
-        static let requiresProviderTitle = String(
-            localized: "search.requires_provider.title"
-        )
-        static let requiresProviderMessage = String(
-            localized: "search.requires_provider.message"
-        )
-
         static func resultsSummary(
             count: Int,
             providerName: String?
         ) -> String {
             let countFormat =
                 count == 1
-                ? String(localized: "search.result_count")
-                : String(localized: "search.results_count")
+                    ? String(localized: "search.result_count")
+                    : String(localized: "search.results_count")
             let countText = String(format: countFormat, Int64(count))
             guard let providerName else { return countText }
             return String(
@@ -44,15 +37,6 @@ extension Locs {
                 providerName
             )
         }
-    }
-
-    enum MusicAccess {
-        static let subscriptionRequired = String(
-            localized: "music_access.subscription_required"
-        )
-        static let availabilityUnknown = String(
-            localized: "music_access.availability_unknown"
-        )
     }
 
     enum Playback {
@@ -85,13 +69,6 @@ extension Locs {
             )
         }
 
-        static func playingFrom(_ providerName: String) -> String {
-            String(
-                format: String(localized: "music_playback.playing_from"),
-                providerName
-            )
-        }
-
         enum Mode {
             static let off = String(localized: "music_playback.mode.off")
             static let on = String(localized: "music_playback.mode.on")
@@ -120,55 +97,6 @@ extension Locs {
             )
             static let playbackFailed = String(
                 localized: "music_playback.failure.playback_failed"
-            )
-        }
-    }
-
-    enum ProviderSelection {
-        static let menuTitle = String(localized: "provider_selection.menu_title")
-        static let connect = String(localized: "provider_selection.connect")
-        static let connecting = String(localized: "provider_selection.connecting")
-        static let needsAccessIndicator = String(
-            localized: "provider_selection.needs_access_indicator"
-        )
-        static let restrictedIndicator = String(
-            localized: "provider_selection.restricted_indicator"
-        )
-        static let connectionFailedIndicator = String(
-            localized: "provider_selection.connection_failed_indicator"
-        )
-        static let openSettings = String(
-            localized: "provider_selection.open_settings"
-        )
-        static let tryAgain = String(localized: "provider_selection.try_again")
-
-        static func connectingTo(_ providerName: String) -> String {
-            String(
-                format: String(localized: "provider_selection.connecting_to"),
-                providerName
-            )
-        }
-
-        static func needsAccess(_ providerName: String) -> String {
-            String(
-                format: String(localized: "provider_selection.needs_access"),
-                providerName
-            )
-        }
-
-        static func restricted(_ providerName: String) -> String {
-            String(
-                format: String(localized: "provider_selection.restricted"),
-                providerName
-            )
-        }
-
-        static func connectionFailed(_ providerName: String) -> String {
-            String(
-                format: String(
-                    localized: "provider_selection.connection_failed"
-                ),
-                providerName
             )
         }
     }

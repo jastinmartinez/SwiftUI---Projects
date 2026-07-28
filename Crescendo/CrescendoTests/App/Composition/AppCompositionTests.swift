@@ -8,22 +8,20 @@ import Testing
 @MainActor
 struct AppCompositionTests {
     @Test
-    func invalidConfigurationKeepsJamendoRoutingAndFailsClosed() {
+    func invalidConfigurationOmitsJamendoCapabilities() {
         let composition = AppComposition.live(
             jamendoClientID: "  ",
             player: AVPlayer(),
             preparer: Self.preparer,
             data: { _ in
-                Issue.record("invalid configuration must not create a Jamendo API client")
+                Issue.record("Invalid configuration must not create Jamendo API work")
                 throw MusicProviderError.network
             }
         )
 
         #expect(composition.initialState.search.providerID == .jamendo)
-        #expect(composition.providerAccessClients[.jamendo] == nil)
         #expect(composition.providerSearchClients[.jamendo] == nil)
         #expect(composition.playbackResourceClients[.jamendo] == nil)
-
     }
 
     @Test
@@ -36,21 +34,16 @@ struct AppCompositionTests {
             data: { request in
                 requests.withValue { $0.append(request) }
                 let data = Data(Self.trackFixture.utf8)
-                return (data, try Self.okResponse(for: request))
+                return try (data, Self.okResponse(for: request))
             }
         )
 
-        let accessClient = try #require(
-            composition.providerAccessClients[.jamendo]
-        )
         let searchClient = try #require(
             composition.providerSearchClients[.jamendo]
         )
         let resourceClient = try #require(
             composition.playbackResourceClients[.jamendo]
         )
-
-        #expect(await accessClient.currentAccess().authorization == .authorized)
 
         let page = try await searchClient.searchPage(
             .initial(query: "Signal"),
@@ -62,9 +55,9 @@ struct AppCompositionTests {
         let resource = try await resourceClient.resolve(trackID)
         #expect(resource.trackID == trackID)
         #expect(
-            resource.location
+            try resource.location
                 == .progressive(
-                    try #require(
+                    #require(
                         URL(string: "https://example.com/audio.mp3")
                     )
                 )
@@ -94,10 +87,10 @@ struct AppCompositionTests {
             data: { _ in throw MusicProviderError.network }
         )
         let trackID = TrackID(providerID: .jamendo, nativeID: "shared")
-        let resource = PlaybackResource(
+        let resource = try PlaybackResource(
             trackID: trackID,
             location: .progressive(
-                try #require(URL(string: "memory://shared"))
+                #require(URL(string: "memory://shared"))
             )
         )
 
@@ -115,9 +108,9 @@ struct AppCompositionTests {
 
         var iterator =
             await composition.playbackObservation.observations()
-            .makeAsyncIterator()
+                .makeAsyncIterator()
         let observation = await iterator.next()
-        guard case .snapshot(let snapshot) = observation else {
+        guard case let .snapshot(snapshot) = observation else {
             Issue.record("expected the supplied player's initial snapshot")
             return
         }
@@ -133,27 +126,27 @@ struct AppCompositionTests {
         )
     }
 
-    nonisolated private static let trackFixture = """
-        {
-          "headers": {
-            "status": "success",
-            "code": 0,
-            "results_count": 1,
-            "results_fullcount": 1
-          },
-          "results": [{
-            "id": "42",
-            "name": "Signal",
-            "artist_name": "The Tests",
-            "album_name": "Assertions",
-            "image": "https://example.com/artwork.jpg",
-            "duration": "180",
-            "audio": "https://example.com/audio.mp3"
-          }]
-        }
-        """
+    private nonisolated static let trackFixture = """
+    {
+      "headers": {
+        "status": "success",
+        "code": 0,
+        "results_count": 1,
+        "results_fullcount": 1
+      },
+      "results": [{
+        "id": "42",
+        "name": "Signal",
+        "artist_name": "The Tests",
+        "album_name": "Assertions",
+        "image": "https://example.com/artwork.jpg",
+        "duration": "180",
+        "audio": "https://example.com/audio.mp3"
+      }]
+    }
+    """
 
-    nonisolated private static func okResponse(
+    private nonisolated static func okResponse(
         for request: URLRequest
     ) throws -> HTTPURLResponse {
         let url = try #require(request.url)
@@ -166,5 +159,4 @@ struct AppCompositionTests {
             )
         )
     }
-
 }
