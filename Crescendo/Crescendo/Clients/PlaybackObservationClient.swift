@@ -1,6 +1,6 @@
 import ComposableArchitecture
 
-/// Exposes provider-confirmed playback observations.
+/// Exposes player-confirmed playback observations.
 struct PlaybackObservationClient: Sendable {
     var observations: @Sendable () async -> AsyncStream<PlaybackObservation>
 }

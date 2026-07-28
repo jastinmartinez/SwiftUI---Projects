@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import Foundation
 
-/// Owns catalog-search input and request state for a selected provider.
+/// Owns catalog-search input and request state for an immutable provider routing context.
 @Reducer
 struct SearchFeature {
     @CasePathable

@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// Dragging emits draft values continuously and sends a distinct completion callback
 /// when interaction ends. The reducer remains responsible for committing seeks and
-/// reconciling provider-confirmed position.
+/// reconciling player-confirmed position.
 struct PlaybackSliderView: View {
     let model: Model
 
@@ -100,7 +100,7 @@ extension PlaybackSliderView.Model {
     /// Converts between playback values, normalized progress, and track coordinates.
     ///
     /// Every conversion clamps to `range`, keeping gesture and accessibility input
-    /// within the provider-confirmed duration.
+    /// within the player-confirmed duration.
     struct Scale: Equatable {
         let range: ClosedRange<TimeInterval>
 

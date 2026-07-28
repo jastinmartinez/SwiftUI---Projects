@@ -17,7 +17,7 @@ struct AVPlayerPlaybackEngine {
     /// Controls the shared player's playback position.
     let timeline: PlaybackTimelineClient
 
-    /// Reports provider-confirmed state and events from the shared player.
+    /// Reports player-confirmed state and events from the shared player.
     let observation: PlaybackObservationClient
 }
 

@@ -34,7 +34,8 @@ extension PlaybackPrimaryButtonView {
     /// The immutable presentation contract for the primary playback control.
     ///
     /// `state` describes the action offered by the button rather than confirmed
-    /// provider status. The presentation adapter is responsible for that projection.
+    /// player-confirmed playback status. The presentation adapter is responsible for that
+    /// projection.
     struct Model {
         let state: State
         let accessibilityLabel: String
