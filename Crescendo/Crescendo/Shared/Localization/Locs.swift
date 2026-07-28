@@ -27,8 +27,8 @@ extension Locs {
         ) -> String {
             let countFormat =
                 count == 1
-                    ? String(localized: "search.result_count")
-                    : String(localized: "search.results_count")
+                ? String(localized: "search.result_count")
+                : String(localized: "search.results_count")
             let countText = String(format: countFormat, Int64(count))
             guard let providerName else { return countText }
             return String(

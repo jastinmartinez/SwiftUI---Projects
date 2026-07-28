@@ -33,10 +33,10 @@ struct AppComposition {
         player: AVPlayer,
         preparer: AVPlayerItemPreparer,
         data:
-        @escaping @Sendable (URLRequest) async throws -> (
-            Data,
-            URLResponse
-        )
+            @escaping @Sendable (URLRequest) async throws -> (
+                Data,
+                URLResponse
+            )
     ) -> Self {
         var searchClientsByProvider: [ProviderID: ProviderSearchClient] = [:]
         var resourceClientsByProvider: [ProviderID: PlaybackResourceClient] = [:]

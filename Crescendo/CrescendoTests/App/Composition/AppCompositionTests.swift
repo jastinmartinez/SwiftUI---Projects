@@ -108,9 +108,9 @@ struct AppCompositionTests {
 
         var iterator =
             await composition.playbackObservation.observations()
-                .makeAsyncIterator()
+            .makeAsyncIterator()
         let observation = await iterator.next()
-        guard case let .snapshot(snapshot) = observation else {
+        guard case .snapshot(let snapshot) = observation else {
             Issue.record("expected the supplied player's initial snapshot")
             return
         }
@@ -127,24 +127,24 @@ struct AppCompositionTests {
     }
 
     private nonisolated static let trackFixture = """
-    {
-      "headers": {
-        "status": "success",
-        "code": 0,
-        "results_count": 1,
-        "results_fullcount": 1
-      },
-      "results": [{
-        "id": "42",
-        "name": "Signal",
-        "artist_name": "The Tests",
-        "album_name": "Assertions",
-        "image": "https://example.com/artwork.jpg",
-        "duration": "180",
-        "audio": "https://example.com/audio.mp3"
-      }]
-    }
-    """
+        {
+          "headers": {
+            "status": "success",
+            "code": 0,
+            "results_count": 1,
+            "results_fullcount": 1
+          },
+          "results": [{
+            "id": "42",
+            "name": "Signal",
+            "artist_name": "The Tests",
+            "album_name": "Assertions",
+            "image": "https://example.com/artwork.jpg",
+            "duration": "180",
+            "audio": "https://example.com/audio.mp3"
+          }]
+        }
+        """
 
     private nonisolated static func okResponse(
         for request: URLRequest
