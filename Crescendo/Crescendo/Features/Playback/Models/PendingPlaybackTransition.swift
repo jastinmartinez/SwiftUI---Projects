@@ -11,6 +11,16 @@ struct PendingPlaybackTransition: Equatable {
         case navigation
     }
 
+    /// Separates target evidence observed during installation from evidence
+    /// that can enter confirmed-state settlement.
+    enum ItemAcknowledgement: Equatable {
+        /// The installer has not returned yet. Matching observations remain
+        /// transaction-local and only the newest one is retained.
+        case awaiting(latestTargetSnapshot: PlaybackSnapshot?)
+        /// The installer has returned after handing the player the target item.
+        case acknowledged
+    }
+
     /// One mutually exclusive infrastructure settlement phase.
     enum Settlement: Equatable {
         case none
@@ -63,9 +73,9 @@ struct PendingPlaybackTransition: Equatable {
     /// Defaults to the queue-installing meaning, which is the safe reading for
     /// any transition whose queue may not already be confirmed.
     var origin: Origin = .selection
-    /// Records that the player has been handed the target item, so a snapshot
-    /// bearing the target identity can no longer be describing the old item.
-    var hasLoadedItem: Bool = false
+    /// Keeps pre-acknowledgement target evidence out of confirmed state.
+    var itemAcknowledgement: ItemAcknowledgement =
+        .awaiting(latestTargetSnapshot: nil)
     /// Retains ownership until commit or rollback settlement is fully applied.
     var settlement: Settlement = .none
 
@@ -82,6 +92,11 @@ struct PendingPlaybackTransition: Equatable {
 
     var canAdvance: Bool {
         settlement == .none
+    }
+
+    mutating func discardAwaitingTargetSnapshot() {
+        guard case .awaiting = itemAcknowledgement else { return }
+        itemAcknowledgement = .awaiting(latestTargetSnapshot: nil)
     }
 
     mutating func retainLatestFollowUp(_ followUp: FollowUp) -> Bool {

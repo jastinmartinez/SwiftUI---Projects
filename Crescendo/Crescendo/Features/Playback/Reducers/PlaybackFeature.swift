@@ -82,6 +82,10 @@ struct PlaybackFeature {
         case setPlayerPresented(Bool)
         case observationReceived(PlaybackObservation)
         case reconcileSnapshot(PlaybackSnapshot)
+        case replayTransitionSnapshot(
+            requestID: UUID,
+            snapshot: PlaybackSnapshot
+        )
         case currentTrackCompleted(TrackID)
         case runtimePlaybackFailed(TrackID?, PlaybackFailure)
         case timelinePositionChanged(TimeInterval)
@@ -293,10 +297,28 @@ struct PlaybackFeature {
                     pending.requestID == requestID,
                     pending.canAdvance
                 else { return .none }
-                // The player now holds the target item, so a snapshot bearing
-                // the target identity can finally be trusted as installation.
-                state.pendingPlaybackTransition?.hasLoadedItem = true
-                return .send(.playTransition(requestID: requestID))
+                let latestTargetSnapshot: PlaybackSnapshot?
+                switch pending.itemAcknowledgement {
+                case .awaiting(let snapshot):
+                    latestTargetSnapshot = snapshot
+                case .acknowledged:
+                    latestTargetSnapshot = nil
+                }
+                state.pendingPlaybackTransition?.itemAcknowledgement =
+                    .acknowledged
+                let replayEffect: Effect<Action> =
+                    latestTargetSnapshot.map {
+                        .send(
+                            .replayTransitionSnapshot(
+                                requestID: requestID,
+                                snapshot: $0
+                            )
+                        )
+                    } ?? .none
+                return .concatenate(
+                    .send(.playTransition(requestID: requestID)),
+                    replayEffect
+                )
 
             case .playTransition(let requestID):
                 guard let pending = state.pendingPlaybackTransition,
@@ -493,6 +515,8 @@ struct PlaybackFeature {
                         return .none
                     case .none:
                         let installation = pending.installation
+                        state.pendingPlaybackTransition?
+                            .discardAwaitingTargetSnapshot()
                         state.pendingPlaybackTransition?.settlement =
                             .rollingBack(
                                 .abandoning(
@@ -536,6 +560,8 @@ struct PlaybackFeature {
                     break
                 }
                 let installation = pending.rollbackInstallation
+                state.pendingPlaybackTransition?
+                    .discardAwaitingTargetSnapshot()
                 state.pendingPlaybackTransition?.settlement =
                     .rollingBack(
                         .abandoning(
@@ -586,6 +612,8 @@ struct PlaybackFeature {
                 }
                 if let pending = state.pendingPlaybackTransition {
                     let installation = pending.rollbackInstallation
+                    state.pendingPlaybackTransition?
+                        .discardAwaitingTargetSnapshot()
                     state.pendingPlaybackTransition?.settlement =
                         .rollingBack(
                             .abandoning(
@@ -767,24 +795,29 @@ struct PlaybackFeature {
                     switch pending.settlement {
                     case .committing, .applyingCommit:
                         return .none
-                    case .none, .rollingBack:
-                        break
-                    }
-                    let installation = pending.rollbackInstallation
-                    state.pendingPlaybackTransition?.settlement =
-                        .rollingBack(
-                            .abandoning(
+                    case .rollingBack:
+                        state.pendingPlaybackTransition?
+                            .discardAwaitingTargetSnapshot()
+                        return .none
+                    case .none:
+                        let installation = pending.installation
+                        state.pendingPlaybackTransition?
+                            .discardAwaitingTargetSnapshot()
+                        state.pendingPlaybackTransition?.settlement =
+                            .rollingBack(
+                                .abandoning(
+                                    installation,
+                                    followUp: .none
+                                )
+                            )
+                        return .concatenate(
+                            .cancel(id: CancelID.playbackTransition),
+                            rollbackEffect(
                                 installation,
-                                followUp: .none
+                                requestID: pending.requestID
                             )
                         )
-                    return .concatenate(
-                        .cancel(id: CancelID.playbackTransition),
-                        rollbackEffect(
-                            installation,
-                            requestID: pending.requestID
-                        )
-                    )
+                    }
                 }
 
                 guard trackID == nil || trackID == state.queue.currentTrackID,
@@ -797,69 +830,18 @@ struct PlaybackFeature {
                 return .none
 
             case .reconcileSnapshot(let snapshot):
-                if let pending = state.pendingPlaybackTransition {
-                    switch pending.settlement {
-                    case .committing, .applyingCommit:
-                        guard
-                            snapshot.currentTrackID == pending.targetTrackID
-                        else { return .none }
-                    case .none, .rollingBack:
-                        break
-                    }
-                }
+                return reconcilePlaybackSnapshot(
+                    state: &state,
+                    snapshot: snapshot
+                )
 
-                // Identity alone cannot confirm a target that is already the
-                // confirmed track, because the player still holds the old item
-                // until loading completes. Requiring the loaded stage keeps a
-                // stale snapshot from confirming a restart or a Repeat one.
-                if let pending = state.pendingPlaybackTransition,
-                    let observedTrackID = snapshot.currentTrackID,
-                    observedTrackID == pending.targetTrackID
-                {
-                    guard pending.hasLoadedItem else {
-                        return reconcileConfirmedSnapshot(
-                            state: &state,
-                            snapshot: snapshot
-                        )
-                    }
-                    switch pending.settlement {
-                    case .committing(var commit):
-                        commit.snapshot = snapshot
-                        state.pendingPlaybackTransition?.settlement =
-                            .committing(commit)
-                        return .none
-                    case .applyingCommit(var commit):
-                        commit.snapshot = snapshot
-                        state.pendingPlaybackTransition?.settlement =
-                            .applyingCommit(commit)
-                        return .none
-                    case .rollingBack:
-                        return .none
-                    case .none:
-                        break
-                    }
-
-                    let commit = PendingPlaybackTransition.Commit(
-                        snapshot: snapshot
-                    )
-                    state.pendingPlaybackTransition?.settlement =
-                        .committing(commit)
-                    if state.failureNotice?.trackID == observedTrackID {
-                        state.failureNotice = nil
-                    }
-                    let installation = pending.installation
-                    return .run { send in
-                        await playbackItem.commit(installation)
-                        await send(
-                            .transitionCommitCompleted(
-                                requestID: pending.requestID,
-                                installation: installation
-                            )
-                        )
-                    }
-                }
-
-                return reconcileConfirmedSnapshot(
+            case .replayTransitionSnapshot(let requestID, let snapshot):
+                guard let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID,
+                    pending.itemAcknowledgement == .acknowledged,
+                    pending.settlement == .none
+                else { return .none }
+                return reconcilePlaybackSnapshot(
                     state: &state,
                     snapshot: snapshot
                 )
@@ -963,6 +945,87 @@ struct PlaybackFeature {
         }
         state.timeline.duration = snapshot.duration
         state.timeline.isSeekable = snapshot.isSeekable
+    }
+
+    private func reconcilePlaybackSnapshot(
+        state: inout State,
+        snapshot: PlaybackSnapshot
+    ) -> Effect<Action> {
+        if let pending = state.pendingPlaybackTransition {
+            switch pending.settlement {
+            case .committing(var commit):
+                guard
+                    snapshot.currentTrackID == pending.targetTrackID
+                else { return .none }
+                commit.snapshot = snapshot
+                state.pendingPlaybackTransition?.settlement =
+                    .committing(commit)
+                return .none
+            case .applyingCommit(var commit):
+                guard
+                    snapshot.currentTrackID == pending.targetTrackID
+                else { return .none }
+                commit.snapshot = snapshot
+                state.pendingPlaybackTransition?.settlement =
+                    .applyingCommit(commit)
+                return .none
+            case .rollingBack:
+                guard
+                    snapshot.currentTrackID
+                        != pending.targetTrackID
+                else { return .none }
+                return reconcileConfirmedSnapshot(
+                    state: &state,
+                    snapshot: snapshot
+                )
+            case .none:
+                break
+            }
+
+            guard
+                let observedTrackID = snapshot.currentTrackID,
+                observedTrackID == pending.targetTrackID
+            else {
+                return reconcileConfirmedSnapshot(
+                    state: &state,
+                    snapshot: snapshot
+                )
+            }
+
+            switch pending.itemAcknowledgement {
+            case .awaiting:
+                state.pendingPlaybackTransition?
+                    .itemAcknowledgement =
+                    .awaiting(latestTargetSnapshot: snapshot)
+                return .none
+            case .acknowledged:
+                break
+            }
+
+            let commit = PendingPlaybackTransition.Commit(
+                snapshot: snapshot
+            )
+            state.pendingPlaybackTransition?.settlement =
+                .committing(commit)
+            if state.failureNotice?.trackID == observedTrackID {
+                state.failureNotice = nil
+            }
+            let installation = pending.installation
+            return .run { send in
+                await playbackItem.commit(installation)
+                await send(
+                    .transitionCommitCompleted(
+                        requestID: pending.requestID,
+                        installation: installation
+                    )
+                )
+            }
+        }
+
+        return reconcileConfirmedSnapshot(
+            state: &state,
+            snapshot: snapshot
+        )
     }
 
     private func reconcileConfirmedSnapshot(
