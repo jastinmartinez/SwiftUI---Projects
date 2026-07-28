@@ -64,7 +64,7 @@ struct AVFoundationPlaybackClientCompositionTests {
         #expect(seekTimes.value.map(\.seconds) == [0])
 
         var iterator =
-            try await observationClient.observations().makeAsyncIterator()
+            await observationClient.observations().makeAsyncIterator()
         let first = await iterator.next()
 
         guard case .snapshot(let snapshot) = first else {

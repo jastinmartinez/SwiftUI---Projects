@@ -165,7 +165,7 @@ struct CrescendoAppCompositionTests {
         #expect(seekTimes.value.map(\.seconds) == [0])
 
         var iterator =
-            try await composition.playbackObservation.observations()
+            await composition.playbackObservation.observations()
             .makeAsyncIterator()
         let observation = await iterator.next()
         guard case .snapshot(let snapshot) = observation else {
