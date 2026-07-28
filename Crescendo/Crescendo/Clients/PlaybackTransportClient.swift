@@ -5,6 +5,7 @@ import ComposableArchitecture
 struct PlaybackTransportClient: Sendable {
     var play: @Sendable () async throws -> Void
     var pause: @Sendable () async throws -> Void
+    var stop: @Sendable () async throws -> Void
 }
 
 extension PlaybackTransportClient: DependencyKey {

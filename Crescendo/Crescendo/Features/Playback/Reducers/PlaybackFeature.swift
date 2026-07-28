@@ -471,7 +471,7 @@ struct PlaybackFeature {
                         case .paused:
                             try await playbackTransport.pause()
                         case .stopped:
-                            try await playbackTransport.pause()
+                            try await playbackTransport.stop()
                             try await playbackTimeline.seek(0)
                         }
                         try Task.checkCancellation()

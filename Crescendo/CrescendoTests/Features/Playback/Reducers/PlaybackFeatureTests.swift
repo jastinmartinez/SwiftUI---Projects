@@ -1276,7 +1276,7 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 try await resolveProbe.run()
             }
-            $0.playbackTransport.pause = stopProbe.run
+            $0.playbackTransport.stop = stopProbe.run
         }
 
         await store.send(
@@ -1501,7 +1501,7 @@ struct PlaybackFeatureTests {
     }
 
     @Test
-    func stopTappedPausesThenSeeksToZeroInOrder() async {
+    func stopTappedStopsThenSeeksToZeroInOrder() async {
         let tracks = makeTracks()
         let calls = LockIsolated<[String]>([])
         let store = makeStore(
@@ -1514,8 +1514,8 @@ struct PlaybackFeatureTests {
             ),
             status: .playing
         ) {
-            $0.playbackTransport.pause = {
-                calls.withValue { $0.append("pause") }
+            $0.playbackTransport.stop = {
+                calls.withValue { $0.append("stop") }
             }
             $0.playbackTimeline.seek = { time in
                 calls.withValue { $0.append("seek:\(time)") }
@@ -1537,7 +1537,7 @@ struct PlaybackFeatureTests {
         }
         await store.receive(.timeline(.resetPosition))
 
-        #expect(calls.value == ["pause", "seek:0.0"])
+        #expect(calls.value == ["stop", "seek:0.0"])
     }
 
     @Test
@@ -1776,7 +1776,7 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 50)
             )
         ) {
-            $0.playbackTransport.pause = {}
+            $0.playbackTransport.stop = {}
             $0.playbackTimeline.seek = { _ in try await stopProbe.run() }
         }
 
@@ -1821,7 +1821,7 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 50)
             )
         ) {
-            $0.playbackTransport.pause = {}
+            $0.playbackTransport.stop = {}
             $0.playbackTimeline.seek = { _ in try await stopProbe.run() }
         }
 
