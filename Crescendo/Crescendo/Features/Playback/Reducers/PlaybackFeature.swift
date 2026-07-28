@@ -797,6 +797,17 @@ struct PlaybackFeature {
                 return .none
 
             case .reconcileSnapshot(let snapshot):
+                if let pending = state.pendingPlaybackTransition {
+                    switch pending.settlement {
+                    case .committing, .applyingCommit:
+                        guard
+                            snapshot.currentTrackID == pending.targetTrackID
+                        else { return .none }
+                    case .none, .rollingBack:
+                        break
+                    }
+                }
+
                 // Identity alone cannot confirm a target that is already the
                 // confirmed track, because the player still holds the old item
                 // until loading completes. Requiring the loaded stage keeps a

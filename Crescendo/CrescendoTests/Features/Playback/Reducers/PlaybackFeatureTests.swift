@@ -1931,6 +1931,174 @@ struct PlaybackFeatureTests {
     }
 
     @Test
+    func staleSnapshotIsIgnoredWhileCommitApplicationIsPending() async {
+        let tracks = makeTracks()
+        let queue = IdentifiedArray(uniqueElements: tracks)
+        let staleTrack = tracks[0]
+        let target = tracks[1]
+        let targetSnapshot = makeSnapshot(
+            itemID: target.id,
+            status: .playing,
+            position: 9,
+            duration: 120,
+            isSeekable: true
+        )
+        let staleSnapshot = makeSnapshot(
+            itemID: staleTrack.id,
+            status: .paused,
+            position: 2,
+            duration: 100,
+            isSeekable: false
+        )
+        let staleSnapshotWithoutIdentity = makeSnapshot(
+            itemID: nil,
+            status: .waiting,
+            position: 3,
+            duration: 101,
+            isSeekable: false
+        )
+        let installation = PlaybackItemInstallation(id: UUID(0))
+        let store = makeStore(
+            queue: PlaybackQueueFeature.State(
+                tracks: queue,
+                playbackOrder: PlaybackQueueOrder(
+                    trackIDs: tracks.map(\.id)
+                ),
+                currentTrackID: target.id,
+                repeatMode: .off,
+                shuffleMode: .off
+            ),
+            status: .playing,
+            timeline: PlaybackTimelineFeature.State(
+                confirmedPosition: 9,
+                duration: 120,
+                isSeekable: true,
+                interaction: .idle
+            ),
+            pendingPlaybackTransition: PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: queue,
+                targetTrackID: target.id,
+                origin: .navigation,
+                hasLoadedItem: true,
+                settlement: .applyingCommit(
+                    PendingPlaybackTransition.Commit(
+                        snapshot: targetSnapshot
+                    )
+                )
+            )
+        )
+
+        await store.send(.reconcileSnapshot(staleSnapshot))
+        await store.send(.reconcileSnapshot(staleSnapshotWithoutIdentity))
+        await store.send(
+            .transitionConfirmationApplied(
+                requestID: UUID(0),
+                installation: installation
+            )
+        ) {
+            $0.pendingPlaybackTransition = nil
+        }
+
+        #expect(store.state.queue.currentTrackID == target.id)
+        #expect(store.state.status == targetSnapshot.status)
+        #expect(
+            store.state.timeline.confirmedPosition
+                == targetSnapshot.position
+        )
+        #expect(store.state.timeline.duration == targetSnapshot.duration)
+        #expect(
+            store.state.timeline.isSeekable
+                == targetSnapshot.isSeekable
+        )
+    }
+
+    @Test
+    func staleSnapshotWithoutIdentityIsIgnoredWhileCommitIsSuspended() async {
+        let tracks = makeTracks()
+        let queue = IdentifiedArray(uniqueElements: tracks)
+        let confirmed = tracks[0]
+        let target = tracks[1]
+        let targetSnapshot = makeSnapshot(
+            itemID: target.id,
+            status: .playing,
+            position: 9,
+            duration: 120,
+            isSeekable: true
+        )
+        let staleSnapshot = makeSnapshot(
+            itemID: nil,
+            status: .paused,
+            position: 2,
+            duration: 100,
+            isSeekable: false
+        )
+        let installation = PlaybackItemInstallation(id: UUID(0))
+        let commit = PendingPlaybackTransition.Commit(
+            snapshot: targetSnapshot
+        )
+        let store = makeStore(
+            queue: PlaybackQueueFeature.State(
+                tracks: queue,
+                playbackOrder: PlaybackQueueOrder(
+                    trackIDs: tracks.map(\.id)
+                ),
+                currentTrackID: confirmed.id,
+                repeatMode: .off,
+                shuffleMode: .off
+            ),
+            pendingPlaybackTransition: PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: queue,
+                targetTrackID: target.id,
+                origin: .navigation,
+                hasLoadedItem: true,
+                settlement: .committing(commit)
+            )
+        )
+
+        await store.send(.reconcileSnapshot(staleSnapshot))
+        await store.send(
+            .transitionCommitCompleted(
+                requestID: UUID(0),
+                installation: installation
+            )
+        ) {
+            $0.status = .playing
+            $0.timeline.duration = 120
+            $0.timeline.isSeekable = true
+            $0.pendingPlaybackTransition?.settlement =
+                .applyingCommit(commit)
+        }
+        await store.receive(.queue(.currentTrackConfirmed(target.id))) {
+            $0.queue.currentTrackID = target.id
+        }
+        await store.receive(.timeline(.positionObserved(9))) {
+            $0.timeline.confirmedPosition = 9
+        }
+        await store.receive(
+            .transitionConfirmationApplied(
+                requestID: UUID(0),
+                installation: installation
+            )
+        ) {
+            $0.pendingPlaybackTransition = nil
+        }
+
+        #expect(store.state.queue.currentTrackID == target.id)
+        #expect(store.state.status == targetSnapshot.status)
+        #expect(
+            store.state.timeline.confirmedPosition
+                == targetSnapshot.position
+        )
+        #expect(store.state.timeline.duration == targetSnapshot.duration)
+        #expect(
+            store.state.timeline.isSeekable
+                == targetSnapshot.isSeekable
+        )
+    }
+
+    @Test
     func supersedingAnInstalledTargetRestoresConfirmedItemBeforeResolvingNext()
         async throws
     {
