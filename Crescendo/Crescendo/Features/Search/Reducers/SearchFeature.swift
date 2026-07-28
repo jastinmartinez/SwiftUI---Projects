@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import Foundation
 
-/// Owns catalog-search input and request state for resolved provider access.
+/// Owns catalog-search input and request state for a selected provider.
 @Reducer
 struct SearchFeature {
     @CasePathable
@@ -68,9 +68,6 @@ struct SearchFeature {
                 return .send(.cancelSearch)
 
             case .submitButtonTapped, .retryButtonTapped:
-                guard state.providerAccess?.authorization == .authorized else {
-                    return .none
-                }
                 let query = state.query.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !query.isEmpty else {
                     return .send(.cancelSearch)
@@ -91,7 +88,7 @@ struct SearchFeature {
                         guard
                             let searchClient = providerSearchClients[providerID]
                         else {
-                            throw MusicProviderError.noActiveProvider
+                            throw MusicProviderError.providerUnavailable(providerID)
                         }
                         let page = try await searchClient.searchPage(
                             .initial(query: query),

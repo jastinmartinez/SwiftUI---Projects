@@ -110,9 +110,12 @@ struct SearchPaginationFeatureTests {
             $0.status = .loading(requestID: UUID(0))
         }
         await store.receive(
-            .searchPageResponse(UUID(0), .failure(.noActiveProvider))
+            .searchPageResponse(
+                UUID(0),
+                .failure(.providerUnavailable(.jamendo))
+            )
         ) {
-            $0.status = .failed(.noActiveProvider)
+            $0.status = .failed(.providerUnavailable(.jamendo))
         }
 
         #expect(testProviderSearchCount.value == 0)

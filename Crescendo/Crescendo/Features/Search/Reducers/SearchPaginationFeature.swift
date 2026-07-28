@@ -77,7 +77,7 @@ struct SearchPaginationFeature {
                         guard
                             let searchClient = providerSearchClients[providerID]
                         else {
-                            throw MusicProviderError.noActiveProvider
+                            throw MusicProviderError.providerUnavailable(providerID)
                         }
                         let page = try await searchClient.searchPage(
                             .continuation(cursor),

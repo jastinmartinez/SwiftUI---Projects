@@ -113,9 +113,9 @@ struct SearchFeatureTests {
             $0.status = .searching(requestID: UUID(0))
         }
         await store.receive(
-            .searchResponse(UUID(0), .failure(.noActiveProvider))
+            .searchResponse(UUID(0), .failure(.providerUnavailable(.jamendo)))
         ) {
-            $0.status = .failed(.noActiveProvider)
+            $0.status = .failed(.providerUnavailable(.jamendo))
         }
 
         #expect(testProviderSearchCount.value == 0)
@@ -174,48 +174,58 @@ struct SearchFeatureTests {
         #expect(store.state.providerAccess == access)
     }
 
-    @Test
-    func unresolvedAccessMakesSubmitATrueNoOp() async {
-        let song = makeTrack()
-        let cases: [MusicProviderAccess?] = [
-            nil,
-            makeAccess(
-                authorization: .denied,
-                playbackEligibility: .unknown
-            ),
-        ]
-
-        for providerAccess in cases {
-            let state = makeState(
+    @Test(arguments: [
+        Optional<MusicProviderAccess>.none,
+        MusicProviderAccess(
+            authorization: .denied,
+            playbackEligibility: .unknown
+        ),
+    ])
+    func submitDoesNotRequireProviderAccess(
+        providerAccess: MusicProviderAccess?
+    ) async {
+        let page = SearchPage(tracks: [makeTrack()], nextCursor: nil)
+        let store = TestStore(
+            initialState: makeState(
                 query: "result",
-                status: loadedStatus(
-                    tracks: [song],
-                    nextCursor: nil,
-                    paginationStatus: .idle,
-                    providerID: .testProvider
-                ),
+                status: .idle,
                 providerAccess: providerAccess,
                 providerID: .testProvider
             )
-            let store = TestStore(initialState: state) {
-                SearchFeature()
-            } withDependencies: {
-                $0.providerSearchClients = ProviderClientRegistry(
-                    clients: [
-                        .testProvider: ProviderSearchClient(
-                            searchPage: { _, _ in
-                                Issue.record(
-                                    "Search must not run without authorized access"
-                                )
-                                return SearchPage(tracks: [], nextCursor: nil)
-                            }
-                        )
-                    ]
-                )
-            }
+        ) {
+            SearchFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.providerSearchClients = ProviderClientRegistry(
+                clients: [
+                    .testProvider: ProviderSearchClient(
+                        searchPage: { request, limit in
+                            #expect(request == .initial(query: "result"))
+                            #expect(limit == 20)
+                            return page
+                        }
+                    )
+                ]
+            )
+        }
 
-            await store.send(.submitButtonTapped)
-            #expect(store.state == state)
+        await store.send(.submitButtonTapped)
+        await store.receive(
+            .startSearch(
+                providerID: .testProvider,
+                query: "result",
+                requestID: UUID(0)
+            )
+        ) {
+            $0.status = .searching(requestID: UUID(0))
+        }
+        await store.receive(.searchResponse(UUID(0), .success(page))) {
+            $0.status = loadedStatus(
+                tracks: page.tracks,
+                nextCursor: nil,
+                paginationStatus: .idle,
+                providerID: .testProvider
+            )
         }
     }
 

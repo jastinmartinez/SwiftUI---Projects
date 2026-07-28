@@ -7,70 +7,41 @@ import Testing
 @MainActor
 struct SearchPresentationAdapterTests {
     @Test
-    func searchHeaderRequiresAuthorizedAccessAndTrimmedQuery() {
-        let access = makeAccess(
-            authorization: .authorized,
-            playbackEligibility: .eligible
-        )
-        let enabledModel = SearchHeaderView.Model(
-            makeStore(query: " vela ", status: .idle, providerAccess: access),
+    func searchHeaderRequiresOnlyANonemptyTrimmedQuery() {
+        let enabled = SearchHeaderView.Model(
+            makeStore(query: " vela ", status: .idle, providerAccess: nil),
             providerSelection: makeProviderSelection()
         )
-        let emptyQueryModel = SearchHeaderView.Model(
-            makeStore(query: "   ", status: .idle, providerAccess: access),
-            providerSelection: makeProviderSelection()
-        )
-        let disconnectedModel = SearchHeaderView.Model(
-            makeStore(query: "vela", status: .idle, providerAccess: nil),
+        let disabled = SearchHeaderView.Model(
+            makeStore(query: "   ", status: .idle, providerAccess: nil),
             providerSelection: makeProviderSelection()
         )
 
-        #expect(enabledModel.isSearchEnabled)
-        #expect(!emptyQueryModel.isSearchEnabled)
-        #expect(!disconnectedModel.isSearchEnabled)
-        #expect(enabledModel.strings.title == "Crescendo")
-        #expect(enabledModel.strings.prompt == "Search tracks")
-        #expect(enabledModel.strings.clear == "Clear search")
-        #expect(enabledModel.strings.action == "Search")
+        #expect(enabled.isSearchEnabled)
+        #expect(!disabled.isSearchEnabled)
     }
 
     @Test
-    func disconnectedProviderShowsRequiresProviderContent() {
-        let model = SearchResultsView.Model(
-            makeStore(query: "vela", status: .failed(.network), providerAccess: nil),
-            providerName: nil
-        )
-
-        guard case .requiresProvider = model.content else {
-            Issue.record("Expected provider connection content")
-            return
-        }
-        #expect(model.strings.requiresProviderTitle == "Connect a Provider")
-        #expect(
-            model.strings.requiresProviderMessage
-                == "Connect a provider to search its catalog and play tracks."
-        )
-    }
-
-    @Test
-    func requiresProviderTakesPrecedenceOverSearchStatus() {
+    func loadedResultsRemainVisibleWithoutProviderAccess() {
+        let track = makeTrack()
         let model = SearchResultsView.Model(
             makeStore(
                 query: "vela",
                 status: loadedStatus(
-                    tracks: [makeTrack()],
+                    tracks: [track],
                     nextCursor: nil,
                     paginationStatus: .idle
                 ),
                 providerAccess: nil
             ),
-            providerName: nil
+            providerName: "Jamendo"
         )
 
-        guard case .requiresProvider = model.content else {
-            Issue.record("Expected provider connection content")
+        guard case .results(let results) = model.content else {
+            Issue.record("Expected loaded results")
             return
         }
+        #expect(results.rows.map(\.id) == [track.id])
     }
 
     @Test
@@ -241,25 +212,6 @@ struct SearchPresentationAdapterTests {
             return
         }
         #expect(pagination.status == .loading(requestID: UUID(0)))
-    }
-
-    @Test
-    func ineligibleAccessStillShowsSubscriptionNoticeForResults() {
-        let store = makeStore(
-            query: "result",
-            status: loadedStatus(
-                tracks: [makeTrack()],
-                nextCursor: nil,
-                paginationStatus: .idle
-            ),
-            providerAccess: makeAccess(
-                authorization: .authorized,
-                playbackEligibility: .ineligible
-            )
-        )
-
-        let notice = PlaybackEligibilityNoticeView.Model(store)
-        #expect(notice.presentation == .subscriptionRequired)
     }
 
     // MARK: - Helpers

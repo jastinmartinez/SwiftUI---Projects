@@ -22,7 +22,6 @@ struct SearchFeatureView: View {
                             providerName: providerSelection.activeProviderName
                         )
                     )
-                    PlaybackEligibilityNoticeView(model: .init(store))
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)

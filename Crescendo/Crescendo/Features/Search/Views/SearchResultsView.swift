@@ -11,12 +11,6 @@ struct SearchResultsView: View {
                 model.strings.emptyTitle,
                 systemImage: "music.note"
             )
-        case .requiresProvider:
-            ContentUnavailableView(
-                model.strings.requiresProviderTitle,
-                systemImage: "music.note",
-                description: Text(model.strings.requiresProviderMessage)
-            )
         case .loading:
             ProgressView(model.strings.searching)
         case .empty(let query):
@@ -41,7 +35,6 @@ extension SearchResultsView {
 extension SearchResultsView.Model {
     enum Content {
         case idle
-        case requiresProvider
         case loading
         case empty(query: String)
         case results(SearchResultListView.Model)
@@ -51,8 +44,6 @@ extension SearchResultsView.Model {
     /// Contains every localized string rendered by the search results state.
     struct Strings {
         let emptyTitle: String
-        let requiresProviderTitle: String
-        let requiresProviderMessage: String
         let searching: String
         let retry: String
     }
