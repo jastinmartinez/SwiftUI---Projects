@@ -975,7 +975,8 @@ struct PlaybackFeatureTests {
         let snapshot = makeSnapshot(
             itemID: tracks[1].id,
             status: .waiting,
-            position: 0
+            position: 0,
+            isSeekable: false
         )
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
@@ -1995,7 +1996,8 @@ struct PlaybackFeatureTests {
             currentTrackID: nil,
             status: .playing,
             position: 99,
-            duration: nil
+            duration: nil,
+            isSeekable: false
         )
 
         await store.send(.observationReceived(.snapshot(staleSnapshot)))
@@ -2644,7 +2646,8 @@ struct PlaybackFeatureTests {
             itemID: nextSongs[1].id,
             status: .waiting,
             position: 0,
-            duration: 180
+            duration: 180,
+            isSeekable: false
         )
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
@@ -3529,13 +3532,15 @@ struct PlaybackFeatureTests {
         itemID: TrackID?,
         status: PlaybackStatus,
         position: TimeInterval,
-        duration: TimeInterval? = nil
+        duration: TimeInterval? = nil,
+        isSeekable: Bool = true
     ) -> PlaybackSnapshot {
         PlaybackSnapshot(
             currentTrackID: itemID,
             status: status,
             position: position,
-            duration: duration
+            duration: duration,
+            isSeekable: isSeekable
         )
     }
 }

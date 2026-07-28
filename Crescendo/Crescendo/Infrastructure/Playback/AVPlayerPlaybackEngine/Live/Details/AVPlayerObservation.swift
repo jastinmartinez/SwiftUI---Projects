@@ -10,21 +10,26 @@ struct AVPlayerObservation {
     let player: AVPlayer
     let registry: AVPlayerItemRegistry
     private let itemStatusObserver: AVPlayerItemStatusObserver
+    private let itemSeekabilityObserver: AVPlayerItemSeekabilityObserver
 
-    /// Creates a mapper with an explicit item-status registration mechanism.
+    /// Creates a mapper with explicit active-item registration mechanisms.
     ///
     /// - Parameters:
     ///   - player: The shared player whose state is mapped.
     ///   - registry: The shared item-to-track identity registry.
     ///   - itemStatusObserver: The AVFoundation status-observation boundary.
+    ///   - itemSeekabilityObserver: The AVFoundation seekable-range observation
+    ///     boundary whose token is owned by each stream subscription.
     init(
         player: AVPlayer,
         registry: AVPlayerItemRegistry,
-        itemStatusObserver: AVPlayerItemStatusObserver
+        itemStatusObserver: AVPlayerItemStatusObserver,
+        itemSeekabilityObserver: AVPlayerItemSeekabilityObserver
     ) {
         self.player = player
         self.registry = registry
         self.itemStatusObserver = itemStatusObserver
+        self.itemSeekabilityObserver = itemSeekabilityObserver
     }
 
     /// Creates a playback-observation stream backed by one cancellable subscription.
@@ -37,7 +42,8 @@ struct AVPlayerObservation {
         AsyncStream { continuation in
             let subscription = AVPlayerObservationSubscription(
                 player: player,
-                itemStatusObserver: itemStatusObserver
+                itemStatusObserver: itemStatusObserver,
+                itemSeekabilityObserver: itemSeekabilityObserver
             ) { [self] event in
                 guard let observation = observation(for: event) else { return }
                 continuation.yield(observation)
@@ -60,8 +66,8 @@ struct AVPlayerObservation {
         for event: AVPlayerObservationSubscription.Event
     ) -> PlaybackObservation? {
         switch event {
-        case .stateChanged:
-            return .snapshot(snapshot())
+        case .stateChanged(let isSeekable):
+            return .snapshot(snapshot(isSeekable: isSeekable))
 
         case .completed(let item):
             guard let trackID = registry.trackID(for: item) else { return nil }
@@ -79,7 +85,7 @@ struct AVPlayerObservation {
     /// `nil`, and negative timeline positions are clamped to zero.
     ///
     /// - Returns: The current provider-neutral playback snapshot.
-    private func snapshot() -> PlaybackSnapshot {
+    private func snapshot(isSeekable: Bool) -> PlaybackSnapshot {
         guard let item = player.currentItem else { return .idle }
         let durationSeconds = item.duration.seconds
         let duration =
@@ -101,7 +107,8 @@ struct AVPlayerObservation {
             currentTrackID: registry.trackID(for: item),
             status: status,
             position: max(0, player.currentTime().seconds),
-            duration: duration
+            duration: duration,
+            isSeekable: isSeekable
         )
     }
 }

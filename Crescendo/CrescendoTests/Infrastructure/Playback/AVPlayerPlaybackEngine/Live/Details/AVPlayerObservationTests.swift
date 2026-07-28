@@ -5,6 +5,41 @@ import Testing
 
 struct AVPlayerObservationTests {
     @Test
+    func idleSnapshotIsNotSeekable() {
+        #expect(!PlaybackSnapshot.idle.isSeekable)
+    }
+
+    @Test
+    @MainActor
+    func initialSnapshotCarriesObservedSeekability() async {
+        let player = AVPlayer()
+        let registry = AVPlayerItemRegistry()
+        let seekability = ItemSeekabilityObservationProbe(initialValue: true)
+        let observation = AVPlayerObservation(
+            player: player,
+            registry: registry,
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: seekability.observer
+        )
+        let item = AVPlayerItemFixture.make()
+        let trackID = TrackID(providerID: .jamendo, nativeID: "seekable")
+        registry.register(item, trackID: trackID)
+        player.replaceCurrentItem(with: item)
+
+        var iterator = observation.observations().makeAsyncIterator()
+        let first = await iterator.next()
+
+        guard case .snapshot(let snapshot) = first else {
+            Issue.record(
+                "expected an initial snapshot, got \(String(describing: first))"
+            )
+            return
+        }
+        #expect(snapshot.currentTrackID == trackID)
+        #expect(snapshot.isSeekable)
+    }
+
+    @Test
     @MainActor
     func initialSnapshotReportsRegisteredTrackID() async throws {
         let player = AVPlayer()
@@ -12,7 +47,8 @@ struct AVPlayerObservationTests {
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: .live
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: .live
         )
         let item = AVPlayerItemFixture.make()
         let trackID = TrackID(providerID: .jamendo, nativeID: "initial")
@@ -44,7 +80,8 @@ struct AVPlayerObservationTests {
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: .live
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: .live
         )
 
         let itemA = AVPlayerItemFixture.make()
@@ -88,7 +125,8 @@ struct AVPlayerObservationTests {
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: .live
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: .live
         )
         let item = AVPlayerItemFixture.make()
         let trackID = TrackID(providerID: .jamendo, nativeID: "completed")
@@ -120,7 +158,8 @@ struct AVPlayerObservationTests {
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: .live
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: .live
         )
         let item = AVPlayerItemFixture.make()
         let trackID = TrackID(providerID: .jamendo, nativeID: "failed")
@@ -153,7 +192,8 @@ struct AVPlayerObservationTests {
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: statusProbe.observer
+            itemStatusObserver: statusProbe.observer,
+            itemSeekabilityObserver: .live
         )
         let item = AVPlayerItemFixture.make()
         let trackID = TrackID(providerID: .jamendo, nativeID: "status-failed")
@@ -192,10 +232,14 @@ struct AVPlayerObservationTests {
         let player = AVPlayer()
         let registry = AVPlayerItemRegistry()
         let statusProbe = ItemStatusObservationProbe()
+        let seekabilityProbe = ItemSeekabilityObservationProbe(
+            initialValue: false
+        )
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: statusProbe.observer
+            itemStatusObserver: statusProbe.observer,
+            itemSeekabilityObserver: seekabilityProbe.observer
         )
         let oldItem = AVPlayerItemFixture.make()
         let oldTrackID = TrackID(providerID: .jamendo, nativeID: "old")
@@ -222,6 +266,7 @@ struct AVPlayerObservationTests {
         #expect(statusProbe.invalidationCount(for: oldItem) == 1)
         #expect(statusProbe.activeRegistrationCount(for: oldItem) == 0)
         #expect(statusProbe.activeRegistrationCount(for: currentItem) == 1)
+        #expect(seekabilityProbe.invalidationCount == 1)
 
         statusProbe.send(.failed, for: oldItem)
         statusProbe.send(.failed, for: currentItem)
@@ -249,24 +294,30 @@ struct AVPlayerObservationTests {
         let player = AVPlayer()
         let item = AVPlayerItemFixture.make()
         let statusProbe = ItemStatusObservationProbe()
+        let seekabilityProbe = ItemSeekabilityObservationProbe(
+            initialValue: false
+        )
         player.replaceCurrentItem(with: item)
 
         let invalidatedRecorder = SubscriptionRecorder()
         let invalidatedSubscription = AVPlayerObservationSubscription(
             player: player,
             itemStatusObserver: statusProbe.observer,
+            itemSeekabilityObserver: seekabilityProbe.observer,
             receive: invalidatedRecorder.receive
         )
         let queuedRecorder = SubscriptionRecorder()
         let queuedSubscription = AVPlayerObservationSubscription(
             player: player,
             itemStatusObserver: statusProbe.observer,
+            itemSeekabilityObserver: seekabilityProbe.observer,
             receive: queuedRecorder.receive
         )
         let liveRecorder = SubscriptionRecorder()
         let liveSubscription = AVPlayerObservationSubscription(
             player: player,
             itemStatusObserver: statusProbe.observer,
+            itemSeekabilityObserver: seekabilityProbe.observer,
             receive: liveRecorder.receive
         )
         await invalidatedRecorder.waitForStateChange()
@@ -276,6 +327,7 @@ struct AVPlayerObservationTests {
         invalidatedSubscription.cancel()
         #expect(statusProbe.invalidationCount == 1)
         #expect(statusProbe.activeRegistrationCount == 2)
+        #expect(seekabilityProbe.invalidationCount == 1)
 
         statusProbe.queue(.failed, for: item)
         queuedSubscription.cancel()
@@ -287,10 +339,12 @@ struct AVPlayerObservationTests {
         #expect(liveRecorder.failedItems.count == 1)
         #expect(statusProbe.invalidationCount == 2)
         #expect(statusProbe.activeRegistrationCount == 1)
+        #expect(seekabilityProbe.invalidationCount == 2)
 
         liveSubscription.cancel()
         #expect(statusProbe.invalidationCount == 3)
         #expect(statusProbe.activeRegistrationCount == 0)
+        #expect(seekabilityProbe.invalidationCount == 3)
     }
 
     @Test
@@ -300,9 +354,13 @@ struct AVPlayerObservationTests {
         let initialItem = AVPlayerItemFixture.make()
         player.replaceCurrentItem(with: initialItem)
         let statusProbe = ItemStatusObservationProbe()
+        let seekabilityProbe = ItemSeekabilityObservationProbe(
+            initialValue: false
+        )
         let subscription = AVPlayerObservationSubscription(
             player: player,
-            itemStatusObserver: statusProbe.observer
+            itemStatusObserver: statusProbe.observer,
+            itemSeekabilityObserver: seekabilityProbe.observer
         ) { _ in }
         let replacementItem = AVPlayerItemFixture.make()
 
@@ -315,6 +373,7 @@ struct AVPlayerObservationTests {
         #expect(statusProbe.invalidationCount == 1)
         #expect(statusProbe.activeRegistrationCount == 0)
         #expect(statusProbe.registrationCount(for: replacementItem) == 0)
+        #expect(seekabilityProbe.invalidationCount == 1)
     }
 
     @Test
@@ -325,10 +384,14 @@ struct AVPlayerObservationTests {
         let itemB = AVPlayerItemFixture.make()
         player.replaceCurrentItem(with: itemA)
         let statusProbe = ItemStatusObservationProbe()
+        let seekabilityProbe = ItemSeekabilityObservationProbe(
+            initialValue: false
+        )
         let recorder = SubscriptionRecorder()
         let subscription = AVPlayerObservationSubscription(
             player: player,
             itemStatusObserver: statusProbe.observer,
+            itemSeekabilityObserver: seekabilityProbe.observer,
             receive: recorder.receive
         )
 
@@ -346,6 +409,7 @@ struct AVPlayerObservationTests {
         #expect(statusProbe.invalidationCount(for: itemB) == 1)
         #expect(statusProbe.activeRegistrationCount(for: itemA) == 1)
         #expect(statusProbe.activeRegistrationCount(for: itemB) == 0)
+        #expect(seekabilityProbe.invalidationCount == 2)
 
         statusProbe.send(.failed, for: itemA)
 
@@ -363,7 +427,8 @@ struct AVPlayerObservationTests {
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: statusProbe.observer
+            itemStatusObserver: statusProbe.observer,
+            itemSeekabilityObserver: .live
         )
         let item = AVPlayerItemFixture.make()
         let trackID = TrackID(providerID: .jamendo, nativeID: "reinstalled")
@@ -377,7 +442,12 @@ struct AVPlayerObservationTests {
         _ = await iterator.next()
 
         statusProbe.send(.failed, for: item)
-        let firstFailure = await iterator.next()
+        var firstFailure: PlaybackObservation?
+        while let next = await iterator.next() {
+            guard case .failed = next else { continue }
+            firstFailure = next
+            break
+        }
         #expect(firstFailure == .failed(trackID, .playbackFailed))
 
         player.replaceCurrentItem(with: alternateItem)
@@ -425,7 +495,8 @@ struct AVPlayerObservationTests {
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: .live
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: .live
         )
 
         let registeredItem = AVPlayerItemFixture.make()
@@ -462,9 +533,13 @@ struct AVPlayerObservationTests {
     @MainActor
     func cancellingTwiceRemainsSafe() async throws {
         let player = AVPlayer()
+        let seekabilityProbe = ItemSeekabilityObservationProbe(
+            initialValue: false
+        )
         let subscription = AVPlayerObservationSubscription(
             player: player,
-            itemStatusObserver: .live
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: seekabilityProbe.observer
         ) { _ in }
 
         subscription.cancel()
@@ -479,9 +554,13 @@ struct AVPlayerObservationTests {
     func cancellingRemovesObserversAndPeriodicObservation() async throws {
         let player = AVPlayer()
         let recorder = Recorder()
+        let seekabilityProbe = ItemSeekabilityObservationProbe(
+            initialValue: false
+        )
         let subscription = AVPlayerObservationSubscription(
             player: player,
-            itemStatusObserver: .live
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: seekabilityProbe.observer
         ) { event in
             recorder.append(Self.map(event))
         }
@@ -507,7 +586,8 @@ struct AVPlayerObservationTests {
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: .live
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: .live
         )
 
         let itemA = AVPlayerItemFixture.make()
@@ -561,7 +641,7 @@ struct AVPlayerObservationTests {
 
         func receive(_ event: AVPlayerObservationSubscription.Event) {
             switch event {
-            case .stateChanged:
+            case .stateChanged(_):
                 receivedStateChange = true
                 for waiter in stateChangeWaiters {
                     waiter.resume()
@@ -677,13 +757,35 @@ struct AVPlayerObservationTests {
         }
     }
 
+    @MainActor
+    private final class ItemSeekabilityObservationProbe {
+        private let initialValue: Bool
+        private(set) var invalidationCount = 0
+
+        init(initialValue: Bool) {
+            self.initialValue = initialValue
+        }
+
+        var observer: AVPlayerItemSeekabilityObserver {
+            AVPlayerItemSeekabilityObserver { [weak self] _, receive in
+                guard let self else {
+                    return AVPlayerItemSeekabilityObserver.Token(invalidate: {})
+                }
+                receive(initialValue)
+                return AVPlayerItemSeekabilityObserver.Token { [weak self] in
+                    self?.invalidationCount += 1
+                }
+            }
+        }
+    }
+
     /// Mirrors `AVPlayerObservation`'s private mapping so the subscription-level
     /// tests can assert on application-facing values without exposing internals.
     private static func map(
         _ event: AVPlayerObservationSubscription.Event
     ) -> PlaybackObservation {
         switch event {
-        case .stateChanged:
+        case .stateChanged(_):
             return .snapshot(.idle)
         case .completed:
             return .completed(TrackID(providerID: .jamendo, nativeID: "unused"))

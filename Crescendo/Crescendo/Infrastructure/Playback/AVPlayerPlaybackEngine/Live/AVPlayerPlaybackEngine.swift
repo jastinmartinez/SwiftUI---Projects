@@ -64,7 +64,8 @@ extension AVPlayerPlaybackEngine {
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,
-            itemStatusObserver: .live
+            itemStatusObserver: .live,
+            itemSeekabilityObserver: .live
         )
 
         return Self(

@@ -371,7 +371,8 @@ struct PlaybackPresentationAdapterTests {
                     currentTrackID: song.id,
                     status: .playing,
                     position: 110,
-                    duration: 120
+                    duration: 120,
+                    isSeekable: true
                 )
             )
         ).finish()

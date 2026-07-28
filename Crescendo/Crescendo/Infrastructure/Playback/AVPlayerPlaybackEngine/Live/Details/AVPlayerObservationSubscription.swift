@@ -6,12 +6,15 @@ import Foundation
 final class AVPlayerObservationSubscription {
     private let player: AVPlayer
     private let itemStatusObserver: AVPlayerItemStatusObserver
+    private let itemSeekabilityObserver: AVPlayerItemSeekabilityObserver
     private var receive: (@MainActor (Event) -> Void)?
     private var keyValueObservations: [NSKeyValueObservation] = []
     private var notificationTokens: [NSObjectProtocol] = []
     private var periodicTimeObserver: Any?
     private var activeItem: AVPlayerItem?
     private var activeItemStatusObservation: AVPlayerItemStatusObserver.Token?
+    private var activeItemSeekabilityObservation: AVPlayerItemSeekabilityObserver.Token?
+    private var activeItemIsSeekable = false
     private var didEmitActiveItemFailure = false
     private var isCancelled = false
 
@@ -24,17 +27,21 @@ final class AVPlayerObservationSubscription {
     ///   - player: The shared player whose state and current item are observed.
     ///   - itemStatusObserver: The mechanism that registers active-item status
     ///     callbacks and returns their owned invalidation.
+    ///   - itemSeekabilityObserver: The mechanism that registers active-item
+    ///     seekability callbacks and returns their owned invalidation.
     ///   - receive: The callback that receives raw AVFoundation events.
     init(
         player: AVPlayer,
         itemStatusObserver: AVPlayerItemStatusObserver,
+        itemSeekabilityObserver: AVPlayerItemSeekabilityObserver,
         receive: @escaping @MainActor (Event) -> Void
     ) {
         self.player = player
         self.itemStatusObserver = itemStatusObserver
+        self.itemSeekabilityObserver = itemSeekabilityObserver
         self.receive = receive
 
-        replaceActiveItemStatusObservation(with: player.currentItem)
+        replaceActiveItemObservations(with: player.currentItem)
         registerKeyValueObservations()
         registerPeriodicTimeObserver()
         registerNotificationObservers()
@@ -49,6 +56,9 @@ final class AVPlayerObservationSubscription {
         receive = nil
         activeItemStatusObservation?.invalidate()
         activeItemStatusObservation = nil
+        activeItemSeekabilityObservation?.invalidate()
+        activeItemSeekabilityObservation = nil
+        activeItemIsSeekable = false
         activeItem = nil
         for observation in keyValueObservations { observation.invalidate() }
         keyValueObservations.removeAll()
@@ -70,29 +80,28 @@ final class AVPlayerObservationSubscription {
                 [weak self] _, change in
                 let item = change.newValue ?? nil
                 DispatchQueue.main.async { @MainActor [weak self, item] in
-                    self?.replaceActiveItemStatusObservation(with: item)
-                    self?.send(.stateChanged)
+                    self?.replaceActiveItemObservations(with: item)
+                    self?.sendStateChanged()
                 }
             },
             player.observe(\.timeControlStatus, options: [.new]) {
                 [weak self] _, _ in
                 Task { @MainActor [weak self] in
-                    self?.send(.stateChanged)
+                    self?.sendStateChanged()
                 }
             },
         ]
     }
 
-    /// Replaces the status observation whenever the player's active item changes.
+    /// Replaces item observations whenever the player's active item changes.
     ///
-    /// The previous token is invalidated before the new item is observed. An
-    /// initial status value is included so a failure that occurs between the
-    /// current-item callback and registration is not lost.
+    /// Previous status and seekability tokens are invalidated before the new item
+    /// is observed. Seekability resets while no player-confirmed range exists.
     ///
     /// - Parameter item: The item identity captured by the current-item KVO
     ///   transition, including transient items that are replaced before the
     ///   Main Actor handles the callback.
-    private func replaceActiveItemStatusObservation(
+    private func replaceActiveItemObservations(
         with item: AVPlayerItem?
     ) {
         guard !isCancelled else { return }
@@ -100,7 +109,10 @@ final class AVPlayerObservationSubscription {
 
         activeItemStatusObservation?.invalidate()
         activeItemStatusObservation = nil
+        activeItemSeekabilityObservation?.invalidate()
+        activeItemSeekabilityObservation = nil
         activeItem = item
+        activeItemIsSeekable = false
         didEmitActiveItemFailure = false
 
         guard let item else { return }
@@ -113,6 +125,12 @@ final class AVPlayerObservationSubscription {
             else { return }
             self.sendFailureOnce(for: item)
         }
+        activeItemSeekabilityObservation = itemSeekabilityObserver.observe(item) {
+            [weak self, weak item] isSeekable in
+            guard let self, let item, self.activeItem === item else { return }
+            self.activeItemIsSeekable = isSeekable
+            self.sendStateChanged()
+        }
     }
 
     /// Emits state-change events while the current item's timeline advances.
@@ -124,7 +142,7 @@ final class AVPlayerObservationSubscription {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.send(.stateChanged)
+                self?.sendStateChanged()
             }
         }
     }
@@ -173,6 +191,11 @@ final class AVPlayerObservationSubscription {
         send(.failed(item))
     }
 
+    /// Delivers the current player-confirmed seekability with each state event.
+    private func sendStateChanged() {
+        send(.stateChanged(isSeekable: activeItemIsSeekable))
+    }
+
     /// Delivers an event only while the subscription remains active.
     ///
     /// - Parameter event: The raw AVFoundation event to forward.
@@ -186,7 +209,7 @@ extension AVPlayerObservationSubscription {
     /// A raw AVFoundation event that never crosses the infrastructure boundary.
     enum Event {
         /// Player identity, transport state, or timeline values may have changed.
-        case stateChanged
+        case stateChanged(isSeekable: Bool)
 
         /// The supplied player item reached its end.
         case completed(AVPlayerItem)

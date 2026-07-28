@@ -354,7 +354,8 @@ struct AppFeatureTests {
             currentTrackID: nil,
             status: .playing,
             position: 27,
-            duration: nil
+            duration: nil,
+            isSeekable: false
         )
         observationProbe.yield(replacementSnapshot, toSubscription: 2)
         await store.receive(
@@ -433,7 +434,8 @@ struct AppFeatureTests {
             currentTrackID: nil,
             status: .paused,
             position: 14,
-            duration: nil
+            duration: nil,
+            isSeekable: false
         )
         observationProbe.yield(snapshot, toSubscription: 1)
         await store.receive(.playback(.observationReceived(.snapshot(snapshot))))
