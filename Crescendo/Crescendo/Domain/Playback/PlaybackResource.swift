@@ -1,6 +1,6 @@
 import Foundation
 
-/// A provider-resolved location that AVFoundation can load for one track.
+/// A provider-resolved location that a playback engine can load for one track.
 struct PlaybackResource: Equatable, Sendable {
     let trackID: TrackID
     let location: Location
