@@ -9,7 +9,7 @@ Crescendo is an iOS 18 provider-neutral playback application built with SwiftUI 
 - `Crescendo/Clients/` defines provider-neutral capability interfaces consumed by reducers.
 - `Crescendo/Domain/` contains provider-neutral catalog, playback, provider, and search values.
 - `Crescendo/Infrastructure/Providers/` contains provider implementations, including Jamendo API access and domain mapping.
-- `Crescendo/Infrastructure/Playback/` contains the AVFoundation implementation behind the playback clients.
+- `Crescendo/Infrastructure/Playback/AVPlayerPlaybackEngine/` contains the temporary AVPlayer-backed engine selected by `AppComposition`; reducers receive only focused playback clients.
 - `Crescendo/Shared/` contains cross-feature formatting, localization, and presentation utilities.
 - `CrescendoTests/` mirrors these production responsibilities with focused tests.
 

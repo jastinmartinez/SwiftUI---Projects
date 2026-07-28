@@ -6,10 +6,10 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct CrescendoAppCompositionTests {
+struct AppCompositionTests {
     @Test
     func invalidConfigurationKeepsJamendoSelectableAndFailsClosed() async {
-        let composition = CrescendoAppComposition.live(
+        let composition = AppComposition.live(
             jamendoClientID: "  ",
             player: AVPlayer(),
             preparer: Self.preparer,
@@ -41,7 +41,7 @@ struct CrescendoAppCompositionTests {
     @Test
     func validConfigurationRegistersIndependentJamendoCapabilities() async throws {
         let requests = LockIsolated<[URLRequest]>([])
-        let composition = CrescendoAppComposition.live(
+        let composition = AppComposition.live(
             jamendoClientID: "test-client",
             player: AVPlayer(),
             preparer: Self.preparer,
@@ -86,7 +86,7 @@ struct CrescendoAppCompositionTests {
 
     @Test
     func successfulJamendoConnectionMakesSearchAvailable() async {
-        let composition = CrescendoAppComposition.live(
+        let composition = AppComposition.live(
             jamendoClientID: "test-client",
             player: AVPlayer(),
             preparer: Self.preparer,
@@ -138,7 +138,7 @@ struct CrescendoAppCompositionTests {
             loadIsPlayable: { _ in true },
             makeItem: { _ in preparedItem }
         )
-        let composition = CrescendoAppComposition.live(
+        let composition = AppComposition.live(
             jamendoClientID: nil,
             player: player,
             preparer: preparer,
@@ -156,7 +156,7 @@ struct CrescendoAppCompositionTests {
 
         try await composition.playbackItem.load(resource)
         try await composition.playbackTransport.play()
-        try await composition.playbackTransport.pause()
+        try await composition.playbackTransport.stop()
         try await composition.playbackTimeline.seek(0)
 
         #expect(player.currentItem === preparedItem)

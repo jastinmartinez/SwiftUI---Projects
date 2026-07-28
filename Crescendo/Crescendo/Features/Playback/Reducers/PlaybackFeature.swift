@@ -631,9 +631,9 @@ struct PlaybackFeature {
                 guard state.pendingProviderReset == nil else { return .none }
                 state.timeline.duration = snapshot.duration
 
-                // AVPlayer reports a stopped session as paused at zero, so the
-                // application-owned stop survives until the player reports
-                // motion of its own.
+                // A playback engine may report a stopped session as paused at
+                // zero, so the application-owned stop survives until observed
+                // playback reports motion of its own.
                 let preservesStoppedStatus =
                     state.status == .stopped
                     && snapshot.currentTrackID == state.queue.currentTrackID

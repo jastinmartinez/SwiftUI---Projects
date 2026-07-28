@@ -8,7 +8,7 @@ import Foundation
 /// focused clients through TCA dependencies and never depend on the composition
 /// value itself.
 @MainActor
-struct CrescendoAppComposition {
+struct AppComposition {
     let initialState: AppFeature.State
     let providerAccessClients: ProviderClientRegistry<ProviderAccessClient>
     let providerSearchClients: ProviderClientRegistry<ProviderSearchClient>
@@ -26,8 +26,8 @@ struct CrescendoAppComposition {
     ///
     /// - Parameters:
     ///   - jamendoClientID: The generated bundle value used to validate Jamendo.
-    ///   - player: The single player shared by every AVFoundation implementation.
-    ///   - preparer: The explicit AVFoundation resource-validation mechanism.
+    ///   - player: The single player shared by the selected playback engine.
+    ///   - preparer: The explicit AVPlayer resource-validation mechanism.
     ///   - data: The Jamendo HTTP transport.
     /// - Returns: Concrete initial state and dependency values for the root store.
     static func live(
@@ -58,17 +58,9 @@ struct CrescendoAppComposition {
             resourceClientsByProvider[.jamendo] = .live(jamendo: jamendoAPI)
         }
 
-        let registry = AVPlayerItemRegistry()
-        let installer = AVPlayerItemInstaller(
+        let playbackEngine = AVPlayerPlaybackEngine.live(
             player: player,
-            registry: registry
-        )
-        let transport = AVPlayerTransport(player: player)
-        let timeline = AVPlayerTimeline(player: player)
-        let observation = AVPlayerObservation(
-            player: player,
-            registry: registry,
-            itemStatusObserver: .live
+            preparer: preparer
         )
 
         return Self(
@@ -117,13 +109,10 @@ struct CrescendoAppComposition {
             playbackResourceClients: ProviderClientRegistry(
                 clients: resourceClientsByProvider
             ),
-            playbackItem: .live(
-                preparer: preparer,
-                installer: installer
-            ),
-            playbackTransport: .live(transport),
-            playbackTimeline: .live(timeline),
-            playbackObservation: .live(observation),
+            playbackItem: playbackEngine.item,
+            playbackTransport: playbackEngine.transport,
+            playbackTimeline: playbackEngine.timeline,
+            playbackObservation: playbackEngine.observation,
             playbackShuffle: PlaybackShuffleClient(
                 shuffle: { $0.shuffled() }
             )

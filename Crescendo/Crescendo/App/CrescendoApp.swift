@@ -14,7 +14,7 @@ struct CrescendoApp: App {
         let jamendoClientID =
             Bundle.main.object(forInfoDictionaryKey: "JamendoClientID")
             as? String
-        let composition = CrescendoAppComposition.live(
+        let composition = AppComposition.live(
             jamendoClientID: jamendoClientID,
             player: player,
             preparer: preparer,
