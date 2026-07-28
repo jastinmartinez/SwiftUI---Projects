@@ -88,7 +88,9 @@ struct PlaybackPresentationAdapterTests {
         let store = makePlaybackStore(
             song: song,
             status: .playing,
-            confirmedPosition: 43
+            confirmedPosition: 43,
+            timelineDuration: 215,
+            timelineIsSeekable: true
         )
         let model = PlaybackView.Model(store, providerName: "Test Provider")
 
@@ -282,7 +284,12 @@ struct PlaybackPresentationAdapterTests {
     func fullTimelineProjectsSliderControlsAndLocalizedLabels() throws {
         let song = makeTrack(duration: 215)
         let actions = LockIsolated<[PlaybackFeature.Action]>([])
-        let store = makeActionRecordingStore(song: song, actions: actions)
+        let store = makeActionRecordingStore(
+            song: song,
+            timelineDuration: 215,
+            timelineIsSeekable: true,
+            actions: actions
+        )
         let timeline = try #require(PlaybackTimelineView.Model(store))
         let skipControls = PlaybackSkipControlsView.Model(store)
         let utilityControls = PlaybackUtilityControlsView.Model(store)
@@ -347,6 +354,8 @@ struct PlaybackPresentationAdapterTests {
         let store = makePlaybackStore(
             song: makeTrack(duration: 215),
             confirmedPosition: 43,
+            timelineDuration: 215,
+            timelineIsSeekable: true,
             timelineInteraction: interaction
         )
 
@@ -383,18 +392,44 @@ struct PlaybackPresentationAdapterTests {
     }
 
     @Test
+    func catalogDurationAloneDoesNotCreateTimelineOrEnableSeeking() {
+        let store = makePlaybackStore(song: makeTrack(duration: 215))
+
+        #expect(store.timeline.duration == nil)
+        #expect(!store.timeline.isSeekable)
+        #expect(!store.canRequestSeek)
+        #expect(PlaybackTimelineView.Model(store).map { _ in true } == nil)
+        #expect(
+            PlaybackSkipControlsView.Model(store).controls.allSatisfy {
+                !$0.isEnabled
+            }
+        )
+    }
+
+    @Test
     func timelineClampsPositionAndRequiresPositiveDuration() throws {
         let negativePosition = makePlaybackStore(
             song: makeTrack(duration: 215),
-            confirmedPosition: -1
+            confirmedPosition: -1,
+            timelineDuration: 215
         )
         let overflow = makePlaybackStore(
             song: makeTrack(duration: 215),
-            confirmedPosition: 216
+            confirmedPosition: 216,
+            timelineDuration: 215
         )
-        let missing = makePlaybackStore(song: makeTrack(duration: nil))
-        let zero = makePlaybackStore(song: makeTrack(duration: 0))
-        let negativeDuration = makePlaybackStore(song: makeTrack(duration: -1))
+        let missing = makePlaybackStore(
+            song: makeTrack(),
+            timelineDuration: nil
+        )
+        let zero = makePlaybackStore(
+            song: makeTrack(),
+            timelineDuration: 0
+        )
+        let negativeDuration = makePlaybackStore(
+            song: makeTrack(),
+            timelineDuration: -1
+        )
 
         let negativePositionTimeline = try #require(
             PlaybackTimelineView.Model(negativePosition)
@@ -419,6 +454,7 @@ struct PlaybackPresentationAdapterTests {
     func confirmedNonseekableTimelineStaysVisibleButDisabled() throws {
         let store = makePlaybackStore(
             song: makeTrack(duration: 215),
+            timelineDuration: 215,
             timelineIsSeekable: false
         )
 
@@ -432,7 +468,12 @@ struct PlaybackPresentationAdapterTests {
     func controlAdapterCallbacksForwardPresentationActions() throws {
         let song = makeTrack(duration: 215)
         let actions = LockIsolated<[PlaybackFeature.Action]>([])
-        let store = makeActionRecordingStore(song: song, actions: actions)
+        let store = makeActionRecordingStore(
+            song: song,
+            timelineDuration: 215,
+            timelineIsSeekable: true,
+            actions: actions
+        )
         let model = PlaybackView.Model(store, providerName: nil)
         let skipControls = try #require(model.skipControls)
 
@@ -609,6 +650,8 @@ struct PlaybackPresentationAdapterTests {
             song: song,
             status: .playing,
             confirmedPosition: 43,
+            timelineDuration: 180,
+            timelineIsSeekable: true,
             pendingProviderReset: pendingProviderReset
         )
 
@@ -669,7 +712,7 @@ struct PlaybackPresentationAdapterTests {
         capabilities: MusicProviderCapabilities = .allEnabled,
         confirmedPosition: TimeInterval = 0,
         timelineDuration: TimeInterval? = nil,
-        timelineIsSeekable: Bool = true,
+        timelineIsSeekable: Bool = false,
         timelineInteraction: PlaybackTimelineFeature.Interaction = .idle,
         repeatMode: PlaybackRepeatMode = .off,
         shuffleMode: PlaybackShuffleMode = .off,
@@ -699,7 +742,7 @@ struct PlaybackPresentationAdapterTests {
                 capabilities: capabilities,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: confirmedPosition,
-                    duration: timelineDuration ?? song?.duration,
+                    duration: timelineDuration,
                     isSeekable: timelineIsSeekable,
                     interaction: timelineInteraction
                 ),
@@ -715,6 +758,8 @@ struct PlaybackPresentationAdapterTests {
 
     private func makeActionRecordingStore(
         song: Track,
+        timelineDuration: TimeInterval,
+        timelineIsSeekable: Bool,
         actions: LockIsolated<[PlaybackFeature.Action]>
     ) -> StoreOf<PlaybackFeature> {
         let tracks = IdentifiedArray(uniqueElements: [song])
@@ -734,8 +779,8 @@ struct PlaybackPresentationAdapterTests {
                 capabilities: .allEnabled,
                 timeline: .init(
                     confirmedPosition: 43,
-                    duration: song.duration,
-                    isSeekable: true,
+                    duration: timelineDuration,
+                    isSeekable: timelineIsSeekable,
                     interaction: .idle
                 ),
                 pendingPlaybackTransition: nil,
