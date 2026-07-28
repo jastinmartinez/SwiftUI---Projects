@@ -9,6 +9,11 @@ struct PlaybackItemInstallation: Hashable, Sendable {
 /// Owns transactional installation of resolved resources in shared playback.
 @DependencyClient
 struct PlaybackItemClient: Sendable {
+    /// Prepares and stages `resource` under the correlated installation.
+    ///
+    /// If this operation throws, it leaves no staged mutation for
+    /// `installation`; callers can continue relying on the previously committed
+    /// playback item.
     var load:
         @Sendable (
             _ resource: PlaybackResource,
