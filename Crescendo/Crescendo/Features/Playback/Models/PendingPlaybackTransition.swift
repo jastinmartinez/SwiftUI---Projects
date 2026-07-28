@@ -11,14 +11,16 @@ struct PendingPlaybackTransition: Equatable {
         case navigation
     }
 
-    /// Separates target evidence observed during installation from evidence
-    /// that can enter confirmed-state settlement.
-    enum ItemAcknowledgement: Equatable {
+    /// Makes item loading, play acceptance, and identity confirmation mutually
+    /// exclusive so target evidence cannot outrun either prerequisite.
+    enum ConfirmationReadiness: Equatable {
         /// The installer has not returned yet. Matching observations remain
         /// transaction-local and only the newest one is retained.
-        case awaiting(latestTargetSnapshot: PlaybackSnapshot?)
-        /// The installer has returned after handing the player the target item.
-        case acknowledged
+        case awaitingLoad(latestTargetSnapshot: PlaybackSnapshot?)
+        /// The item is installed, but the transport has not accepted play yet.
+        case awaitingPlay(latestTargetSnapshot: PlaybackSnapshot?)
+        /// Play returned successfully, so target identity may enter settlement.
+        case readyForConfirmation
     }
 
     /// One mutually exclusive infrastructure settlement phase.
@@ -73,9 +75,9 @@ struct PendingPlaybackTransition: Equatable {
     /// Defaults to the queue-installing meaning, which is the safe reading for
     /// any transition whose queue may not already be confirmed.
     var origin: Origin = .selection
-    /// Keeps pre-acknowledgement target evidence out of confirmed state.
-    var itemAcknowledgement: ItemAcknowledgement =
-        .awaiting(latestTargetSnapshot: nil)
+    /// Keeps target evidence out of confirmed state until load and play return.
+    var confirmationReadiness: ConfirmationReadiness =
+        .awaitingLoad(latestTargetSnapshot: nil)
     /// Retains ownership until commit or rollback settlement is fully applied.
     var settlement: Settlement = .none
 
@@ -94,9 +96,17 @@ struct PendingPlaybackTransition: Equatable {
         settlement == .none
     }
 
-    mutating func discardAwaitingTargetSnapshot() {
-        guard case .awaiting = itemAcknowledgement else { return }
-        itemAcknowledgement = .awaiting(latestTargetSnapshot: nil)
+    mutating func discardPendingTargetSnapshot() {
+        switch confirmationReadiness {
+        case .awaitingLoad:
+            confirmationReadiness =
+                .awaitingLoad(latestTargetSnapshot: nil)
+        case .awaitingPlay:
+            confirmationReadiness =
+                .awaitingPlay(latestTargetSnapshot: nil)
+        case .readyForConfirmation:
+            break
+        }
     }
 
     mutating func retainLatestFollowUp(_ followUp: FollowUp) -> Bool {

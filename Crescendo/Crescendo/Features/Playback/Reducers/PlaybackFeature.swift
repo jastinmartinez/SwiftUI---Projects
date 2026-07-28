@@ -295,35 +295,22 @@ struct PlaybackFeature {
             case .transitionItemLoaded(let requestID):
                 guard let pending = state.pendingPlaybackTransition,
                     pending.requestID == requestID,
-                    pending.canAdvance
+                    pending.canAdvance,
+                    case .awaitingLoad(let latestTargetSnapshot) =
+                        pending.confirmationReadiness
                 else { return .none }
-                let latestTargetSnapshot: PlaybackSnapshot?
-                switch pending.itemAcknowledgement {
-                case .awaiting(let snapshot):
-                    latestTargetSnapshot = snapshot
-                case .acknowledged:
-                    latestTargetSnapshot = nil
-                }
-                state.pendingPlaybackTransition?.itemAcknowledgement =
-                    .acknowledged
-                let replayEffect: Effect<Action> =
-                    latestTargetSnapshot.map {
-                        .send(
-                            .replayTransitionSnapshot(
-                                requestID: requestID,
-                                snapshot: $0
-                            )
-                        )
-                    } ?? .none
-                return .concatenate(
-                    .send(.playTransition(requestID: requestID)),
-                    replayEffect
-                )
+                state.pendingPlaybackTransition?.confirmationReadiness =
+                    .awaitingPlay(
+                        latestTargetSnapshot: latestTargetSnapshot
+                    )
+                return .send(.playTransition(requestID: requestID))
 
             case .playTransition(let requestID):
                 guard let pending = state.pendingPlaybackTransition,
                     pending.requestID == requestID,
-                    pending.canAdvance
+                    pending.canAdvance,
+                    case .awaitingPlay =
+                        pending.confirmationReadiness
                 else { return .none }
                 let trackID = pending.targetTrackID
                 let installation = PlaybackItemInstallation(id: requestID)
@@ -362,9 +349,25 @@ struct PlaybackFeature {
                     cancelInFlight: true
                 )
 
-            case .transitionPlayRequested:
-                // Observation stays authoritative; nothing is confirmed here.
-                return .none
+            case .transitionPlayRequested(let requestID):
+                guard let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID,
+                    pending.canAdvance,
+                    case .awaitingPlay(let latestTargetSnapshot) =
+                        pending.confirmationReadiness
+                else { return .none }
+                // Successful command return opens identity confirmation; the
+                // observation still supplies all confirmed playback truth.
+                state.pendingPlaybackTransition?.confirmationReadiness =
+                    .readyForConfirmation
+                return latestTargetSnapshot.map {
+                    .send(
+                        .replayTransitionSnapshot(
+                            requestID: requestID,
+                            snapshot: $0
+                        )
+                    )
+                } ?? .none
 
             case .transitionCommitCompleted(
                 let requestID,
@@ -516,7 +519,7 @@ struct PlaybackFeature {
                     case .none:
                         let installation = pending.installation
                         state.pendingPlaybackTransition?
-                            .discardAwaitingTargetSnapshot()
+                            .discardPendingTargetSnapshot()
                         state.pendingPlaybackTransition?.settlement =
                             .rollingBack(
                                 .abandoning(
@@ -561,7 +564,7 @@ struct PlaybackFeature {
                 }
                 let installation = pending.rollbackInstallation
                 state.pendingPlaybackTransition?
-                    .discardAwaitingTargetSnapshot()
+                    .discardPendingTargetSnapshot()
                 state.pendingPlaybackTransition?.settlement =
                     .rollingBack(
                         .abandoning(
@@ -613,7 +616,7 @@ struct PlaybackFeature {
                 if let pending = state.pendingPlaybackTransition {
                     let installation = pending.rollbackInstallation
                     state.pendingPlaybackTransition?
-                        .discardAwaitingTargetSnapshot()
+                        .discardPendingTargetSnapshot()
                     state.pendingPlaybackTransition?.settlement =
                         .rollingBack(
                             .abandoning(
@@ -797,12 +800,12 @@ struct PlaybackFeature {
                         return .none
                     case .rollingBack:
                         state.pendingPlaybackTransition?
-                            .discardAwaitingTargetSnapshot()
+                            .discardPendingTargetSnapshot()
                         return .none
                     case .none:
                         let installation = pending.installation
                         state.pendingPlaybackTransition?
-                            .discardAwaitingTargetSnapshot()
+                            .discardPendingTargetSnapshot()
                         state.pendingPlaybackTransition?.settlement =
                             .rollingBack(
                                 .abandoning(
@@ -838,7 +841,8 @@ struct PlaybackFeature {
             case .replayTransitionSnapshot(let requestID, let snapshot):
                 guard let pending = state.pendingPlaybackTransition,
                     pending.requestID == requestID,
-                    pending.itemAcknowledgement == .acknowledged,
+                    pending.confirmationReadiness
+                        == .readyForConfirmation,
                     pending.settlement == .none
                 else { return .none }
                 return reconcilePlaybackSnapshot(
@@ -972,7 +976,7 @@ struct PlaybackFeature {
             case .rollingBack:
                 guard
                     snapshot.currentTrackID
-                        != pending.targetTrackID
+                        == state.queue.currentTrackID
                 else { return .none }
                 return reconcileConfirmedSnapshot(
                     state: &state,
@@ -992,13 +996,18 @@ struct PlaybackFeature {
                 )
             }
 
-            switch pending.itemAcknowledgement {
-            case .awaiting:
+            switch pending.confirmationReadiness {
+            case .awaitingLoad:
                 state.pendingPlaybackTransition?
-                    .itemAcknowledgement =
-                    .awaiting(latestTargetSnapshot: snapshot)
+                    .confirmationReadiness =
+                    .awaitingLoad(latestTargetSnapshot: snapshot)
                 return .none
-            case .acknowledged:
+            case .awaitingPlay:
+                state.pendingPlaybackTransition?
+                    .confirmationReadiness =
+                    .awaitingPlay(latestTargetSnapshot: snapshot)
+                return .none
+            case .readyForConfirmation:
                 break
             }
 
