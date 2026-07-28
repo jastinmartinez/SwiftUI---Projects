@@ -398,6 +398,10 @@ struct AVPlayerObservationTests {
 
         let itemB = AVPlayerItemFixture.make()
         player.replaceCurrentItem(with: itemB)
+
+        // There is deliberately no suspension after replacement: item A's
+        // token is still active while the player has already installed item B.
+        #expect(seekabilityProbe.invalidationCount == 0)
         seekabilityProbe.send(true, for: itemA)
 
         #expect(recorder.seekabilityValues.isEmpty)

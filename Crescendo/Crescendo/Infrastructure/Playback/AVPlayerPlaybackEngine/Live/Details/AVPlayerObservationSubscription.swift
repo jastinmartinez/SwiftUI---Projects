@@ -127,7 +127,12 @@ final class AVPlayerObservationSubscription {
         }
         activeItemSeekabilityObservation = itemSeekabilityObserver.observe(item) {
             [weak self, weak item] isSeekable in
-            guard let self, let item, self.activeItem === item else { return }
+            guard
+                let self,
+                let item,
+                self.activeItem === item,
+                self.player.currentItem === item
+            else { return }
             self.activeItemIsSeekable = isSeekable
             self.sendStateChanged()
         }
@@ -191,7 +196,10 @@ final class AVPlayerObservationSubscription {
         send(.failed(item))
     }
 
-    /// Delivers seekability only when the observed and installed items still match.
+    /// Suppresses state events during an unprocessed item replacement.
+    ///
+    /// Seekability callbacks reject stale items before mutating their cached
+    /// value. This final check protects every other state-event source.
     private func sendStateChanged() {
         guard activeItem === player.currentItem else { return }
         send(.stateChanged(isSeekable: activeItemIsSeekable))
