@@ -186,6 +186,7 @@ struct PlaybackTimelineFeatureTests {
         await store.send(.reset) {
             $0.confirmedPosition = 0
             $0.duration = nil
+            $0.isSeekable = false
             $0.interaction = .idle
         }
         #expect(suspendedSeek.hasObservedCancellation)
@@ -246,6 +247,7 @@ struct PlaybackTimelineFeatureTests {
             initialState: PlaybackTimelineFeature.State(
                 confirmedPosition: 0,
                 duration: duration,
+                isSeekable: false,
                 interaction: interaction
             )
         ) {

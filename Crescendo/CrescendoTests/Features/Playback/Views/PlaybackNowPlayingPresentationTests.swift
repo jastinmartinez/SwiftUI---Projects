@@ -182,7 +182,8 @@ struct PlaybackNowPlayingPresentationTests {
             capabilities: .allEnabled,
             timeline: PlaybackTimelineFeature.State(
                 confirmedPosition: 0,
-                duration: nil,
+                duration: song.duration,
+                isSeekable: true,
                 interaction: .idle
             ),
             pendingPlaybackTransition: nil,

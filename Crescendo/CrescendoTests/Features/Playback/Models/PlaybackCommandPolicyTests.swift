@@ -31,21 +31,6 @@ struct PlaybackCommandPolicyTests {
         )
     }
 
-    @Test
-    func seekRequiresACurrentTrackEvenWhenDurationWasObserved() {
-        let policy = PlaybackCommandPolicy(
-            capabilities: .allEnabled,
-            queue: .empty,
-            status: .paused,
-            duration: 120,
-            pendingPlaybackTransition: nil,
-            pendingStatusChange: nil,
-            isResettingProvider: false
-        )
-
-        #expect(!policy.allows(.seek))
-    }
-
     @Test(arguments: queueTransitionCases)
     func queueTransitionsFollowSharedPolicy(_ testCase: CommandPolicyCase) {
         #expect(
@@ -72,16 +57,10 @@ struct PlaybackCommandPolicyTests {
 
 private let playPauseCases = [
     CommandPolicyCase(
-        name: "allowed with embedded playback and a current track",
+        name: "allowed with a current track",
         command: .playPause,
         policy: makePolicy(),
         expected: true
-    ),
-    CommandPolicyCase(
-        name: "blocked without embedded playback",
-        command: .playPause,
-        policy: makePolicy(capabilities: .withoutEmbeddedPlayback),
-        expected: false
     ),
     CommandPolicyCase(
         name: "blocked without a current track",
@@ -111,16 +90,10 @@ private let playPauseCases = [
 
 private let stopCases = [
     CommandPolicyCase(
-        name: "allowed with embedded playback and an active track",
+        name: "allowed with an active track",
         command: .stop,
         policy: makePolicy(),
         expected: true
-    ),
-    CommandPolicyCase(
-        name: "blocked without embedded playback",
-        command: .stop,
-        policy: makePolicy(capabilities: .withoutEmbeddedPlayback),
-        expected: false
     ),
     CommandPolicyCase(
         name: "blocked without a current track",
@@ -150,45 +123,40 @@ private let stopCases = [
 
 private let seekCases = [
     CommandPolicyCase(
-        name: "allowed with seeking support and positive duration",
+        name: "allowed for a confirmed seekable positive timeline",
         command: .seek,
-        policy: makePolicy(),
+        policy: makePolicy(isSeekable: true),
         expected: true
     ),
     CommandPolicyCase(
-        name: "blocked without seeking support",
+        name: "blocked when the player reports a nonseekable item",
         command: .seek,
-        policy: makePolicy(capabilities: .withoutSeeking),
+        policy: makePolicy(isSeekable: false),
         expected: false
     ),
     CommandPolicyCase(
         name: "blocked without a current item",
         command: .seek,
-        policy: makePolicy(queue: .empty),
+        policy: makePolicy(queue: .empty, isSeekable: true),
         expected: false
     ),
     CommandPolicyCase(
-        name: "blocked without a known duration",
+        name: "blocked when only catalog metadata has a duration",
         command: .seek,
-        policy: makePolicy(queue: .populated(duration: nil)),
-        expected: false
-    ),
-    CommandPolicyCase(
-        name: "blocked for zero duration",
-        command: .seek,
-        policy: makePolicy(queue: .populated(duration: 0)),
-        expected: false
-    ),
-    CommandPolicyCase(
-        name: "blocked for negative duration",
-        command: .seek,
-        policy: makePolicy(queue: .populated(duration: -1)),
+        policy: makePolicy(
+            queue: .populated,
+            duration: nil,
+            isSeekable: true
+        ),
         expected: false
     ),
     CommandPolicyCase(
         name: "blocked during a pending playback transition",
         command: .seek,
-        policy: makePolicy(pendingPlaybackTransition: .resolving),
+        policy: makePolicy(
+            isSeekable: true,
+            pendingPlaybackTransition: .resolving
+        ),
         expected: false
     ),
 ]
@@ -304,18 +272,19 @@ private let shuffleChangeCases = [
 // MARK: - Policy Factory
 
 private func makePolicy(
-    capabilities: MusicProviderCapabilities = .allEnabled,
     queue: PlaybackQueueFeature.State = .populated,
     status: PlaybackStatus = .paused,
+    duration: TimeInterval? = 180,
+    isSeekable: Bool = true,
     pendingPlaybackTransition: PendingPlaybackTransition? = nil,
     pendingStatusChange: PlaybackFeature.PendingStatusChange? = nil,
     isResettingProvider: Bool = false
 ) -> PlaybackCommandPolicy {
     PlaybackCommandPolicy(
-        capabilities: capabilities,
         queue: queue,
         status: status,
-        duration: queue.currentTrack?.duration,
+        duration: duration,
+        isSeekable: isSeekable,
         pendingPlaybackTransition: pendingPlaybackTransition,
         pendingStatusChange: pendingStatusChange,
         isResettingProvider: isResettingProvider
@@ -323,20 +292,6 @@ private func makePolicy(
 }
 
 // MARK: - Test Values
-
-extension MusicProviderCapabilities {
-    fileprivate static let withoutEmbeddedPlayback = Self(
-        supportsCatalogSearch: true,
-        supportsEmbeddedPlayback: false,
-        supportsSeeking: true
-    )
-
-    fileprivate static let withoutSeeking = Self(
-        supportsCatalogSearch: true,
-        supportsEmbeddedPlayback: true,
-        supportsSeeking: false
-    )
-}
 
 extension PendingPlaybackTransition {
     fileprivate static let resolving = Self(

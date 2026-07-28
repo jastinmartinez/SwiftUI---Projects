@@ -8,6 +8,7 @@ struct PlaybackTimelineFeature {
     struct State: Equatable {
         var confirmedPosition: TimeInterval
         var duration: TimeInterval?
+        var isSeekable: Bool
         var interaction: Interaction
     }
 
@@ -96,6 +97,7 @@ struct PlaybackTimelineFeature {
             case .reset:
                 state.confirmedPosition = 0
                 state.duration = nil
+                state.isSeekable = false
                 state.interaction = .idle
                 return .cancel(id: CancelID.seek)
 

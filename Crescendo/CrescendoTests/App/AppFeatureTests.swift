@@ -184,6 +184,7 @@ struct AppFeatureTests {
                 timeline: .init(
                     confirmedPosition: 42,
                     duration: nil,
+                    isSeekable: false,
                     interaction: .dragging(position: 50)
                 ),
                 pendingPlaybackTransition: nil,
@@ -275,6 +276,7 @@ struct AppFeatureTests {
             $0.playback.timeline = .init(
                 confirmedPosition: 0,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             )
         }
@@ -560,6 +562,7 @@ struct AppFeatureTests {
                     timeline: .init(
                         confirmedPosition: 0,
                         duration: nil,
+                        isSeekable: false,
                         interaction: .idle
                     ),
                     pendingPlaybackTransition: nil,

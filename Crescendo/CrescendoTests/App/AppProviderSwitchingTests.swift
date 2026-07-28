@@ -154,6 +154,7 @@ struct AppProviderSwitchingTests {
             $0.playback.timeline = PlaybackTimelineFeature.State(
                 confirmedPosition: 0,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             )
         }
@@ -414,6 +415,7 @@ struct AppProviderSwitchingTests {
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: 42,
                     duration: nil,
+                    isSeekable: false,
                     interaction: .idle
                 ),
                 pendingPlaybackTransition: pendingPlaybackTransition,

@@ -416,15 +416,10 @@ struct PlaybackPresentationAdapterTests {
     }
 
     @Test
-    func unsupportedSeekingKeepsTimelineVisibleButDisabled() throws {
-        let capabilities = MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: false
-        )
+    func confirmedNonseekableTimelineStaysVisibleButDisabled() throws {
         let store = makePlaybackStore(
             song: makeTrack(duration: 215),
-            capabilities: capabilities
+            timelineIsSeekable: false
         )
 
         let timeline = try #require(PlaybackTimelineView.Model(store))
@@ -673,6 +668,8 @@ struct PlaybackPresentationAdapterTests {
         playbackEligibility: CatalogPlaybackEligibility = .eligible,
         capabilities: MusicProviderCapabilities = .allEnabled,
         confirmedPosition: TimeInterval = 0,
+        timelineDuration: TimeInterval? = nil,
+        timelineIsSeekable: Bool = true,
         timelineInteraction: PlaybackTimelineFeature.Interaction = .idle,
         repeatMode: PlaybackRepeatMode = .off,
         shuffleMode: PlaybackShuffleMode = .off,
@@ -702,7 +699,8 @@ struct PlaybackPresentationAdapterTests {
                 capabilities: capabilities,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: confirmedPosition,
-                    duration: nil,
+                    duration: timelineDuration ?? song?.duration,
+                    isSeekable: timelineIsSeekable,
                     interaction: timelineInteraction
                 ),
                 pendingPlaybackTransition: pendingPlaybackTransition,
@@ -736,7 +734,8 @@ struct PlaybackPresentationAdapterTests {
                 capabilities: .allEnabled,
                 timeline: .init(
                     confirmedPosition: 43,
-                    duration: nil,
+                    duration: song.duration,
+                    isSeekable: true,
                     interaction: .idle
                 ),
                 pendingPlaybackTransition: nil,

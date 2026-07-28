@@ -65,7 +65,6 @@ struct PlaybackFeatureTests {
         #expect(store.state.canRequestRepeat)
         #expect(store.state.canRequestShuffle)
         #expect(store.state.canRequestNext)
-        #expect(store.state.canRequestSeek)
     }
 
     // MARK: - Pending Playback Transition Workflow
@@ -261,6 +260,7 @@ struct PlaybackFeatureTests {
         let timeline = PlaybackTimelineFeature.State(
             confirmedPosition: 42,
             duration: nil,
+            isSeekable: false,
             interaction: .idle
         )
         let probe = SuspendedOperationProbe<PlaybackResource>()
@@ -323,6 +323,7 @@ struct PlaybackFeatureTests {
         let timeline = PlaybackTimelineFeature.State(
             confirmedPosition: 42,
             duration: nil,
+            isSeekable: false,
             interaction: .idle
         )
         let probe = SuspendedOperationProbe<Void>()
@@ -612,6 +613,7 @@ struct PlaybackFeatureTests {
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .playing
+            $0.timeline.isSeekable = true
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(
@@ -629,6 +631,36 @@ struct PlaybackFeatureTests {
 
         #expect(store.state.queue.currentTrack == tracks[1])
         #expect(store.state.pendingPlaybackTransition == nil)
+    }
+
+    @Test
+    func snapshotReconcilesConfirmedSeekability() async {
+        let track = makeTrack(nativeID: "seekability")
+        let queue = PlaybackQueueFeature.State(
+            tracks: [track],
+            playbackOrder: PlaybackQueueOrder(trackIDs: [track.id]),
+            currentTrackID: track.id,
+            repeatMode: .off,
+            shuffleMode: .off
+        )
+        let store = makeStore(queue: queue)
+        let snapshot = PlaybackSnapshot(
+            currentTrackID: track.id,
+            status: .paused,
+            position: 0,
+            duration: 180,
+            isSeekable: true
+        )
+
+        await store.send(.reconcileSnapshot(snapshot)) {
+            $0.status = .paused
+            $0.timeline.duration = 180
+            $0.timeline.isSeekable = true
+        }
+        await store.receive(.queue(.currentTrackConfirmed(track.id)))
+        await store.receive(.timeline(.positionObserved(0)))
+
+        #expect(store.state.canRequestSeek)
     }
 
     @Test
@@ -731,6 +763,7 @@ struct PlaybackFeatureTests {
         let timeline = PlaybackTimelineFeature.State(
             confirmedPosition: 42,
             duration: nil,
+            isSeekable: false,
             interaction: .dragging(position: 50)
         )
         let store = makeStore(
@@ -981,6 +1014,7 @@ struct PlaybackFeatureTests {
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .waiting
+            $0.timeline.isSeekable = false
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(.queue(.replace(queue, startingAt: tracks[1].id))) {
@@ -1245,7 +1279,9 @@ struct PlaybackFeatureTests {
             position: 12
         )
         await store.send(.observationReceived(.snapshot(snapshot)))
-        await store.receive(.reconcileSnapshot(snapshot))
+        await store.receive(.reconcileSnapshot(snapshot)) {
+            $0.timeline.isSeekable = true
+        }
         await store.receive(.queue(.currentTrackConfirmed(tracks[0].id)))
         await store.receive(.timeline(.positionObserved(12))) {
             $0.timeline.confirmedPosition = 12
@@ -1356,6 +1392,7 @@ struct PlaybackFeatureTests {
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .playing
+            $0.timeline.isSeekable = true
         }
         await store.receive(.queue(.currentTrackConfirmed(unknownID)))
         await store.receive(.timeline(.positionObserved(12))) {
@@ -1623,6 +1660,7 @@ struct PlaybackFeatureTests {
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.pendingStatusChange = nil
             $0.status = .paused
+            $0.timeline.isSeekable = true
         }
         await store.receive(.queue(.currentTrackConfirmed(tracks[0].id)))
         await store.receive(.timeline(.positionObserved(12))) {
@@ -1649,6 +1687,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 4,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             ),
             pendingStatusChange: pending
@@ -1662,6 +1701,7 @@ struct PlaybackFeatureTests {
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .paused
+            $0.timeline.isSeekable = true
         }
         await store.receive(.queue(.currentTrackConfirmed(tracks[0].id)))
         await store.receive(.timeline(.positionObserved(7))) {
@@ -1691,6 +1731,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 42,
                 duration: nil,
+                isSeekable: false,
                 interaction: .dragging(position: 50)
             ),
             pendingStatusChange: pending
@@ -1705,6 +1746,7 @@ struct PlaybackFeatureTests {
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .stopped
             $0.pendingStatusChange = nil
+            $0.timeline.isSeekable = true
         }
         await store.receive(.timeline(.resetPosition)) {
             $0.timeline.confirmedPosition = 0
@@ -1721,6 +1763,7 @@ struct PlaybackFeatureTests {
         let timeline = PlaybackTimelineFeature.State(
             confirmedPosition: 42,
             duration: nil,
+            isSeekable: false,
             interaction: .dragging(position: 50)
         )
         let pending = PlaybackFeature.PendingStatusChange(
@@ -1774,6 +1817,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 42,
                 duration: nil,
+                isSeekable: false,
                 interaction: .dragging(position: 50)
             )
         ) {
@@ -1819,6 +1863,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 42,
                 duration: nil,
+                isSeekable: false,
                 interaction: .dragging(position: 50)
             )
         ) {
@@ -1847,6 +1892,7 @@ struct PlaybackFeatureTests {
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .paused
             $0.timeline.duration = 120
+            $0.timeline.isSeekable = true
         }
         await store.receive(.queue(.currentTrackConfirmed(trackID)))
         await store.receive(.timeline(.positionObserved(0))) {
@@ -1886,7 +1932,9 @@ struct PlaybackFeatureTests {
             position: 0
         )
         await store.send(.observationReceived(.snapshot(snapshot)))
-        await store.receive(.reconcileSnapshot(snapshot))
+        await store.receive(.reconcileSnapshot(snapshot)) {
+            $0.timeline.isSeekable = true
+        }
         await store.receive(.queue(.currentTrackConfirmed(tracks[0].id)))
         await store.receive(.timeline(.positionObserved(0)))
 
@@ -1915,6 +1963,7 @@ struct PlaybackFeatureTests {
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .playing
+            $0.timeline.isSeekable = true
         }
         await store.receive(.queue(.currentTrackConfirmed(tracks[0].id)))
         await store.receive(.timeline(.positionObserved(3))) {
@@ -1941,6 +1990,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 0,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             ),
             pendingPlaybackTransition: nil,
@@ -1964,6 +2014,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 0,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             ),
             pendingPlaybackTransition: PendingPlaybackTransition(
@@ -2187,6 +2238,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 110,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             )
         ) {
@@ -2214,7 +2266,15 @@ struct PlaybackFeatureTests {
 
     @Test
     func continuousTimelineIntentIsClampedByTheParent() async {
-        let store = makeStore(queue: makeQueue(duration: 180))
+        let store = makeStore(
+            queue: makeQueue(duration: 180),
+            timeline: .init(
+                confirmedPosition: 0,
+                duration: 180,
+                isSeekable: true,
+                interaction: .idle
+            )
+        )
 
         await store.send(.timelinePositionChanged(200))
         await store.receive(.timeline(.positionChanged(180))) {
@@ -2229,7 +2289,8 @@ struct PlaybackFeatureTests {
             queue: makeQueue(duration: 180),
             timeline: .init(
                 confirmedPosition: 40,
-                duration: nil,
+                duration: 180,
+                isSeekable: true,
                 interaction: .dragging(position: 300)
             )
         ) {
@@ -2266,7 +2327,8 @@ struct PlaybackFeatureTests {
             queue: makeQueue(duration: 180),
             timeline: .init(
                 confirmedPosition: 40,
-                duration: nil,
+                duration: 180,
+                isSeekable: true,
                 interaction: .dragging(position: 30)
             )
         ) {
@@ -2324,7 +2386,8 @@ struct PlaybackFeatureTests {
             queue: makeQueue(duration: 180),
             timeline: .init(
                 confirmedPosition: 40,
-                duration: nil,
+                duration: 180,
+                isSeekable: true,
                 interaction: .dragging(position: 300)
             )
         ) {
@@ -2351,7 +2414,8 @@ struct PlaybackFeatureTests {
             queue: makeQueue(duration: 180),
             timeline: .init(
                 confirmedPosition: 175,
-                duration: nil,
+                duration: 180,
+                isSeekable: true,
                 interaction: .idle
             )
         ) {
@@ -2388,15 +2452,15 @@ struct PlaybackFeatureTests {
     }
 
     @Test
-    func unavailableTimelineIntentIsATrueNoOp() async {
-        let capabilities = MusicProviderCapabilities(
-            supportsCatalogSearch: true,
-            supportsEmbeddedPlayback: true,
-            supportsSeeking: false
-        )
+    func nonseekableTimelineIntentIsATrueNoOp() async {
         let store = makeStore(
             queue: makeQueue(duration: 180),
-            capabilities: capabilities
+            timeline: .init(
+                confirmedPosition: 0,
+                duration: 180,
+                isSeekable: false,
+                interaction: .idle
+            )
         )
 
         await store.send(.timelinePositionChanged(30))
@@ -2408,7 +2472,15 @@ struct PlaybackFeatureTests {
 
     @Test
     func missingDurationTimelineIntentsAreTrueNoOps() async {
-        let store = makeStore(queue: makeQueue(duration: nil))
+        let store = makeStore(
+            queue: makeQueue(duration: 180),
+            timeline: .init(
+                confirmedPosition: 0,
+                duration: nil,
+                isSeekable: true,
+                interaction: .idle
+            )
+        )
 
         await store.send(.timelinePositionChanged(30))
         await store.send(.timelineInteractionEnded)
@@ -2419,7 +2491,15 @@ struct PlaybackFeatureTests {
 
     @Test
     func nonpositiveDurationTimelineIntentsAreTrueNoOps() async {
-        let store = makeStore(queue: makeQueue(duration: 0))
+        let store = makeStore(
+            queue: makeQueue(duration: 180),
+            timeline: .init(
+                confirmedPosition: 0,
+                duration: 0,
+                isSeekable: true,
+                interaction: .idle
+            )
+        )
 
         await store.send(.timelinePositionChanged(30))
         await store.send(.timelineInteractionEnded)
@@ -2434,6 +2514,12 @@ struct PlaybackFeatureTests {
         let tracks = IdentifiedArray(uniqueElements: makeTracks())
         let store = makeStore(
             queue: queue,
+            timeline: .init(
+                confirmedPosition: 0,
+                duration: 180,
+                isSeekable: true,
+                interaction: .idle
+            ),
             pendingPlaybackTransition: PendingPlaybackTransition(
                 requestID: UUID(0),
                 queue: tracks,
@@ -2458,6 +2544,12 @@ struct PlaybackFeatureTests {
         )
         let store = makeStore(
             queue: makeQueue(duration: 180),
+            timeline: .init(
+                confirmedPosition: 0,
+                duration: 180,
+                isSeekable: true,
+                interaction: .idle
+            ),
             pendingProviderReset: pendingProviderReset
         )
 
@@ -2597,7 +2689,9 @@ struct PlaybackFeatureTests {
             position: 0
         )
         await store.send(.observationReceived(.snapshot(snapshot)))
-        await store.receive(.reconcileSnapshot(snapshot))
+        await store.receive(.reconcileSnapshot(snapshot)) {
+            $0.timeline.isSeekable = true
+        }
         await store.receive(.queue(.currentTrackConfirmed(tracks[1].id))) {
             $0.queue.currentTrackID = tracks[1].id
         }
@@ -2632,6 +2726,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 42,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             ),
             pendingPlaybackTransition: PendingPlaybackTransition(
@@ -2654,6 +2749,7 @@ struct PlaybackFeatureTests {
             $0.status = .waiting
             $0.failureNotice = nil
             $0.timeline.duration = 180
+            $0.timeline.isSeekable = false
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(
@@ -2681,6 +2777,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 99,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             ),
             pendingPlaybackTransition: PendingPlaybackTransition(
@@ -2701,6 +2798,7 @@ struct PlaybackFeatureTests {
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .playing
             $0.timeline.duration = 180
+            $0.timeline.isSeekable = true
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(
@@ -2753,7 +2851,9 @@ struct PlaybackFeatureTests {
             position: 5
         )
         await store.send(.observationReceived(.snapshot(snapshot)))
-        await store.receive(.reconcileSnapshot(snapshot))
+        await store.receive(.reconcileSnapshot(snapshot)) {
+            $0.timeline.isSeekable = true
+        }
         await store.receive(
             .queue(.currentTrackConfirmed(confirmedSongs[0].id))
         )
@@ -2888,6 +2988,7 @@ struct PlaybackFeatureTests {
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.timeline.duration = 120
+            $0.timeline.isSeekable = true
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(
@@ -3122,6 +3223,7 @@ struct PlaybackFeatureTests {
         )
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
+            $0.timeline.isSeekable = true
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(.queue(.currentTrackConfirmed(tracks[0].id))) {
@@ -3154,6 +3256,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 180,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             )
         ) {
@@ -3197,6 +3300,7 @@ struct PlaybackFeatureTests {
         await store.send(.observationReceived(.snapshot(staleSnapshot)))
         await store.receive(.reconcileSnapshot(staleSnapshot)) {
             $0.status = .paused
+            $0.timeline.isSeekable = true
         }
         await store.receive(.queue(.currentTrackConfirmed(tracks[1].id)))
         await store.receive(.timeline(.positionObserved(180)))
@@ -3225,6 +3329,7 @@ struct PlaybackFeatureTests {
         await store.send(.observationReceived(.snapshot(restartSnapshot)))
         await store.receive(.reconcileSnapshot(restartSnapshot)) {
             $0.status = .playing
+            $0.timeline.isSeekable = true
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(.queue(.currentTrackConfirmed(tracks[1].id)))
@@ -3305,6 +3410,7 @@ struct PlaybackFeatureTests {
         )
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
+            $0.timeline.isSeekable = true
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(
@@ -3343,6 +3449,7 @@ struct PlaybackFeatureTests {
             timeline: .init(
                 confirmedPosition: 42,
                 duration: nil,
+                isSeekable: false,
                 interaction: .idle
             )
         ) {
@@ -3387,7 +3494,9 @@ struct PlaybackFeatureTests {
             position: 42
         )
         await store.send(.observationReceived(.snapshot(staleSnapshot)))
-        await store.receive(.reconcileSnapshot(staleSnapshot))
+        await store.receive(.reconcileSnapshot(staleSnapshot)) {
+            $0.timeline.isSeekable = true
+        }
         await store.receive(.queue(.currentTrackConfirmed(tracks[1].id)))
         await store.receive(.timeline(.positionObserved(42)))
 
@@ -3410,6 +3519,7 @@ struct PlaybackFeatureTests {
         )
         await store.send(.observationReceived(.snapshot(restartSnapshot)))
         await store.receive(.reconcileSnapshot(restartSnapshot)) {
+            $0.timeline.isSeekable = true
             $0.pendingPlaybackTransition = nil
         }
         await store.receive(
@@ -3460,6 +3570,7 @@ struct PlaybackFeatureTests {
         timeline: PlaybackTimelineFeature.State = .init(
             confirmedPosition: 0,
             duration: nil,
+            isSeekable: false,
             interaction: .idle
         ),
         pendingPlaybackTransition: PendingPlaybackTransition? = nil,

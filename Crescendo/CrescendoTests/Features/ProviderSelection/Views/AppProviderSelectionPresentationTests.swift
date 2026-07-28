@@ -231,6 +231,7 @@ struct AppProviderSelectionPresentationTests {
                     timeline: PlaybackTimelineFeature.State(
                         confirmedPosition: 0,
                         duration: nil,
+                        isSeekable: false,
                         interaction: .idle
                     ),
                     pendingPlaybackTransition: pendingPlaybackTransition,

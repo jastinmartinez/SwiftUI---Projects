@@ -630,6 +630,7 @@ struct PlaybackFeature {
             case .reconcileSnapshot(let snapshot):
                 guard state.pendingProviderReset == nil else { return .none }
                 state.timeline.duration = snapshot.duration
+                state.timeline.isSeekable = snapshot.isSeekable
 
                 // A playback engine may report a stopped session as paused at
                 // zero, so the application-owned stop survives until observed
@@ -788,10 +789,10 @@ struct PlaybackFeature {
 extension PlaybackFeature.State {
     var commandPolicy: PlaybackCommandPolicy {
         PlaybackCommandPolicy(
-            capabilities: capabilities,
             queue: queue,
             status: status,
-            duration: timelineDuration,
+            duration: timeline.duration,
+            isSeekable: timeline.isSeekable,
             pendingPlaybackTransition: pendingPlaybackTransition,
             pendingStatusChange: pendingStatusChange,
             isResettingProvider: pendingProviderReset != nil
@@ -806,8 +807,8 @@ extension PlaybackFeature.State {
     var canRequestRepeat: Bool { commandPolicy.allows(.repeatMode) }
     var canRequestShuffle: Bool { commandPolicy.allows(.shuffleMode) }
 
-    /// Uses player-confirmed duration when available, otherwise catalog metadata.
+    /// The player-confirmed timeline duration controls seek commands and clamping.
     var timelineDuration: TimeInterval? {
-        timeline.duration ?? queue.currentTrack?.duration
+        timeline.duration
     }
 }
