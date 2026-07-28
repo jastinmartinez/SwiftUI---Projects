@@ -41,8 +41,6 @@ struct PlaybackView: View {
                 if let upNext = model.upNext {
                     PlaybackUpNextView(model: upNext)
                 }
-
-                PlaybackEligibilityNoticeView(model: model.eligibility)
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 24)
@@ -65,7 +63,6 @@ extension PlaybackView {
         let controls: PlaybackControlsView.Model
         let utilityControls: PlaybackUtilityControlsView.Model
         let upNext: PlaybackUpNextView.Model?
-        let eligibility: PlaybackEligibilityNoticeView.Model
     }
 }
 

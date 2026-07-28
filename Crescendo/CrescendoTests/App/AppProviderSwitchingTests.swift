@@ -166,7 +166,6 @@ struct AppProviderSwitchingTests {
             $0.playback.providerID = "future"
             $0.playback.status = .idle
             $0.playback.failureNotice = nil
-            $0.playback.playbackEligibility = .unknown
             $0.playback.capabilities = futureCapabilities
             $0.playback.pendingPlaybackTransition = nil
             $0.playback.pendingStatusChange = nil

@@ -33,7 +33,7 @@ struct AppFeatureTests {
                     .testProvider: ProviderAccessClient(
                         currentAccess: { access },
                         requestAccess: { access }
-                    )
+                    ),
                 ]
             )
             $0.playbackObservation.observations = {
@@ -288,7 +288,6 @@ struct AppFeatureTests {
             $0.playback.providerID = futureProvider.id
             $0.playback.status = .idle
             $0.playback.failureNotice = nil
-            $0.playback.playbackEligibility = .unknown
             $0.playback.capabilities = futureProvider.musicCapabilities
             $0.playback.pendingPlaybackTransition = nil
             $0.playback.pendingStatusChange = nil
@@ -411,7 +410,6 @@ struct AppFeatureTests {
             $0.playback.providerID = futureProvider.id
             $0.playback.status = .idle
             $0.playback.failureNotice = nil
-            $0.playback.playbackEligibility = .unknown
             $0.playback.capabilities = futureProvider.musicCapabilities
             $0.playback.pendingPlaybackTransition = nil
             $0.playback.pendingStatusChange = nil

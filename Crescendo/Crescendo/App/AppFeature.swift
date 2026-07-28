@@ -38,9 +38,9 @@ struct AppFeature {
             case .task:
                 return .send(.playback(.task))
 
-            case .providerSelected(let providerID):
+            case let .providerSelected(providerID):
                 guard state.playback.pendingPlaybackTransition == nil,
-                    state.playback.pendingStatusChange == nil
+                      state.playback.pendingStatusChange == nil
                 else {
                     return .none
                 }
@@ -61,7 +61,7 @@ struct AppFeature {
                     return .send(.providerSwitch(.targetChanged(providerID)))
                 }
 
-                if case .connected(let currentProviderID, _) =
+                if case let .connected(currentProviderID, _) =
                     state.providerConnection.connection
                 {
                     state.providerSwitch = ProviderSwitchFeature.State(
@@ -73,27 +73,27 @@ struct AppFeature {
 
                 return .send(.providerConnection(.connect(provider.id)))
 
-            case .providerSwitch(.delegate(.readyToConnect(let providerID))):
+            case let .providerSwitch(.delegate(.readyToConnect(providerID))):
                 state.providerSwitch = nil
                 return .send(.providerConnection(.connect(providerID)))
 
             case .providerSwitch(.delegate(.failed)),
-                .providerSwitch(.delegate(.cancelled)):
+                 .providerSwitch(.delegate(.cancelled)):
                 state.providerSwitch = nil
                 return .none
 
             case .providerSwitch:
                 return .none
 
-            case .providerConnection(
+            case let .providerConnection(
                 .delegate(
-                    .connectionStarted(let providerID, let providerChanged)
+                    .connectionStarted(providerID, providerChanged)
                 )
             ):
                 guard providerChanged,
-                    let provider = state.providerConnection.provider(
-                        id: providerID
-                    )
+                      let provider = state.providerConnection.provider(
+                          id: providerID
+                      )
                 else {
                     return .none
                 }
@@ -103,7 +103,7 @@ struct AppFeature {
                 state.search.providerAccess = nil
                 return .none
 
-            case .resetProviderOwnedState(let providerID):
+            case let .resetProviderOwnedState(providerID):
                 guard
                     let provider = state.providerConnection.provider(
                         id: providerID
@@ -123,8 +123,8 @@ struct AppFeature {
                     )
                 )
 
-            case .playback(.delegate(.resetCompleted(let providerID))):
-                if case .connected(let connectedProviderID, let access) =
+            case let .playback(.delegate(.resetCompleted(providerID))):
+                if case let .connected(connectedProviderID, access) =
                     state.providerConnection.connection,
                     connectedProviderID == providerID,
                     access.authorization == .authorized
@@ -136,13 +136,13 @@ struct AppFeature {
                 }
                 return .send(.replaceProviderOwnedState(providerID))
 
-            case .replaceProviderOwnedState(let providerID):
+            case let .replaceProviderOwnedState(providerID):
                 guard state.providerConnection.provider(id: providerID) != nil
                 else {
                     return .none
                 }
                 let providerAccess: MusicProviderAccess?
-                if case .connected(let connectedProviderID, let access) =
+                if case let .connected(connectedProviderID, access) =
                     state.providerConnection.connection,
                     connectedProviderID == providerID,
                     access.authorization == .authorized
@@ -159,11 +159,11 @@ struct AppFeature {
                 )
                 return .none
 
-            case .providerConnection(
-                .delegate(.connectionResolved(let connection))
+            case let .providerConnection(
+                .delegate(.connectionResolved(connection))
             ):
-                if case .connected(_, let access) = connection,
-                    access.authorization == .authorized
+                if case let .connected(_, access) = connection,
+                   access.authorization == .authorized
                 {
                     state.search.providerAccess = access
                     return .send(.playback(.task))
@@ -175,15 +175,15 @@ struct AppFeature {
             case .providerConnection:
                 return .none
 
-            case .search(
+            case let .search(
                 .delegate(
-                    .trackTapped(let track, let loadedResults)
+                    .trackTapped(track, loadedResults)
                 )
             ):
                 guard state.providerSwitch == nil,
-                    case .connected(let providerID, let access) =
-                        state.providerConnection.connection,
-                    access.authorization == .authorized
+                      case let .connected(_, access) =
+                      state.providerConnection.connection,
+                      access.authorization == .authorized
                 else {
                     return .none
                 }
@@ -191,9 +191,7 @@ struct AppFeature {
                     .playback(
                         .selectionReceived(
                             track.id,
-                            loadedResults: loadedResults,
-                            providerID: providerID,
-                            playbackEligibility: access.playbackEligibility
+                            loadedResults: loadedResults
                         )
                     )
                 )

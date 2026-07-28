@@ -83,9 +83,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 tracks[1].id,
-                loadedResults: loadedResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: loadedResults
             )
         ) {
             $0.isPlayerPresented = true
@@ -94,7 +92,6 @@ struct PlaybackFeatureTests {
                 queue: loadedResults,
                 targetTrackID: tracks[1].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: tracks[1].id)
@@ -110,12 +107,56 @@ struct PlaybackFeatureTests {
     }
 
     @Test
+    func selectionRoutesTheTargetThroughItsOwnProvider() async {
+        let jamendo = makeTrack(providerID: .jamendo, nativeID: "remote")
+        let local = makeTrack(providerID: .localMusic, nativeID: "local")
+        let loadedResults: IdentifiedArrayOf<Track> = [jamendo, local]
+        let resolvedIDs = LockIsolated<[TrackID]>([])
+        let probe = SuspendedOperationProbe<PlaybackResource>()
+        let jamendoResource = makeResource(for: jamendo.id)
+        let store = makeStore {
+            $0.playbackResourceClients = ProviderClientRegistry(
+                clients: [
+                    .jamendo: PlaybackResourceClient { _ in
+                        Issue.record("The non-target provider must not resolve")
+                        return jamendoResource
+                    },
+                    .localMusic: PlaybackResourceClient { trackID in
+                        resolvedIDs.withValue { $0.append(trackID) }
+                        return try await probe.run()
+                    },
+                ]
+            )
+        }
+
+        await store.send(
+            .selectionReceived(local.id, loadedResults: loadedResults)
+        ) {
+            $0.isPlayerPresented = true
+            $0.pendingPlaybackTransition = PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: loadedResults,
+                targetTrackID: local.id
+            )
+        }
+        await store.receive(
+            .resolveTransition(requestID: UUID(0), trackID: local.id)
+        )
+        await probe.waitUntilStarted()
+
+        #expect(resolvedIDs.value == [local.id])
+
+        await store.send(.cancelPlaybackTransition) {
+            $0.pendingPlaybackTransition = nil
+        }
+        await probe.waitUntilCancelled()
+    }
+
+    @Test
     func laterLoadedResultsCannotMutateTheFrozenTransitionQueue() async {
         let firstPage = makeTracks(prefix: "first")
-        let frozenResults = IdentifiedArray(uniqueElements: firstPage)
-        let laterResults = IdentifiedArray(
-            uniqueElements: firstPage + [makeTrack(nativeID: "later")]
-        )
+        var loadedResults = IdentifiedArray(uniqueElements: firstPage)
+        let frozenResults = loadedResults
         let probe = SuspendedOperationProbe<PlaybackResource>()
         let store = makeStore {
             $0.playbackResourceClients = self.makeResourceClients { _ in
@@ -126,9 +167,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 firstPage[0].id,
-                loadedResults: frozenResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: loadedResults
             )
         ) {
             $0.isPlayerPresented = true
@@ -137,21 +176,13 @@ struct PlaybackFeatureTests {
                 queue: frozenResults,
                 targetTrackID: firstPage[0].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: firstPage[0].id)
         )
         await probe.waitUntilStarted()
 
-        await store.send(
-            .selectionReceived(
-                firstPage[0].id,
-                loadedResults: laterResults,
-                providerID: "other",
-                playbackEligibility: .eligible
-            )
-        )
+        loadedResults.append(makeTrack(nativeID: "later"))
 
         #expect(store.state.pendingPlaybackTransition?.queue == frozenResults)
 
@@ -175,9 +206,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 tracks[0].id,
-                loadedResults: loadedResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: loadedResults
             )
         ) {
             $0.isPlayerPresented = true
@@ -186,7 +215,6 @@ struct PlaybackFeatureTests {
                 queue: loadedResults,
                 targetTrackID: tracks[0].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: tracks[0].id)
@@ -226,9 +254,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 nextSongs[0].id,
-                loadedResults: nextResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: nextResults
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -236,7 +262,6 @@ struct PlaybackFeatureTests {
                 queue: nextResults,
                 targetTrackID: nextSongs[0].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: nextSongs[0].id)
@@ -285,9 +310,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 nextSongs[1].id,
-                loadedResults: nextResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: nextResults
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -295,7 +318,6 @@ struct PlaybackFeatureTests {
                 queue: nextResults,
                 targetTrackID: nextSongs[1].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: nextSongs[1].id)
@@ -349,9 +371,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 nextSongs[1].id,
-                loadedResults: nextResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: nextResults
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -359,7 +379,6 @@ struct PlaybackFeatureTests {
                 queue: nextResults,
                 targetTrackID: nextSongs[1].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: nextSongs[1].id)
@@ -401,9 +420,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 tracks[1].id,
-                loadedResults: loadedResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: loadedResults
             )
         ) {
             $0.isPlayerPresented = true
@@ -412,7 +429,6 @@ struct PlaybackFeatureTests {
                 queue: loadedResults,
                 targetTrackID: tracks[1].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: tracks[1].id)
@@ -451,9 +467,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 tracks[1].id,
-                loadedResults: loadedResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: loadedResults
             )
         ) {
             $0.isPlayerPresented = true
@@ -462,7 +476,6 @@ struct PlaybackFeatureTests {
                 queue: loadedResults,
                 targetTrackID: tracks[1].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: tracks[1].id)
@@ -505,9 +518,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 tracks[1].id,
-                loadedResults: loadedResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: loadedResults
             )
         ) {
             $0.isPlayerPresented = true
@@ -516,7 +527,6 @@ struct PlaybackFeatureTests {
                 queue: loadedResults,
                 targetTrackID: tracks[1].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: tracks[1].id)
@@ -552,9 +562,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 tracks[1].id,
-                loadedResults: loadedResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: loadedResults
             )
         ) {
             $0.isPlayerPresented = true
@@ -563,7 +571,6 @@ struct PlaybackFeatureTests {
                 queue: loadedResults,
                 targetTrackID: tracks[1].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: tracks[1].id)
@@ -684,9 +691,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 firstSongs[0].id,
-                loadedResults: firstResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: firstResults
             )
         ) {
             $0.isPlayerPresented = true
@@ -695,7 +700,6 @@ struct PlaybackFeatureTests {
                 queue: firstResults,
                 targetTrackID: firstSongs[0].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: firstSongs[0].id)
@@ -705,9 +709,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 secondSongs[1].id,
-                loadedResults: secondResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: secondResults
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -844,9 +846,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 nextSongs[0].id,
-                loadedResults: nextResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: nextResults
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -854,7 +854,6 @@ struct PlaybackFeatureTests {
                 queue: nextResults,
                 targetTrackID: nextSongs[0].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: nextSongs[0].id)
@@ -914,9 +913,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 nextSongs[0].id,
-                loadedResults: nextResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: nextResults
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -924,7 +921,6 @@ struct PlaybackFeatureTests {
                 queue: nextResults,
                 targetTrackID: nextSongs[0].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: nextSongs[0].id)
@@ -977,9 +973,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 tracks[1].id,
-                loadedResults: queue,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: queue
             )
         ) {
             $0.isPlayerPresented = true
@@ -988,7 +982,6 @@ struct PlaybackFeatureTests {
                 queue: queue,
                 targetTrackID: tracks[1].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: tracks[1].id)
@@ -1043,31 +1036,31 @@ struct PlaybackFeatureTests {
     }
 
     @Test
-    func missingProviderRegistrationFailsClosed() async {
-        let tracks = makeTracks()
-        let loadedResults = IdentifiedArray(uniqueElements: tracks)
-        let store = makeStore {
+    func missingTargetProviderPreservesConfirmedPlayback() async {
+        let confirmed = makeTrack(providerID: .jamendo, nativeID: "confirmed")
+        let target = makeTrack(providerID: .localMusic, nativeID: "target")
+        let queue = PlaybackQueueFeature.State(
+            tracks: [confirmed],
+            playbackOrder: PlaybackQueueOrder(trackIDs: [confirmed.id]),
+            currentTrackID: confirmed.id,
+            repeatMode: .off,
+            shuffleMode: .off
+        )
+        let store = makeStore(queue: queue) {
             $0.playbackResourceClients = ProviderClientRegistry(clients: [:])
         }
 
         await store.send(
-            .selectionReceived(
-                tracks[0].id,
-                loadedResults: loadedResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
-            )
+            .selectionReceived(target.id, loadedResults: [target])
         ) {
-            $0.isPlayerPresented = true
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
                 requestID: UUID(0),
-                queue: loadedResults,
-                targetTrackID: tracks[0].id
+                queue: [target],
+                targetTrackID: target.id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
-            .resolveTransition(requestID: UUID(0), trackID: tracks[0].id)
+            .resolveTransition(requestID: UUID(0), trackID: target.id)
         )
         await store.receive(
             .transitionResolutionFailed(
@@ -1076,23 +1069,21 @@ struct PlaybackFeatureTests {
             )
         ) {
             $0.failureNotice = PlaybackFailureNotice(
-                trackID: tracks[0].id,
+                trackID: target.id,
                 failure: .resourceUnavailable
             )
             $0.pendingPlaybackTransition = nil
         }
+
+        #expect(store.state.queue.currentTrackID == confirmed.id)
     }
 
     @Test
-    func invalidSelectionsNeverStartATransition() async {
+    func selectionForMissingTrackNeverStartsATransition() async {
         let resolveCalls = LockIsolated(0)
         let tracks = makeTracks()
         let queue = IdentifiedArray(uniqueElements: tracks)
         let resource = makeResource(for: tracks[0].id)
-        let anotherProviderSongs = [
-            tracks[0],
-            makeTrack(providerID: "other", nativeID: "other"),
-        ]
         let store = makeStore {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resolveCalls.withValue { $0 += 1 }
@@ -1103,40 +1094,9 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 TrackID(providerID: providerID, nativeID: "missing"),
-                loadedResults: queue,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: queue
             )
         )
-        await store.send(
-            .selectionReceived(
-                tracks[0].id,
-                loadedResults: IdentifiedArray(
-                    uniqueElements: anotherProviderSongs
-                ),
-                providerID: providerID,
-                playbackEligibility: .eligible
-            )
-        )
-        await store.send(
-            .selectionReceived(
-                tracks[0].id,
-                loadedResults: queue,
-                providerID: "other",
-                playbackEligibility: .eligible
-            )
-        )
-        await store.send(
-            .selectionReceived(
-                tracks[0].id,
-                loadedResults: queue,
-                providerID: providerID,
-                playbackEligibility: .ineligible
-            )
-        ) {
-            $0.playbackEligibility = .ineligible
-            $0.isPlayerPresented = true
-        }
 
         #expect(resolveCalls.value == 0)
     }
@@ -1179,9 +1139,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 replacement[0].id,
-                loadedResults: replacement,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: replacement
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -1190,7 +1148,6 @@ struct PlaybackFeatureTests {
                 targetTrackID: replacement[0].id
             )
             $0.pendingStatusChange = nil
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(1), trackID: replacement[0].id)
@@ -1243,9 +1200,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 replacement[0].id,
-                loadedResults: replacement,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: replacement
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -1254,7 +1209,6 @@ struct PlaybackFeatureTests {
                 targetTrackID: replacement[0].id
             )
             $0.pendingStatusChange = nil
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(1), trackID: replacement[0].id)
@@ -1319,9 +1273,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 replacement[0].id,
-                loadedResults: replacement,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: replacement
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -1329,7 +1281,6 @@ struct PlaybackFeatureTests {
                 queue: replacement,
                 targetTrackID: replacement[0].id
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: replacement[0].id)
@@ -2104,9 +2055,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 tracks[1].id,
-                loadedResults: tracks,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: tracks
             )
         )
 
@@ -2194,32 +2143,6 @@ struct PlaybackFeatureTests {
         #expect(resolveCalls.value == 0)
         #expect(
             store.state.pendingPlaybackTransition == pendingPlaybackTransition
-        )
-    }
-
-    @Test
-    func resetWindowRejectsIneligibleSelectionPresentation() async {
-        let tracks = IdentifiedArray(uniqueElements: makeTracks())
-        let pendingProviderReset = PlaybackFeature.PendingProviderReset(
-            requestID: UUID(0),
-            providerID: providerID,
-            capabilities: .allEnabled
-        )
-        let store = makeStore(pendingProviderReset: pendingProviderReset)
-
-        await store.send(
-            .selectionReceived(
-                tracks[0].id,
-                loadedResults: tracks,
-                providerID: providerID,
-                playbackEligibility: .ineligible
-            )
-        )
-
-        #expect(store.state.playbackEligibility == .unknown)
-        #expect(!store.state.isPlayerPresented)
-        #expect(
-            store.state.pendingProviderReset == pendingProviderReset
         )
     }
 
@@ -2936,9 +2859,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 targetTrackID,
-                loadedResults: queue,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: queue
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -2947,7 +2868,6 @@ struct PlaybackFeatureTests {
                 targetTrackID: targetTrackID,
                 origin: .selection
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(
@@ -3375,9 +3295,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 nextSongs[1].id,
-                loadedResults: nextResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: nextResults
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -3386,7 +3304,6 @@ struct PlaybackFeatureTests {
                 targetTrackID: nextSongs[1].id,
                 origin: .selection
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: nextSongs[1].id)
@@ -3463,9 +3380,7 @@ struct PlaybackFeatureTests {
         await store.send(
             .selectionReceived(
                 tracks[1].id,
-                loadedResults: loadedResults,
-                providerID: providerID,
-                playbackEligibility: .eligible
+                loadedResults: loadedResults
             )
         ) {
             $0.pendingPlaybackTransition = PendingPlaybackTransition(
@@ -3474,7 +3389,6 @@ struct PlaybackFeatureTests {
                 targetTrackID: tracks[1].id,
                 origin: .selection
             )
-            $0.playbackEligibility = .eligible
         }
         await store.receive(
             .resolveTransition(requestID: UUID(0), trackID: tracks[1].id)

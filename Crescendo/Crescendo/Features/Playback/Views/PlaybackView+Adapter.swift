@@ -96,8 +96,7 @@ extension PlaybackView.Model {
             },
             controls: PlaybackControlsView.Model(store),
             utilityControls: PlaybackUtilityControlsView.Model(store),
-            upNext: PlaybackUpNextView.Model(store),
-            eligibility: PlaybackEligibilityNoticeView.Model(store)
+            upNext: PlaybackUpNextView.Model(store)
         )
     }
 }

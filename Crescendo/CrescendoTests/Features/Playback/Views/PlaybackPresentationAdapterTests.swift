@@ -99,12 +99,11 @@ struct PlaybackPresentationAdapterTests {
         #expect(model.metadata.providerAttribution == "Playing from Test Provider")
         #expect(model.artworkURL == song.artworkURL)
         #expect(model.timeline?.slider.value == 43)
-        #expect(model.timeline?.slider.scale == .init(range: 0...215))
+        #expect(model.timeline?.slider.scale == .init(range: 0 ... 215))
         #expect(model.timeline?.elapsedTimeText == "0:43")
         #expect(model.timeline?.durationText == "3:35")
         #expect(model.controls.primary.state == .pause)
         #expect(model.controls.primary.isEnabled)
-        #expect(model.eligibility.presentation == .hidden)
     }
 
     @Test
@@ -295,7 +294,7 @@ struct PlaybackPresentationAdapterTests {
         let utilityControls = PlaybackUtilityControlsView.Model(store)
 
         #expect(timeline.slider.value == 43)
-        #expect(timeline.slider.scale == .init(range: 0...215))
+        #expect(timeline.slider.scale == .init(range: 0 ... 215))
         #expect(timeline.slider.isEnabled)
         #expect(timeline.slider.strings.accessibilityLabel == "Playback position")
         #expect(timeline.slider.strings.accessibilityValue == "0:43 of 3:35")
@@ -387,7 +386,7 @@ struct PlaybackPresentationAdapterTests {
         ).finish()
 
         let timeline = try #require(PlaybackTimelineView.Model(store))
-        #expect(timeline.slider.scale == .init(range: 0...120))
+        #expect(timeline.slider.scale == .init(range: 0 ... 120))
         #expect(timeline.durationText == "2:00")
     }
 
@@ -670,28 +669,6 @@ struct PlaybackPresentationAdapterTests {
         #expect(skipControls.controls.allSatisfy { !$0.isEnabled })
         #expect(!timeline.slider.isEnabled)
         #expect(utilityControls.controls.allSatisfy { !$0.isEnabled })
-    }
-
-    @Test(arguments: [
-        (
-            CatalogPlaybackEligibility.eligible,
-            PlaybackEligibilityNoticeView.Model.Presentation.hidden
-        ),
-        (.ineligible, .subscriptionRequired),
-        (.unknown, .availabilityUnknown),
-    ])
-    func playbackEligibilityMapsToPresentation(
-        eligibility: CatalogPlaybackEligibility,
-        expectedPresentation: PlaybackEligibilityNoticeView.Model.Presentation
-    ) {
-        let model = PlaybackEligibilityNoticeView.Model(
-            makePlaybackStore(
-                song: makeTrack(),
-                playbackEligibility: eligibility
-            )
-        )
-
-        #expect(model.presentation == expectedPresentation)
     }
 
     @Test

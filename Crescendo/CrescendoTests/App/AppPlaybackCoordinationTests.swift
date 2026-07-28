@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct AppPlaybackCoordinationTests {
     @Test
-    func firstEligibleSelectionRoutesLoadedResultsAndOpensPlayer() async {
+    func firstSelectionRoutesLoadedResultsAndOpensPlayer() async {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
         let probe = SuspendedOperationProbe<PlaybackResource>()
@@ -31,9 +31,7 @@ struct AppPlaybackCoordinationTests {
             .playback(
                 .selectionReceived(
                     tracks[1].id,
-                    loadedResults: loadedResults,
-                    providerID: providerID,
-                    playbackEligibility: .eligible
+                    loadedResults: loadedResults
                 )
             )
         ) {
@@ -43,7 +41,6 @@ struct AppPlaybackCoordinationTests {
                 queue: loadedResults,
                 targetTrackID: tracks[1].id
             )
-            $0.playback.playbackEligibility = .eligible
         }
         await store.receive(
             .playback(
@@ -59,52 +56,6 @@ struct AppPlaybackCoordinationTests {
             $0.playback.pendingPlaybackTransition = nil
         }
         await probe.waitUntilCancelled()
-    }
-
-    @Test
-    func initialIneligibleSelectionOpensPlayerWithoutResolvingPlayback() async {
-        let song = makeTrack(nativeID: "restricted")
-        let loadedResults = IdentifiedArray(uniqueElements: [song])
-        let resolveCalls = LockIsolated(0)
-        let resource = makeResource(for: song.id)
-        let store = makeStore(
-            access: MusicProviderAccess(
-                authorization: .authorized,
-                playbackEligibility: .ineligible
-            )
-        ) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                resolveCalls.withValue { $0 += 1 }
-                return resource
-            }
-        }
-
-        await store.send(
-            .search(
-                .delegate(
-                    .trackTapped(
-                        song,
-                        loadedResults: loadedResults
-                    )
-                )
-            )
-        )
-        await store.receive(
-            .playback(
-                .selectionReceived(
-                    song.id,
-                    loadedResults: loadedResults,
-                    providerID: providerID,
-                    playbackEligibility: .ineligible
-                )
-            )
-        ) {
-            $0.playback.isPlayerPresented = true
-            $0.playback.playbackEligibility = .ineligible
-        }
-
-        #expect(resolveCalls.value == 0)
-        #expect(store.state.playback.queue.currentTrack == nil)
     }
 
     @Test
@@ -145,9 +96,7 @@ struct AppPlaybackCoordinationTests {
             .playback(
                 .selectionReceived(
                     nextSongs[0].id,
-                    loadedResults: nextQueue,
-                    providerID: providerID,
-                    playbackEligibility: .eligible
+                    loadedResults: nextQueue
                 )
             )
         ) {
@@ -156,7 +105,6 @@ struct AppPlaybackCoordinationTests {
                 queue: nextQueue,
                 targetTrackID: nextSongs[0].id
             )
-            $0.playback.playbackEligibility = .eligible
         }
         await store.receive(
             .playback(
@@ -215,7 +163,7 @@ struct AppPlaybackCoordinationTests {
                                 nextCursor: nil
                             )
                         }
-                    )
+                    ),
                 ]
             )
             $0.playbackResourceClients = self.makeResourceClients { _ in
@@ -235,7 +183,7 @@ struct AppPlaybackCoordinationTests {
                 )
             )
         ) {
-            guard case .loaded(var pagination) = $0.search.status else {
+            guard case var .loaded(pagination) = $0.search.status else {
                 return
             }
             pagination.status = .loading(requestID: UUID(0))
@@ -253,7 +201,7 @@ struct AppPlaybackCoordinationTests {
                 )
             )
         ) {
-            guard case .loaded(var pagination) = $0.search.status else {
+            guard case var .loaded(pagination) = $0.search.status else {
                 return
             }
             pagination.tracks.append(laterSong)
@@ -272,9 +220,7 @@ struct AppPlaybackCoordinationTests {
             .playback(
                 .selectionReceived(
                     laterSong.id,
-                    loadedResults: laterResults,
-                    providerID: providerID,
-                    playbackEligibility: .eligible
+                    loadedResults: laterResults
                 )
             )
         ) {
@@ -283,7 +229,6 @@ struct AppPlaybackCoordinationTests {
                 queue: laterResults,
                 targetTrackID: laterSong.id
             )
-            $0.playback.playbackEligibility = .eligible
         }
         await store.receive(
             .playback(
