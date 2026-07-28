@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Displays the active item's identity, provider attribution, and playback status.
+/// Displays the active item's identity and playback status.
 ///
-/// Optional artist and provider values are omitted when unavailable. Status changes
-/// use a lightweight transition without introducing view-owned state.
+/// An optional artist is omitted when unavailable. Status changes use a lightweight
+/// transition without introducing view-owned state.
 struct PlaybackMetadataView: View {
     let model: Model
 
@@ -21,12 +21,6 @@ struct PlaybackMetadataView: View {
                     .lineLimit(1)
             }
 
-            if let providerAttribution = model.providerAttribution {
-                Text(providerAttribution)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
             Text(model.statusText)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(LinearGradient.crescendoSpectrum)
@@ -41,7 +35,6 @@ extension PlaybackMetadataView {
     struct Model: Equatable {
         let title: String
         let artistName: String?
-        let providerAttribution: String?
         let statusText: String
     }
 }

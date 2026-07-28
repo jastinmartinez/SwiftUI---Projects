@@ -7,15 +7,12 @@ extension PlaybackView.Model {
     /// Pending transport targets take precedence over confirmed status, while
     /// timeline-dependent sections are omitted when no valid duration exists.
     ///
-    /// - Parameters:
-    ///   - store: The playback store supplying domain state and receiving callbacks.
-    ///   - providerName: The connected provider name shown as attribution, or `nil`
-    ///     when no attribution should be rendered.
+    /// - Parameter store: The playback store supplying domain state and receiving
+    ///   callbacks.
     @MainActor
-    init(_ store: StoreOf<PlaybackFeature>, providerName: String?) {
+    init(_ store: StoreOf<PlaybackFeature>) {
         self.init(
             store,
-            providerName: providerName,
             strings: .localized
         )
     }
@@ -27,12 +24,10 @@ extension PlaybackView.Model {
     ///
     /// - Parameters:
     ///   - store: The playback store supplying domain state and receiving callbacks.
-    ///   - providerName: The connected provider name shown as attribution, or `nil`.
     ///   - strings: Localized transient-state strings used by the projection.
     @MainActor
     init(
         _ store: StoreOf<PlaybackFeature>,
-        providerName: String?,
         strings: Strings
     ) {
         let statusText: String
@@ -87,7 +82,6 @@ extension PlaybackView.Model {
             metadata: PlaybackMetadataView.Model(
                 title: displayedTrack?.title ?? Locs.Playback.noSelection,
                 artistName: displayedTrack?.artistName,
-                providerAttribution: providerName.map(Locs.Playback.playingFrom),
                 statusText: statusText
             ),
             timeline: timeline,

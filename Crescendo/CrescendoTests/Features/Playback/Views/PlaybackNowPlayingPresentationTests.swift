@@ -168,7 +168,6 @@ struct PlaybackNowPlayingPresentationTests {
     ) -> PlaybackFeature.State {
         let queue = IdentifiedArray(uniqueElements: [song])
         return PlaybackFeature.State(
-            providerID: song.id.providerID,
             queue: PlaybackQueueFeature.State(
                 tracks: queue,
                 playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
@@ -178,8 +177,6 @@ struct PlaybackNowPlayingPresentationTests {
             ),
             status: status,
             failureNotice: nil,
-            playbackEligibility: .eligible,
-            capabilities: .allEnabled,
             timeline: PlaybackTimelineFeature.State(
                 confirmedPosition: 0,
                 duration: song.duration,
@@ -188,7 +185,6 @@ struct PlaybackNowPlayingPresentationTests {
             ),
             pendingPlaybackTransition: nil,
             pendingStatusChange: nil,
-            pendingProviderReset: nil,
             isPlayerPresented: false
         )
     }

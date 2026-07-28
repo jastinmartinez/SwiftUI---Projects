@@ -7,9 +7,8 @@ import SwiftUI
 /// stateless playback hierarchy. Presentation decisions remain in the adapter.
 struct PlaybackFeatureView: View {
     let store: StoreOf<PlaybackFeature>
-    let providerName: String?
 
     var body: some View {
-        PlaybackView(model: .init(store, providerName: providerName))
+        PlaybackView(model: .init(store))
     }
 }

@@ -16,7 +16,6 @@ struct SearchFeature {
     struct State: Equatable {
         var query: String
         var status: Status
-        var providerAccess: MusicProviderAccess?
         var providerID: ProviderID
     }
 

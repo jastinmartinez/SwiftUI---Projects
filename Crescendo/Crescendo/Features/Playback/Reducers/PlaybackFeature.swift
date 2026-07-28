@@ -6,16 +6,12 @@ import Foundation
 struct PlaybackFeature {
     @ObservableState
     struct State: Equatable {
-        var providerID: ProviderID?
         var queue: PlaybackQueueFeature.State
         var status: PlaybackStatus
         var failureNotice: PlaybackFailureNotice?
-        var playbackEligibility: CatalogPlaybackEligibility
-        var capabilities: MusicProviderCapabilities
         var timeline: PlaybackTimelineFeature.State
         var pendingPlaybackTransition: PendingPlaybackTransition?
         var pendingStatusChange: PendingStatusChange?
-        var pendingProviderReset: PendingProviderReset?
         var isPlayerPresented: Bool
     }
 
@@ -30,24 +26,8 @@ struct PlaybackFeature {
         }
     }
 
-    struct PendingProviderReset: Equatable {
-        let requestID: UUID
-        let providerID: ProviderID
-        let capabilities: MusicProviderCapabilities
-    }
-
-    enum Delegate: Equatable {
-        case resetCompleted(ProviderID)
-    }
-
     enum Action: Equatable {
         case task
-        case reset(
-            providerID: ProviderID,
-            capabilities: MusicProviderCapabilities
-        )
-        case applyReset(requestID: UUID)
-        case delegate(Delegate)
         case selectionReceived(
             TrackID,
             loadedResults: IdentifiedArrayOf<Track>
@@ -127,7 +107,6 @@ struct PlaybackFeature {
         Reduce { state, action in
             switch action {
             case .task:
-                guard state.pendingProviderReset == nil else { return .none }
                 return .run { send in
                     let observations =
                         await playbackObservation.observations()
@@ -140,49 +119,9 @@ struct PlaybackFeature {
                     cancelInFlight: true
                 )
 
-            case let .reset(providerID, capabilities):
-                let requestID = uuid()
-                state.pendingProviderReset = PendingProviderReset(
-                    requestID: requestID,
-                    providerID: providerID,
-                    capabilities: capabilities
-                )
-                return .concatenate(
-                    .merge(
-                        .cancel(id: CancelID.playbackObservation),
-                        .cancel(id: CancelID.playbackTransition),
-                        .cancel(id: CancelID.statusChange)
-                    ),
-                    .send(.queue(.reset)),
-                    .send(.timeline(.reset)),
-                    .send(.applyReset(requestID: requestID))
-                )
-
-            case let .applyReset(requestID):
-                guard let pendingProviderReset = state.pendingProviderReset,
-                      pendingProviderReset.requestID == requestID
-                else { return .none }
-
-                state.providerID = pendingProviderReset.providerID
-                state.status = .idle
-                state.failureNotice = nil
-                state.capabilities = pendingProviderReset.capabilities
-                state.pendingPlaybackTransition = nil
-                state.pendingStatusChange = nil
-                state.pendingProviderReset = nil
-                state.isPlayerPresented = false
-                return .send(
-                    .delegate(.resetCompleted(pendingProviderReset.providerID))
-                )
-
-            case .delegate:
-                return .none
-
-            case let .selectionReceived(trackID, loadedResults):
+            case .selectionReceived(let trackID, let loadedResults):
                 let hasNowPlaying = !state.queue.tracks.isEmpty
-                guard state.pendingProviderReset == nil,
-                      loadedResults[id: trackID] != nil
-                else {
+                guard loadedResults[id: trackID] != nil else {
                     return .none
                 }
 
@@ -209,11 +148,10 @@ struct PlaybackFeature {
                     )
                 )
 
-            case let .resolveTransition(requestID, trackID):
-                guard state.pendingProviderReset == nil,
-                      let pending = state.pendingPlaybackTransition,
-                      pending.requestID == requestID,
-                      pending.targetTrackID == trackID
+            case .resolveTransition(let requestID, let trackID):
+                guard let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID,
+                    pending.targetTrackID == trackID
                 else { return .none }
 
                 let resourceClient = playbackResourceClients[trackID.providerID]
@@ -261,20 +199,19 @@ struct PlaybackFeature {
                     cancelInFlight: true
                 )
 
-            case let .transitionResourceResolved(requestID, resource):
+            case .transitionResourceResolved(let requestID, let resource):
                 guard let pending = state.pendingPlaybackTransition,
-                      pending.requestID == requestID,
-                      pending.targetTrackID == resource.trackID
+                    pending.requestID == requestID,
+                    pending.targetTrackID == resource.trackID
                 else { return .none }
                 return .send(
                     .loadTransition(requestID: requestID, resource: resource)
                 )
 
-            case let .loadTransition(requestID, resource):
-                guard state.pendingProviderReset == nil,
-                      let pending = state.pendingPlaybackTransition,
-                      pending.requestID == requestID,
-                      pending.targetTrackID == resource.trackID
+            case .loadTransition(let requestID, let resource):
+                guard let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID,
+                    pending.targetTrackID == resource.trackID
                 else { return .none }
                 return .run { send in
                     do {
@@ -306,7 +243,7 @@ struct PlaybackFeature {
                     cancelInFlight: true
                 )
 
-            case let .transitionItemLoaded(requestID):
+            case .transitionItemLoaded(let requestID):
                 guard
                     state.pendingPlaybackTransition?.requestID == requestID
                 else { return .none }
@@ -315,10 +252,9 @@ struct PlaybackFeature {
                 state.pendingPlaybackTransition?.hasLoadedItem = true
                 return .send(.playTransition(requestID: requestID))
 
-            case let .playTransition(requestID):
-                guard state.pendingProviderReset == nil,
-                      let pending = state.pendingPlaybackTransition,
-                      pending.requestID == requestID
+            case .playTransition(let requestID):
+                guard let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID
                 else { return .none }
                 let trackID = pending.targetTrackID
                 return .run { send in
@@ -359,10 +295,10 @@ struct PlaybackFeature {
                 // Observation stays authoritative; nothing is confirmed here.
                 return .none
 
-            case let .transitionResolutionFailed(requestID, failure),
-                 let .transitionItemLoadFailed(requestID, failure):
+            case .transitionResolutionFailed(let requestID, let failure),
+                .transitionItemLoadFailed(let requestID, let failure):
                 guard let pending = state.pendingPlaybackTransition,
-                      pending.requestID == requestID
+                    pending.requestID == requestID
                 else { return .none }
 
                 state.failureNotice = PlaybackFailureNotice(
@@ -372,14 +308,17 @@ struct PlaybackFeature {
                 state.pendingPlaybackTransition = nil
                 return .none
 
-            case let .transitionPlayFailed(
-                requestID,
-                trackID,
-                failure
+            case .transitionPlayFailed(
+                let
+                    requestID,
+                let
+                    trackID,
+                let
+                    failure
             ):
                 if let pending = state.pendingPlaybackTransition {
                     guard pending.requestID == requestID,
-                          pending.targetTrackID == trackID
+                        pending.targetTrackID == trackID
                     else { return .none }
                     state.pendingPlaybackTransition = nil
                 } else {
@@ -435,11 +374,10 @@ struct PlaybackFeature {
                     )
                 )
 
-            case let .performStatusChange(requestID, target):
-                guard state.pendingProviderReset == nil,
-                      let change = state.pendingStatusChange,
-                      change.requestID == requestID,
-                      change.target == target
+            case .performStatusChange(let requestID, let target):
+                guard let change = state.pendingStatusChange,
+                    change.requestID == requestID,
+                    change.target == target
                 else { return .none }
                 return .run { send in
                     do {
@@ -479,21 +417,21 @@ struct PlaybackFeature {
                     cancelInFlight: true
                 )
 
-            case let .statusChangeSucceeded(requestID):
+            case .statusChangeSucceeded(let requestID):
                 // Play and pause wait for observation; only a stop is
                 // application-owned because no player reports that state.
                 guard let change = state.pendingStatusChange,
-                      change.requestID == requestID,
-                      change.target == .stopped
+                    change.requestID == requestID,
+                    change.target == .stopped
                 else { return .none }
 
                 state.status = .stopped
                 state.pendingStatusChange = nil
                 return .send(.timeline(.resetPosition))
 
-            case let .statusChangeFailed(requestID, error):
+            case .statusChangeFailed(let requestID, let error):
                 guard let change = state.pendingStatusChange,
-                      change.requestID == requestID
+                    change.requestID == requestID
                 else { return .none }
 
                 state.pendingStatusChange = nil
@@ -527,16 +465,16 @@ struct PlaybackFeature {
                 state.failureNotice = nil
                 return .send(.queue(.shuffleTapped))
 
-            case let .timelinePositionChanged(requestedPosition):
+            case .timelinePositionChanged(let requestedPosition):
                 guard state.canRequestSeek,
-                      let duration = state.timelineDuration
+                    let duration = state.timelineDuration
                 else { return .none }
                 let position = min(max(requestedPosition, 0), duration)
                 return .send(.timeline(.positionChanged(position)))
 
             case .timelineInteractionEnded:
                 guard state.canRequestSeek,
-                      let duration = state.timelineDuration
+                    let duration = state.timelineDuration
                 else { return .none }
                 let position = min(max(state.timeline.position, 0), duration)
                 guard position != state.timeline.position else {
@@ -553,40 +491,37 @@ struct PlaybackFeature {
 
             case .seekBackwardTapped:
                 guard state.canRequestSeek,
-                      let duration = state.timelineDuration
+                    let duration = state.timelineDuration
                 else { return .none }
                 let target = min(max(state.timeline.position - 15, 0), duration)
                 return .send(.timeline(.seekRequested(target)))
 
             case .seekForwardTapped:
                 guard state.canRequestSeek,
-                      let duration = state.timelineDuration
+                    let duration = state.timelineDuration
                 else { return .none }
                 let target = min(state.timeline.position + 15, duration)
                 return .send(.timeline(.seekRequested(target)))
 
-            case let .observationReceived(.snapshot(snapshot)):
+            case .observationReceived(.snapshot(let snapshot)):
                 return .send(.reconcileSnapshot(snapshot))
 
-            case let .observationReceived(.completed(trackID)):
+            case .observationReceived(.completed(let trackID)):
                 return .send(.currentTrackCompleted(trackID))
 
-            case let .observationReceived(.failed(trackID, failure)):
+            case .observationReceived(.failed(let trackID, let failure)):
                 return .send(.runtimePlaybackFailed(trackID, failure))
 
-            case let .currentTrackCompleted(trackID):
-                guard state.pendingProviderReset == nil,
-                      state.pendingPlaybackTransition == nil,
-                      trackID == state.queue.currentTrackID
+            case .currentTrackCompleted(let trackID):
+                guard state.pendingPlaybackTransition == nil,
+                    trackID == state.queue.currentTrackID
                 else { return .none }
                 return .send(.queue(.currentTrackCompleted(trackID)))
 
-            case let .runtimePlaybackFailed(trackID, failure):
-                guard state.pendingProviderReset == nil else { return .none }
-
+            case .runtimePlaybackFailed(let trackID, let failure):
                 // A target that failed at runtime can never confirm itself.
                 if let pending = state.pendingPlaybackTransition,
-                   trackID == pending.targetTrackID
+                    trackID == pending.targetTrackID
                 {
                     state.failureNotice = PlaybackFailureNotice(
                         trackID: pending.targetTrackID,
@@ -597,7 +532,7 @@ struct PlaybackFeature {
                 }
 
                 guard trackID == nil || trackID == state.queue.currentTrackID,
-                      let noticeTrackID = trackID ?? state.queue.currentTrackID
+                    let noticeTrackID = trackID ?? state.queue.currentTrackID
                 else { return .none }
                 state.failureNotice = PlaybackFailureNotice(
                     trackID: noticeTrackID,
@@ -605,8 +540,7 @@ struct PlaybackFeature {
                 )
                 return .none
 
-            case let .reconcileSnapshot(snapshot):
-                guard state.pendingProviderReset == nil else { return .none }
+            case .reconcileSnapshot(let snapshot):
                 state.timeline.duration = snapshot.duration
                 state.timeline.isSeekable = snapshot.isSeekable
 
@@ -615,17 +549,17 @@ struct PlaybackFeature {
                 // playback reports motion of its own.
                 let preservesStoppedStatus =
                     state.status == .stopped
-                        && snapshot.currentTrackID == state.queue.currentTrackID
-                        && snapshot.status == .paused
+                    && snapshot.currentTrackID == state.queue.currentTrackID
+                    && snapshot.status == .paused
 
                 // Identity alone cannot confirm a target that is already the
                 // confirmed track, because the player still holds the old item
                 // until loading completes. Requiring the loaded stage keeps a
                 // stale snapshot from confirming a restart or a Repeat one.
                 if let pending = state.pendingPlaybackTransition,
-                   pending.hasLoadedItem,
-                   let observedTrackID = snapshot.currentTrackID,
-                   observedTrackID == pending.targetTrackID
+                    pending.hasLoadedItem,
+                    let observedTrackID = snapshot.currentTrackID,
+                    observedTrackID == pending.targetTrackID
                 {
                     state.pendingPlaybackTransition = nil
                     if state.failureNotice?.trackID == observedTrackID {
@@ -697,7 +631,7 @@ struct PlaybackFeature {
                                         .timeline(
                                             .positionObserved(snapshot.position)
                                         )
-                                    ),
+                                    )
                                 ]
                         )
                     }
@@ -714,15 +648,15 @@ struct PlaybackFeature {
                                 .timeline(
                                     .positionObserved(snapshot.position)
                                 )
-                            ),
+                            )
                         ]
                 )
 
-            case let .setPlayerPresented(isPresented):
+            case .setPlayerPresented(let isPresented):
                 state.isPlayerPresented = isPresented
                 return .none
 
-            case let .timeline(.delegate(.transportFailed(failure))):
+            case .timeline(.delegate(.transportFailed(let failure))):
                 guard let trackID = state.queue.currentTrackID else {
                     return .none
                 }
@@ -732,9 +666,8 @@ struct PlaybackFeature {
                 )
                 return .none
 
-            case let .queue(.delegate(.transitionRequested(trackID))):
-                guard state.pendingProviderReset == nil,
-                      state.queue.tracks[id: trackID] != nil
+            case .queue(.delegate(.transitionRequested(let trackID))):
+                guard state.queue.tracks[id: trackID] != nil
                 else { return .none }
 
                 let requestID = uuid()
@@ -772,8 +705,7 @@ extension PlaybackFeature.State {
             duration: timeline.duration,
             isSeekable: timeline.isSeekable,
             pendingPlaybackTransition: pendingPlaybackTransition,
-            pendingStatusChange: pendingStatusChange,
-            isResettingProvider: pendingProviderReset != nil
+            pendingStatusChange: pendingStatusChange
         )
     }
 

@@ -8,7 +8,7 @@ import Testing
 @MainActor
 struct AppCompositionTests {
     @Test
-    func invalidConfigurationKeepsJamendoSelectableAndFailsClosed() async {
+    func invalidConfigurationKeepsJamendoRoutingAndFailsClosed() {
         let composition = AppComposition.live(
             jamendoClientID: "  ",
             player: AVPlayer(),
@@ -19,23 +19,11 @@ struct AppCompositionTests {
             }
         )
 
-        #expect(composition.initialState.providerConnection.providers == [.jamendo])
         #expect(composition.initialState.search.providerID == .jamendo)
         #expect(composition.providerAccessClients[.jamendo] == nil)
         #expect(composition.providerSearchClients[.jamendo] == nil)
         #expect(composition.playbackResourceClients[.jamendo] == nil)
 
-        let store = withDependencies {
-            $0.uuid = .incrementing
-        } operation: {
-            composition.store()
-        }
-        await store.send(.providerSelected(.jamendo)).finish()
-
-        #expect(
-            store.state.providerConnection.connection
-                == .restricted(providerID: .jamendo)
-        )
     }
 
     @Test
@@ -82,45 +70,6 @@ struct AppCompositionTests {
                 )
         )
         #expect(requests.value.count == 2)
-    }
-
-    @Test
-    func successfulJamendoConnectionMakesSearchAvailable() async {
-        let composition = AppComposition.live(
-            jamendoClientID: "test-client",
-            player: AVPlayer(),
-            preparer: Self.preparer,
-            data: { _ in throw MusicProviderError.network }
-        )
-        let store = TestStore(initialState: composition.initialState) {
-            AppFeature()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.providerAccessClients = composition.providerAccessClients
-            $0.playbackObservation = PlaybackObservationClient(
-                observations: { AsyncStream { $0.finish() } }
-            )
-        }
-        store.exhaustivity = .off(showSkippedAssertions: false)
-
-        await store.send(.providerSelected(.jamendo))
-        await store.skipReceivedActions()
-        await store.finish()
-
-        #expect(
-            store.state.providerConnection.connection
-                == .connected(
-                    providerID: .jamendo,
-                    access: MusicProviderAccess(
-                        authorization: .authorized,
-                        playbackEligibility: .eligible
-                    )
-                )
-        )
-        #expect(
-            store.state.search.providerAccess?.authorization
-                == .authorized
-        )
     }
 
     @Test

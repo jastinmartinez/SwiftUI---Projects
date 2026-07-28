@@ -3,7 +3,7 @@ import ComposableArchitecture
 extension SearchResultsView.Model {
     /// Adapts reducer-owned search state and actions into presentation content.
     @MainActor
-    init(_ store: StoreOf<SearchFeature>, providerName: String?) {
+    init(_ store: StoreOf<SearchFeature>) {
         let content: Content
         switch store.status {
         case .idle:
@@ -35,7 +35,7 @@ extension SearchResultsView.Model {
                 SearchResultListView.Model(
                     summary: Locs.Search.resultsSummary(
                         count: pagination.tracks.count,
-                        providerName: providerName
+                        providerName: nil
                     ),
                     rows: pagination.tracks.map { song in
                         SearchResultListView.Model.Row(

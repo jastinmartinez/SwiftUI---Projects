@@ -8,22 +8,17 @@ import Testing
 struct SearchFeatureTests {
     @Test
     func stateProviderSelectsExactlyOneBoundSearchClient() async {
-        let song = makeTrack()
+        let track = makeTrack()
         let page = SearchPage(
-            tracks: [song],
+            tracks: [track],
             nextCursor: SearchCursor(value: "next")
         )
         let testProviderSearchCount = LockIsolated(0)
         let jamendoSearchCount = LockIsolated(0)
-        let access = makeAccess(
-            authorization: .authorized,
-            playbackEligibility: .eligible
-        )
         let store = TestStore(
             initialState: makeState(
                 query: "result",
                 status: .idle,
-                providerAccess: access,
                 providerID: .jamendo
             )
         ) {
@@ -80,10 +75,6 @@ struct SearchFeatureTests {
             initialState: makeState(
                 query: "result",
                 status: .idle,
-                providerAccess: makeAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
-                ),
                 providerID: .jamendo
             )
         ) {
@@ -122,124 +113,11 @@ struct SearchFeatureTests {
     }
 
     @Test
-    func ineligibleAuthorizedAccessStillSearchesAndIsRetained() async {
-        let song = makeTrack()
-        let page = SearchPage(tracks: [song], nextCursor: nil)
-        let access = makeAccess(
-            authorization: .authorized,
-            playbackEligibility: .ineligible
-        )
-        let store = TestStore(
-            initialState: makeState(
-                query: "result",
-                status: .idle,
-                providerAccess: access,
-                providerID: .testProvider
-            )
-        ) {
-            SearchFeature()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.providerSearchClients = ProviderClientRegistry(
-                clients: [
-                    .testProvider: ProviderSearchClient(
-                        searchPage: { request, _ in
-                            #expect(request == .initial(query: "result"))
-                            return page
-                        }
-                    )
-                ]
-            )
-        }
-
-        await store.send(.submitButtonTapped)
-        await store.receive(
-            .startSearch(
-                providerID: .testProvider,
-                query: "result",
-                requestID: UUID(0)
-            )
-        ) {
-            $0.status = .searching(requestID: UUID(0))
-        }
-        await store.receive(.searchResponse(UUID(0), .success(page))) {
-            $0.status = loadedStatus(
-                tracks: page.tracks,
-                nextCursor: page.nextCursor,
-                paginationStatus: .idle,
-                providerID: .testProvider
-            )
-        }
-
-        #expect(store.state.providerAccess == access)
-    }
-
-    @Test(arguments: [
-        Optional<MusicProviderAccess>.none,
-        MusicProviderAccess(
-            authorization: .denied,
-            playbackEligibility: .unknown
-        ),
-    ])
-    func submitDoesNotRequireProviderAccess(
-        providerAccess: MusicProviderAccess?
-    ) async {
-        let page = SearchPage(tracks: [makeTrack()], nextCursor: nil)
-        let store = TestStore(
-            initialState: makeState(
-                query: "result",
-                status: .idle,
-                providerAccess: providerAccess,
-                providerID: .testProvider
-            )
-        ) {
-            SearchFeature()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.providerSearchClients = ProviderClientRegistry(
-                clients: [
-                    .testProvider: ProviderSearchClient(
-                        searchPage: { request, limit in
-                            #expect(request == .initial(query: "result"))
-                            #expect(limit == 20)
-                            return page
-                        }
-                    )
-                ]
-            )
-        }
-
-        await store.send(.submitButtonTapped)
-        await store.receive(
-            .startSearch(
-                providerID: .testProvider,
-                query: "result",
-                requestID: UUID(0)
-            )
-        ) {
-            $0.status = .searching(requestID: UUID(0))
-        }
-        await store.receive(.searchResponse(UUID(0), .success(page))) {
-            $0.status = loadedStatus(
-                tracks: page.tracks,
-                nextCursor: nil,
-                paginationStatus: .idle,
-                providerID: .testProvider
-            )
-        }
-    }
-
-    @Test
     func queryChangeCancelsInFlightSearchAndIgnoresStaleResponse() async {
-        let access = makeAccess(
-            authorization: .authorized,
-            playbackEligibility: .eligible
-        )
         let store = TestStore(
             initialState: makeState(
                 query: "old",
                 status: .idle,
-                providerAccess: access,
                 providerID: .testProvider
             )
         ) {
@@ -283,21 +161,17 @@ struct SearchFeatureTests {
     }
 
     @Test
-    func tappingLoadedResultDelegatesSongTap() async {
-        let song = makeTrack()
-        let secondSong = makeTrack(nativeID: "2")
+    func tappingLoadedResultDelegatesTrackTap() async {
+        let track = makeTrack()
+        let secondTrack = makeTrack(nativeID: "2")
         let store = TestStore(
             initialState: makeState(
                 query: "result",
                 status: loadedStatus(
-                    tracks: [song, secondSong],
+                    tracks: [track, secondTrack],
                     nextCursor: nil,
                     paginationStatus: .idle,
                     providerID: .testProvider
-                ),
-                providerAccess: makeAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
                 ),
                 providerID: .testProvider
             )
@@ -305,12 +179,12 @@ struct SearchFeatureTests {
             SearchFeature()
         }
 
-        await store.send(.resultTapped(song.id))
+        await store.send(.resultTapped(track.id))
         await store.receive(
             .delegate(
                 .trackTapped(
-                    song,
-                    loadedResults: [song, secondSong]
+                    track,
+                    loadedResults: [track, secondTrack]
                 )
             )
         )
@@ -318,19 +192,15 @@ struct SearchFeatureTests {
 
     @Test
     func queryChangeCancelsAnUnresolvedContinuationRequest() async {
-        let song = makeTrack()
+        let track = makeTrack()
         let store = TestStore(
             initialState: makeState(
                 query: "old",
                 status: loadedStatus(
-                    tracks: [song],
+                    tracks: [track],
                     nextCursor: SearchCursor(value: "page-2"),
                     paginationStatus: .idle,
                     providerID: .testProvider
-                ),
-                providerAccess: makeAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
                 ),
                 providerID: .testProvider
             )
@@ -364,7 +234,7 @@ struct SearchFeatureTests {
             )
         ) {
             $0.status = loadedStatus(
-                tracks: [song],
+                tracks: [track],
                 nextCursor: SearchCursor(value: "page-2"),
                 paginationStatus: .loading(requestID: UUID(0)),
                 providerID: .testProvider
@@ -378,18 +248,14 @@ struct SearchFeatureTests {
         }
     }
 
-    // MARK: - Helpers
-
     private func makeState(
         query: String,
         status: SearchFeature.Status,
-        providerAccess: MusicProviderAccess?,
         providerID: ProviderID
     ) -> SearchFeature.State {
         SearchFeature.State(
             query: query,
             status: status,
-            providerAccess: providerAccess,
             providerID: providerID
         )
     }
@@ -407,16 +273,6 @@ struct SearchFeatureTests {
                 status: paginationStatus,
                 providerID: providerID
             )
-        )
-    }
-
-    private func makeAccess(
-        authorization: MusicAuthorizationStatus,
-        playbackEligibility: CatalogPlaybackEligibility
-    ) -> MusicProviderAccess {
-        MusicProviderAccess(
-            authorization: authorization,
-            playbackEligibility: playbackEligibility
         )
     }
 

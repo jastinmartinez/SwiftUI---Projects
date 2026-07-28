@@ -1926,7 +1926,6 @@ struct PlaybackFeatureTests {
     func statusPermissionsMatchReducerPolicy() {
         let tracks = IdentifiedArray(uniqueElements: makeTracks())
         let active = PlaybackFeature.State(
-            providerID: providerID,
             queue: .init(
                 tracks: tracks,
                 playbackOrder: PlaybackQueueOrder(trackIDs: Array(tracks.ids)),
@@ -1936,8 +1935,6 @@ struct PlaybackFeatureTests {
             ),
             status: .playing,
             failureNotice: nil,
-            playbackEligibility: .eligible,
-            capabilities: .allEnabled,
             timeline: .init(
                 confirmedPosition: 0,
                 duration: nil,
@@ -1946,11 +1943,9 @@ struct PlaybackFeatureTests {
             ),
             pendingPlaybackTransition: nil,
             pendingStatusChange: nil,
-            pendingProviderReset: nil,
             isPlayerPresented: false
         )
         let transitioning = PlaybackFeature.State(
-            providerID: providerID,
             queue: .init(
                 tracks: [],
                 playbackOrder: PlaybackQueueOrder(trackIDs: []),
@@ -1960,8 +1955,6 @@ struct PlaybackFeatureTests {
             ),
             status: .stopped,
             failureNotice: nil,
-            playbackEligibility: .eligible,
-            capabilities: .allEnabled,
             timeline: .init(
                 confirmedPosition: 0,
                 duration: nil,
@@ -1974,7 +1967,6 @@ struct PlaybackFeatureTests {
                 targetTrackID: tracks[0].id
             ),
             pendingStatusChange: nil,
-            pendingProviderReset: nil,
             isPlayerPresented: false
         )
 
@@ -1982,168 +1974,6 @@ struct PlaybackFeatureTests {
         #expect(active.canRequestStop)
         #expect(!transitioning.canRequestPlayPause)
         #expect(!transitioning.canRequestStop)
-    }
-
-    // MARK: - Provider Reset
-
-    @Test
-    func oldProviderSnapshotIsIgnoredDuringResetWindow() async {
-        let pendingProviderReset = PlaybackFeature.PendingProviderReset(
-            requestID: UUID(0),
-            providerID: "replacement",
-            capabilities: .allEnabled
-        )
-        let store = makeStore(pendingProviderReset: pendingProviderReset)
-        let staleSnapshot = PlaybackSnapshot(
-            currentTrackID: nil,
-            status: .playing,
-            position: 99,
-            duration: nil,
-            isSeekable: false
-        )
-
-        await store.send(.observationReceived(.snapshot(staleSnapshot)))
-        await store.receive(.reconcileSnapshot(staleSnapshot))
-        await store.send(.reconcileSnapshot(staleSnapshot))
-
-        #expect(store.state.status == .idle)
-        #expect(store.state.timeline.confirmedPosition == 0)
-        #expect(
-            store.state.pendingProviderReset == pendingProviderReset
-        )
-    }
-
-    @Test
-    func staleApplyResetCannotFinalizeRepeatedProviderReset() async {
-        let pendingProviderReset = PlaybackFeature.PendingProviderReset(
-            requestID: UUID(1),
-            providerID: "replacement",
-            capabilities: .allEnabled
-        )
-        let store = makeStore(pendingProviderReset: pendingProviderReset)
-
-        await store.send(.applyReset(requestID: UUID(0)))
-
-        #expect(
-            store.state.pendingProviderReset == pendingProviderReset
-        )
-        #expect(store.state.providerID == providerID)
-    }
-
-    @Test
-    func resetWindowRejectsNewSelections() async {
-        let tracks = IdentifiedArray(uniqueElements: makeTracks())
-        let pendingProviderReset = PlaybackFeature.PendingProviderReset(
-            requestID: UUID(0),
-            providerID: "replacement",
-            capabilities: .allEnabled
-        )
-        let store = makeStore(
-            queue: .init(
-                tracks: tracks,
-                playbackOrder: PlaybackQueueOrder(trackIDs: Array(tracks.ids)),
-                currentTrackID: tracks[0].id,
-                repeatMode: .off,
-                shuffleMode: .off
-            ),
-            status: .playing,
-            pendingProviderReset: pendingProviderReset
-        )
-
-        #expect(!store.state.canRequestPlayPause)
-        #expect(!store.state.canRequestStop)
-        await store.send(
-            .selectionReceived(
-                tracks[1].id,
-                loadedResults: tracks
-            )
-        )
-
-        #expect(store.state.pendingPlaybackTransition == nil)
-        #expect(
-            store.state.pendingProviderReset == pendingProviderReset
-        )
-    }
-
-    @Test
-    func resetWindowRejectsQueuedPlaybackEffects() async {
-        let tracks = IdentifiedArray(uniqueElements: makeTracks())
-        let pendingStatusChange = PlaybackFeature.PendingStatusChange(
-            requestID: UUID(1),
-            target: .paused
-        )
-        let pendingProviderReset = PlaybackFeature.PendingProviderReset(
-            requestID: UUID(0),
-            providerID: "replacement",
-            capabilities: .allEnabled
-        )
-        let calls = LockIsolated(0)
-        let store = makeStore(
-            queue: .init(
-                tracks: tracks,
-                playbackOrder: PlaybackQueueOrder(trackIDs: Array(tracks.ids)),
-                currentTrackID: tracks[0].id,
-                repeatMode: .off,
-                shuffleMode: .off
-            ),
-            status: .playing,
-            pendingStatusChange: pendingStatusChange,
-            pendingProviderReset: pendingProviderReset
-        ) {
-            $0.playbackTransport.pause = {
-                calls.withValue { $0 += 1 }
-            }
-        }
-
-        await store.send(
-            .performStatusChange(
-                requestID: UUID(1),
-                target: .paused
-            )
-        )
-        await Task.yield()
-
-        #expect(calls.value == 0)
-        #expect(store.state.pendingStatusChange == pendingStatusChange)
-        #expect(
-            store.state.pendingProviderReset == pendingProviderReset
-        )
-    }
-
-    @Test
-    func resetWindowRejectsQueuedTransitionEffects() async {
-        let tracks = IdentifiedArray(uniqueElements: makeTracks())
-        let pendingPlaybackTransition = PendingPlaybackTransition(
-            requestID: UUID(1),
-            queue: tracks,
-            targetTrackID: tracks[0].id
-        )
-        let pendingProviderReset = PlaybackFeature.PendingProviderReset(
-            requestID: UUID(0),
-            providerID: "replacement",
-            capabilities: .allEnabled
-        )
-        let resolveCalls = LockIsolated(0)
-        let resource = makeResource(for: tracks[0].id)
-        let store = makeStore(
-            pendingPlaybackTransition: pendingPlaybackTransition,
-            pendingProviderReset: pendingProviderReset
-        ) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                resolveCalls.withValue { $0 += 1 }
-                return resource
-            }
-        }
-
-        await store.send(
-            .resolveTransition(requestID: UUID(1), trackID: tracks[0].id)
-        )
-        await Task.yield()
-
-        #expect(resolveCalls.value == 0)
-        #expect(
-            store.state.pendingPlaybackTransition == pendingPlaybackTransition
-        )
     }
 
     // MARK: - Timeline
@@ -2451,31 +2281,6 @@ struct PlaybackFeatureTests {
         )
 
         #expect(!store.state.canRequestSeek)
-        await store.send(.timelinePositionChanged(30))
-        await store.send(.timelineInteractionEnded)
-        await store.send(.restartTapped)
-        await store.send(.seekBackwardTapped)
-        await store.send(.seekForwardTapped)
-    }
-
-    @Test
-    func resetWindowTimelineIntentsAreTrueNoOps() async {
-        let pendingProviderReset = PlaybackFeature.PendingProviderReset(
-            requestID: UUID(0),
-            providerID: "replacement",
-            capabilities: .allEnabled
-        )
-        let store = makeStore(
-            queue: makeQueue(duration: 180),
-            timeline: .init(
-                confirmedPosition: 0,
-                duration: 180,
-                isSeekable: true,
-                interaction: .idle
-            ),
-            pendingProviderReset: pendingProviderReset
-        )
-
         await store.send(.timelinePositionChanged(30))
         await store.send(.timelineInteractionEnded)
         await store.send(.restartTapped)
@@ -3479,8 +3284,6 @@ struct PlaybackFeatureTests {
         ),
         status: PlaybackStatus = .idle,
         failureNotice: PlaybackFailureNotice? = nil,
-        playbackEligibility: CatalogPlaybackEligibility = .unknown,
-        capabilities: MusicProviderCapabilities = .allEnabled,
         timeline: PlaybackTimelineFeature.State = .init(
             confirmedPosition: 0,
             duration: nil,
@@ -3489,21 +3292,16 @@ struct PlaybackFeatureTests {
         ),
         pendingPlaybackTransition: PendingPlaybackTransition? = nil,
         pendingStatusChange: PlaybackFeature.PendingStatusChange? = nil,
-        pendingProviderReset: PlaybackFeature.PendingProviderReset? = nil,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
     ) -> TestStoreOf<PlaybackFeature> {
         TestStore(
             initialState: PlaybackFeature.State(
-                providerID: providerID,
                 queue: queue,
                 status: status,
                 failureNotice: failureNotice,
-                playbackEligibility: playbackEligibility,
-                capabilities: capabilities,
                 timeline: timeline,
                 pendingPlaybackTransition: pendingPlaybackTransition,
                 pendingStatusChange: pendingStatusChange,
-                pendingProviderReset: pendingProviderReset,
                 isPlayerPresented: false
             )
         ) {

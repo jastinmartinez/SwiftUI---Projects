@@ -9,12 +9,10 @@ struct SearchPresentationAdapterTests {
     @Test
     func searchHeaderRequiresOnlyANonemptyTrimmedQuery() {
         let enabled = SearchHeaderView.Model(
-            makeStore(query: " vela ", status: .idle, providerAccess: nil),
-            providerSelection: makeProviderSelection()
+            makeStore(query: " vela ", status: .idle)
         )
         let disabled = SearchHeaderView.Model(
-            makeStore(query: "   ", status: .idle, providerAccess: nil),
-            providerSelection: makeProviderSelection()
+            makeStore(query: "   ", status: .idle)
         )
 
         #expect(enabled.isSearchEnabled)
@@ -22,100 +20,43 @@ struct SearchPresentationAdapterTests {
     }
 
     @Test
-    func loadedResultsRemainVisibleWithoutProviderAccess() {
+    func loadedTracksMapToProviderNeutralResultRows() {
         let track = makeTrack()
-        let model = SearchResultsView.Model(
-            makeStore(
-                query: "vela",
-                status: loadedStatus(
-                    tracks: [track],
-                    nextCursor: nil,
-                    paginationStatus: .idle
-                ),
-                providerAccess: nil
-            ),
-            providerName: "Jamendo"
-        )
-
-        guard case .results(let results) = model.content else {
-            Issue.record("Expected loaded results")
-            return
-        }
-        #expect(results.rows.map(\.id) == [track.id])
-    }
-
-    @Test
-    func loadedSongsMapToResultRows() {
-        let song = makeTrack()
-        let store = makeStore(
-            query: "result",
-            status: loadedStatus(
-                tracks: [song],
-                nextCursor: SearchCursor(value: "next"),
-                paginationStatus: .idle
-            ),
-            providerAccess: makeAccess(
-                authorization: .authorized,
-                playbackEligibility: .eligible
-            )
-        )
-        let model = SearchResultsView.Model(store, providerName: "Test Provider")
-        let expectedRows = [
-            SearchResultListView.Model.Row(
-                id: song.id,
-                song: TrackRowView.Model(
-                    id: song.id,
-                    title: "Result",
-                    artistName: "Artist",
-                    artworkURL: song.artworkURL,
-                    durationText: "3:35",
-                    accessory: .disclosure
-                ),
-                paginationTriggerID: "next"
-            )
-        ]
-
-        guard case .results(let results) = model.content else {
-            Issue.record("Expected loaded results")
-            return
-        }
-
-        #expect(results.summary == "1 song · Test Provider")
-        #expect(results.rows == expectedRows)
-        #expect(results.footer.content == .hidden)
-        let expectedStrings = SearchPaginationFooterView.Model.Strings(
-            loading: "Loading more songs",
-            failure: "More songs couldn’t be loaded.",
-            retry: "Retry"
-        )
-        #expect(results.footer.strings == expectedStrings)
-    }
-
-    @Test
-    func nextPageTriggerMapsOnlyToLastResultRow() {
-        let firstSong = makeTrack()
-        let lastSong = Track(
-            id: .init(providerID: "fake", nativeID: "2"),
-            title: "Last result",
-            artistName: "Artist",
-            albumTitle: nil,
-            artworkURL: URL(string: "https://example.com/last-artwork.jpg"),
-            duration: 180
-        )
         let model = SearchResultsView.Model(
             makeStore(
                 query: "result",
                 status: loadedStatus(
-                    tracks: [firstSong, lastSong],
+                    tracks: [track],
                     nextCursor: SearchCursor(value: "next"),
                     paginationStatus: .idle
-                ),
-                providerAccess: makeAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
                 )
-            ),
-            providerName: "Test Provider"
+            )
+        )
+
+        guard case .results(let results) = model.content else {
+            Issue.record("Expected loaded results")
+            return
+        }
+
+        #expect(results.summary == "1 song")
+        #expect(results.rows.map(\.id) == [track.id])
+        #expect(results.rows.map(\.paginationTriggerID) == ["next"])
+        #expect(results.footer.content == .hidden)
+    }
+
+    @Test
+    func nextPageTriggerMapsOnlyToLastResultRow() {
+        let firstTrack = makeTrack()
+        let lastTrack = makeTrack(nativeID: "2")
+        let model = SearchResultsView.Model(
+            makeStore(
+                query: "result",
+                status: loadedStatus(
+                    tracks: [firstTrack, lastTrack],
+                    nextCursor: SearchCursor(value: "next"),
+                    paginationStatus: .idle
+                )
+            )
         )
 
         guard case .results(let results) = model.content else {
@@ -124,7 +65,6 @@ struct SearchPresentationAdapterTests {
         }
 
         #expect(results.rows.map(\.paginationTriggerID) == [nil, "next"])
-        #expect(results.footer.content == .hidden)
     }
 
     @Test
@@ -168,10 +108,6 @@ struct SearchPresentationAdapterTests {
                     nextCursor: SearchCursor(value: "next"),
                     paginationStatus: paginationStatus
                 ),
-                providerAccess: makeAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
-                ),
                 providerID: .testProvider
             )
         ) {
@@ -192,11 +128,7 @@ struct SearchPresentationAdapterTests {
                 ]
             )
         }
-        let model = SearchResultsView.Model(
-            store,
-            providerName: "Test Provider"
-        )
-        let results = try results(from: model)
+        let results = try results(from: SearchResultsView.Model(store))
 
         switch paginationStatus {
         case .idle:
@@ -214,18 +146,14 @@ struct SearchPresentationAdapterTests {
         #expect(pagination.status == .loading(requestID: UUID(0)))
     }
 
-    // MARK: - Helpers
-
     private func makeStore(
         query: String,
-        status: SearchFeature.Status,
-        providerAccess: MusicProviderAccess?
+        status: SearchFeature.Status
     ) -> StoreOf<SearchFeature> {
         Store(
             initialState: SearchFeature.State(
                 query: query,
                 status: status,
-                providerAccess: providerAccess,
                 providerID: .testProvider
             )
         ) {
@@ -259,13 +187,8 @@ struct SearchPresentationAdapterTests {
                     tracks: [makeTrack()],
                     nextCursor: nextCursor,
                     paginationStatus: paginationStatus
-                ),
-                providerAccess: makeAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
                 )
-            ),
-            providerName: "Test Provider"
+            )
         )
     }
 
@@ -284,46 +207,9 @@ struct SearchPresentationAdapterTests {
         return results
     }
 
-    private func makeProviderSelection() -> ProviderSelectionView.Model {
-        let provider = ProviderDescriptor.testProvider
-
-        return ProviderSelectionView.Model(
-            status: .connected(providerName: provider.name),
-            activeProviderName: provider.name,
-            connectedProviderName: provider.name,
-            collapsedIcon: .generic,
-            collapsedLabel: provider.name,
-            accessibilityValue: provider.name,
-            menuTitle: Locs.ProviderSelection.menuTitle,
-            providerRows: [
-                .init(
-                    id: provider.id,
-                    icon: .generic,
-                    label: provider.name,
-                    statusLabel: nil,
-                    isSelected: true,
-                    isEnabled: true,
-                    onSelect: {}
-                )
-            ],
-            recoveryAction: nil,
-            isSelectionEnabled: true,
-        )
-    }
-
-    private func makeAccess(
-        authorization: MusicAuthorizationStatus,
-        playbackEligibility: CatalogPlaybackEligibility
-    ) -> MusicProviderAccess {
-        MusicProviderAccess(
-            authorization: authorization,
-            playbackEligibility: playbackEligibility
-        )
-    }
-
-    private func makeTrack() -> Track {
+    private func makeTrack(nativeID: String = "1") -> Track {
         Track(
-            id: .init(providerID: "fake", nativeID: "1"),
+            id: .init(providerID: "fake", nativeID: nativeID),
             title: "Result",
             artistName: "Artist",
             albumTitle: nil,

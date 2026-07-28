@@ -6,11 +6,8 @@ struct AppFeatureView: View {
     let store: StoreOf<AppFeature>
 
     var body: some View {
-        let providerSelection = ProviderSelectionView.Model(store)
-
         SearchFeatureView(
-            store: store.scope(state: \.search, action: \.search),
-            providerSelection: providerSelection
+            store: store.scope(state: \.search, action: \.search)
         )
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let model = PlaybackNowPlayingView.Model(
@@ -33,8 +30,7 @@ struct AppFeatureView: View {
             )
         ) {
             PlaybackFeatureView(
-                store: store.scope(state: \.playback, action: \.playback),
-                providerName: providerSelection.connectedProviderName
+                store: store.scope(state: \.playback, action: \.playback)
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)

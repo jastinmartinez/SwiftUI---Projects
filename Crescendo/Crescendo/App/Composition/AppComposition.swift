@@ -21,8 +21,7 @@ struct AppComposition {
 
     /// Assembles provider and playback implementations around one supplied player.
     ///
-    /// Invalid Jamendo configuration leaves each Jamendo client registry empty
-    /// while preserving the provider descriptor in initial application state.
+    /// Invalid Jamendo configuration leaves each Jamendo client registry empty.
     ///
     /// - Parameters:
     ///   - jamendoClientID: The generated bundle value used to validate Jamendo.
@@ -65,18 +64,12 @@ struct AppComposition {
 
         return Self(
             initialState: AppFeature.State(
-                providerConnection: ProviderConnectionFeature.State(
-                    providers: [.jamendo],
-                    connection: .disconnected
-                ),
                 search: SearchFeature.State(
                     query: "",
                     status: .idle,
-                    providerAccess: nil,
                     providerID: .jamendo
                 ),
                 playback: PlaybackFeature.State(
-                    providerID: nil,
                     queue: PlaybackQueueFeature.State(
                         tracks: [],
                         playbackOrder: PlaybackQueueOrder(trackIDs: []),
@@ -86,8 +79,6 @@ struct AppComposition {
                     ),
                     status: .idle,
                     failureNotice: nil,
-                    playbackEligibility: .unknown,
-                    capabilities: .allEnabled,
                     timeline: PlaybackTimelineFeature.State(
                         confirmedPosition: 0,
                         duration: nil,
@@ -96,10 +87,8 @@ struct AppComposition {
                     ),
                     pendingPlaybackTransition: nil,
                     pendingStatusChange: nil,
-                    pendingProviderReset: nil,
                     isPlayerPresented: false
-                ),
-                providerSwitch: nil
+                )
             ),
             providerAccessClients: ProviderClientRegistry(
                 clients: accessClientsByProvider

@@ -6,25 +6,9 @@ struct SearchHeaderView: View {
     var body: some View {
         AccessibilityLayoutReaderView { layout in
             VStack(spacing: 16) {
-                identity(layout: layout)
+                title
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 searchControls(layout: layout)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func identity(layout: AccessibilityLayout) -> some View {
-        if layout == .expanded {
-            VStack(alignment: .leading, spacing: 12) {
-                title
-                ProviderSelectionView(model: model.providerSelection)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-            HStack(alignment: .center) {
-                title
-                Spacer()
-                ProviderSelectionView(model: model.providerSelection)
             }
         }
     }
@@ -106,7 +90,6 @@ struct SearchHeaderView: View {
 extension SearchHeaderView {
     struct Model {
         let query: String
-        let providerSelection: ProviderSelectionView.Model
         let isSearchEnabled: Bool
         let strings: Strings
         let onQueryChanged: (String) -> Void

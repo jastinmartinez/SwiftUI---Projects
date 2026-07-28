@@ -4,24 +4,13 @@ import SwiftUI
 /// Connects the search feature store to stateless search components.
 struct SearchFeatureView: View {
     let store: StoreOf<SearchFeature>
-    let providerSelection: ProviderSelectionView.Model
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    SearchHeaderView(
-                        model: .init(
-                            store,
-                            providerSelection: providerSelection
-                        )
-                    )
-                    SearchResultsView(
-                        model: .init(
-                            store,
-                            providerName: providerSelection.activeProviderName
-                        )
-                    )
+                    SearchHeaderView(model: .init(store))
+                    SearchResultsView(model: .init(store))
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)

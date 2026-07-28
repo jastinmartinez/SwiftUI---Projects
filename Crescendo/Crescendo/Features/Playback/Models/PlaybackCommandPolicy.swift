@@ -8,17 +8,12 @@ struct PlaybackCommandPolicy: Equatable {
     let isSeekable: Bool
     let pendingPlaybackTransition: PendingPlaybackTransition?
     let pendingStatusChange: PlaybackFeature.PendingStatusChange?
-    let isResettingProvider: Bool
 
     /// Reports whether a command can begin from the represented domain state.
-    ///
-    /// Provider reset blocks every command before command-specific rules apply.
     ///
     /// - Parameter command: The playback operation the user is requesting.
     /// - Returns: `true` when the reducer may begin the requested operation.
     func allows(_ command: PlaybackCommand) -> Bool {
-        guard !isResettingProvider else { return false }
-
         switch command {
         case .playPause:
             return queue.currentTrackID != nil

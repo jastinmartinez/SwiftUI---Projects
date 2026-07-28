@@ -17,7 +17,6 @@ struct AppPlaybackPresentationTests {
         )
         let queue = IdentifiedArray(uniqueElements: [song])
         let playback = PlaybackFeature.State(
-            providerID: "fake",
             queue: PlaybackQueueFeature.State(
                 tracks: queue,
                 playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
@@ -30,8 +29,6 @@ struct AppPlaybackPresentationTests {
                 trackID: song.id,
                 failure: .playbackFailed
             ),
-            playbackEligibility: .eligible,
-            capabilities: .allEnabled,
             timeline: PlaybackTimelineFeature.State(
                 confirmedPosition: 42,
                 duration: nil,
@@ -40,20 +37,9 @@ struct AppPlaybackPresentationTests {
             ),
             pendingPlaybackTransition: nil,
             pendingStatusChange: nil,
-            pendingProviderReset: nil,
             isPlayerPresented: true
         )
         let state = AppFeature.State(
-            providerConnection: ProviderConnectionFeature.State(
-                providers: [.testProvider],
-                connection: .connected(
-                    providerID: .testProvider,
-                    access: MusicProviderAccess(
-                        authorization: .authorized,
-                        playbackEligibility: .eligible
-                    )
-                )
-            ),
             search: SearchFeature.State(
                 query: "",
                 status: .loaded(
@@ -64,14 +50,9 @@ struct AppPlaybackPresentationTests {
                         providerID: .testProvider
                     )
                 ),
-                providerAccess: MusicProviderAccess(
-                    authorization: .authorized,
-                    playbackEligibility: .eligible
-                ),
                 providerID: .testProvider
             ),
-            playback: playback,
-            providerSwitch: nil
+            playback: playback
         )
         let store = TestStore(initialState: state) { AppFeature() }
 

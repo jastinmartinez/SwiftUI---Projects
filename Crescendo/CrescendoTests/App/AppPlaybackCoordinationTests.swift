@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct AppPlaybackCoordinationTests {
     @Test
-    func firstSelectionRoutesLoadedResultsAndOpensPlayer() async {
+    func searchSelectionForwardsDirectlyToPlayback() async {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
         let probe = SuspendedOperationProbe<PlaybackResource>()
@@ -163,7 +163,7 @@ struct AppPlaybackCoordinationTests {
                                 nextCursor: nil
                             )
                         }
-                    ),
+                    )
                 ]
             )
             $0.playbackResourceClients = self.makeResourceClients { _ in
@@ -183,7 +183,7 @@ struct AppPlaybackCoordinationTests {
                 )
             )
         ) {
-            guard case var .loaded(pagination) = $0.search.status else {
+            guard case .loaded(var pagination) = $0.search.status else {
                 return
             }
             pagination.status = .loading(requestID: UUID(0))
@@ -201,7 +201,7 @@ struct AppPlaybackCoordinationTests {
                 )
             )
         ) {
-            guard case var .loaded(pagination) = $0.search.status else {
+            guard case .loaded(var pagination) = $0.search.status else {
                 return
             }
             pagination.tracks.append(laterSong)
@@ -252,42 +252,12 @@ struct AppPlaybackCoordinationTests {
         await probe.waitUntilCancelled()
     }
 
-    @Test
-    func providerSwitchRejectsSearchSelection() async {
-        let tracks = makeTracks()
-        let loadedResults = IdentifiedArray(uniqueElements: tracks)
-        let state = makeState(
-            providerSwitch: ProviderSwitchFeature.State(
-                sourceProviderID: providerID,
-                phase: .ready(targetProviderID: "other")
-            )
-        )
-        let store = makeStore(state: state)
-
-        await store.send(
-            .search(
-                .delegate(
-                    .trackTapped(
-                        tracks[0],
-                        loadedResults: loadedResults
-                    )
-                )
-            )
-        )
-
-        #expect(store.state == state)
-    }
-
     // MARK: - Helpers
 
     private let providerID = ProviderID(rawValue: "fake")
 
     private func makeStore(
         state: AppFeature.State? = nil,
-        access: MusicProviderAccess = MusicProviderAccess(
-            authorization: .authorized,
-            playbackEligibility: .eligible
-        ),
         playbackQueue: PlaybackQueueFeature.State = .init(
             tracks: [],
             playbackOrder: PlaybackQueueOrder(trackIDs: []),
@@ -301,7 +271,6 @@ struct AppPlaybackCoordinationTests {
         TestStore(
             initialState: state
                 ?? makeState(
-                    access: access,
                     playbackQueue: playbackQueue,
                     isPlayerPresented: isPlayerPresented
                 )
@@ -314,10 +283,6 @@ struct AppPlaybackCoordinationTests {
     }
 
     private func makeState(
-        access: MusicProviderAccess = MusicProviderAccess(
-            authorization: .authorized,
-            playbackEligibility: .eligible
-        ),
         playbackQueue: PlaybackQueueFeature.State = .init(
             tracks: [],
             playbackOrder: PlaybackQueueOrder(trackIDs: []),
@@ -325,41 +290,18 @@ struct AppPlaybackCoordinationTests {
             repeatMode: .off,
             shuffleMode: .off
         ),
-        isPlayerPresented: Bool = false,
-        providerSwitch: ProviderSwitchFeature.State? = nil
+        isPlayerPresented: Bool = false
     ) -> AppFeature.State {
         AppFeature.State(
-            providerConnection: ProviderConnectionFeature.State(
-                providers: [
-                    ProviderDescriptor(
-                        id: providerID,
-                        name: "Fake",
-                        musicCapabilities: .allEnabled
-                    ),
-                    ProviderDescriptor(
-                        id: "other",
-                        name: "Other",
-                        musicCapabilities: .allEnabled
-                    ),
-                ],
-                connection: .connected(
-                    providerID: providerID,
-                    access: access
-                )
-            ),
             search: SearchFeature.State(
                 query: "",
                 status: .idle,
-                providerAccess: access,
                 providerID: providerID
             ),
             playback: PlaybackFeature.State(
-                providerID: providerID,
                 queue: playbackQueue,
                 status: playbackQueue.currentTrack == nil ? .idle : .playing,
                 failureNotice: nil,
-                playbackEligibility: access.playbackEligibility,
-                capabilities: .allEnabled,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: 0,
                     duration: nil,
@@ -368,10 +310,8 @@ struct AppPlaybackCoordinationTests {
                 ),
                 pendingPlaybackTransition: nil,
                 pendingStatusChange: nil,
-                pendingProviderReset: nil,
                 isPlayerPresented: isPlayerPresented
-            ),
-            providerSwitch: providerSwitch
+            )
         )
     }
 

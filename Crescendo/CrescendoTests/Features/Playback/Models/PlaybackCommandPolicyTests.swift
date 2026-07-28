@@ -5,11 +5,6 @@ import Testing
 @testable import Crescendo
 
 struct PlaybackCommandPolicyTests {
-    @Test(arguments: PlaybackCommand.allCases)
-    func providerResetBlocksEveryCommand(_ command: PlaybackCommand) {
-        #expect(!makePolicy(isResettingProvider: true).allows(command))
-    }
-
     @Test(arguments: playPauseCases)
     func playPauseFollowsSharedPolicy(_ testCase: CommandPolicyCase) {
         #expect(
@@ -277,8 +272,7 @@ private func makePolicy(
     duration: TimeInterval? = 180,
     isSeekable: Bool = true,
     pendingPlaybackTransition: PendingPlaybackTransition? = nil,
-    pendingStatusChange: PlaybackFeature.PendingStatusChange? = nil,
-    isResettingProvider: Bool = false
+    pendingStatusChange: PlaybackFeature.PendingStatusChange? = nil
 ) -> PlaybackCommandPolicy {
     PlaybackCommandPolicy(
         queue: queue,
@@ -286,8 +280,7 @@ private func makePolicy(
         duration: duration,
         isSeekable: isSeekable,
         pendingPlaybackTransition: pendingPlaybackTransition,
-        pendingStatusChange: pendingStatusChange,
-        isResettingProvider: isResettingProvider
+        pendingStatusChange: pendingStatusChange
     )
 }
 
