@@ -52,9 +52,7 @@ struct AppPlaybackCoordinationTests {
         )
         await probe.waitUntilStarted()
 
-        await store.send(.playback(.cancelPlaybackTransition)) {
-            $0.playback.pendingPlaybackTransition = nil
-        }
+        await cancelPlaybackTransition(in: store)
         await probe.waitUntilCancelled()
     }
 
@@ -119,9 +117,7 @@ struct AppPlaybackCoordinationTests {
         #expect(!store.state.playback.isPlayerPresented)
         #expect(store.state.playback.queue.tracks == currentQueue)
 
-        await store.send(.playback(.cancelPlaybackTransition)) {
-            $0.playback.pendingPlaybackTransition = nil
-        }
+        await cancelPlaybackTransition(in: store)
         await probe.waitUntilCancelled()
     }
 
@@ -246,15 +242,40 @@ struct AppPlaybackCoordinationTests {
                 == laterResults
         )
 
-        await store.send(.playback(.cancelPlaybackTransition)) {
-            $0.playback.pendingPlaybackTransition = nil
-        }
+        await cancelPlaybackTransition(in: store)
         await probe.waitUntilCancelled()
     }
 
     // MARK: - Helpers
 
     private let providerID = ProviderID(rawValue: "fake")
+
+    private func cancelPlaybackTransition(
+        in store: TestStoreOf<AppFeature>
+    ) async {
+        guard
+            let pending = store.state.playback.pendingPlaybackTransition
+        else {
+            Issue.record("Expected a pending playback transition")
+            return
+        }
+        let installation = pending.rollbackInstallation
+        await store.send(.playback(.cancelPlaybackTransition)) {
+            $0.playback.pendingPlaybackTransition?.settlement = .rollingBack(
+                .abandoning(
+                    installation,
+                    followUp: .none
+                )
+            )
+        }
+        await store.receive(
+            .playback(
+                .transitionRollbackCompleted(requestID: pending.requestID)
+            )
+        ) {
+            $0.playback.pendingPlaybackTransition = nil
+        }
+    }
 
     private func makeStore(
         state: AppFeature.State? = nil,
@@ -278,6 +299,7 @@ struct AppPlaybackCoordinationTests {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
+            $0.playbackItem.rollback = { _ in }
             configureDependencies(&$0)
         }
     }

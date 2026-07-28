@@ -11,8 +11,31 @@ struct PendingPlaybackTransition: Equatable {
         case navigation
     }
 
-    /// One mutually exclusive infrastructure settlement blocking transition
-    /// work.
+    /// One mutually exclusive infrastructure settlement phase.
+    enum Settlement: Equatable {
+        case none
+        case rollingBack(Rollback)
+        case committing(Commit)
+        case applyingCommit(Commit)
+    }
+
+    struct Commit: Equatable {
+        var snapshot: PlaybackSnapshot
+        var followUp: FollowUp? = nil
+    }
+
+    enum FollowUp: Equatable {
+        case transition(TransitionIntent)
+        case stop(requestID: UUID)
+    }
+
+    struct TransitionIntent: Equatable {
+        let requestID: UUID
+        let queue: IdentifiedArrayOf<Track>
+        let targetTrackID: TrackID
+        let origin: Origin
+    }
+
     enum Rollback: Equatable {
         case superseding(PlaybackItemInstallation)
         case abandoning(
@@ -43,13 +66,36 @@ struct PendingPlaybackTransition: Equatable {
     /// Records that the player has been handed the target item, so a snapshot
     /// bearing the target identity can no longer be describing the old item.
     var hasLoadedItem: Bool = false
-    /// Delays new work or final teardown until a staged item is restored.
-    var rollback: Rollback? = nil
+    /// Retains ownership until commit or rollback settlement is fully applied.
+    var settlement: Settlement = .none
 
-    var installation: PlaybackItemInstallation? {
-        rollback?.installation
-            ?? (hasLoadedItem
-                ? PlaybackItemInstallation(id: requestID)
-                : nil)
+    var installation: PlaybackItemInstallation {
+        PlaybackItemInstallation(id: requestID)
+    }
+
+    var rollbackInstallation: PlaybackItemInstallation {
+        guard case .rollingBack(let rollback) = settlement else {
+            return installation
+        }
+        return rollback.installation
+    }
+
+    var canAdvance: Bool {
+        settlement == .none
+    }
+
+    mutating func retainLatestFollowUp(_ followUp: FollowUp) -> Bool {
+        switch settlement {
+        case .committing(var commit):
+            commit.followUp = followUp
+            settlement = .committing(commit)
+            return true
+        case .applyingCommit(var commit):
+            commit.followUp = followUp
+            settlement = .applyingCommit(commit)
+            return true
+        case .none, .rollingBack:
+            return false
+        }
     }
 }
