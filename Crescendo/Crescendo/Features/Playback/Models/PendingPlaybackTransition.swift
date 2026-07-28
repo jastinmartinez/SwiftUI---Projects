@@ -11,6 +11,29 @@ struct PendingPlaybackTransition: Equatable {
         case navigation
     }
 
+    /// One mutually exclusive infrastructure settlement blocking transition
+    /// work.
+    enum Rollback: Equatable {
+        case superseding(PlaybackItemInstallation)
+        case abandoning(
+            PlaybackItemInstallation,
+            followUp: FollowUp
+        )
+
+        enum FollowUp: Equatable {
+            case none
+            case stop(requestID: UUID)
+        }
+
+        var installation: PlaybackItemInstallation {
+            switch self {
+            case .superseding(let installation),
+                .abandoning(let installation, _):
+                installation
+            }
+        }
+    }
+
     let requestID: UUID
     let queue: IdentifiedArrayOf<Track>
     let targetTrackID: TrackID
@@ -20,4 +43,13 @@ struct PendingPlaybackTransition: Equatable {
     /// Records that the player has been handed the target item, so a snapshot
     /// bearing the target identity can no longer be describing the old item.
     var hasLoadedItem: Bool = false
+    /// Delays new work or final teardown until a staged item is restored.
+    var rollback: Rollback? = nil
+
+    var installation: PlaybackItemInstallation? {
+        rollback?.installation
+            ?? (hasLoadedItem
+                ? PlaybackItemInstallation(id: requestID)
+                : nil)
+    }
 }

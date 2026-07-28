@@ -54,6 +54,7 @@ struct PlaybackFeature {
             trackID: TrackID,
             failure: PlaybackFailure
         )
+        case transitionRollbackCompleted(requestID: UUID)
         case cancelPlaybackTransition
         case playPauseTapped
         case stopTapped
@@ -125,6 +126,10 @@ struct PlaybackFeature {
                     return .none
                 }
 
+                let rollbackInstallation =
+                    state.pendingPlaybackTransition.flatMap {
+                        $0.installation
+                    }
                 if !hasNowPlaying {
                     state.isPlayerPresented = true
                 }
@@ -133,25 +138,41 @@ struct PlaybackFeature {
                     requestID: requestID,
                     queue: loadedResults,
                     targetTrackID: trackID,
-                    origin: .selection
+                    origin: .selection,
+                    rollback: rollbackInstallation.map {
+                        .superseding($0)
+                    }
                 )
                 state.failureNotice = nil
                 // A newer selection supersedes an older transport request.
                 state.pendingStatusChange = nil
-                return .concatenate(
-                    .cancel(id: CancelID.statusChange),
-                    .send(
+                let transitionEffect: Effect<Action>
+                if let rollbackInstallation {
+                    transitionEffect = .concatenate(
+                        .cancel(id: CancelID.playbackTransition),
+                        rollbackEffect(
+                            rollbackInstallation,
+                            requestID: requestID
+                        )
+                    )
+                } else {
+                    transitionEffect = .send(
                         .resolveTransition(
                             requestID: requestID,
                             trackID: trackID
                         )
                     )
+                }
+                return .concatenate(
+                    .cancel(id: CancelID.statusChange),
+                    transitionEffect
                 )
 
             case .resolveTransition(let requestID, let trackID):
                 guard let pending = state.pendingPlaybackTransition,
                     pending.requestID == requestID,
-                    pending.targetTrackID == trackID
+                    pending.targetTrackID == trackID,
+                    pending.rollback == nil
                 else { return .none }
 
                 let resourceClient = playbackResourceClients[trackID.providerID]
@@ -202,7 +223,8 @@ struct PlaybackFeature {
             case .transitionResourceResolved(let requestID, let resource):
                 guard let pending = state.pendingPlaybackTransition,
                     pending.requestID == requestID,
-                    pending.targetTrackID == resource.trackID
+                    pending.targetTrackID == resource.trackID,
+                    pending.rollback == nil
                 else { return .none }
                 return .send(
                     .loadTransition(requestID: requestID, resource: resource)
@@ -211,14 +233,17 @@ struct PlaybackFeature {
             case .loadTransition(let requestID, let resource):
                 guard let pending = state.pendingPlaybackTransition,
                     pending.requestID == requestID,
-                    pending.targetTrackID == resource.trackID
+                    pending.targetTrackID == resource.trackID,
+                    pending.rollback == nil
                 else { return .none }
+                let installation = PlaybackItemInstallation(id: requestID)
                 return .run { send in
                     do {
-                        try await playbackItem.load(resource)
+                        try await playbackItem.load(resource, installation)
                         try Task.checkCancellation()
                         await send(.transitionItemLoaded(requestID: requestID))
                     } catch is CancellationError {
+                        await playbackItem.rollback(installation)
                         return
                     } catch let failure as PlaybackFailure {
                         guard !Task.isCancelled else { return }
@@ -244,8 +269,9 @@ struct PlaybackFeature {
                 )
 
             case .transitionItemLoaded(let requestID):
-                guard
-                    state.pendingPlaybackTransition?.requestID == requestID
+                guard let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID,
+                    pending.rollback == nil
                 else { return .none }
                 // The player now holds the target item, so a snapshot bearing
                 // the target identity can finally be trusted as installation.
@@ -254,9 +280,11 @@ struct PlaybackFeature {
 
             case .playTransition(let requestID):
                 guard let pending = state.pendingPlaybackTransition,
-                    pending.requestID == requestID
+                    pending.requestID == requestID,
+                    pending.rollback == nil
                 else { return .none }
                 let trackID = pending.targetTrackID
+                let installation = PlaybackItemInstallation(id: requestID)
                 return .run { send in
                     do {
                         try await playbackTransport.play()
@@ -265,8 +293,10 @@ struct PlaybackFeature {
                             .transitionPlayRequested(requestID: requestID)
                         )
                     } catch is CancellationError {
+                        await playbackItem.rollback(installation)
                         return
                     } catch let failure as PlaybackFailure {
+                        await playbackItem.rollback(installation)
                         guard !Task.isCancelled else { return }
                         await send(
                             .transitionPlayFailed(
@@ -276,6 +306,7 @@ struct PlaybackFeature {
                             )
                         )
                     } catch {
+                        await playbackItem.rollback(installation)
                         guard !Task.isCancelled else { return }
                         await send(
                             .transitionPlayFailed(
@@ -295,6 +326,34 @@ struct PlaybackFeature {
                 // Observation stays authoritative; nothing is confirmed here.
                 return .none
 
+            case .transitionRollbackCompleted(let requestID):
+                guard let pending = state.pendingPlaybackTransition,
+                    pending.requestID == requestID
+                else { return .none }
+
+                guard let rollback = pending.rollback else { return .none }
+                switch rollback {
+                case .superseding:
+                    state.pendingPlaybackTransition?.rollback = nil
+                    return .send(
+                        .resolveTransition(
+                            requestID: requestID,
+                            trackID: pending.targetTrackID
+                        )
+                    )
+                case .abandoning(_, followUp: .none):
+                    state.pendingPlaybackTransition = nil
+                    return .none
+                case .abandoning(_, followUp: .stop(let stopRequestID)):
+                    state.pendingPlaybackTransition = nil
+                    return .send(
+                        .performStatusChange(
+                            requestID: stopRequestID,
+                            target: .stopped
+                        )
+                    )
+                }
+
             case .transitionResolutionFailed(let requestID, let failure),
                 .transitionItemLoadFailed(let requestID, let failure):
                 guard let pending = state.pendingPlaybackTransition,
@@ -308,17 +367,11 @@ struct PlaybackFeature {
                 state.pendingPlaybackTransition = nil
                 return .none
 
-            case .transitionPlayFailed(
-                let
-                    requestID,
-                let
-                    trackID,
-                let
-                    failure
-            ):
+            case .transitionPlayFailed(let requestID, let trackID, let failure):
                 if let pending = state.pendingPlaybackTransition {
                     guard pending.requestID == requestID,
-                        pending.targetTrackID == trackID
+                        pending.targetTrackID == trackID,
+                        pending.rollback == nil
                     else { return .none }
                     state.pendingPlaybackTransition = nil
                 } else {
@@ -334,8 +387,25 @@ struct PlaybackFeature {
                 return .none
 
             case .cancelPlaybackTransition:
-                state.pendingPlaybackTransition = nil
-                return .cancel(id: CancelID.playbackTransition)
+                guard let pending = state.pendingPlaybackTransition else {
+                    return .cancel(id: CancelID.playbackTransition)
+                }
+                guard let installation = pending.installation
+                else {
+                    state.pendingPlaybackTransition = nil
+                    return .cancel(id: CancelID.playbackTransition)
+                }
+                state.pendingPlaybackTransition?.rollback = .abandoning(
+                    installation,
+                    followUp: .none
+                )
+                return .concatenate(
+                    .cancel(id: CancelID.playbackTransition),
+                    rollbackEffect(
+                        installation,
+                        requestID: pending.requestID
+                    )
+                )
 
             case .playPauseTapped:
                 guard state.canRequestPlayPause else { return .none }
@@ -363,7 +433,32 @@ struct PlaybackFeature {
                 )
                 state.failureNotice = nil
                 // Stopping abandons the track that is about to play.
-                state.pendingPlaybackTransition = nil
+                if let pending = state.pendingPlaybackTransition {
+                    guard let installation = pending.installation
+                    else {
+                        state.pendingPlaybackTransition = nil
+                        return .concatenate(
+                            .cancel(id: CancelID.playbackTransition),
+                            .send(
+                                .performStatusChange(
+                                    requestID: requestID,
+                                    target: .stopped
+                                )
+                            )
+                        )
+                    }
+                    state.pendingPlaybackTransition?.rollback = .abandoning(
+                        installation,
+                        followUp: .stop(requestID: requestID)
+                    )
+                    return .concatenate(
+                        .cancel(id: CancelID.playbackTransition),
+                        rollbackEffect(
+                            installation,
+                            requestID: pending.requestID
+                        )
+                    )
+                }
                 return .concatenate(
                     .cancel(id: CancelID.playbackTransition),
                     .send(
@@ -527,8 +622,22 @@ struct PlaybackFeature {
                         trackID: pending.targetTrackID,
                         failure: failure
                     )
-                    state.pendingPlaybackTransition = nil
-                    return .cancel(id: CancelID.playbackTransition)
+                    guard let installation = pending.installation
+                    else {
+                        state.pendingPlaybackTransition = nil
+                        return .cancel(id: CancelID.playbackTransition)
+                    }
+                    state.pendingPlaybackTransition?.rollback = .abandoning(
+                        installation,
+                        followUp: .none
+                    )
+                    return .concatenate(
+                        .cancel(id: CancelID.playbackTransition),
+                        rollbackEffect(
+                            installation,
+                            requestID: pending.requestID
+                        )
+                    )
                 }
 
                 guard trackID == nil || trackID == state.queue.currentTrackID,
@@ -562,6 +671,9 @@ struct PlaybackFeature {
                     observedTrackID == pending.targetTrackID
                 {
                     state.pendingPlaybackTransition = nil
+                    let installation = PlaybackItemInstallation(
+                        id: pending.requestID
+                    )
                     if state.failureNotice?.trackID == observedTrackID {
                         state.failureNotice = nil
                     }
@@ -587,6 +699,9 @@ struct PlaybackFeature {
                         )
                     }
                     return .concatenate(
+                        .run { _ in
+                            await playbackItem.commit(installation)
+                        },
                         queueEffect,
                         .send(
                             .timeline(.positionObserved(snapshot.position))
@@ -670,29 +785,58 @@ struct PlaybackFeature {
                 guard state.queue.tracks[id: trackID] != nil
                 else { return .none }
 
+                let rollbackInstallation =
+                    state.pendingPlaybackTransition.flatMap {
+                        $0.installation
+                    }
                 let requestID = uuid()
                 state.pendingPlaybackTransition = PendingPlaybackTransition(
                     requestID: requestID,
                     queue: state.queue.tracks,
                     targetTrackID: trackID,
-                    origin: .navigation
+                    origin: .navigation,
+                    rollback: rollbackInstallation.map {
+                        .superseding($0)
+                    }
                 )
                 state.failureNotice = nil
                 // A newer transition supersedes an older transport request.
                 state.pendingStatusChange = nil
-                return .concatenate(
-                    .cancel(id: CancelID.statusChange),
-                    .send(
+                let transitionEffect: Effect<Action>
+                if let rollbackInstallation {
+                    transitionEffect = .concatenate(
+                        .cancel(id: CancelID.playbackTransition),
+                        rollbackEffect(
+                            rollbackInstallation,
+                            requestID: requestID
+                        )
+                    )
+                } else {
+                    transitionEffect = .send(
                         .resolveTransition(
                             requestID: requestID,
                             trackID: trackID
                         )
                     )
+                }
+                return .concatenate(
+                    .cancel(id: CancelID.statusChange),
+                    transitionEffect
                 )
 
             case .queue, .timeline:
                 return .none
             }
+        }
+    }
+
+    private func rollbackEffect(
+        _ installation: PlaybackItemInstallation,
+        requestID: UUID
+    ) -> Effect<Action> {
+        .run { send in
+            await playbackItem.rollback(installation)
+            await send(.transitionRollbackCompleted(requestID: requestID))
         }
     }
 }

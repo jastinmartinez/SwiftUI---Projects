@@ -29,16 +29,17 @@ struct AVPlayerPlaybackEngineTests {
             preparer: preparer
         )
         let trackID = TrackID(providerID: .jamendo, nativeID: "shared")
-        let resource = PlaybackResource(
+        let resource = try PlaybackResource(
             trackID: trackID,
             location: .progressive(
-                try #require(URL(string: "memory://shared"))
+                #require(URL(string: "memory://shared"))
             )
         )
 
         #expect(player.currentItem == nil)
 
-        try await engine.item.load(resource)
+        let installation = PlaybackItemInstallation(id: UUID(0))
+        try await engine.item.load(resource, installation)
         try await engine.transport.play()
         try await engine.transport.stop()
         try await engine.timeline.seek(0)
@@ -59,6 +60,8 @@ struct AVPlayerPlaybackEngineTests {
             return
         }
         #expect(snapshot.currentTrackID == trackID)
+
+        await engine.item.commit(installation)
     }
 
     /// A rejected asset must not replace or register over the last confirmed
@@ -92,20 +95,62 @@ struct AVPlayerPlaybackEngineTests {
             providerID: .jamendo,
             nativeID: "rejected"
         )
-        let resource = PlaybackResource(
+        let resource = try PlaybackResource(
             trackID: rejectedTrackID,
             location: .progressive(
-                try #require(URL(string: "memory://rejected"))
+                #require(URL(string: "memory://rejected"))
             )
         )
 
         await #expect(throws: PlaybackFailure.unsupportedResource) {
-            try await engine.item.load(resource)
+            try await engine.item.load(
+                resource,
+                PlaybackItemInstallation(id: UUID(0))
+            )
         }
 
         #expect(makeItemCallCount.value == 0)
         #expect(player.currentItem === sentinelItem)
         #expect(registry.trackID(for: sentinelItem) == sentinelTrackID)
         #expect(registry.trackID(for: player.currentItem) != rejectedTrackID)
+    }
+
+    @Test
+    func liveItemClientRollbackRestoresConfirmedPlayerIdentity() async throws {
+        let confirmedItem = AVPlayerItemFixture.make()
+        let player = AVPlayer(playerItem: confirmedItem)
+        let registry = AVPlayerItemRegistry()
+        let confirmedTrackID = TrackID(
+            providerID: .localMusic,
+            nativeID: "confirmed"
+        )
+        registry.register(confirmedItem, trackID: confirmedTrackID)
+        let targetItem = AVPlayerItemFixture.make()
+        let engine = AVPlayerPlaybackEngine.live(
+            player: player,
+            preparer: AVPlayerItemPreparer(
+                loadIsPlayable: { _ in true },
+                makeItem: { _ in targetItem }
+            ),
+            registry: registry
+        )
+        let targetTrackID = TrackID(
+            providerID: .jamendo,
+            nativeID: "target"
+        )
+        let resource = try PlaybackResource(
+            trackID: targetTrackID,
+            location: .progressive(
+                #require(URL(string: "memory://target"))
+            )
+        )
+        let installation = PlaybackItemInstallation(id: UUID(0))
+
+        try await engine.item.load(resource, installation)
+        await engine.item.rollback(installation)
+
+        #expect(player.currentItem === confirmedItem)
+        #expect(registry.trackID(for: confirmedItem) == confirmedTrackID)
+        #expect(registry.trackID(for: targetItem) == nil)
     }
 }

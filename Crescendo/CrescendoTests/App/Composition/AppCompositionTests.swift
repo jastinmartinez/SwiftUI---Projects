@@ -96,7 +96,10 @@ struct AppCompositionTests {
 
         #expect(player.currentItem == nil)
 
-        try await composition.playbackItem.load(resource)
+        try await composition.playbackItem.load(
+            resource,
+            PlaybackItemInstallation(id: UUID(0))
+        )
         try await composition.playbackTransport.play()
         try await composition.playbackTransport.stop()
         try await composition.playbackTimeline.seek(0)

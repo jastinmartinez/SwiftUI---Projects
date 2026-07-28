@@ -1,26 +1,70 @@
 @preconcurrency import AVFoundation
 
 @MainActor
-struct AVPlayerItemInstaller {
+final class AVPlayerItemInstaller {
+    private struct StagedInstallation {
+        let token: PlaybackItemInstallation
+        let targetItem: AVPlayerItem
+        let previousItem: AVPlayerItem?
+    }
+
     let player: AVPlayer
     let registry: AVPlayerItemRegistry
+    private var stagedInstallation: StagedInstallation?
 
-    /// Commits a prepared item only while its originating task is current.
+    init(player: AVPlayer, registry: AVPlayerItemRegistry) {
+        self.player = player
+        self.registry = registry
+    }
+
+    /// Stages a prepared item only while its originating task is current.
     ///
     /// - Parameters:
     ///   - item: The already validated player item.
     ///   - resource: The resource carrying the identity to observe later.
+    ///   - installation: The reducer-correlated installation identity.
     /// - Throws: `CancellationError` when newer work cancelled installation.
     func install(
         _ item: AVPlayerItem,
-        for resource: PlaybackResource
+        for resource: PlaybackResource,
+        installation: PlaybackItemInstallation
     ) throws {
         try Task.checkCancellation()
-        let previousItem = player.currentItem
+        let previousItem =
+            stagedInstallation?.previousItem ?? player.currentItem
+        if let stagedInstallation {
+            registry.remove(stagedInstallation.targetItem)
+        }
         registry.register(item, trackID: resource.trackID)
         player.replaceCurrentItem(with: item)
-        if let previousItem {
+        stagedInstallation = StagedInstallation(
+            token: installation,
+            targetItem: item,
+            previousItem: previousItem
+        )
+    }
+
+    /// Makes a staged target permanent without letting stale work touch newer
+    /// staged installation state.
+    func commit(_ installation: PlaybackItemInstallation) {
+        guard let stagedInstallation,
+            stagedInstallation.token == installation
+        else { return }
+        if let previousItem = stagedInstallation.previousItem {
             registry.remove(previousItem)
         }
+        self.stagedInstallation = nil
+    }
+
+    /// Restores the prior item only when the token still identifies the newest
+    /// staged installation.
+    func rollback(_ installation: PlaybackItemInstallation) {
+        guard let stagedInstallation,
+            stagedInstallation.token == installation
+        else { return }
+
+        player.replaceCurrentItem(with: stagedInstallation.previousItem)
+        registry.remove(stagedInstallation.targetItem)
+        self.stagedInstallation = nil
     }
 }

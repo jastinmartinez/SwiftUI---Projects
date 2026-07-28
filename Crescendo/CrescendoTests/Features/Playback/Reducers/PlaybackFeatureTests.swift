@@ -1,3 +1,4 @@
+@preconcurrency import AVFoundation
 import ComposableArchitecture
 import Foundation
 import Testing
@@ -365,7 +366,8 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { _ in try await probe.run() }
+            $0.playbackItem.load = { _, _ in try await probe.run() }
+            $0.playbackItem.rollback = { _ in }
         }
 
         await store.send(
@@ -413,7 +415,7 @@ struct PlaybackFeatureTests {
                 resolvedTrackIDs.withValue { $0.append(trackID) }
                 return resource
             }
-            $0.playbackItem.load = { _ in }
+            $0.playbackItem.load = { _, _ in }
             $0.playbackTransport.play = {}
         }
 
@@ -458,7 +460,7 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { loaded in
+            $0.playbackItem.load = { loaded, _ in
                 loadedResources.withValue { $0.append(loaded) }
             }
             $0.playbackTransport.play = {}
@@ -507,7 +509,7 @@ struct PlaybackFeatureTests {
                 calls.withValue { $0.append("resolve") }
                 return resource
             }
-            $0.playbackItem.load = { _ in
+            $0.playbackItem.load = { _, _ in
                 calls.withValue { $0.append("load") }
             }
             $0.playbackTransport.play = {
@@ -555,7 +557,7 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { _ in }
+            $0.playbackItem.load = { _, _ in }
             $0.playbackTransport.play = {}
         }
 
@@ -615,8 +617,17 @@ struct PlaybackFeatureTests {
             status: .playing,
             position: 7
         )
-        let store = makeStore(pendingPlaybackTransition: pending)
+        let committedInstallations =
+            LockIsolated<[PlaybackItemInstallation]>([])
+        let store = makeStore(pendingPlaybackTransition: pending) {
+            $0.playbackItem.commit = { installation in
+                committedInstallations.withValue {
+                    $0.append(installation)
+                }
+            }
+        }
 
+        #expect(committedInstallations.value.isEmpty)
         await store.send(.observationReceived(.snapshot(snapshot)))
         await store.receive(.reconcileSnapshot(snapshot)) {
             $0.status = .playing
@@ -638,6 +649,10 @@ struct PlaybackFeatureTests {
 
         #expect(store.state.queue.currentTrack == tracks[1])
         #expect(store.state.pendingPlaybackTransition == nil)
+        #expect(
+            committedInstallations.value
+                == [PlaybackItemInstallation(id: UUID(0))]
+        )
     }
 
     @Test
@@ -835,7 +850,7 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { _ in
+            $0.playbackItem.load = { _, _ in
                 throw PlaybackFailure.preparationFailed
             }
             $0.playbackTransport.play = {
@@ -904,7 +919,8 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { _ in }
+            $0.playbackItem.load = { _, _ in }
+            $0.playbackItem.rollback = { _ in }
             $0.playbackTransport.play = {
                 throw MusicProviderError.playbackFailed
             }
@@ -955,6 +971,328 @@ struct PlaybackFeatureTests {
     }
 
     @Test
+    func liveInstalledItemRollsBackWhenTransportPlayFails() async throws {
+        let confirmed = makeTrack(
+            providerID: .localMusic,
+            nativeID: "confirmed"
+        )
+        let target = makeTrack(providerID: .jamendo, nativeID: "target")
+        let confirmedItem = AVPlayerItemFixture.make()
+        let targetItem = AVPlayerItemFixture.make()
+        let player = AVPlayer(playerItem: confirmedItem)
+        let registry = AVPlayerItemRegistry()
+        registry.register(confirmedItem, trackID: confirmed.id)
+        let engine = AVPlayerPlaybackEngine.live(
+            player: player,
+            preparer: AVPlayerItemPreparer(
+                loadIsPlayable: { _ in true },
+                makeItem: { _ in targetItem }
+            ),
+            registry: registry
+        )
+        let resource = try PlaybackResource(
+            trackID: target.id,
+            location: .progressive(
+                #require(URL(string: "memory://target"))
+            )
+        )
+        let confirmedQueue: IdentifiedArrayOf<Track> = [confirmed]
+        let targetQueue: IdentifiedArrayOf<Track> = [target]
+        let playProbe = SuspendedOperationProbe<Void>()
+        let store = makeStore(
+            queue: PlaybackQueueFeature.State(
+                tracks: confirmedQueue,
+                playbackOrder: PlaybackQueueOrder(
+                    trackIDs: [confirmed.id]
+                ),
+                currentTrackID: confirmed.id,
+                repeatMode: .off,
+                shuffleMode: .off
+            ),
+            status: .playing
+        ) {
+            $0.playbackResourceClients = ProviderClientRegistry(
+                clients: [
+                    .jamendo: PlaybackResourceClient { _ in resource }
+                ]
+            )
+            $0.playbackItem = engine.item
+            $0.playbackTransport.play = playProbe.run
+        }
+
+        await store.send(
+            .selectionReceived(target.id, loadedResults: targetQueue)
+        ) {
+            $0.pendingPlaybackTransition = PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: targetQueue,
+                targetTrackID: target.id
+            )
+        }
+        await store.receive(
+            .resolveTransition(requestID: UUID(0), trackID: target.id)
+        )
+        await store.receive(
+            .transitionResourceResolved(requestID: UUID(0), resource: resource)
+        )
+        await store.receive(
+            .loadTransition(requestID: UUID(0), resource: resource)
+        )
+        await store.receive(.transitionItemLoaded(requestID: UUID(0))) {
+            $0.pendingPlaybackTransition?.hasLoadedItem = true
+        }
+        await store.receive(.playTransition(requestID: UUID(0)))
+        await playProbe.waitUntilStarted()
+        #expect(player.currentItem === targetItem)
+        #expect(registry.trackID(for: targetItem) == target.id)
+
+        playProbe.fail(with: PlaybackFailure.playbackFailed)
+        await store.receive(
+            .transitionPlayFailed(
+                requestID: UUID(0),
+                trackID: target.id,
+                failure: .playbackFailed
+            )
+        ) {
+            $0.failureNotice = PlaybackFailureNotice(
+                trackID: target.id,
+                failure: .playbackFailed
+            )
+            $0.pendingPlaybackTransition = nil
+        }
+
+        #expect(player.currentItem === confirmedItem)
+        #expect(registry.trackID(for: confirmedItem) == confirmed.id)
+        #expect(registry.trackID(for: targetItem) == nil)
+        #expect(store.state.queue.tracks == confirmedQueue)
+        #expect(store.state.queue.currentTrackID == confirmed.id)
+    }
+
+    @Test
+    func supersedingAnInstalledTargetRestoresConfirmedItemBeforeResolvingNext()
+        async throws
+    {
+        let confirmed = makeTrack(nativeID: "confirmed")
+        let firstTarget = makeTrack(nativeID: "first-target")
+        let secondTarget = makeTrack(nativeID: "second-target")
+        let confirmedItem = AVPlayerItemFixture.make()
+        let firstTargetItem = AVPlayerItemFixture.make()
+        let player = AVPlayer(playerItem: confirmedItem)
+        let registry = AVPlayerItemRegistry()
+        registry.register(confirmedItem, trackID: confirmed.id)
+        let engine = AVPlayerPlaybackEngine.live(
+            player: player,
+            preparer: AVPlayerItemPreparer(
+                loadIsPlayable: { _ in true },
+                makeItem: { _ in firstTargetItem }
+            ),
+            registry: registry
+        )
+        let firstResource = makeResource(for: firstTarget.id)
+        let secondResolveProbe = SuspendedOperationProbe<PlaybackResource>()
+        let playProbe = SuspendedOperationProbe<Void>()
+        let confirmedQueue: IdentifiedArrayOf<Track> = [confirmed]
+        let firstResults: IdentifiedArrayOf<Track> = [firstTarget]
+        let secondResults: IdentifiedArrayOf<Track> = [secondTarget]
+        let store = makeStore(
+            queue: PlaybackQueueFeature.State(
+                tracks: confirmedQueue,
+                playbackOrder: PlaybackQueueOrder(
+                    trackIDs: [confirmed.id]
+                ),
+                currentTrackID: confirmed.id,
+                repeatMode: .off,
+                shuffleMode: .off
+            ),
+            status: .playing
+        ) {
+            $0.playbackResourceClients = self.makeResourceClients { trackID in
+                if trackID == firstTarget.id {
+                    return firstResource
+                }
+                return try await secondResolveProbe.run()
+            }
+            $0.playbackItem = engine.item
+            $0.playbackTransport.play = playProbe.run
+        }
+
+        await store.send(
+            .selectionReceived(
+                firstTarget.id,
+                loadedResults: firstResults
+            )
+        ) {
+            $0.pendingPlaybackTransition = PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: firstResults,
+                targetTrackID: firstTarget.id
+            )
+        }
+        await store.receive(
+            .resolveTransition(requestID: UUID(0), trackID: firstTarget.id)
+        )
+        await store.receive(
+            .transitionResourceResolved(
+                requestID: UUID(0),
+                resource: firstResource
+            )
+        )
+        await store.receive(
+            .loadTransition(requestID: UUID(0), resource: firstResource)
+        )
+        await store.receive(.transitionItemLoaded(requestID: UUID(0))) {
+            $0.pendingPlaybackTransition?.hasLoadedItem = true
+        }
+        await store.receive(.playTransition(requestID: UUID(0)))
+        await playProbe.waitUntilStarted()
+        #expect(player.currentItem === firstTargetItem)
+
+        await store.send(
+            .selectionReceived(
+                secondTarget.id,
+                loadedResults: secondResults
+            )
+        ) {
+            $0.pendingPlaybackTransition = PendingPlaybackTransition(
+                requestID: UUID(1),
+                queue: secondResults,
+                targetTrackID: secondTarget.id,
+                rollback: .superseding(
+                    PlaybackItemInstallation(id: UUID(0))
+                )
+            )
+        }
+        await playProbe.waitUntilCancelled()
+        await store.receive(
+            .transitionRollbackCompleted(requestID: UUID(1))
+        ) {
+            $0.pendingPlaybackTransition?.rollback = nil
+        }
+        await store.receive(
+            .resolveTransition(requestID: UUID(1), trackID: secondTarget.id)
+        )
+        await secondResolveProbe.waitUntilStarted()
+
+        #expect(player.currentItem === confirmedItem)
+        #expect(registry.trackID(for: confirmedItem) == confirmed.id)
+        #expect(registry.trackID(for: firstTargetItem) == nil)
+
+        await store.send(.cancelPlaybackTransition) {
+            $0.pendingPlaybackTransition = nil
+        }
+        await secondResolveProbe.waitUntilCancelled()
+    }
+
+    @Test
+    func stopRestoresInstalledTargetBeforeStartingTransportStop() async throws {
+        let confirmed = makeTrack(nativeID: "confirmed")
+        let target = makeTrack(nativeID: "target")
+        let confirmedItem = AVPlayerItemFixture.make()
+        let targetItem = AVPlayerItemFixture.make()
+        let player = AVPlayer(playerItem: confirmedItem)
+        let registry = AVPlayerItemRegistry()
+        registry.register(confirmedItem, trackID: confirmed.id)
+        let engine = AVPlayerPlaybackEngine.live(
+            player: player,
+            preparer: AVPlayerItemPreparer(
+                loadIsPlayable: { _ in true },
+                makeItem: { _ in targetItem }
+            ),
+            registry: registry
+        )
+        let resource = makeResource(for: target.id)
+        let playProbe = SuspendedOperationProbe<Void>()
+        let stopProbe = SuspendedOperationProbe<Void>()
+        let confirmedQueue: IdentifiedArrayOf<Track> = [confirmed]
+        let targetResults: IdentifiedArrayOf<Track> = [target]
+        let store = makeStore(
+            queue: PlaybackQueueFeature.State(
+                tracks: confirmedQueue,
+                playbackOrder: PlaybackQueueOrder(
+                    trackIDs: [confirmed.id]
+                ),
+                currentTrackID: confirmed.id,
+                repeatMode: .off,
+                shuffleMode: .off
+            ),
+            status: .playing
+        ) {
+            $0.playbackResourceClients = self.makeResourceClients { _ in
+                resource
+            }
+            $0.playbackItem = engine.item
+            $0.playbackTransport.play = playProbe.run
+            $0.playbackTransport.stop = {
+                #expect(player.currentItem === confirmedItem)
+                try await stopProbe.run()
+            }
+        }
+
+        await store.send(
+            .selectionReceived(target.id, loadedResults: targetResults)
+        ) {
+            $0.pendingPlaybackTransition = PendingPlaybackTransition(
+                requestID: UUID(0),
+                queue: targetResults,
+                targetTrackID: target.id
+            )
+        }
+        await store.receive(
+            .resolveTransition(requestID: UUID(0), trackID: target.id)
+        )
+        await store.receive(
+            .transitionResourceResolved(requestID: UUID(0), resource: resource)
+        )
+        await store.receive(
+            .loadTransition(requestID: UUID(0), resource: resource)
+        )
+        await store.receive(.transitionItemLoaded(requestID: UUID(0))) {
+            $0.pendingPlaybackTransition?.hasLoadedItem = true
+        }
+        await store.receive(.playTransition(requestID: UUID(0)))
+        await playProbe.waitUntilStarted()
+
+        await store.send(.stopTapped) {
+            $0.pendingPlaybackTransition?.rollback = .abandoning(
+                PlaybackItemInstallation(id: UUID(0)),
+                followUp: .stop(requestID: UUID(1))
+            )
+            $0.pendingStatusChange = PlaybackFeature.PendingStatusChange(
+                requestID: UUID(1),
+                target: .stopped
+            )
+        }
+        await playProbe.waitUntilCancelled()
+        await store.receive(
+            .transitionRollbackCompleted(requestID: UUID(0))
+        ) {
+            $0.pendingPlaybackTransition = nil
+        }
+        await store.receive(
+            .performStatusChange(requestID: UUID(1), target: .stopped)
+        )
+        await stopProbe.waitUntilStarted()
+
+        #expect(player.currentItem === confirmedItem)
+        #expect(registry.trackID(for: confirmedItem) == confirmed.id)
+        #expect(registry.trackID(for: targetItem) == nil)
+
+        stopProbe.fail(with: PlaybackFailure.playbackFailed)
+        await store.receive(
+            .statusChangeFailed(
+                requestID: UUID(1),
+                error: .playbackFailed
+            )
+        ) {
+            $0.pendingStatusChange = nil
+            $0.failureNotice = PlaybackFailureNotice(
+                trackID: confirmed.id,
+                failure: .playbackFailed
+            )
+        }
+    }
+
+    @Test
     func playFailureAfterIdentityConfirmationStillSurfacesTheFailure() async throws {
         let tracks = makeTracks()
         let queue = IdentifiedArray(uniqueElements: tracks)
@@ -964,7 +1302,9 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { _ in }
+            $0.playbackItem.load = { _, _ in }
+            $0.playbackItem.commit = { _ in }
+            $0.playbackItem.rollback = { _ in }
             $0.playbackTransport.play = {
                 try await playProbe.run()
             }
@@ -2463,7 +2803,9 @@ struct PlaybackFeatureTests {
                 targetTrackID: nextSongs[1].id,
                 hasLoadedItem: true
             )
-        )
+        ) {
+            $0.playbackItem.commit = { _ in }
+        }
 
         let snapshot = makeSnapshot(
             itemID: nextSongs[1].id,
@@ -2514,7 +2856,9 @@ struct PlaybackFeatureTests {
                 targetTrackID: tracks[2].id,
                 hasLoadedItem: true
             )
-        )
+        ) {
+            $0.playbackItem.commit = { _ in }
+        }
 
         let snapshot = makeSnapshot(
             itemID: tracks[2].id,
@@ -2599,6 +2943,8 @@ struct PlaybackFeatureTests {
         let confirmedQueue = IdentifiedArray(uniqueElements: confirmedSongs)
         let nextSongs = makeTracks(prefix: "next")
         let nextResults = IdentifiedArray(uniqueElements: nextSongs)
+        let rolledBackInstallations =
+            LockIsolated<[PlaybackItemInstallation]>([])
         let store = makeStore(
             queue: .init(
                 tracks: confirmedQueue,
@@ -2613,9 +2959,16 @@ struct PlaybackFeatureTests {
             pendingPlaybackTransition: PendingPlaybackTransition(
                 requestID: UUID(0),
                 queue: nextResults,
-                targetTrackID: nextSongs[0].id
+                targetTrackID: nextSongs[0].id,
+                hasLoadedItem: true
             )
-        )
+        ) {
+            $0.playbackItem.rollback = { installation in
+                rolledBackInstallations.withValue {
+                    $0.append(installation)
+                }
+            }
+        }
 
         await store.send(
             .observationReceived(.failed(nextSongs[0].id, .preparationFailed))
@@ -2627,9 +2980,21 @@ struct PlaybackFeatureTests {
                 trackID: nextSongs[0].id,
                 failure: .preparationFailed
             )
+            $0.pendingPlaybackTransition?.rollback = .abandoning(
+                PlaybackItemInstallation(id: UUID(0)),
+                followUp: .none
+            )
+        }
+        await store.receive(
+            .transitionRollbackCompleted(requestID: UUID(0))
+        ) {
             $0.pendingPlaybackTransition = nil
         }
 
+        #expect(
+            rolledBackInstallations.value
+                == [PlaybackItemInstallation(id: UUID(0))]
+        )
         #expect(store.state.queue.tracks == confirmedQueue)
         #expect(store.state.queue.currentTrack == confirmedSongs[1])
         #expect(store.state.status == .playing)
@@ -2657,7 +3022,8 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 try await resolveProbe.run()
             }
-            $0.playbackItem.load = { _ in }
+            $0.playbackItem.load = { _, _ in }
+            $0.playbackItem.commit = { _ in }
             $0.playbackTransport.play = {}
         }
 
@@ -2910,7 +3276,8 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { _ in }
+            $0.playbackItem.load = { _, _ in }
+            $0.playbackItem.commit = { _ in }
             $0.playbackTransport.play = {}
         }
 
@@ -2988,7 +3355,8 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { _ in try await loadProbe.run() }
+            $0.playbackItem.load = { _, _ in try await loadProbe.run() }
+            $0.playbackItem.commit = { _ in }
             $0.playbackTransport.play = {}
         }
 
@@ -3093,7 +3461,8 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { _ in }
+            $0.playbackItem.load = { _, _ in }
+            $0.playbackItem.commit = { _ in }
             $0.playbackTransport.play = {}
         }
 
@@ -3178,7 +3547,8 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 resource
             }
-            $0.playbackItem.load = { _ in try await loadProbe.run() }
+            $0.playbackItem.load = { _, _ in try await loadProbe.run() }
+            $0.playbackItem.commit = { _ in }
             $0.playbackTransport.play = {}
         }
 
