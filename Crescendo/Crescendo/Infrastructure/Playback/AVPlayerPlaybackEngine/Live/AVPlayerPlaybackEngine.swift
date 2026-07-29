@@ -59,8 +59,11 @@ extension AVPlayerPlaybackEngine {
             player: player,
             registry: registry
         )
-        let transport = AVPlayerTransport(player: player)
         let timeline = AVPlayerTimeline(player: player)
+        let transport = AVPlayerTransport(
+            player: player,
+            timeline: timeline
+        )
         let observation = AVPlayerObservation(
             player: player,
             registry: registry,

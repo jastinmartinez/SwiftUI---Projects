@@ -66,19 +66,12 @@ struct PlaybackTimelineFeature {
                     position: position
                 )
                 return .run { send in
-                    do {
-                        try await playbackTimeline.seek(position)
-                        try Task.checkCancellation()
+                    let outcome = await playbackTimeline.seek(position)
+                    guard !Task.isCancelled else { return }
+                    switch outcome {
+                    case .completed:
                         await send(.seekSucceeded(requestID: requestID))
-                    } catch is CancellationError {
-                        return
-                    } catch let failure as PlaybackFailure {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .seekFailed(requestID: requestID, failure: failure)
-                        )
-                    } catch {
-                        guard !Task.isCancelled else { return }
+                    case .interrupted:
                         await send(
                             .seekFailed(
                                 requestID: requestID,

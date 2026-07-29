@@ -2,13 +2,16 @@ import ComposableArchitecture
 import Foundation
 
 /// Exposes provider-neutral control of the current playback position.
-@DependencyClient
 struct PlaybackTimelineClient: Sendable {
-    var seek: @Sendable (_ time: TimeInterval) async throws -> Void
+    var seek: @Sendable (_ time: TimeInterval) async -> PlaybackOperationOutcome
 }
 
 extension PlaybackTimelineClient: DependencyKey {
-    static let liveValue = Self()
+    static let liveValue = Self(
+        seek: { _ in
+            fatalError("PlaybackTimelineClient.seek is not configured")
+        }
+    )
 }
 
 extension DependencyValues {

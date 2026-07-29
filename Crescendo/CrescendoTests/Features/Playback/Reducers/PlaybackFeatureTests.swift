@@ -1265,8 +1265,15 @@ struct PlaybackFeatureTests {
                 resource
             }
             $0.playbackItem = itemClient
-            $0.playbackTransport.stop = stopProbe.run
-            $0.playbackTimeline.seek = { _ in }
+            $0.playbackTransport.stop = {
+                do {
+                    try await stopProbe.run()
+                    return .completed
+                } catch {
+                    return .interrupted
+                }
+            }
+            $0.playbackTimeline.seek = { _ in .completed }
         }
 
         await store.send(.nextTapped)
@@ -1640,8 +1647,15 @@ struct PlaybackFeatureTests {
                 commitCallCount.withValue { $0 += 1 }
             }
             $0.playbackTransport.play = playProbe.run
-            $0.playbackTransport.stop = stopProbe.run
-            $0.playbackTimeline.seek = { _ in }
+            $0.playbackTransport.stop = {
+                do {
+                    try await stopProbe.run()
+                    return .completed
+                } catch {
+                    return .interrupted
+                }
+            }
+            $0.playbackTimeline.seek = { _ in .completed }
         }
 
         store.send(.reconcileSnapshot(olderSnapshot))
@@ -2455,8 +2469,15 @@ struct PlaybackFeatureTests {
                 guard callCount == 1 else { return }
                 _ = try? await rollbackProbe.run()
             }
-            $0.playbackTransport.stop = stopProbe.run
-            $0.playbackTimeline.seek = { _ in }
+            $0.playbackTransport.stop = {
+                do {
+                    try await stopProbe.run()
+                    return .completed
+                } catch {
+                    return .interrupted
+                }
+            }
+            $0.playbackTimeline.seek = { _ in .completed }
         }
 
         await store.send(.stopTapped) {
@@ -2966,9 +2987,14 @@ struct PlaybackFeatureTests {
                 return followUpResource
             }
             $0.playbackTransport.stop = {
-                try await stopProbe.run()
+                do {
+                    try await stopProbe.run()
+                    return .completed
+                } catch {
+                    return .interrupted
+                }
             }
-            $0.playbackTimeline.seek = { _ in }
+            $0.playbackTimeline.seek = { _ in .completed }
         }
 
         await store.send(.observationReceived(.snapshot(snapshot)))
@@ -3579,7 +3605,12 @@ struct PlaybackFeatureTests {
             $0.playbackTransport.play = playProbe.run
             $0.playbackTransport.stop = {
                 #expect(player.currentItem === confirmedItem)
-                try await stopProbe.run()
+                do {
+                    try await stopProbe.run()
+                    return .completed
+                } catch {
+                    return .interrupted
+                }
             }
         }
 
@@ -4137,7 +4168,14 @@ struct PlaybackFeatureTests {
             $0.playbackResourceClients = self.makeResourceClients { _ in
                 try await resolveProbe.run()
             }
-            $0.playbackTransport.stop = stopProbe.run
+            $0.playbackTransport.stop = {
+                do {
+                    try await stopProbe.run()
+                    return .completed
+                } catch {
+                    return .interrupted
+                }
+            }
         }
 
         await store.send(
@@ -4370,7 +4408,7 @@ struct PlaybackFeatureTests {
     }
 
     @Test
-    func stopTappedStopsThenSeeksToZeroInOrder() async {
+    func stopTappedUsesTheCompleteStopCapability() async {
         let tracks = makeTracks()
         let calls = LockIsolated<[String]>([])
         let store = makeStore(
@@ -4385,9 +4423,7 @@ struct PlaybackFeatureTests {
         ) {
             $0.playbackTransport.stop = {
                 calls.withValue { $0.append("stop") }
-            }
-            $0.playbackTimeline.seek = { time in
-                calls.withValue { $0.append("seek:\(time)") }
+                return .completed
             }
         }
 
@@ -4406,7 +4442,7 @@ struct PlaybackFeatureTests {
         }
         await store.receive(.timeline(.resetPosition))
 
-        #expect(calls.value == ["stop", "seek:0.0"])
+        #expect(calls.value == ["stop"])
     }
 
     @Test
@@ -4652,8 +4688,14 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 50)
             )
         ) {
-            $0.playbackTransport.stop = {}
-            $0.playbackTimeline.seek = { _ in try await stopProbe.run() }
+            $0.playbackTransport.stop = {
+                do {
+                    try await stopProbe.run()
+                    return .completed
+                } catch {
+                    return .interrupted
+                }
+            }
         }
 
         await store.send(.stopTapped) {
@@ -4698,8 +4740,14 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 50)
             )
         ) {
-            $0.playbackTransport.stop = {}
-            $0.playbackTimeline.seek = { _ in try await stopProbe.run() }
+            $0.playbackTransport.stop = {
+                do {
+                    try await stopProbe.run()
+                    return .completed
+                } catch {
+                    return .interrupted
+                }
+            }
         }
 
         await store.send(.stopTapped) {
@@ -4877,6 +4925,7 @@ struct PlaybackFeatureTests {
         ) {
             $0.playbackTimeline.seek = { position in
                 seekPositions.withValue { $0.append(position) }
+                return .completed
             }
         }
         store.exhaustivity = .off(showSkippedAssertions: false)
@@ -4929,6 +4978,7 @@ struct PlaybackFeatureTests {
         ) {
             $0.playbackTimeline.seek = { position in
                 seekPositions.withValue { $0.append(position) }
+                return .completed
             }
         }
 
@@ -4968,9 +5018,19 @@ struct PlaybackFeatureTests {
             $0.playbackTimeline.seek = { position in
                 seekPositions.withValue { $0.append(position) }
                 if position == 30 {
-                    try await firstSeek.run()
+                    do {
+                        try await firstSeek.run()
+                        return .completed
+                    } catch {
+                        return .interrupted
+                    }
                 } else {
-                    try await replacementSeek.run()
+                    do {
+                        try await replacementSeek.run()
+                        return .completed
+                    } catch {
+                        return .interrupted
+                    }
                 }
             }
         }
@@ -5024,7 +5084,7 @@ struct PlaybackFeatureTests {
                 interaction: .dragging(position: 300)
             )
         ) {
-            $0.playbackTimeline.seek = { _ in }
+            $0.playbackTimeline.seek = { _ in .completed }
         }
 
         await store.send(.seekBackwardTapped)
@@ -5054,6 +5114,7 @@ struct PlaybackFeatureTests {
         ) {
             $0.playbackTimeline.seek = { position in
                 seekPositions.withValue { $0.append(position) }
+                return .completed
             }
         }
 

@@ -1,15 +1,25 @@
 import ComposableArchitecture
 
 /// Exposes provider-neutral controls for the current playback item.
-@DependencyClient
 struct PlaybackTransportClient: Sendable {
     var play: @Sendable () async throws -> Void
     var pause: @Sendable () async throws -> Void
-    var stop: @Sendable () async throws -> Void
+    /// Stops playback, resets elapsed position, and retains the current item.
+    var stop: @Sendable () async -> PlaybackOperationOutcome
 }
 
 extension PlaybackTransportClient: DependencyKey {
-    static let liveValue = Self()
+    static let liveValue = Self(
+        play: {
+            fatalError("PlaybackTransportClient.play is not configured")
+        },
+        pause: {
+            fatalError("PlaybackTransportClient.pause is not configured")
+        },
+        stop: {
+            fatalError("PlaybackTransportClient.stop is not configured")
+        }
+    )
 }
 
 extension DependencyValues {

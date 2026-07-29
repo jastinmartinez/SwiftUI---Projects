@@ -8,11 +8,17 @@ struct AVPlayerTimeline {
     /// Seeks to a nonnegative timeline position.
     ///
     /// - Parameter time: Desired position in seconds.
-    func seek(to time: TimeInterval) async {
+    /// - Returns: Whether the player finished the requested seek.
+    func seek(to time: TimeInterval) async -> PlaybackOperationOutcome {
         let target = CMTime(
             seconds: max(0, time),
             preferredTimescale: 600
         )
-        await player.seek(to: target)
+        let didSeek = await withCheckedContinuation { continuation in
+            player.seek(to: target) {
+                continuation.resume(returning: $0)
+            }
+        }
+        return didSeek ? .completed : .interrupted
     }
 }

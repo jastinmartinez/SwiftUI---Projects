@@ -41,13 +41,13 @@ struct AVPlayerPlaybackEngineTests {
         let installation = PlaybackItemInstallation(id: UUID(0))
         try await engine.item.load(resource, installation)
         try await engine.transport.play()
-        try await engine.transport.stop()
-        try await engine.timeline.seek(0)
+        let stopOutcome = await engine.transport.stop()
 
         #expect(player.currentItem === preparedItem)
         #expect(playCallCount.value == 1)
         #expect(pauseCallCount.value == 1)
         #expect(seekTimes.value.map(\.seconds) == [0])
+        #expect(stopOutcome == .completed)
 
         var iterator =
             await engine.observation.observations().makeAsyncIterator()

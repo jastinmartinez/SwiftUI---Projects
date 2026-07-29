@@ -655,8 +655,17 @@ struct PlaybackFeature {
                         case .paused:
                             try await playbackTransport.pause()
                         case .stopped:
-                            try await playbackTransport.stop()
-                            try await playbackTimeline.seek(0)
+                            let outcome = await playbackTransport.stop()
+                            guard !Task.isCancelled else { return }
+                            guard outcome == .completed else {
+                                await send(
+                                    .statusChangeFailed(
+                                        requestID: requestID,
+                                        error: .playbackFailed
+                                    )
+                                )
+                                return
+                            }
                         }
                         try Task.checkCancellation()
                         await send(.statusChangeSucceeded(requestID: requestID))

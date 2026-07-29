@@ -101,13 +101,13 @@ struct AppCompositionTests {
             PlaybackItemInstallation(id: UUID(0))
         )
         try await composition.playbackTransport.play()
-        try await composition.playbackTransport.stop()
-        try await composition.playbackTimeline.seek(0)
+        let stopOutcome = await composition.playbackTransport.stop()
 
         #expect(player.currentItem === preparedItem)
         #expect(playCallCount.value == 1)
         #expect(pauseCallCount.value == 1)
         #expect(seekTimes.value.map(\.seconds) == [0])
+        #expect(stopOutcome == .completed)
 
         var iterator =
             await composition.playbackObservation.observations()

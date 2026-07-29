@@ -12,9 +12,24 @@ struct AVPlayerTimelineTests {
         let player = SeekRecordingPlayer(seekTimes: seekTimes)
         let timeline = AVPlayerTimeline(player: player)
 
-        await timeline.seek(to: -10)
+        let outcome = await timeline.seek(to: -10)
 
         #expect(seekTimes.value.map(\.seconds) == [0])
+        #expect(outcome == .completed)
+    }
+
+    @Test
+    @MainActor
+    func seekReportsInterruptionWhenThePlayerDoesNotFinish() async {
+        let player = SeekRecordingPlayer(
+            seekTimes: LockIsolated([]),
+            seekResult: false
+        )
+        let timeline = AVPlayerTimeline(player: player)
+
+        let outcome = await timeline.seek(to: 10)
+
+        #expect(outcome == .interrupted)
     }
 
     // MARK: - Helpers
@@ -23,9 +38,14 @@ struct AVPlayerTimelineTests {
     /// current-time behavior.
     private final class SeekRecordingPlayer: AVPlayer {
         private let seekTimes: LockIsolated<[CMTime]>
+        private let seekResult: Bool
 
-        init(seekTimes: LockIsolated<[CMTime]>) {
+        init(
+            seekTimes: LockIsolated<[CMTime]>,
+            seekResult: Bool = true
+        ) {
             self.seekTimes = seekTimes
+            self.seekResult = seekResult
             super.init()
         }
 
@@ -34,7 +54,7 @@ struct AVPlayerTimelineTests {
             completionHandler: @escaping (Bool) -> Void
         ) {
             seekTimes.withValue { $0.append(time) }
-            completionHandler(true)
+            completionHandler(seekResult)
         }
     }
 }

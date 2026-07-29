@@ -7,15 +7,18 @@ final class PlaybackRecordingPlayer: AVPlayer {
     private let playCallCount: LockIsolated<Int>
     private let pauseCallCount: LockIsolated<Int>
     private let seekTimes: LockIsolated<[CMTime]>
+    private let seekResult: Bool
 
     init(
         playCallCount: LockIsolated<Int>,
         pauseCallCount: LockIsolated<Int>,
-        seekTimes: LockIsolated<[CMTime]>
+        seekTimes: LockIsolated<[CMTime]>,
+        seekResult: Bool = true
     ) {
         self.playCallCount = playCallCount
         self.pauseCallCount = pauseCallCount
         self.seekTimes = seekTimes
+        self.seekResult = seekResult
         super.init()
     }
 
@@ -32,6 +35,6 @@ final class PlaybackRecordingPlayer: AVPlayer {
         completionHandler: @escaping (Bool) -> Void
     ) {
         seekTimes.withValue { $0.append(time) }
-        completionHandler(true)
+        completionHandler(seekResult)
     }
 }
