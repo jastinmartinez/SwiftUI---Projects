@@ -2,7 +2,7 @@ import ComposableArchitecture
 
 /// Owns the playback queue contents, traversal order, current identity, and modes.
 @Reducer
-struct PlaybackQueueFeature {
+struct PlaybackQueueReducer {
     @ObservableState
     struct State: Equatable {
         var current: PlaybackQueue?
@@ -261,7 +261,7 @@ struct PlaybackQueueFeature {
     }
 }
 
-extension PlaybackQueueFeature.State {
+extension PlaybackQueueReducer.State {
     var pendingTrack: Track? {
         pendingChanges?.latest.targetTrack(in: current)
     }

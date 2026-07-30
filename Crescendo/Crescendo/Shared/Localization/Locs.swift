@@ -43,6 +43,7 @@ extension Locs {
         static let noSelection = String(localized: "music_playback.no_selection")
         static let play = String(localized: "music_playback.play")
         static let pause = String(localized: "music_playback.pause")
+        static let dismiss = String(localized: "music_playback.dismiss")
         static let previous = String(localized: "music_playback.previous")
         static let next = String(localized: "music_playback.next")
         static let shuffle = String(localized: "music_playback.shuffle")

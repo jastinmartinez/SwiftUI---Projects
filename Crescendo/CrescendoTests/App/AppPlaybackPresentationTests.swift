@@ -6,7 +6,7 @@ import Testing
 @MainActor
 struct AppPlaybackPresentationTests {
     @Test
-    func dismissingAndReopeningSheetKeepsPlaybackState() async throws {
+    func dismissingAndReopeningFullScreenPlayerKeepsPlaybackState() async throws {
         let song = Track(
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
@@ -19,17 +19,17 @@ struct AppPlaybackPresentationTests {
         let confirmed = try #require(
             PlaybackQueue(tracks: queue, startingAt: song.id)
         )
-        let playback = PlaybackFeature.State(
-            queue: PlaybackQueueFeature.State(
+        let playback = PlaybackReducer.State(
+            queue: PlaybackQueueReducer.State(
                 current: confirmed
             ),
-            timeline: PlaybackTimelineFeature.State(
+            timeline: PlaybackTimelineReducer.State(
                 confirmedPosition: 42,
                 duration: nil,
                 isSeekable: false,
                 interaction: .idle
             ),
-            session: PlaybackSessionFeature.State(
+            session: PlaybackSessionReducer.State(
                 status: .paused,
                 pendingStatusChange: nil
             ),
@@ -40,11 +40,11 @@ struct AppPlaybackPresentationTests {
             ),
             isPlayerPresented: true
         )
-        let state = AppFeature.State(
-            search: SearchFeature.State(
+        let state = AppReducer.State(
+            search: SearchReducer.State(
                 query: "",
                 status: .loaded(
-                    SearchPaginationFeature.State(
+                    SearchPaginationReducer.State(
                         tracks: [song],
                         nextCursor: nil,
                         status: .idle,
@@ -55,7 +55,7 @@ struct AppPlaybackPresentationTests {
             ),
             playback: playback
         )
-        let store = TestStore(initialState: state) { AppFeature() }
+        let store = TestStore(initialState: state) { AppReducer() }
 
         await store.send(.playback(.setPlayerPresented(false))) {
             $0.playback.isPlayerPresented = false

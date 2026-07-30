@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct PlaybackTimelineFeatureTests {
+struct PlaybackTimelineReducerTests {
     @Test
     func confirmedSnapshotUpdatesOnlyTimelineOwnedFacts() async {
         let store = makeStore(
@@ -264,22 +264,22 @@ struct PlaybackTimelineFeatureTests {
 
     private func makeStore(
         duration: TimeInterval? = nil,
-        interaction: PlaybackTimelineFeature.Interaction = .idle,
+        interaction: PlaybackTimelineReducer.Interaction = .idle,
         seekPositions: LockIsolated<[TimeInterval]> = LockIsolated([]),
         seekOutcome: PlaybackOperationOutcome = .completed,
         finishSeek: AsyncStream<Void>? = nil,
         seekOperation:
             (@Sendable (TimeInterval) async -> PlaybackOperationOutcome)? = nil
-    ) -> TestStoreOf<PlaybackTimelineFeature> {
+    ) -> TestStoreOf<PlaybackTimelineReducer> {
         TestStore(
-            initialState: PlaybackTimelineFeature.State(
+            initialState: PlaybackTimelineReducer.State(
                 confirmedPosition: 0,
                 duration: duration,
                 isSeekable: false,
                 interaction: interaction
             )
         ) {
-            PlaybackTimelineFeature()
+            PlaybackTimelineReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackTimeline.seek = { position in

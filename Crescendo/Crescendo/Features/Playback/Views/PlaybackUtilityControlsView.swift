@@ -16,7 +16,10 @@ struct PlaybackUtilityControlsView: View {
                 }
 
                 let control = model.controls[index]
-                Button(action: control.perform) {
+                Button {
+                    guard control.availability.isEnabled else { return }
+                    control.perform()
+                } label: {
                     VStack(spacing: 6) {
                         Image(systemName: control.systemImage)
                             .font(.title3.weight(.semibold))
@@ -31,7 +34,7 @@ struct PlaybackUtilityControlsView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(control.accessibilityLabel)
-                .disabled(!control.isEnabled)
+                .playbackControlAvailability(control.availability)
             }
         }
         .frame(maxWidth: .infinity)
@@ -58,8 +61,12 @@ extension PlaybackUtilityControlsView.Model {
         let systemImage: String
         let title: String
         let accessibilityLabel: String
-        let isEnabled: Bool
+        let availability: PlaybackCommandPolicy.Availability
         let perform: () -> Void
+
+        var isEnabled: Bool {
+            availability.isEnabled
+        }
     }
 }
 

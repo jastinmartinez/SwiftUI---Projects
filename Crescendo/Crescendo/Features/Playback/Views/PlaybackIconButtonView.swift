@@ -8,7 +8,10 @@ struct PlaybackIconButtonView: View {
     let model: Model
 
     var body: some View {
-        Button(action: model.perform) {
+        Button {
+            guard model.availability.isEnabled else { return }
+            model.perform()
+        } label: {
             Image(systemName: model.systemImage)
                 .font(.title2)
                 .foregroundStyle(.primary)
@@ -16,7 +19,7 @@ struct PlaybackIconButtonView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(model.accessibilityLabel)
-        .disabled(!model.isEnabled)
+        .playbackControlAvailability(model.availability)
     }
 }
 
@@ -25,7 +28,11 @@ extension PlaybackIconButtonView {
     struct Model {
         let systemImage: String
         let accessibilityLabel: String
-        let isEnabled: Bool
+        let availability: PlaybackCommandPolicy.Availability
         let perform: () -> Void
+
+        var isEnabled: Bool {
+            availability.isEnabled
+        }
     }
 }

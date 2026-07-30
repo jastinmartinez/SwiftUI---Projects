@@ -3,7 +3,7 @@ import Foundation
 
 /// Owns confirmed transport status and one pending status operation.
 @Reducer
-struct PlaybackSessionFeature {
+struct PlaybackSessionReducer {
     @ObservableState
     struct State: Equatable {
         var status: PlaybackStatus

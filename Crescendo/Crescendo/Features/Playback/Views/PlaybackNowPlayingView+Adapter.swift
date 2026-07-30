@@ -8,7 +8,7 @@ extension PlaybackNowPlayingView.Model {
     ///
     /// - Parameter store: The playback store supplying confirmed state and actions.
     @MainActor
-    init?(_ store: StoreOf<PlaybackFeature>) {
+    init?(_ store: StoreOf<PlaybackReducer>) {
         guard let track = store.queue.current?.currentTrack else {
             return nil
         }
@@ -17,7 +17,7 @@ extension PlaybackNowPlayingView.Model {
 
     @MainActor
     private init(
-        _ store: StoreOf<PlaybackFeature>,
+        _ store: StoreOf<PlaybackReducer>,
         track: Track,
         strings: Strings
     ) {
@@ -27,19 +27,22 @@ extension PlaybackNowPlayingView.Model {
         } else {
             isPlaying = store.session.status == .playing
         }
+        let policy = store.commandPolicy
 
         self.init(
             title: track.title,
             artistName: track.artistName,
             artworkURL: track.artworkURL,
             isPlaying: isPlaying,
-            isPlayPauseEnabled: store.canRequestPlayPause,
+            playPauseAvailability: policy.availability(for: .playPause),
             playPauseAccessibilityLabel: isPlaying
                 ? strings.pause
                 : strings.play,
-            timeline: PlaybackTimelineView.Model(store),
+            nextAvailability: policy.availability(for: .next),
+            nextAccessibilityLabel: strings.next,
             onOpenPlayer: { store.send(.setPlayerPresented(true)) },
-            onTogglePlayPause: { store.send(.playPauseTapped) }
+            onTogglePlayPause: { store.send(.playPauseTapped) },
+            onNext: { store.send(.nextTapped) }
         )
     }
 }
@@ -48,6 +51,7 @@ extension PlaybackNowPlayingView.Model.Strings {
     /// Production localization wiring for compact playback.
     static let localized = Self(
         play: Locs.Playback.play,
-        pause: Locs.Playback.pause
+        pause: Locs.Playback.pause,
+        next: Locs.Playback.next
     )
 }

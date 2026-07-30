@@ -3,7 +3,7 @@ import Foundation
 
 /// Owns draft timeline positions and commits one seek when dragging ends.
 @Reducer
-struct PlaybackTimelineFeature {
+struct PlaybackTimelineReducer {
     @ObservableState
     struct State: Equatable {
         var confirmedPosition: TimeInterval
@@ -137,7 +137,7 @@ struct PlaybackTimelineFeature {
     }
 }
 
-extension PlaybackTimelineFeature.State {
+extension PlaybackTimelineReducer.State {
     var position: TimeInterval {
         switch interaction {
         case .idle:

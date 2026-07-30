@@ -3,25 +3,25 @@ import Foundation
 
 /// The root reducer responsible for application-wide state and coordination.
 @Reducer
-struct AppFeature {
+struct AppReducer {
     @ObservableState
     struct State: Equatable {
-        var search: SearchFeature.State
-        var playback: PlaybackFeature.State
+        var search: SearchReducer.State
+        var playback: PlaybackReducer.State
     }
 
     enum Action: Equatable {
         case task
-        case search(SearchFeature.Action)
-        case playback(PlaybackFeature.Action)
+        case search(SearchReducer.Action)
+        case playback(PlaybackReducer.Action)
     }
 
     var body: some ReducerOf<Self> {
         Scope(state: \.search, action: \.search) {
-            SearchFeature()
+            SearchReducer()
         }
         Scope(state: \.playback, action: \.playback) {
-            PlaybackFeature()
+            PlaybackReducer()
         }
         Reduce { _, action in
             switch action {

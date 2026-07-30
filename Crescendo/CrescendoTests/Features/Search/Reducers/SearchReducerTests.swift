@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct SearchFeatureTests {
+struct SearchReducerTests {
     @Test
     func stateProviderSelectsExactlyOneBoundSearchClient() async {
         let track = makeTrack()
@@ -22,7 +22,7 @@ struct SearchFeatureTests {
                 providerID: .jamendo
             )
         ) {
-            SearchFeature()
+            SearchReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
@@ -78,7 +78,7 @@ struct SearchFeatureTests {
                 providerID: .jamendo
             )
         ) {
-            SearchFeature()
+            SearchReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
@@ -121,7 +121,7 @@ struct SearchFeatureTests {
                 providerID: .testProvider
             )
         ) {
-            SearchFeature()
+            SearchReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
@@ -176,7 +176,7 @@ struct SearchFeatureTests {
                 providerID: .testProvider
             )
         ) {
-            SearchFeature()
+            SearchReducer()
         }
 
         await store.send(.resultTapped(track.id))
@@ -205,7 +205,7 @@ struct SearchFeatureTests {
                 providerID: .testProvider
             )
         ) {
-            SearchFeature()
+            SearchReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
@@ -250,10 +250,10 @@ struct SearchFeatureTests {
 
     private func makeState(
         query: String,
-        status: SearchFeature.Status,
+        status: SearchReducer.Status,
         providerID: ProviderID
-    ) -> SearchFeature.State {
-        SearchFeature.State(
+    ) -> SearchReducer.State {
+        SearchReducer.State(
             query: query,
             status: status,
             providerID: providerID
@@ -263,11 +263,11 @@ struct SearchFeatureTests {
     private func loadedStatus(
         tracks: [Track],
         nextCursor: SearchCursor?,
-        paginationStatus: SearchPaginationFeature.Status,
+        paginationStatus: SearchPaginationReducer.Status,
         providerID: ProviderID
-    ) -> SearchFeature.Status {
+    ) -> SearchReducer.Status {
         .loaded(
-            SearchPaginationFeature.State(
+            SearchPaginationReducer.State(
                 tracks: .init(uniqueElements: tracks),
                 nextCursor: nextCursor,
                 status: paginationStatus,

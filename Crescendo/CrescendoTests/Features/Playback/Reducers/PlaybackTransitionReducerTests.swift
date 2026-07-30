@@ -5,12 +5,12 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct PlaybackTransitionFeatureTests {
+struct PlaybackTransitionReducerTests {
     @Test
     func transitionLoadsTheTargetURLWithoutResolvingByID() async {
         let baseline = makeTrack(providerID: .jamendo, nativeID: "remote")
         let target = makeTrack(providerID: .localMusic, nativeID: "local")
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: target,
             baselineTrackID: baseline.id
         )
@@ -1215,7 +1215,7 @@ struct PlaybackTransitionFeatureTests {
             status: .playing,
             position: 7
         )
-        let phase: PlaybackTransitionFeature.Phase =
+        let phase: PlaybackTransitionReducer.Phase =
             .applyingConfirmation(
                 transaction,
                 .init(snapshot: snapshot, followUp: nil)
@@ -1314,7 +1314,7 @@ struct PlaybackTransitionFeatureTests {
             status: .playing,
             position: 7
         )
-        let phase: PlaybackTransitionFeature.Phase = .committing(
+        let phase: PlaybackTransitionReducer.Phase = .committing(
             transaction,
             .init(snapshot: snapshot, followUp: nil)
         )
@@ -1354,7 +1354,7 @@ struct PlaybackTransitionFeatureTests {
             baselineTrackID: baselineID
         )
         let transaction = transaction(intent: intent)
-        let rollback = PlaybackTransitionFeature.Rollback(
+        let rollback = PlaybackTransitionReducer.Rollback(
             installation: transaction.installation,
             reason: .cancellation,
             followUp: .stop
@@ -1486,7 +1486,7 @@ struct PlaybackTransitionFeatureTests {
             status: .playing,
             position: 8
         )
-        let phase: PlaybackTransitionFeature.Phase =
+        let phase: PlaybackTransitionReducer.Phase =
             .applyingConfirmation(
                 transaction,
                 .init(snapshot: targetSnapshot, followUp: nil)
@@ -1534,7 +1534,7 @@ struct PlaybackTransitionFeatureTests {
             intent: intent,
             requestID: UUID(1)
         )
-        let phase: PlaybackTransitionFeature.Phase = .preparing(
+        let phase: PlaybackTransitionReducer.Phase = .preparing(
             transaction,
             .init(stage: .loading, latestTargetSnapshot: nil)
         )
@@ -1612,10 +1612,10 @@ struct PlaybackTransitionFeatureTests {
     }
 
     private func makeStore(
-        intent: PlaybackTransitionFeature.Intent,
+        intent: PlaybackTransitionReducer.Intent,
         configureDependencies:
             (inout DependencyValues) -> Void = { _ in }
-    ) -> TestStoreOf<PlaybackTransitionFeature> {
+    ) -> TestStoreOf<PlaybackTransitionReducer> {
         makeStore(
             phase: .starting(intent),
             configureDependencies: configureDependencies
@@ -1623,14 +1623,14 @@ struct PlaybackTransitionFeatureTests {
     }
 
     private func makeStore(
-        phase: PlaybackTransitionFeature.Phase,
+        phase: PlaybackTransitionReducer.Phase,
         configureDependencies:
             (inout DependencyValues) -> Void = { _ in }
-    ) -> TestStoreOf<PlaybackTransitionFeature> {
+    ) -> TestStoreOf<PlaybackTransitionReducer> {
         TestStore(
-            initialState: PlaybackTransitionFeature.State(phase: phase)
+            initialState: PlaybackTransitionReducer.State(phase: phase)
         ) {
-            PlaybackTransitionFeature()
+            PlaybackTransitionReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackItem.load = { _, _, _ in
@@ -1642,10 +1642,10 @@ struct PlaybackTransitionFeatureTests {
     }
 
     private func transaction(
-        intent: PlaybackTransitionFeature.Intent,
+        intent: PlaybackTransitionReducer.Intent,
         requestID: UUID = UUID(0)
-    ) -> PlaybackTransitionFeature.Transaction {
-        PlaybackTransitionFeature.Transaction(
+    ) -> PlaybackTransitionReducer.Transaction {
+        PlaybackTransitionReducer.Transaction(
             requestID: requestID,
             intent: intent
         )
@@ -1654,8 +1654,8 @@ struct PlaybackTransitionFeatureTests {
     private func makeIntent(
         targetTrackID: TrackID,
         baselineTrackID: TrackID? = nil
-    ) -> PlaybackTransitionFeature.Intent {
-        PlaybackTransitionFeature.Intent(
+    ) -> PlaybackTransitionReducer.Intent {
+        PlaybackTransitionReducer.Intent(
             target: makeTrack(
                 providerID: targetTrackID.providerID,
                 nativeID: targetTrackID.nativeID

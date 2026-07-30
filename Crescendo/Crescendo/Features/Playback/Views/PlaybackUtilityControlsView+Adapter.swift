@@ -6,7 +6,8 @@ extension PlaybackUtilityControlsView.Model {
     /// - Parameter store: The playback store supplying availability and receiving
     ///   Restart and Stop actions.
     @MainActor
-    init(_ store: StoreOf<PlaybackFeature>) {
+    init(_ store: StoreOf<PlaybackReducer>) {
+        let policy = store.commandPolicy
         self.init(
             controls: [
                 Control(
@@ -14,7 +15,7 @@ extension PlaybackUtilityControlsView.Model {
                     systemImage: "arrow.counterclockwise",
                     title: Locs.Playback.restart,
                     accessibilityLabel: Locs.Playback.restart,
-                    isEnabled: store.canRequestSeek,
+                    availability: policy.availability(for: .seek),
                     perform: { store.send(.restartTapped) }
                 ),
                 Control(
@@ -22,7 +23,7 @@ extension PlaybackUtilityControlsView.Model {
                     systemImage: "stop.fill",
                     title: Locs.Playback.stop,
                     accessibilityLabel: Locs.Playback.stop,
-                    isEnabled: store.canRequestStop,
+                    availability: policy.availability(for: .stop),
                     perform: { store.send(.stopTapped) }
                 ),
             ]

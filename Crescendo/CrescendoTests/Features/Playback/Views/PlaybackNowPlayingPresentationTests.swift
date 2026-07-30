@@ -11,7 +11,7 @@ struct PlaybackNowPlayingPresentationTests {
         let song = makeTrack(duration: nil)
         let (pauseCalled, pauseCalledContinuation) = AsyncStream<Void>.makeStream()
         let store = Store(initialState: makeState(song: song, status: .playing)) {
-            PlaybackFeature()
+            PlaybackReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackTransport.pause = { pauseCalledContinuation.yield() }
@@ -30,12 +30,12 @@ struct PlaybackNowPlayingPresentationTests {
         let song = makeTrack(duration: nil)
         var state = makeState(song: song, status: .playing)
         state.session.pendingStatusChange =
-            PlaybackSessionFeature.PendingStatusChange(
+            PlaybackSessionReducer.PendingStatusChange(
                 requestID: UUID(0),
                 target: .paused
             )
         let store = Store(initialState: state) {
-            PlaybackFeature()
+            PlaybackReducer()
         }
 
         let model = try #require(PlaybackNowPlayingView.Model(store))
@@ -48,7 +48,7 @@ struct PlaybackNowPlayingPresentationTests {
     func barOpenRoutesPresentationThroughPlayback() throws {
         let song = makeTrack(duration: nil)
         let store = Store(initialState: makeState(song: song, status: .playing)) {
-            PlaybackFeature()
+            PlaybackReducer()
         }
         let model = try #require(PlaybackNowPlayingView.Model(store))
 
@@ -64,7 +64,7 @@ struct PlaybackNowPlayingPresentationTests {
         let (resumeStarted, resumeStartedContinuation) = AsyncStream<Void>.makeStream()
         let (finishResume, finishResumeContinuation) = AsyncStream<Void>.makeStream()
         let store = Store(initialState: makeState(song: song, status: .paused)) {
-            PlaybackFeature()
+            PlaybackReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackTransport.play = {
@@ -89,16 +89,30 @@ struct PlaybackNowPlayingPresentationTests {
     }
 
     @Test
-    func compactTimelineUsesSharedSliderAndInjectedPrimaryLabel() throws {
-        let song = makeTrack(duration: 180)
-        let store = Store(initialState: makeState(song: song, status: .playing)) {
-            PlaybackFeature()
+    func compactPlayerProjectsNextWithoutTimelineState() throws {
+        let first = makeTrack(nativeID: "1", duration: 180)
+        let second = makeTrack(nativeID: "2", duration: 200)
+        let actions = LockIsolated<[PlaybackReducer.Action]>([])
+        var state = makeState(song: first, status: .playing)
+        state.queue.current = makeConfirmedQueue(
+            IdentifiedArray(uniqueElements: [first, second]),
+            startingAt: first.id
+        )
+        let store: StoreOf<PlaybackReducer> = Store(initialState: state) {
+            Reduce { _, action in
+                actions.withValue { $0.append(action) }
+                return .none
+            }
         }
         let model = try #require(PlaybackNowPlayingView.Model(store))
-        let timeline = try #require(model.timeline)
 
-        #expect(timeline.slider.scale == .init(range: 0...180))
         #expect(model.playPauseAccessibilityLabel == Locs.Playback.pause)
+        #expect(model.isNextEnabled)
+        #expect(model.nextAccessibilityLabel == Locs.Playback.next)
+
+        model.onNext()
+
+        #expect(actions.value == [.nextTapped])
     }
 
     @Test
@@ -121,7 +135,7 @@ struct PlaybackNowPlayingPresentationTests {
             ),
             followUp: nil
         )
-        state.transition = PlaybackTransitionFeature.State(
+        state.transition = PlaybackTransitionReducer.State(
             phase: .starting(
                 .init(
                     target: pendingTrack,
@@ -130,7 +144,7 @@ struct PlaybackNowPlayingPresentationTests {
             )
         )
         let store = Store(initialState: state) {
-            PlaybackFeature()
+            PlaybackReducer()
         }
 
         let model = try #require(PlaybackNowPlayingView.Model(store))
@@ -138,6 +152,8 @@ struct PlaybackNowPlayingPresentationTests {
         #expect(model.title == confirmedTrack.title)
         #expect(model.isPlaying)
         #expect(!model.isPlayPauseEnabled)
+        #expect(model.playPauseAvailability == .temporarilyBlocked)
+        #expect(model.nextAvailability == .disabled)
     }
 
     @Test
@@ -157,7 +173,7 @@ struct PlaybackNowPlayingPresentationTests {
             ),
             followUp: nil
         )
-        state.transition = PlaybackTransitionFeature.State(
+        state.transition = PlaybackTransitionReducer.State(
             phase: .starting(
                 .init(
                     target: pendingTrack,
@@ -166,7 +182,7 @@ struct PlaybackNowPlayingPresentationTests {
             )
         )
         let store = Store(initialState: state) {
-            PlaybackFeature()
+            PlaybackReducer()
         }
 
         #expect(
@@ -179,22 +195,22 @@ struct PlaybackNowPlayingPresentationTests {
     private func makeState(
         song: Track,
         status: PlaybackStatus
-    ) -> PlaybackFeature.State {
+    ) -> PlaybackReducer.State {
         let queue = IdentifiedArray(uniqueElements: [song])
-        return PlaybackFeature.State(
-            queue: PlaybackQueueFeature.State(
+        return PlaybackReducer.State(
+            queue: PlaybackQueueReducer.State(
                 current: makeConfirmedQueue(
                     queue,
                     startingAt: song.id
                 )
             ),
-            timeline: PlaybackTimelineFeature.State(
+            timeline: PlaybackTimelineReducer.State(
                 confirmedPosition: 0,
                 duration: song.duration,
                 isSeekable: true,
                 interaction: .idle
             ),
-            session: PlaybackSessionFeature.State(
+            session: PlaybackSessionReducer.State(
                 status: status,
                 pendingStatusChange: nil
             ),

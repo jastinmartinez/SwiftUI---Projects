@@ -9,7 +9,7 @@ import Foundation
 /// value itself.
 @MainActor
 struct AppComposition {
-    let initialState: AppFeature.State
+    let initialState: AppReducer.State
     let providerSearchClients: ProviderClientRegistry<ProviderSearchClient>
     let playbackItem: PlaybackItemClient
     let playbackTransport: PlaybackTransportClient
@@ -55,23 +55,23 @@ struct AppComposition {
         )
 
         return Self(
-            initialState: AppFeature.State(
-                search: SearchFeature.State(
+            initialState: AppReducer.State(
+                search: SearchReducer.State(
                     query: "",
                     status: .idle,
                     providerID: .jamendo
                 ),
-                playback: PlaybackFeature.State(
-                    queue: PlaybackQueueFeature.State(
+                playback: PlaybackReducer.State(
+                    queue: PlaybackQueueReducer.State(
                         current: nil
                     ),
-                    timeline: PlaybackTimelineFeature.State(
+                    timeline: PlaybackTimelineReducer.State(
                         confirmedPosition: 0,
                         duration: nil,
                         isSeekable: false,
                         interaction: .idle
                     ),
-                    session: PlaybackSessionFeature.State(
+                    session: PlaybackSessionReducer.State(
                         status: .idle,
                         pendingStatusChange: nil
                     ),
@@ -96,9 +96,9 @@ struct AppComposition {
     /// Builds the application store from the assembled state and dependencies.
     ///
     /// - Returns: The root application store.
-    func store() -> StoreOf<AppFeature> {
+    func store() -> StoreOf<AppReducer> {
         Store(initialState: initialState) {
-            AppFeature()
+            AppReducer()
         } withDependencies: {
             $0.providerSearchClients = providerSearchClients
             $0.playbackItem = playbackItem

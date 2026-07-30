@@ -1,9 +1,9 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// The root store-connected view of Crescendo.
+/// The application feature boundary that owns Crescendo's root store.
 struct AppFeatureView: View {
-    let store: StoreOf<AppFeature>
+    let store: StoreOf<AppReducer>
 
     var body: some View {
         SearchFeatureView(
@@ -23,7 +23,7 @@ struct AppFeatureView: View {
         .task {
             await store.send(.task).finish()
         }
-        .sheet(
+        .fullScreenCover(
             isPresented: Binding(
                 get: { store.playback.isPlayerPresented },
                 set: { store.send(.playback(.setPlayerPresented($0))) }
@@ -32,8 +32,6 @@ struct AppFeatureView: View {
             PlaybackFeatureView(
                 store: store.scope(state: \.playback, action: \.playback)
             )
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
     }
 }

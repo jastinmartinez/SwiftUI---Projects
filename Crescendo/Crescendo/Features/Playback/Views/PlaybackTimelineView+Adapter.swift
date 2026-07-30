@@ -10,7 +10,7 @@ extension PlaybackTimelineView.Model {
     /// - Parameter store: The playback store supplying duration, position, and seek
     ///   actions.
     @MainActor
-    init?(_ store: StoreOf<PlaybackFeature>) {
+    init?(_ store: StoreOf<PlaybackReducer>) {
         guard let duration = store.timelineDuration,
             duration > 0
         else { return nil }
@@ -18,13 +18,14 @@ extension PlaybackTimelineView.Model {
         let position = min(max(store.timeline.position, 0), duration)
         let elapsedTimeText = position.musicDurationText
         let durationText = duration.musicDurationText
+        let seekAvailability = store.commandPolicy.availability(for: .seek)
 
         self.init(
             slider: PlaybackSliderView.Model(
                 value: position,
                 scale: .init(range: 0...duration),
                 accessibilityStep: 15,
-                isEnabled: store.canRequestSeek,
+                availability: seekAvailability,
                 strings: .init(
                     accessibilityLabel: Locs.Playback.position,
                     accessibilityValue: Locs.Playback.positionValue(

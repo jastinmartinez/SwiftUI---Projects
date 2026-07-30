@@ -4,13 +4,13 @@ import Foundation
 /// Coordinates playback observation and the Queue, Timeline, Session, and
 /// Transition domains.
 @Reducer
-struct PlaybackFeature {
+struct PlaybackReducer {
     @ObservableState
     struct State: Equatable {
-        var queue: PlaybackQueueFeature.State
-        var timeline: PlaybackTimelineFeature.State
-        var session: PlaybackSessionFeature.State
-        var transition: PlaybackTransitionFeature.State?
+        var queue: PlaybackQueueReducer.State
+        var timeline: PlaybackTimelineReducer.State
+        var session: PlaybackSessionReducer.State
+        var transition: PlaybackTransitionReducer.State?
         var failureNotice: PlaybackFailureNotice?
         var isPlayerPresented: Bool
     }
@@ -35,10 +35,10 @@ struct PlaybackFeature {
         case setPlayerPresented(Bool)
         case observationReceived(PlaybackObservation)
         case confirmedSnapshotReceived(PlaybackSnapshot)
-        case queue(PlaybackQueueFeature.Action)
-        case timeline(PlaybackTimelineFeature.Action)
-        case session(PlaybackSessionFeature.Action)
-        case transition(PlaybackTransitionFeature.Action)
+        case queue(PlaybackQueueReducer.Action)
+        case timeline(PlaybackTimelineReducer.Action)
+        case session(PlaybackSessionReducer.Action)
+        case transition(PlaybackTransitionReducer.Action)
     }
 
     private enum CancelID {
@@ -49,13 +49,13 @@ struct PlaybackFeature {
 
     var body: some ReducerOf<Self> {
         Scope(state: \.queue, action: \.queue) {
-            PlaybackQueueFeature()
+            PlaybackQueueReducer()
         }
         Scope(state: \.timeline, action: \.timeline) {
-            PlaybackTimelineFeature()
+            PlaybackTimelineReducer()
         }
         Scope(state: \.session, action: \.session) {
-            PlaybackSessionFeature()
+            PlaybackSessionReducer()
         }
         Reduce { state, action in
             switch action {
@@ -260,14 +260,14 @@ struct PlaybackFeature {
                 else {
                     return .none
                 }
-                let intent = PlaybackTransitionFeature.Intent(
+                let intent = PlaybackTransitionReducer.Intent(
                     target: target,
                     baselineTrackID:
                         state.queue.current?.currentTrackID
                 )
                 let transitionEffect: Effect<Action>
                 if state.transition == nil {
-                    state.transition = PlaybackTransitionFeature.State(
+                    state.transition = PlaybackTransitionReducer.State(
                         phase: .starting(intent)
                     )
                     transitionEffect = .send(.transition(.start))
@@ -406,18 +406,24 @@ struct PlaybackFeature {
             }
         }
         .ifLet(\.transition, action: \.transition) {
-            PlaybackTransitionFeature()
+            PlaybackTransitionReducer()
         }
     }
 }
 
-extension PlaybackFeature.State {
+extension PlaybackReducer.State {
     var commandPolicy: PlaybackCommandPolicy {
         PlaybackCommandPolicy(
-            queue: queue,
-            timeline: timeline,
-            session: session,
-            transition: transition
+            hasConfirmedQueue: queue.current != nil,
+            hasPreviousTrack: queue.current?.previousTrackID != nil,
+            hasNextTrack: queue.current?.nextTrackID != nil,
+            timelineDuration: timeline.duration,
+            isTimelineSeekable: timeline.isSeekable,
+            sessionStatus: session.status,
+            hasPendingStatusChange: session.pendingStatusChange != nil,
+            isTransitioning: transition != nil,
+            transitionAcceptsStopRequest:
+                transition?.acceptsStopRequest ?? true
         )
     }
 

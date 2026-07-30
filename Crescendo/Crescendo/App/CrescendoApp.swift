@@ -6,7 +6,7 @@ import SwiftUI
 /// The Crescendo application entry point and composition root.
 @main
 struct CrescendoApp: App {
-    let store: StoreOf<AppFeature>
+    let store: StoreOf<AppReducer>
 
     init() {
         let player = AVPlayer()

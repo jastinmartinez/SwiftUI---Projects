@@ -3,12 +3,12 @@ import Foundation
 
 /// Owns catalog-search input and request state for an immutable provider routing context.
 @Reducer
-struct SearchFeature {
+struct SearchReducer {
     @CasePathable
     enum Status: Equatable {
         case idle
         case searching(requestID: UUID)
-        case loaded(SearchPaginationFeature.State)
+        case loaded(SearchPaginationReducer.State)
         case failed(MusicProviderError)
     }
 
@@ -40,7 +40,7 @@ struct SearchFeature {
         )
         case cancelSearch
         case resultTapped(TrackID)
-        case pagination(SearchPaginationFeature.Action)
+        case pagination(SearchPaginationReducer.Action)
         case delegate(Delegate)
         case searchResponse(UUID, Result<SearchPage, MusicProviderError>)
     }
@@ -52,9 +52,9 @@ struct SearchFeature {
 
     var body: some ReducerOf<Self> {
         Scope(state: \.status, action: \.pagination) {
-            EmptyReducer<Status, SearchPaginationFeature.Action>()
+            EmptyReducer<Status, SearchPaginationReducer.Action>()
                 .ifCaseLet(\.loaded, action: \.self) {
-                    SearchPaginationFeature()
+                    SearchPaginationReducer()
                 }
         }
         Reduce { state, action in
@@ -106,7 +106,7 @@ struct SearchFeature {
                 state.status = .idle
                 return .merge(
                     .cancel(id: CancelID.search),
-                    .cancel(id: SearchPaginationFeature.CancelID.nextPage)
+                    .cancel(id: SearchPaginationReducer.CancelID.nextPage)
                 )
 
             case .resultTapped(let songID):
@@ -130,7 +130,7 @@ struct SearchFeature {
                     return .none
                 }
                 state.status = .loaded(
-                    SearchPaginationFeature.State(
+                    SearchPaginationReducer.State(
                         tracks: .init(uniqueElements: page.tracks),
                         nextCursor: page.nextCursor,
                         status: .idle,

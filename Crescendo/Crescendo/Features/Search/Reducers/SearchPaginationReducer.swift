@@ -3,7 +3,7 @@ import Foundation
 
 /// Owns continuation-page state and operations for loaded search results.
 @Reducer
-struct SearchPaginationFeature {
+struct SearchPaginationReducer {
     @ObservableState
     struct State: Equatable {
         var tracks: IdentifiedArrayOf<Track>

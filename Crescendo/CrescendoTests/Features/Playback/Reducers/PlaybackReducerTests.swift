@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct PlaybackFeatureTests {
+struct PlaybackReducerTests {
     @Test
     func taskSubscribesToPlaybackObservationsOnce() async {
         let subscriptionCount = LockIsolated(0)
@@ -95,7 +95,7 @@ struct PlaybackFeatureTests {
         await store.receive(
             .queue(.delegate(.transitionRequested(tracks[1].id)))
         ) {
-            $0.transition = PlaybackTransitionFeature.State(
+            $0.transition = PlaybackTransitionReducer.State(
                 phase: .starting(
                     .init(
                         target: tracks[1],
@@ -236,7 +236,7 @@ struct PlaybackFeatureTests {
         let firstResults = IdentifiedArray(uniqueElements: firstTracks)
         let latestTracks = makeTracks(prefix: "latest")
         let latestResults = IdentifiedArray(uniqueElements: latestTracks)
-        let firstIntent = PlaybackTransitionFeature.Intent(
+        let firstIntent = PlaybackTransitionReducer.Intent(
             target: firstTracks[0],
             baselineTrackID: confirmedTracks[0].id
         )
@@ -279,7 +279,7 @@ struct PlaybackFeatureTests {
             .queue(.delegate(.transitionRequested(latestTracks[2].id)))
         )
         await store.receive(.session(.cancelPendingStatusChange))
-        let latestIntent = PlaybackTransitionFeature.Intent(
+        let latestIntent = PlaybackTransitionReducer.Intent(
             target: latestTracks[2],
             baselineTrackID: confirmedTracks[0].id
         )
@@ -394,11 +394,11 @@ struct PlaybackFeatureTests {
         async
     {
         let tracks = makeTracks()
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: tracks[1],
             baselineTrackID: tracks[0].id
         )
-        let transaction = PlaybackTransitionFeature.Transaction(
+        let transaction = PlaybackTransitionReducer.Transaction(
             requestID: UUID(9),
             intent: intent
         )
@@ -441,7 +441,7 @@ struct PlaybackFeatureTests {
     @Test
     func transitionBaselineSnapshotRoutesToDurableChildren() async {
         let tracks = makeTracks()
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: tracks[1],
             baselineTrackID: tracks[0].id
         )
@@ -501,11 +501,11 @@ struct PlaybackFeatureTests {
         let confirmedTracks = makeTracks(prefix: "confirmed")
         let selectedTracks = makeTracks(prefix: "selected")
         let loadedResults = IdentifiedArray(uniqueElements: selectedTracks)
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: selectedTracks[1],
             baselineTrackID: confirmedTracks[0].id
         )
-        let transaction = PlaybackTransitionFeature.Transaction(
+        let transaction = PlaybackTransitionReducer.Transaction(
             requestID: UUID(9),
             intent: intent
         )
@@ -516,7 +516,7 @@ struct PlaybackFeatureTests {
             duration: 180,
             isSeekable: true
         )
-        let confirmation = PlaybackTransitionFeature.Confirmation(
+        let confirmation = PlaybackTransitionReducer.Confirmation(
             intent: intent,
             snapshot: snapshot
         )
@@ -587,7 +587,7 @@ struct PlaybackFeatureTests {
     func cancelledTransitionClearsItsPendingQueueChanges() async {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: tracks[1],
             baselineTrackID: nil
         )
@@ -620,7 +620,7 @@ struct PlaybackFeatureTests {
     {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: tracks[1],
             baselineTrackID: nil
         )
@@ -713,7 +713,7 @@ struct PlaybackFeatureTests {
     @Test
     func delayedCompletionCannotReplaceAnActiveTransition() async {
         let tracks = makeTracks()
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: tracks[1],
             baselineTrackID: tracks[0].id
         )
@@ -737,7 +737,7 @@ struct PlaybackFeatureTests {
     func transitionRuntimeFailureRoutesToTransitionFirst() async {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: tracks[1],
             baselineTrackID: nil
         )
@@ -794,7 +794,7 @@ struct PlaybackFeatureTests {
     func transitionStopReadyDiscardsQueueChangesThenStopsSession() async {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: tracks[1],
             baselineTrackID: tracks[0].id
         )
@@ -997,24 +997,24 @@ struct PlaybackFeatureTests {
     // MARK: - Helpers
 
     private func makeStore(
-        queue: PlaybackQueueFeature.State = .init(
+        queue: PlaybackQueueReducer.State = .init(
             current: nil
         ),
-        timeline: PlaybackTimelineFeature.State = .init(
+        timeline: PlaybackTimelineReducer.State = .init(
             confirmedPosition: 0,
             duration: nil,
             isSeekable: false,
             interaction: .idle
         ),
-        session: PlaybackSessionFeature.State = .init(
+        session: PlaybackSessionReducer.State = .init(
             status: .idle,
             pendingStatusChange: nil
         ),
-        transition: PlaybackTransitionFeature.State? = nil,
+        transition: PlaybackTransitionReducer.State? = nil,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
-    ) -> TestStoreOf<PlaybackFeature> {
+    ) -> TestStoreOf<PlaybackReducer> {
         TestStore(
-            initialState: PlaybackFeature.State(
+            initialState: PlaybackReducer.State(
                 queue: queue,
                 timeline: timeline,
                 session: session,
@@ -1023,7 +1023,7 @@ struct PlaybackFeatureTests {
                 isPlayerPresented: false
             )
         ) {
-            PlaybackFeature()
+            PlaybackReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackObservation.observations = { .finished }
@@ -1038,9 +1038,9 @@ struct PlaybackFeatureTests {
     private func makeQueue(
         tracks: [Track] = [],
         currentTrackID: TrackID? = nil,
-        pendingChanges: PlaybackQueueFeature.PendingChanges? = nil
-    ) -> PlaybackQueueFeature.State {
-        PlaybackQueueFeature.State(
+        pendingChanges: PlaybackQueueReducer.PendingChanges? = nil
+    ) -> PlaybackQueueReducer.State {
+        PlaybackQueueReducer.State(
             current: makeConfirmedQueue(
                 tracks,
                 currentTrackID: currentTrackID
@@ -1052,7 +1052,7 @@ struct PlaybackFeatureTests {
     private func replacementChange(
         _ tracks: IdentifiedArrayOf<Track>,
         startingAt trackID: TrackID
-    ) -> PlaybackQueueFeature.QueueChange {
+    ) -> PlaybackQueueReducer.QueueChange {
         .replacement(
             makeConfirmedQueue(
                 tracks,
@@ -1095,8 +1095,8 @@ struct PlaybackFeatureTests {
     private func transaction(
         target: Track,
         baselineTrackID: TrackID?
-    ) -> PlaybackTransitionFeature.Transaction {
-        PlaybackTransitionFeature.Transaction(
+    ) -> PlaybackTransitionReducer.Transaction {
+        PlaybackTransitionReducer.Transaction(
             requestID: UUID(0),
             intent: .init(
                 target: target,

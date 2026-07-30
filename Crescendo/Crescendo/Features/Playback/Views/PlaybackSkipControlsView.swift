@@ -11,7 +11,10 @@ struct PlaybackSkipControlsView: View {
         HStack {
             Spacer()
             ForEach(model.controls) { control in
-                Button(action: control.perform) {
+                Button {
+                    guard control.availability.isEnabled else { return }
+                    control.perform()
+                } label: {
                     Image(systemName: control.systemImage)
                         .font(.title2.weight(.semibold))
                         .foregroundStyle(LinearGradient.crescendoSpectrum)
@@ -19,7 +22,7 @@ struct PlaybackSkipControlsView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(control.accessibilityLabel)
-                .disabled(!control.isEnabled)
+                .playbackControlAvailability(control.availability)
                 Spacer()
             }
         }
@@ -39,8 +42,12 @@ extension PlaybackSkipControlsView.Model {
         let id: ID
         let systemImage: String
         let accessibilityLabel: String
-        let isEnabled: Bool
+        let availability: PlaybackCommandPolicy.Availability
         let perform: () -> Void
+
+        var isEnabled: Bool {
+            availability.isEnabled
+        }
     }
 }
 

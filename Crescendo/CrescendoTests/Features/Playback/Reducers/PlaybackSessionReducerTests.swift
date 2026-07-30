@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct PlaybackSessionFeatureTests {
+struct PlaybackSessionReducerTests {
     @Test
     func playingToggleRequestsPauseAndWaitsForConfirmation() async {
         let pauseCount = LockIsolated(0)
@@ -98,7 +98,7 @@ struct PlaybackSessionFeatureTests {
 
     @Test
     func nonmatchingSnapshotPreservesPendingTarget() async {
-        let pending = PlaybackSessionFeature.PendingStatusChange(
+        let pending = PlaybackSessionReducer.PendingStatusChange(
             requestID: UUID(1),
             target: .playing
         )
@@ -176,7 +176,7 @@ struct PlaybackSessionFeatureTests {
 
     @Test
     func staleResponseCannotClearNewerOperation() async {
-        let pending = PlaybackSessionFeature.PendingStatusChange(
+        let pending = PlaybackSessionReducer.PendingStatusChange(
             requestID: UUID(1),
             target: .paused
         )
@@ -314,17 +314,17 @@ struct PlaybackSessionFeatureTests {
     private func makeStore(
         status: PlaybackStatus,
         pendingStatusChange:
-            PlaybackSessionFeature.PendingStatusChange? = nil,
+            PlaybackSessionReducer.PendingStatusChange? = nil,
         configureDependencies:
             (inout DependencyValues) -> Void = { _ in }
-    ) -> TestStoreOf<PlaybackSessionFeature> {
+    ) -> TestStoreOf<PlaybackSessionReducer> {
         TestStore(
-            initialState: PlaybackSessionFeature.State(
+            initialState: PlaybackSessionReducer.State(
                 status: status,
                 pendingStatusChange: pendingStatusChange
             )
         ) {
-            PlaybackSessionFeature()
+            PlaybackSessionReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             configureDependencies(&$0)

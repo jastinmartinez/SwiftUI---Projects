@@ -8,7 +8,7 @@ extension PlaybackControlsView.Model {
     ///
     /// - Parameter store: The playback store supplying state and receiving actions.
     @MainActor
-    init(_ store: StoreOf<PlaybackFeature>) {
+    init(_ store: StoreOf<PlaybackReducer>) {
         self.init(store, strings: .localized)
     }
 
@@ -19,9 +19,10 @@ extension PlaybackControlsView.Model {
     ///   - strings: Localized presentation copy for the control row.
     @MainActor
     init(
-        _ store: StoreOf<PlaybackFeature>,
+        _ store: StoreOf<PlaybackReducer>,
         strings: Strings
     ) {
+        let policy = store.commandPolicy
         let primaryState: PlaybackPrimaryButtonView.Model.State
         if let change = store.session.pendingStatusChange {
             switch change.target {
@@ -55,13 +56,13 @@ extension PlaybackControlsView.Model {
                     ? strings.modeOn
                     : strings.modeOff,
                 isSelected: shuffleMode == .tracks,
-                isEnabled: store.canRequestShuffle,
+                availability: policy.availability(for: .shuffleMode),
                 perform: { store.send(.shuffleTapped) }
             ),
             previous: PlaybackIconButtonView.Model(
                 systemImage: "backward.fill",
                 accessibilityLabel: strings.previous,
-                isEnabled: store.canRequestPrevious,
+                availability: policy.availability(for: .previous),
                 perform: { store.send(.previousTapped) }
             ),
             primary: PlaybackPrimaryButtonView.Model(
@@ -69,13 +70,13 @@ extension PlaybackControlsView.Model {
                 accessibilityLabel: primaryState == .play
                     ? strings.play
                     : strings.pause,
-                isEnabled: store.canRequestPlayPause,
+                availability: policy.availability(for: .playPause),
                 perform: { store.send(.playPauseTapped) }
             ),
             next: PlaybackIconButtonView.Model(
                 systemImage: "forward.fill",
                 accessibilityLabel: strings.next,
-                isEnabled: store.canRequestNext,
+                availability: policy.availability(for: .next),
                 perform: { store.send(.nextTapped) }
             ),
             repeatMode: PlaybackModeButtonView.Model(
@@ -85,7 +86,7 @@ extension PlaybackControlsView.Model {
                 accessibilityLabel: strings.repeatMode,
                 accessibilityValue: repeatAccessibilityValue,
                 isSelected: repeatMode != .off,
-                isEnabled: store.canRequestRepeat,
+                availability: policy.availability(for: .repeatMode),
                 perform: { store.send(.repeatTapped) }
             )
         )

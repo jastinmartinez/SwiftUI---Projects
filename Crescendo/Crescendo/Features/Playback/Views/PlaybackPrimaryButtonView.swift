@@ -9,7 +9,10 @@ struct PlaybackPrimaryButtonView: View {
     let model: Model
 
     var body: some View {
-        Button(action: model.perform) {
+        Button {
+            guard model.availability.isEnabled else { return }
+            model.perform()
+        } label: {
             Image(systemName: model.state.systemImage)
                 .font(.title.bold())
                 .foregroundStyle(.white)
@@ -26,7 +29,7 @@ struct PlaybackPrimaryButtonView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(model.accessibilityLabel)
-        .disabled(!model.isEnabled)
+        .playbackControlAvailability(model.availability)
     }
 }
 
@@ -39,8 +42,12 @@ extension PlaybackPrimaryButtonView {
     struct Model {
         let state: State
         let accessibilityLabel: String
-        let isEnabled: Bool
+        let availability: PlaybackCommandPolicy.Availability
         let perform: () -> Void
+
+        var isEnabled: Bool {
+            availability.isEnabled
+        }
     }
 }
 

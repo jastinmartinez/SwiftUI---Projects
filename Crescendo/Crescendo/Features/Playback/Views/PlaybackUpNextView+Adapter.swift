@@ -11,7 +11,7 @@ extension PlaybackUpNextView.Model {
     ///   - title: The localized section title.
     @MainActor
     init?(
-        _ store: StoreOf<PlaybackFeature>,
+        _ store: StoreOf<PlaybackReducer>,
         title: String
     ) {
         let tracks = store.queue.current?.upNextTracks ?? []
@@ -20,7 +20,11 @@ extension PlaybackUpNextView.Model {
         self.init(
             title: title,
             tracks: tracks.map {
-                TrackRowView.Model($0, accessory: .none)
+                TrackRowView.Model(
+                    $0,
+                    accessory: .none,
+                    showsDuration: true
+                )
             }
         )
     }
@@ -29,7 +33,7 @@ extension PlaybackUpNextView.Model {
     ///
     /// - Parameter store: The playback store supplying confirmed queue state.
     @MainActor
-    init?(_ store: StoreOf<PlaybackFeature>) {
+    init?(_ store: StoreOf<PlaybackReducer>) {
         self.init(store, title: Locs.Playback.upNext)
     }
 }

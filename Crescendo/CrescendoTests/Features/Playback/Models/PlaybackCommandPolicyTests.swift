@@ -6,6 +6,29 @@ import Testing
 
 struct PlaybackCommandPolicyTests {
     @Test
+    func timelinePositionDoesNotAffectCommandPolicyIdentity() {
+        #expect(
+            makePolicy(confirmedPosition: 0)
+                == makePolicy(confirmedPosition: 90)
+        )
+    }
+
+    @Test
+    func availabilityDistinguishesCommandEligibility() {
+        #expect(
+            makePolicy().availability(for: .next) == .enabled
+        )
+        #expect(
+            makePolicy(transition: makeStartingTransition())
+                .availability(for: .next) == .temporarilyBlocked
+        )
+        #expect(
+            makePolicy(queue: .sequence(currentIndex: 2))
+                .availability(for: .next) == .disabled
+        )
+    }
+
+    @Test
     func playPauseRequiresConfirmedTrackAndStableChildren() {
         #expect(makePolicy().allows(.playPause))
         #expect(!makePolicy(queue: .empty).allows(.playPause))
@@ -39,23 +62,23 @@ struct PlaybackCommandPolicyTests {
             artworkURL: nil,
             duration: 180
         )
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: target,
             baselineTrackID: TrackID(
                 providerID: "fake",
                 nativeID: "current"
             )
         )
-        let transaction = PlaybackTransitionFeature.Transaction(
+        let transaction = PlaybackTransitionReducer.Transaction(
             requestID: UUID(0),
             intent: intent
         )
         let store = TestStore(
-            initialState: PlaybackTransitionFeature.State(
+            initialState: PlaybackTransitionReducer.State(
                 phase: .starting(intent)
             )
         ) {
-            PlaybackTransitionFeature()
+            PlaybackTransitionReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackItem.load = { _, _, _ in
@@ -165,25 +188,26 @@ struct PlaybackCommandPolicyTests {
 }
 
 private func makePolicy(
-    queue: PlaybackQueueFeature.State = .populated,
+    queue: PlaybackQueueReducer.State = .populated,
     status: PlaybackStatus = .playing,
-    pendingTarget: PlaybackSessionFeature.PendingStatusChange.Target? = nil,
-    transition: PlaybackTransitionFeature.State? = nil,
+    pendingTarget: PlaybackSessionReducer.PendingStatusChange.Target? = nil,
+    transition: PlaybackTransitionReducer.State? = nil,
     duration: TimeInterval? = 180,
-    isSeekable: Bool = true
+    isSeekable: Bool = true,
+    confirmedPosition: TimeInterval = 0
 ) -> PlaybackCommandPolicy {
     PlaybackCommandPolicy(
         queue: queue,
-        timeline: PlaybackTimelineFeature.State(
-            confirmedPosition: 0,
+        timeline: PlaybackTimelineReducer.State(
+            confirmedPosition: confirmedPosition,
             duration: duration,
             isSeekable: isSeekable,
             interaction: .idle
         ),
-        session: PlaybackSessionFeature.State(
+        session: PlaybackSessionReducer.State(
             status: status,
             pendingStatusChange: pendingTarget.map {
-                PlaybackSessionFeature.PendingStatusChange(
+                PlaybackSessionReducer.PendingStatusChange(
                     requestID: UUID(0),
                     target: $0
                 )
@@ -193,7 +217,7 @@ private func makePolicy(
     )
 }
 
-private func makeStartingTransition() -> PlaybackTransitionFeature.State {
+private func makeStartingTransition() -> PlaybackTransitionReducer.State {
     let target = Track(
         id: TrackID(
             providerID: "fake",
@@ -205,7 +229,7 @@ private func makeStartingTransition() -> PlaybackTransitionFeature.State {
         artworkURL: nil,
         duration: 180
     )
-    return PlaybackTransitionFeature.State(
+    return PlaybackTransitionReducer.State(
         phase: .starting(
             .init(
                 target: target,
@@ -215,7 +239,7 @@ private func makeStartingTransition() -> PlaybackTransitionFeature.State {
     )
 }
 
-extension PlaybackQueueFeature.State {
+extension PlaybackQueueReducer.State {
     fileprivate static let empty = Self(
         current: nil
     )

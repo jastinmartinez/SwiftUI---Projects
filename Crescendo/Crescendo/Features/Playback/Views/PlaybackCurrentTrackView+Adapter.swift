@@ -1,33 +1,23 @@
 import ComposableArchitecture
-import Foundation
 
-extension PlaybackView.Model {
-    /// Projects reducer-owned playback state into the expanded-player presentation.
+extension PlaybackCurrentTrackView.Model {
+    /// Projects current-track identity and status without reading timeline or
+    /// queue-list presentation.
     ///
-    /// Pending transport targets take precedence over confirmed status, while
-    /// timeline-dependent sections are omitted when no valid duration exists.
-    ///
-    /// - Parameter store: The playback store supplying domain state and receiving
-    ///   callbacks.
+    /// - Parameter store: The playback store supplying track and status state.
     @MainActor
-    init(_ store: StoreOf<PlaybackFeature>) {
-        self.init(
-            store,
-            strings: .localized
-        )
+    init(_ store: StoreOf<PlaybackReducer>) {
+        self.init(store, strings: .localized)
     }
 
-    /// Projects playback state using an explicitly supplied localization bundle.
-    ///
-    /// This initializer keeps failure wording outside reducer state and makes the
-    /// projection independently testable.
+    /// Projects current-track presentation with explicit transient-state copy.
     ///
     /// - Parameters:
-    ///   - store: The playback store supplying domain state and receiving callbacks.
-    ///   - strings: Localized transient-state strings used by the projection.
+    ///   - store: The playback store supplying track and status state.
+    ///   - strings: Localized strings for transient playback states.
     @MainActor
     init(
-        _ store: StoreOf<PlaybackFeature>,
+        _ store: StoreOf<PlaybackReducer>,
         strings: Strings
     ) {
         let statusText: String
@@ -73,27 +63,18 @@ extension PlaybackView.Model {
         let pendingTrack = store.queue.pendingTrack
         let displayedTrack = confirmedTrack ?? pendingTrack
 
-        let timeline = PlaybackTimelineView.Model(store)
-
         self.init(
             artworkURL: displayedTrack?.artworkURL,
             metadata: PlaybackMetadataView.Model(
                 title: displayedTrack?.title ?? Locs.Playback.noSelection,
                 artistName: displayedTrack?.artistName,
                 statusText: statusText
-            ),
-            timeline: timeline,
-            skipControls: timeline.map { _ in
-                PlaybackSkipControlsView.Model(store)
-            },
-            controls: PlaybackControlsView.Model(store),
-            utilityControls: PlaybackUtilityControlsView.Model(store),
-            upNext: PlaybackUpNextView.Model(store)
+            )
         )
     }
 }
 
-extension PlaybackView.Model.Strings {
+extension PlaybackCurrentTrackView.Model.Strings {
     /// Production localization wiring for transient playback presentation.
     static let localized = Self(
         loading: Locs.Playback.Status.loading,

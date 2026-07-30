@@ -41,6 +41,7 @@ struct SearchPresentationAdapterTests {
         #expect(results.summary == "1 song")
         #expect(results.rows.map(\.id) == [track.id])
         #expect(results.rows.map(\.paginationTriggerID) == ["next"])
+        #expect(results.rows.first?.song.durationText == nil)
         #expect(results.footer.content == .hidden)
     }
 
@@ -94,14 +95,14 @@ struct SearchPresentationAdapterTests {
     }
 
     @Test(arguments: [
-        SearchPaginationFeature.Status.idle,
+        SearchPaginationReducer.Status.idle,
         .failed(.network),
     ])
     func paginationCallbackStartsTheExpectedPageRequest(
-        paginationStatus: SearchPaginationFeature.Status
+        paginationStatus: SearchPaginationReducer.Status
     ) throws {
         let store = Store(
-            initialState: SearchFeature.State(
+            initialState: SearchReducer.State(
                 query: "result",
                 status: loadedStatus(
                     tracks: [makeTrack()],
@@ -111,7 +112,7 @@ struct SearchPresentationAdapterTests {
                 providerID: .testProvider
             )
         ) {
-            SearchFeature()
+            SearchReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
@@ -148,26 +149,26 @@ struct SearchPresentationAdapterTests {
 
     private func makeStore(
         query: String,
-        status: SearchFeature.Status
-    ) -> StoreOf<SearchFeature> {
+        status: SearchReducer.Status
+    ) -> StoreOf<SearchReducer> {
         Store(
-            initialState: SearchFeature.State(
+            initialState: SearchReducer.State(
                 query: query,
                 status: status,
                 providerID: .testProvider
             )
         ) {
-            SearchFeature()
+            SearchReducer()
         }
     }
 
     private func loadedStatus(
         tracks: [Track],
         nextCursor: SearchCursor?,
-        paginationStatus: SearchPaginationFeature.Status
-    ) -> SearchFeature.Status {
+        paginationStatus: SearchPaginationReducer.Status
+    ) -> SearchReducer.Status {
         .loaded(
-            SearchPaginationFeature.State(
+            SearchPaginationReducer.State(
                 tracks: .init(uniqueElements: tracks),
                 nextCursor: nextCursor,
                 status: paginationStatus,
@@ -178,7 +179,7 @@ struct SearchPresentationAdapterTests {
 
     private func makeResultsModel(
         nextCursor: SearchCursor?,
-        paginationStatus: SearchPaginationFeature.Status
+        paginationStatus: SearchPaginationReducer.Status
     ) -> SearchResultsView.Model {
         SearchResultsView.Model(
             makeStore(

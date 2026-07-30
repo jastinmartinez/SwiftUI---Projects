@@ -73,7 +73,7 @@ struct PlaybackSliderView: View {
             model.onValueChanged(model.scale.clamp(model.value + delta))
             model.onInteractionEnded()
         }
-        .accessibilityRespondsToUserInteraction(model.isEnabled)
+        .playbackControlAvailability(model.availability)
     }
 }
 
@@ -83,10 +83,14 @@ extension PlaybackSliderView {
         let value: TimeInterval
         let scale: Scale
         let accessibilityStep: TimeInterval
-        let isEnabled: Bool
+        let availability: PlaybackCommandPolicy.Availability
         let strings: Strings
         let onValueChanged: (TimeInterval) -> Void
         let onInteractionEnded: () -> Void
+
+        var isEnabled: Bool {
+            availability.isEnabled
+        }
     }
 }
 

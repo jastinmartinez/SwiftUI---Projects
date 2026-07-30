@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct SearchPaginationFeatureTests {
+struct SearchPaginationReducerTests {
     @Test
     func nextPageAppendsUniqueSongsAndStoresContinuation() async {
         let first = makeTrack(nativeID: "1")
@@ -20,14 +20,14 @@ struct SearchPaginationFeatureTests {
         let testProviderSearchCount = LockIsolated(0)
         let jamendoSearchCount = LockIsolated(0)
         let store = TestStore(
-            initialState: SearchPaginationFeature.State(
+            initialState: SearchPaginationReducer.State(
                 tracks: [first],
                 nextCursor: cursor,
                 status: .idle,
                 providerID: .jamendo
             )
         ) {
-            SearchPaginationFeature()
+            SearchPaginationReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
@@ -77,14 +77,14 @@ struct SearchPaginationFeatureTests {
         let testProviderSearchCount = LockIsolated(0)
         let cursor = SearchCursor(value: "page-2")
         let store = TestStore(
-            initialState: SearchPaginationFeature.State(
+            initialState: SearchPaginationReducer.State(
                 tracks: [],
                 nextCursor: cursor,
                 status: .idle,
                 providerID: .jamendo
             )
         ) {
-            SearchPaginationFeature()
+            SearchPaginationReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
@@ -123,14 +123,14 @@ struct SearchPaginationFeatureTests {
 
     @Test
     func exhaustedSearchDoesNotRequestAnotherPage() async {
-        let state = SearchPaginationFeature.State(
+        let state = SearchPaginationReducer.State(
             tracks: [],
             nextCursor: nil,
             status: .idle,
             providerID: .testProvider
         )
         let store = TestStore(initialState: state) {
-            SearchPaginationFeature()
+            SearchPaginationReducer()
         } withDependencies: {
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
@@ -153,14 +153,14 @@ struct SearchPaginationFeatureTests {
     @Test
     func unresolvedRequestRejectsDuplicateAndStaleResponses() async {
         let cursor = SearchCursor(value: "page-2")
-        let state = SearchPaginationFeature.State(
+        let state = SearchPaginationReducer.State(
             tracks: [],
             nextCursor: cursor,
             status: .loading(requestID: UUID(0)),
             providerID: .testProvider
         )
         let store = TestStore(initialState: state) {
-            SearchPaginationFeature()
+            SearchPaginationReducer()
         } withDependencies: {
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
@@ -224,14 +224,14 @@ struct SearchPaginationFeatureTests {
     @Test
     func cancelStopsAnUnresolvedPageRequest() async {
         let store = TestStore(
-            initialState: SearchPaginationFeature.State(
+            initialState: SearchPaginationReducer.State(
                 tracks: [],
                 nextCursor: SearchCursor(value: "page-2"),
                 status: .idle,
                 providerID: .testProvider
             )
         ) {
-            SearchPaginationFeature()
+            SearchPaginationReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
@@ -269,18 +269,18 @@ struct SearchPaginationFeatureTests {
     private func makeStore(
         tracks: [Track],
         nextCursor: SearchCursor?,
-        status: SearchPaginationFeature.Status,
+        status: SearchPaginationReducer.Status,
         nextPage: SearchPage
-    ) -> TestStoreOf<SearchPaginationFeature> {
+    ) -> TestStoreOf<SearchPaginationReducer> {
         TestStore(
-            initialState: SearchPaginationFeature.State(
+            initialState: SearchPaginationReducer.State(
                 tracks: .init(uniqueElements: tracks),
                 nextCursor: nextCursor,
                 status: status,
                 providerID: .testProvider
             )
         ) {
-            SearchPaginationFeature()
+            SearchPaginationReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(

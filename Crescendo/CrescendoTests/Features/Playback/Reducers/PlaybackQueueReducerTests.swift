@@ -5,7 +5,7 @@ import Testing
 @testable import Crescendo
 
 @MainActor
-struct PlaybackQueueFeatureTests {
+struct PlaybackQueueReducerTests {
     @Test
     func replacementStoresSourceOrderAndSelectsTheRequestedTrack() async {
         let tracks = makeTracks()
@@ -677,9 +677,9 @@ struct PlaybackQueueFeatureTests {
         repeatMode: PlaybackRepeatMode = .off,
         shuffleMode: PlaybackShuffleMode = .off,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
-    ) -> TestStoreOf<PlaybackQueueFeature> {
+    ) -> TestStoreOf<PlaybackQueueReducer> {
         TestStore(
-            initialState: PlaybackQueueFeature.State(
+            initialState: PlaybackQueueReducer.State(
                 current: makeConfirmedQueue(
                     tracks,
                     orderedTrackIDs: orderedTrackIDs,
@@ -689,7 +689,7 @@ struct PlaybackQueueFeatureTests {
                 )
             )
         ) {
-            PlaybackQueueFeature()
+            PlaybackQueueReducer()
         } withDependencies: {
             configureDependencies(&$0)
         }
@@ -698,7 +698,7 @@ struct PlaybackQueueFeatureTests {
     private func replacementChange(
         _ tracks: IdentifiedArrayOf<Track>,
         startingAt trackID: TrackID
-    ) -> PlaybackQueueFeature.QueueChange {
+    ) -> PlaybackQueueReducer.QueueChange {
         .replacement(
             makeConfirmedQueue(
                 tracks,

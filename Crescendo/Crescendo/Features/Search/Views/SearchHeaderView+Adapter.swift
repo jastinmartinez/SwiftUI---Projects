@@ -2,7 +2,7 @@ import ComposableArchitecture
 
 extension SearchHeaderView.Model {
     @MainActor
-    init(_ store: StoreOf<SearchFeature>) {
+    init(_ store: StoreOf<SearchReducer>) {
         self.init(
             query: store.query,
             isSearchEnabled: !store.query

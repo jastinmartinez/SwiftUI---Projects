@@ -1,9 +1,9 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// Connects the search feature store to stateless search components.
+/// The search feature boundary that composes stateless search views.
 struct SearchFeatureView: View {
-    let store: StoreOf<SearchFeature>
+    let store: StoreOf<SearchReducer>
 
     var body: some View {
         NavigationStack {

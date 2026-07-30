@@ -3,7 +3,7 @@ import ComposableArchitecture
 extension SearchResultsView.Model {
     /// Adapts reducer-owned search state and actions into presentation content.
     @MainActor
-    init(_ store: StoreOf<SearchFeature>) {
+    init(_ store: StoreOf<SearchReducer>) {
         let content: Content
         switch store.status {
         case .idle:
@@ -42,7 +42,8 @@ extension SearchResultsView.Model {
                             id: song.id,
                             song: TrackRowView.Model(
                                 song,
-                                accessory: .disclosure
+                                accessory: .disclosure,
+                                showsDuration: false
                             ),
                             paginationTriggerID: song.id == lastSongID
                                 ? paginationTriggerID

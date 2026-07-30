@@ -31,6 +31,16 @@
         }
       }
     },
+    "music_playback.dismiss" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss player"
+          }
+        }
+      }
+    },
     "music_playback.forward_fifteen_seconds" : {
       "localizations" : {
         "en" : {

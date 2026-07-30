@@ -108,7 +108,7 @@ struct AppPlaybackCoordinationTests {
             )
         )
         state.search.status = .loaded(
-            SearchPaginationFeature.State(
+            SearchPaginationReducer.State(
                 tracks: firstResults,
                 nextCursor: cursor,
                 status: .idle,
@@ -220,7 +220,7 @@ struct AppPlaybackCoordinationTests {
     private let providerID = ProviderID(rawValue: "fake")
 
     private func receiveTransitionStart(
-        in store: TestStoreOf<AppFeature>,
+        in store: TestStoreOf<AppReducer>,
         targetTrackID: TrackID,
         loadedResults: IdentifiedArrayOf<Track>,
         baselineTrackID: TrackID?,
@@ -250,7 +250,7 @@ struct AppPlaybackCoordinationTests {
         guard let target = loadedResults[id: targetTrackID] else {
             preconditionFailure("Expected target track in loaded results")
         }
-        let intent = PlaybackTransitionFeature.Intent(
+        let intent = PlaybackTransitionReducer.Intent(
             target: target,
             baselineTrackID: baselineTrackID
         )
@@ -270,7 +270,7 @@ struct AppPlaybackCoordinationTests {
         )
         await store.receive(.playback(.transition(.start))) {
             $0.playback.transition?.phase = .preparing(
-                PlaybackTransitionFeature.Transaction(
+                PlaybackTransitionReducer.Transaction(
                     requestID: requestID,
                     intent: intent
                 ),
@@ -281,17 +281,17 @@ struct AppPlaybackCoordinationTests {
     }
 
     private func makeStore(
-        state: AppFeature.State? = nil,
-        playbackQueue: PlaybackQueueFeature.State = .init(
+        state: AppReducer.State? = nil,
+        playbackQueue: PlaybackQueueReducer.State = .init(
             current: nil
         ),
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
-    ) -> TestStoreOf<AppFeature> {
+    ) -> TestStoreOf<AppReducer> {
         TestStore(
             initialState: state
                 ?? makeState(playbackQueue: playbackQueue)
         ) {
-            AppFeature()
+            AppReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackObservation.observations = { .finished }
@@ -304,25 +304,25 @@ struct AppPlaybackCoordinationTests {
     }
 
     private func makeState(
-        playbackQueue: PlaybackQueueFeature.State = .init(
+        playbackQueue: PlaybackQueueReducer.State = .init(
             current: nil
         )
-    ) -> AppFeature.State {
-        AppFeature.State(
-            search: SearchFeature.State(
+    ) -> AppReducer.State {
+        AppReducer.State(
+            search: SearchReducer.State(
                 query: "",
                 status: .idle,
                 providerID: providerID
             ),
-            playback: PlaybackFeature.State(
+            playback: PlaybackReducer.State(
                 queue: playbackQueue,
-                timeline: PlaybackTimelineFeature.State(
+                timeline: PlaybackTimelineReducer.State(
                     confirmedPosition: 0,
                     duration: nil,
                     isSeekable: false,
                     interaction: .idle
                 ),
-                session: PlaybackSessionFeature.State(
+                session: PlaybackSessionReducer.State(
                     status: playbackQueue.current == nil
                         ? .idle
                         : .playing,
@@ -338,8 +338,8 @@ struct AppPlaybackCoordinationTests {
     private func makeQueue(
         tracks: [Track],
         currentTrackID: TrackID
-    ) -> PlaybackQueueFeature.State {
-        PlaybackQueueFeature.State(
+    ) -> PlaybackQueueReducer.State {
+        PlaybackQueueReducer.State(
             current: makeConfirmedQueue(
                 IdentifiedArray(uniqueElements: tracks),
                 startingAt: currentTrackID

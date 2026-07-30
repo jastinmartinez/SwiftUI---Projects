@@ -3,7 +3,7 @@ import Foundation
 
 /// Owns one transactional move from confirmed playback to a target track.
 @Reducer
-struct PlaybackTransitionFeature {
+struct PlaybackTransitionReducer {
     @ObservableState
     struct State: Equatable {
         var phase: Phase
@@ -844,7 +844,7 @@ struct PlaybackTransitionFeature {
     }
 }
 
-extension PlaybackTransitionFeature.State {
+extension PlaybackTransitionReducer.State {
     /// Reports whether the transition can accept a new Stop request.
     ///
     /// A transition stops accepting Stop after it has retained one as its
