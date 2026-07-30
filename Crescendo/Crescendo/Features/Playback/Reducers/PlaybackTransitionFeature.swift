@@ -10,15 +10,8 @@ struct PlaybackTransitionFeature {
     }
 
     struct Intent: Equatable, Sendable {
-        let queue: IdentifiedArrayOf<Track>
         let targetTrackID: TrackID
         let baselineTrackID: TrackID?
-        let origin: Origin
-    }
-
-    enum Origin: Equatable, Sendable {
-        case selection
-        case navigation
     }
 
     struct Transaction: Equatable, Sendable {
@@ -124,6 +117,7 @@ struct PlaybackTransitionFeature {
             failure: PlaybackFailure
         )
         case commitCompleted(requestID: UUID)
+        case rollbackRequested(requestID: UUID)
         case rollbackCompleted(requestID: UUID)
         case confirmationApplied
         case delegate(Delegate)
@@ -331,30 +325,94 @@ struct PlaybackTransitionFeature {
                 } ?? .none
 
             case .snapshotReceived(let snapshot):
-                guard
-                    case .preparing(
-                        let transaction,
-                        var preparation
-                    ) = state.phase
-                else {
-                    return .none
-                }
+                switch state.phase {
+                case .preparing(
+                    let transaction,
+                    var preparation
+                ):
+                    let intent = transaction.intent
+                    let observedTrackID = snapshot.currentTrackID
+                    let targetTrackID = intent.targetTrackID
 
-                if snapshot.currentTrackID
-                    == transaction.intent.targetTrackID
-                {
-                    preparation.latestTargetSnapshot = snapshot
-                    state.phase = .preparing(transaction, preparation)
+                    if observedTrackID == targetTrackID {
+                        if preparation.stage == .awaitingConfirmation {
+                            state.phase = .committing(
+                                transaction,
+                                Commit(snapshot: snapshot, followUp: nil)
+                            )
+                            return .run { send in
+                                await playbackItem.commit(
+                                    transaction.installation
+                                )
+                                guard !Task.isCancelled else { return }
+                                await send(
+                                    .commitCompleted(
+                                        requestID: transaction.requestID
+                                    )
+                                )
+                            }
+                            .cancellable(
+                                id: CancelID.transition,
+                                cancelInFlight: true
+                            )
+                        }
+
+                        preparation.latestTargetSnapshot = snapshot
+                        state.phase = .preparing(
+                            transaction,
+                            preparation
+                        )
+                        return .none
+                    }
+
+                    let baselineTrackID = intent.baselineTrackID
+                    if observedTrackID == baselineTrackID {
+                        return .send(
+                            .delegate(
+                                .confirmedSnapshotReady(snapshot)
+                            )
+                        )
+                    }
+
                     return .none
-                }
-                if snapshot.currentTrackID
-                    == transaction.intent.baselineTrackID
-                {
+
+                case .committing(let transaction, var commit):
+                    let targetTrackID = transaction.intent.targetTrackID
+                    guard snapshot.currentTrackID == targetTrackID else {
+                        return .none
+                    }
+                    commit.snapshot = snapshot
+                    state.phase = .committing(transaction, commit)
+                    return .none
+
+                case .applyingConfirmation(
+                    let transaction,
+                    var commit
+                ):
+                    let targetTrackID = transaction.intent.targetTrackID
+                    guard snapshot.currentTrackID == targetTrackID else {
+                        return .none
+                    }
+                    commit.snapshot = snapshot
+                    state.phase = .applyingConfirmation(
+                        transaction,
+                        commit
+                    )
+                    return .none
+
+                case .rollingBack(let transaction, _):
+                    let intent = transaction.intent
+                    let baselineTrackID = intent.baselineTrackID
+                    guard snapshot.currentTrackID == baselineTrackID else {
+                        return .none
+                    }
                     return .send(
                         .delegate(.confirmedSnapshotReady(snapshot))
                     )
+
+                case .starting:
+                    return .none
                 }
-                return .none
 
             case .cachedSnapshotReplayRequested(
                 let requestID,
@@ -371,7 +429,23 @@ struct PlaybackTransitionFeature {
                 else {
                     return .none
                 }
-                return .none
+                state.phase = .committing(
+                    transaction,
+                    Commit(snapshot: snapshot, followUp: nil)
+                )
+                return .run { send in
+                    await playbackItem.commit(transaction.installation)
+                    guard !Task.isCancelled else { return }
+                    await send(
+                        .commitCompleted(
+                            requestID: transaction.requestID
+                        )
+                    )
+                }
+                .cancellable(
+                    id: CancelID.transition,
+                    cancelInFlight: true
+                )
 
             case .resourceResolutionFailed(
                 let requestID,
@@ -387,12 +461,13 @@ struct PlaybackTransitionFeature {
                 else {
                     return .none
                 }
+                let targetTrackID =
+                    transaction.intent.targetTrackID
                 return .send(
                     .delegate(
                         .completed(
                             .failed(
-                                trackID:
-                                    transaction.intent.targetTrackID,
+                                trackID: targetTrackID,
                                 failure: failure
                             )
                         )
@@ -410,29 +485,479 @@ struct PlaybackTransitionFeature {
                 else {
                     return .none
                 }
+                let targetTrackID =
+                    transaction.intent.targetTrackID
+                state.phase = .rollingBack(
+                    transaction,
+                    Rollback(
+                        installation: transaction.installation,
+                        reason: .failure(
+                            trackID: targetTrackID,
+                            failure: failure
+                        ),
+                        followUp: nil
+                    )
+                )
+                return .send(
+                    .rollbackRequested(requestID: transaction.requestID)
+                )
+
+            case .playbackRequestFailed(
+                let requestID,
+                let failure
+            ):
+                switch state.phase {
+                case .preparing(
+                    let transaction,
+                    let preparation
+                ):
+                    guard
+                        transaction.requestID == requestID,
+                        preparation.stage == .requestingPlayback
+                            || preparation.stage == .awaitingConfirmation
+                    else {
+                        return .none
+                    }
+                    let targetTrackID =
+                        transaction.intent.targetTrackID
+                    state.phase = .rollingBack(
+                        transaction,
+                        Rollback(
+                            installation: transaction.installation,
+                            reason: .failure(
+                                trackID: targetTrackID,
+                                failure: failure
+                            ),
+                            followUp: nil
+                        )
+                    )
+                    return .send(
+                        .rollbackRequested(
+                            requestID: transaction.requestID
+                        )
+                    )
+
+                case .committing(let transaction, _),
+                    .applyingConfirmation(let transaction, _):
+                    guard transaction.requestID == requestID else {
+                        return .none
+                    }
+                    let targetTrackID =
+                        transaction.intent.targetTrackID
+                    return .send(
+                        .delegate(
+                            .confirmedPlaybackFailed(
+                                trackID: targetTrackID,
+                                failure: failure
+                            )
+                        )
+                    )
+
+                case .starting, .rollingBack:
+                    return .none
+                }
+
+            case .commitCompleted(let requestID):
+                guard
+                    case .committing(
+                        let transaction,
+                        let commit
+                    ) = state.phase,
+                    transaction.requestID == requestID
+                else {
+                    return .none
+                }
+                state.phase = .applyingConfirmation(
+                    transaction,
+                    commit
+                )
                 return .send(
                     .delegate(
-                        .completed(
-                            .failed(
-                                trackID:
-                                    transaction.intent.targetTrackID,
-                                failure: failure
+                        .confirmationReady(
+                            Confirmation(
+                                intent: transaction.intent,
+                                snapshot: commit.snapshot
                             )
                         )
                     )
                 )
 
-            case .supersede,
-                .cancel,
-                .stopRequested,
-                .runtimeFailureReceived,
-                .playbackRequestFailed,
-                .commitCompleted,
-                .rollbackCompleted,
-                .confirmationApplied,
-                .delegate:
+            case .confirmationApplied:
+                guard
+                    case .applyingConfirmation(
+                        _,
+                        let commit
+                    ) = state.phase
+                else {
+                    return .none
+                }
+
+                switch commit.followUp {
+                case .none:
+                    return .send(.delegate(.completed(.confirmed)))
+
+                case .transition(let intent):
+                    state.phase = .starting(intent)
+                    return .send(.start)
+
+                case .stop:
+                    return .send(.delegate(.completed(.stopReady)))
+                }
+
+            case .rollbackRequested(let requestID):
+                guard
+                    case .rollingBack(let transaction, _) = state.phase,
+                    transaction.requestID == requestID
+                else {
+                    return .none
+                }
+                let installation = transaction.installation
+                return .concatenate(
+                    .cancel(id: CancelID.transition),
+                    .run { send in
+                        await playbackItem.rollback(installation)
+                        guard !Task.isCancelled else { return }
+                        await send(
+                            .rollbackCompleted(requestID: requestID)
+                        )
+                    }
+                    .cancellable(
+                        id: CancelID.transition,
+                        cancelInFlight: true
+                    )
+                )
+
+            case .rollbackCompleted(let requestID):
+                guard
+                    case .rollingBack(
+                        let transaction,
+                        let rollback
+                    ) = state.phase,
+                    transaction.requestID == requestID
+                else {
+                    return .none
+                }
+
+                switch rollback.followUp {
+                case .transition(let intent):
+                    state.phase = .starting(intent)
+                    return .send(.start)
+
+                case .stop:
+                    return .send(.delegate(.completed(.stopReady)))
+
+                case .none:
+                    switch rollback.reason {
+                    case .cancellation, .supersession:
+                        return .send(
+                            .delegate(.completed(.cancelled))
+                        )
+
+                    case .failure(let trackID, let failure):
+                        return .send(
+                            .delegate(
+                                .completed(
+                                    .failed(
+                                        trackID: trackID,
+                                        failure: failure
+                                    )
+                                )
+                            )
+                        )
+                    }
+                }
+
+            case .supersede(let intent):
+                switch state.phase {
+                case .starting:
+                    state.phase = .starting(intent)
+                    return .concatenate(
+                        .cancel(id: CancelID.transition),
+                        .send(.start)
+                    )
+
+                case .preparing(
+                    let transaction,
+                    let preparation
+                ):
+                    if preparation.stage == .resolving {
+                        state.phase = .starting(intent)
+                        return .concatenate(
+                            .cancel(id: CancelID.transition),
+                            .send(.start)
+                        )
+                    }
+                    state.phase = .rollingBack(
+                        transaction,
+                        Rollback(
+                            installation: transaction.installation,
+                            reason: .supersession,
+                            followUp: .transition(intent)
+                        )
+                    )
+                    return .send(
+                        .rollbackRequested(
+                            requestID: transaction.requestID
+                        )
+                    )
+
+                case .committing(let transaction, var commit):
+                    commit.followUp = .transition(intent)
+                    state.phase = .committing(transaction, commit)
+                    return .none
+
+                case .applyingConfirmation(
+                    let transaction,
+                    var commit
+                ):
+                    commit.followUp = .transition(intent)
+                    state.phase = .applyingConfirmation(
+                        transaction,
+                        commit
+                    )
+                    return .none
+
+                case .rollingBack(
+                    let transaction,
+                    var rollback
+                ):
+                    rollback.followUp = .transition(intent)
+                    state.phase = .rollingBack(
+                        transaction,
+                        rollback
+                    )
+                    return .none
+                }
+
+            case .cancel:
+                switch state.phase {
+                case .starting:
+                    return .concatenate(
+                        .cancel(id: CancelID.transition),
+                        .send(.delegate(.completed(.cancelled)))
+                    )
+
+                case .preparing(
+                    let transaction,
+                    let preparation
+                ):
+                    if preparation.stage == .resolving {
+                        return .concatenate(
+                            .cancel(id: CancelID.transition),
+                            .send(
+                                .delegate(.completed(.cancelled))
+                            )
+                        )
+                    }
+                    state.phase = .rollingBack(
+                        transaction,
+                        Rollback(
+                            installation: transaction.installation,
+                            reason: .cancellation,
+                            followUp: nil
+                        )
+                    )
+                    return .send(
+                        .rollbackRequested(
+                            requestID: transaction.requestID
+                        )
+                    )
+
+                case .committing(let transaction, var commit):
+                    commit.followUp = nil
+                    state.phase = .committing(transaction, commit)
+                    return .none
+
+                case .applyingConfirmation(
+                    let transaction,
+                    var commit
+                ):
+                    commit.followUp = nil
+                    state.phase = .applyingConfirmation(
+                        transaction,
+                        commit
+                    )
+                    return .none
+
+                case .rollingBack(
+                    let transaction,
+                    let rollback
+                ):
+                    state.phase = .rollingBack(
+                        transaction,
+                        Rollback(
+                            installation: rollback.installation,
+                            reason: .cancellation,
+                            followUp: nil
+                        )
+                    )
+                    return .none
+                }
+
+            case .stopRequested:
+                switch state.phase {
+                case .starting:
+                    return .concatenate(
+                        .cancel(id: CancelID.transition),
+                        .send(.delegate(.completed(.stopReady)))
+                    )
+
+                case .preparing(
+                    let transaction,
+                    let preparation
+                ):
+                    if preparation.stage == .resolving {
+                        return .concatenate(
+                            .cancel(id: CancelID.transition),
+                            .send(
+                                .delegate(.completed(.stopReady))
+                            )
+                        )
+                    }
+                    state.phase = .rollingBack(
+                        transaction,
+                        Rollback(
+                            installation: transaction.installation,
+                            reason: .cancellation,
+                            followUp: .stop
+                        )
+                    )
+                    return .send(
+                        .rollbackRequested(
+                            requestID: transaction.requestID
+                        )
+                    )
+
+                case .committing(let transaction, var commit):
+                    commit.followUp = .stop
+                    state.phase = .committing(transaction, commit)
+                    return .none
+
+                case .applyingConfirmation(
+                    let transaction,
+                    var commit
+                ):
+                    commit.followUp = .stop
+                    state.phase = .applyingConfirmation(
+                        transaction,
+                        commit
+                    )
+                    return .none
+
+                case .rollingBack(
+                    let transaction,
+                    var rollback
+                ):
+                    rollback.followUp = .stop
+                    state.phase = .rollingBack(
+                        transaction,
+                        rollback
+                    )
+                    return .none
+                }
+
+            case .runtimeFailureReceived(let trackID, let failure):
+                switch state.phase {
+                case .starting(let intent):
+                    if trackID == intent.targetTrackID {
+                        return .send(
+                            .delegate(
+                                .completed(
+                                    .failed(
+                                        trackID: intent.targetTrackID,
+                                        failure: failure
+                                    )
+                                )
+                            )
+                        )
+                    }
+                    guard trackID == intent.baselineTrackID else {
+                        return .none
+                    }
+                    return .send(
+                        .delegate(
+                            .confirmedPlaybackFailed(
+                                trackID: trackID,
+                                failure: failure
+                            )
+                        )
+                    )
+
+                case .preparing(let transaction, _),
+                    .committing(let transaction, _):
+                    let intent = transaction.intent
+                    let targetTrackID = intent.targetTrackID
+                    if trackID == targetTrackID {
+                        let installation = transaction.installation
+                        state.phase = .rollingBack(
+                            transaction,
+                            Rollback(
+                                installation: installation,
+                                reason: .failure(
+                                    trackID: targetTrackID,
+                                    failure: failure
+                                ),
+                                followUp: nil
+                            )
+                        )
+                        return .send(
+                            .rollbackRequested(
+                                requestID: transaction.requestID
+                            )
+                        )
+                    }
+                    let baselineTrackID = intent.baselineTrackID
+                    guard trackID == baselineTrackID else {
+                        return .none
+                    }
+                    return .send(
+                        .delegate(
+                            .confirmedPlaybackFailed(
+                                trackID: trackID,
+                                failure: failure
+                            )
+                        )
+                    )
+
+                case .applyingConfirmation(let transaction, _):
+                    let intent = transaction.intent
+                    let targetTrackID = intent.targetTrackID
+                    let baselineTrackID = intent.baselineTrackID
+                    let isConfirmedIdentity =
+                        trackID == targetTrackID
+                        || trackID == baselineTrackID
+                    guard isConfirmedIdentity else {
+                        return .none
+                    }
+                    return .send(
+                        .delegate(
+                            .confirmedPlaybackFailed(
+                                trackID: trackID,
+                                failure: failure
+                            )
+                        )
+                    )
+
+                case .rollingBack(let transaction, _):
+                    let intent = transaction.intent
+                    let baselineTrackID = intent.baselineTrackID
+                    guard trackID == baselineTrackID else {
+                        return .none
+                    }
+                    return .send(
+                        .delegate(
+                            .confirmedPlaybackFailed(
+                                trackID: trackID,
+                                failure: failure
+                            )
+                        )
+                    )
+                }
+
+            case .delegate:
                 return .none
             }
         }
     }
+
 }
