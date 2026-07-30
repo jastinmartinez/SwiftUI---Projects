@@ -24,23 +24,6 @@ struct JamendoAPI: Sendable {
         )
     }
 
-    func track(id: String) async throws -> JamendoTrack {
-        let response = try await request(
-            queryItems: [
-                URLQueryItem(name: "client_id", value: configuration.clientID),
-                URLQueryItem(name: "format", value: "json"),
-                URLQueryItem(name: "id", value: id),
-                URLQueryItem(name: "limit", value: "1"),
-                URLQueryItem(name: "audioformat", value: "mp32"),
-                URLQueryItem(name: "imagesize", value: "300"),
-            ]
-        )
-        guard let track = response.results.first else {
-            throw MusicProviderError.unavailable
-        }
-        return track
-    }
-
     private func request(
         queryItems: [URLQueryItem]
     ) async throws -> JamendoTracksResponse {
@@ -55,7 +38,9 @@ struct JamendoAPI: Sendable {
         }
 
         do {
-            let (data, response) = try await data(URLRequest(url: url))
+            let (responseData, response) = try await data(
+                URLRequest(url: url)
+            )
             guard
                 let response = response as? HTTPURLResponse,
                 (200..<300).contains(response.statusCode)
@@ -64,7 +49,7 @@ struct JamendoAPI: Sendable {
             }
             let jamendoResponse = try JSONDecoder().decode(
                 JamendoTracksResponse.self,
-                from: data
+                from: responseData
             )
             guard jamendoResponse.headers.code == 0 else {
                 throw MusicProviderError.network

@@ -21,11 +21,10 @@ struct AppCompositionTests {
 
         #expect(composition.initialState.search.providerID == .jamendo)
         #expect(composition.providerSearchClients[.jamendo] == nil)
-        #expect(composition.playbackResourceClients[.jamendo] == nil)
     }
 
     @Test
-    func validConfigurationRegistersIndependentJamendoCapabilities() async throws {
+    func validConfigurationRegistersPlayableJamendoSearchResults() async throws {
         let requests = LockIsolated<[URLRequest]>([])
         let composition = AppComposition.live(
             jamendoClientID: "test-client",
@@ -41,28 +40,17 @@ struct AppCompositionTests {
         let searchClient = try #require(
             composition.providerSearchClients[.jamendo]
         )
-        let resourceClient = try #require(
-            composition.playbackResourceClients[.jamendo]
-        )
 
         let page = try await searchClient.searchPage(
             .initial(query: "Signal"),
             20
         )
-        #expect(page.tracks.map(\.id.nativeID) == ["42"])
-
-        let trackID = TrackID(providerID: .jamendo, nativeID: "42")
-        let resource = try await resourceClient.resolve(trackID)
-        #expect(resource.trackID == trackID)
-        #expect(
-            try resource.location
-                == .progressive(
-                    #require(
-                        URL(string: "https://example.com/audio.mp3")
-                    )
-                )
+        let expectedURL = try #require(
+            URL(string: "https://example.com/audio.mp3")
         )
-        #expect(requests.value.count == 2)
+        #expect(page.tracks.map(\.id.nativeID) == ["42"])
+        #expect(page.tracks.first?.playbackURL == expectedURL)
+        #expect(requests.value.count == 1)
     }
 
     @Test
@@ -87,17 +75,13 @@ struct AppCompositionTests {
             data: { _ in throw MusicProviderError.network }
         )
         let trackID = TrackID(providerID: .jamendo, nativeID: "shared")
-        let resource = try PlaybackResource(
-            trackID: trackID,
-            location: .progressive(
-                #require(URL(string: "memory://shared"))
-            )
-        )
+        let playbackURL = try #require(URL(string: "memory://shared"))
 
         #expect(player.currentItem == nil)
 
         try await composition.playbackItem.load(
-            resource,
+            trackID,
+            playbackURL,
             PlaybackItemInstallation(id: UUID(0))
         )
         try await composition.playbackTransport.play()

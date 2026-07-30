@@ -28,11 +28,19 @@ struct PlaybackCommandPolicyTests {
 
     @Test @MainActor
     func stopIsBlockedAfterTransitionRetainsTheRequest() async {
-        let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: TrackID(
+        let target = Track(
+            id: TrackID(
                 providerID: "fake",
                 nativeID: "pending"
             ),
+            title: "Pending",
+            artistName: "Artist",
+            albumTitle: nil,
+            artworkURL: nil,
+            duration: 180
+        )
+        let intent = PlaybackTransitionFeature.Intent(
+            target: target,
             baselineTrackID: TrackID(
                 providerID: "fake",
                 nativeID: "current"
@@ -42,12 +50,6 @@ struct PlaybackCommandPolicyTests {
             requestID: UUID(0),
             intent: intent
         )
-        let resource = PlaybackResource(
-            trackID: intent.targetTrackID,
-            location: .localFile(
-                URL(fileURLWithPath: "/tmp/pending.m4a")
-            )
-        )
         let store = TestStore(
             initialState: PlaybackTransitionFeature.State(
                 phase: .starting(intent)
@@ -56,31 +58,13 @@ struct PlaybackCommandPolicyTests {
             PlaybackTransitionFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.playbackResourceClients = ProviderClientRegistry(
-                clients: [
-                    "fake": PlaybackResourceClient(
-                        resolve: { _ in resource }
-                    )
-                ]
-            )
-            $0.playbackItem.load = { _, _ in
+            $0.playbackItem.load = { _, _, _ in
                 try await Task.sleep(for: .seconds(60))
             }
             $0.playbackItem.rollback = { _ in }
         }
 
         await store.send(.start) {
-            $0.phase = .preparing(
-                transaction,
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await store.receive(
-            .resourceResolved(
-                requestID: UUID(0),
-                resource: resource
-            )
-        ) {
             $0.phase = .preparing(
                 transaction,
                 .init(stage: .loading, latestTargetSnapshot: nil)
@@ -210,13 +194,21 @@ private func makePolicy(
 }
 
 private func makeStartingTransition() -> PlaybackTransitionFeature.State {
-    PlaybackTransitionFeature.State(
+    let target = Track(
+        id: TrackID(
+            providerID: "fake",
+            nativeID: "pending"
+        ),
+        title: "Pending",
+        artistName: "Artist",
+        albumTitle: nil,
+        artworkURL: nil,
+        duration: 180
+    )
+    return PlaybackTransitionFeature.State(
         phase: .starting(
             .init(
-                targetTrackID: TrackID(
-                    providerID: "fake",
-                    nativeID: "pending"
-                ),
+                target: target,
                 baselineTrackID: nil
             )
         )

@@ -5,6 +5,29 @@ import Testing
 @testable import Crescendo
 
 struct AVPlayerItemInstallerTests {
+    @Test
+    @MainActor
+    func installationRegistersTheExplicitTrackIdentity() throws {
+        let player = AVPlayer()
+        let registry = AVPlayerItemRegistry()
+        let installer = AVPlayerItemInstaller(player: player, registry: registry)
+        let item = AVPlayerItemFixture.make()
+        let trackID = TrackID(
+            providerID: .jamendo,
+            nativeID: "target"
+        )
+        let installation = PlaybackItemInstallation(id: UUID(0))
+
+        try installer.install(
+            item,
+            trackID: trackID,
+            installation: installation
+        )
+
+        #expect(player.currentItem === item)
+        #expect(registry.trackID(for: item) == trackID)
+    }
+
     /// A task cancelled before it runs still races against the cooperative
     /// scheduler, but `.cancel()` called synchronously right after `Task {
     /// ... }` is created always wins: the calling context hasn't suspended
@@ -18,16 +41,15 @@ struct AVPlayerItemInstallerTests {
         let registry = AVPlayerItemRegistry()
         let installer = AVPlayerItemInstaller(player: player, registry: registry)
         let item = AVPlayerItemFixture.make()
-        let url = try #require(URL(string: "https://example.com/audio.mp3"))
-        let resource = PlaybackResource(
-            trackID: TrackID(providerID: .jamendo, nativeID: "cancelled"),
-            location: .progressive(url)
+        let trackID = TrackID(
+            providerID: .jamendo,
+            nativeID: "cancelled"
         )
 
         let task = Task { @MainActor in
             try installer.install(
                 item,
-                for: resource,
+                trackID: trackID,
                 installation: PlaybackItemInstallation(id: UUID(0))
             )
         }
@@ -56,16 +78,15 @@ struct AVPlayerItemInstallerTests {
         )
         let installer = AVPlayerItemInstaller(player: player, registry: registry)
         let newItem = AVPlayerItemFixture.make()
-        let url = try #require(URL(string: "https://example.com/new.mp3"))
-        let resource = PlaybackResource(
-            trackID: TrackID(providerID: .jamendo, nativeID: "new"),
-            location: .progressive(url)
+        let newTrackID = TrackID(
+            providerID: .jamendo,
+            nativeID: "new"
         )
         let installation = PlaybackItemInstallation(id: UUID(0))
 
         try installer.install(
             newItem,
-            for: resource,
+            trackID: newTrackID,
             installation: installation
         )
         installer.rollback(installation)
@@ -91,17 +112,11 @@ struct AVPlayerItemInstallerTests {
             providerID: .jamendo,
             nativeID: "target"
         )
-        let resource = try PlaybackResource(
-            trackID: targetTrackID,
-            location: .progressive(
-                #require(URL(string: "https://example.com/target.mp3"))
-            )
-        )
         let installation = PlaybackItemInstallation(id: UUID(0))
 
         try installer.install(
             targetItem,
-            for: resource,
+            trackID: targetTrackID,
             installation: installation
         )
         installer.commit(installation)
@@ -128,29 +143,25 @@ struct AVPlayerItemInstallerTests {
         let installer = AVPlayerItemInstaller(player: player, registry: registry)
         let firstItem = AVPlayerItemFixture.make()
         let firstInstallation = PlaybackItemInstallation(id: UUID(0))
-        let firstResource = try PlaybackResource(
-            trackID: TrackID(providerID: .jamendo, nativeID: "first"),
-            location: .progressive(
-                #require(URL(string: "https://example.com/first.mp3"))
-            )
+        let firstTrackID = TrackID(
+            providerID: .jamendo,
+            nativeID: "first"
         )
         let secondItem = AVPlayerItemFixture.make()
         let secondInstallation = PlaybackItemInstallation(id: UUID(1))
-        let secondResource = try PlaybackResource(
-            trackID: TrackID(providerID: .jamendo, nativeID: "second"),
-            location: .progressive(
-                #require(URL(string: "https://example.com/second.mp3"))
-            )
+        let secondTrackID = TrackID(
+            providerID: .jamendo,
+            nativeID: "second"
         )
 
         try installer.install(
             firstItem,
-            for: firstResource,
+            trackID: firstTrackID,
             installation: firstInstallation
         )
         try installer.install(
             secondItem,
-            for: secondResource,
+            trackID: secondTrackID,
             installation: secondInstallation
         )
 
@@ -158,7 +169,7 @@ struct AVPlayerItemInstallerTests {
         installer.commit(firstInstallation)
 
         #expect(player.currentItem === secondItem)
-        #expect(registry.trackID(for: secondItem) == secondResource.trackID)
+        #expect(registry.trackID(for: secondItem) == secondTrackID)
 
         installer.rollback(secondInstallation)
 

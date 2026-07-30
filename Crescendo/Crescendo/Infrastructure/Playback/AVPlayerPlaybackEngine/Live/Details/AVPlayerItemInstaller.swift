@@ -21,12 +21,12 @@ final class AVPlayerItemInstaller {
     ///
     /// - Parameters:
     ///   - item: The already validated player item.
-    ///   - resource: The resource carrying the identity to observe later.
+    ///   - trackID: The identity observations report for the installed item.
     ///   - installation: The reducer-correlated installation identity.
     /// - Throws: `CancellationError` when newer work cancelled installation.
     func install(
         _ item: AVPlayerItem,
-        for resource: PlaybackResource,
+        trackID: TrackID,
         installation: PlaybackItemInstallation
     ) throws {
         try Task.checkCancellation()
@@ -35,7 +35,7 @@ final class AVPlayerItemInstaller {
         if let stagedInstallation {
             registry.remove(stagedInstallation.targetItem)
         }
-        registry.register(item, trackID: resource.trackID)
+        registry.register(item, trackID: trackID)
         player.replaceCurrentItem(with: item)
         stagedInstallation = StagedInstallation(
             token: installation,

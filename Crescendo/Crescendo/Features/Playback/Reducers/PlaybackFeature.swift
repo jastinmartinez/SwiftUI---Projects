@@ -254,11 +254,14 @@ struct PlaybackFeature {
             case .queue(
                 .delegate(.transitionRequested(let trackID))
             ):
-                guard state.queue.pendingTrack?.id == trackID else {
+                guard
+                    let target = state.queue.pendingTrack,
+                    target.id == trackID
+                else {
                     return .none
                 }
                 let intent = PlaybackTransitionFeature.Intent(
-                    targetTrackID: trackID,
+                    target: target,
                     baselineTrackID:
                         state.queue.current?.currentTrackID
                 )

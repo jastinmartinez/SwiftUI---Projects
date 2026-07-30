@@ -60,11 +60,14 @@ struct PlaybackFeatureTests {
     func firstSelectionRoutesThroughQueueAndCreatesTransition() async {
         let tracks = makeTracks(prefix: "selected")
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
-        let resolvedTrackIDs = LockIsolated<[TrackID]>([])
+        let loadedTrackIDs = LockIsolated<[TrackID]>([])
+        let loadedURLs = LockIsolated<[URL]>([])
         let store = makeStore {
-            $0.playbackResourceClients = self.cancellingResourceClients(
-                resolvedTrackIDs: resolvedTrackIDs
-            )
+            $0.playbackItem.load = { trackID, playbackURL, _ in
+                loadedTrackIDs.withValue { $0.append(trackID) }
+                loadedURLs.withValue { $0.append(playbackURL) }
+                throw CancellationError()
+            }
         }
 
         await store.send(
@@ -95,7 +98,7 @@ struct PlaybackFeatureTests {
             $0.transition = PlaybackTransitionFeature.State(
                 phase: .starting(
                     .init(
-                        targetTrackID: tracks[1].id,
+                        target: tracks[1],
                         baselineTrackID: nil
                     )
                 )
@@ -107,15 +110,16 @@ struct PlaybackFeatureTests {
         await store.receive(.transition(.start)) {
             $0.transition?.phase = .preparing(
                 self.transaction(
-                    targetTrackID: tracks[1].id,
+                    target: tracks[1],
                     baselineTrackID: nil
                 ),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
         await store.finish()
 
-        #expect(resolvedTrackIDs.value == [tracks[1].id])
+        #expect(loadedTrackIDs.value == [tracks[1].id])
+        #expect(loadedURLs.value == [tracks[1].playbackURL])
         #expect(store.state.queue.current == nil)
         #expect(store.state.queue.pendingTrack == tracks[1])
     }
@@ -142,10 +146,7 @@ struct PlaybackFeatureTests {
                     target: .paused
                 )
             )
-        ) {
-            $0.playbackResourceClients =
-                self.cancellingResourceClients()
-        }
+        )
 
         await store.send(
             .queue(.delegate(.transitionRequested(tracks[1].id)))
@@ -153,7 +154,7 @@ struct PlaybackFeatureTests {
             $0.transition = .init(
                 phase: .starting(
                     .init(
-                        targetTrackID: tracks[1].id,
+                        target: tracks[1],
                         baselineTrackID: nil
                     )
                 )
@@ -166,10 +167,10 @@ struct PlaybackFeatureTests {
         await store.receive(.transition(.start)) {
             $0.transition?.phase = .preparing(
                 self.transaction(
-                    targetTrackID: tracks[1].id,
+                    target: tracks[1],
                     baselineTrackID: nil
                 ),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
         await store.finish()
@@ -178,6 +179,7 @@ struct PlaybackFeatureTests {
     @Test
     func queueDelegateCreatesANavigationTransition() async {
         let tracks = makeTracks()
+        let loadedURLs = LockIsolated<[URL]>([])
         let store = makeStore(
             queue: makeQueue(
                 tracks: tracks,
@@ -188,8 +190,10 @@ struct PlaybackFeatureTests {
                 pendingStatusChange: nil
             )
         ) {
-            $0.playbackResourceClients =
-                self.cancellingResourceClients()
+            $0.playbackItem.load = { _, playbackURL, _ in
+                loadedURLs.withValue { $0.append(playbackURL) }
+                throw CancellationError()
+            }
         }
 
         await store.send(.nextTapped)
@@ -205,7 +209,7 @@ struct PlaybackFeatureTests {
             $0.transition = .init(
                 phase: .starting(
                     .init(
-                        targetTrackID: tracks[1].id,
+                        target: tracks[1],
                         baselineTrackID: tracks[0].id
                     )
                 )
@@ -215,13 +219,14 @@ struct PlaybackFeatureTests {
         await store.receive(.transition(.start)) {
             $0.transition?.phase = .preparing(
                 self.transaction(
-                    targetTrackID: tracks[1].id,
+                    target: tracks[1],
                     baselineTrackID: tracks[0].id
                 ),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
         await store.finish()
+        #expect(loadedURLs.value == [tracks[1].playbackURL])
     }
 
     @Test
@@ -232,7 +237,7 @@ struct PlaybackFeatureTests {
         let latestTracks = makeTracks(prefix: "latest")
         let latestResults = IdentifiedArray(uniqueElements: latestTracks)
         let firstIntent = PlaybackTransitionFeature.Intent(
-            targetTrackID: firstTracks[0].id,
+            target: firstTracks[0],
             baselineTrackID: confirmedTracks[0].id
         )
         let queue = makeQueue(
@@ -249,10 +254,7 @@ struct PlaybackFeatureTests {
         let store = makeStore(
             queue: queue,
             transition: .init(phase: .starting(firstIntent))
-        ) {
-            $0.playbackResourceClients =
-                self.cancellingResourceClients()
-        }
+        )
 
         await store.send(
             .selectionReceived(
@@ -278,7 +280,7 @@ struct PlaybackFeatureTests {
         )
         await store.receive(.session(.cancelPendingStatusChange))
         let latestIntent = PlaybackTransitionFeature.Intent(
-            targetTrackID: latestTracks[2].id,
+            target: latestTracks[2],
             baselineTrackID: confirmedTracks[0].id
         )
         await store.receive(.transition(.supersede(latestIntent))) {
@@ -287,10 +289,10 @@ struct PlaybackFeatureTests {
         await store.receive(.transition(.start)) {
             $0.transition?.phase = .preparing(
                 self.transaction(
-                    targetTrackID: latestTracks[2].id,
+                    target: latestTracks[2],
                     baselineTrackID: confirmedTracks[0].id
                 ),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
         await store.finish()
@@ -393,7 +395,7 @@ struct PlaybackFeatureTests {
     {
         let tracks = makeTracks()
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: tracks[1].id,
+            target: tracks[1],
             baselineTrackID: tracks[0].id
         )
         let transaction = PlaybackTransitionFeature.Transaction(
@@ -440,7 +442,7 @@ struct PlaybackFeatureTests {
     func transitionBaselineSnapshotRoutesToDurableChildren() async {
         let tracks = makeTracks()
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: tracks[1].id,
+            target: tracks[1],
             baselineTrackID: tracks[0].id
         )
         let snapshot = makeSnapshot(
@@ -500,7 +502,7 @@ struct PlaybackFeatureTests {
         let selectedTracks = makeTracks(prefix: "selected")
         let loadedResults = IdentifiedArray(uniqueElements: selectedTracks)
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: selectedTracks[1].id,
+            target: selectedTracks[1],
             baselineTrackID: confirmedTracks[0].id
         )
         let transaction = PlaybackTransitionFeature.Transaction(
@@ -586,7 +588,7 @@ struct PlaybackFeatureTests {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: tracks[1].id,
+            target: tracks[1],
             baselineTrackID: nil
         )
         let store = makeStore(
@@ -619,7 +621,7 @@ struct PlaybackFeatureTests {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: tracks[1].id,
+            target: tracks[1],
             baselineTrackID: nil
         )
         let store = makeStore(
@@ -670,10 +672,7 @@ struct PlaybackFeatureTests {
                 status: .playing,
                 pendingStatusChange: nil
             )
-        ) {
-            $0.playbackResourceClients =
-                self.cancellingResourceClients()
-        }
+        )
 
         await store.send(
             .observationReceived(.completed(tracks[0].id))
@@ -692,7 +691,7 @@ struct PlaybackFeatureTests {
             $0.transition = .init(
                 phase: .starting(
                     .init(
-                        targetTrackID: tracks[1].id,
+                        target: tracks[1],
                         baselineTrackID: tracks[0].id
                     )
                 )
@@ -702,10 +701,10 @@ struct PlaybackFeatureTests {
         await store.receive(.transition(.start)) {
             $0.transition?.phase = .preparing(
                 self.transaction(
-                    targetTrackID: tracks[1].id,
+                    target: tracks[1],
                     baselineTrackID: tracks[0].id
                 ),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
         await store.finish()
@@ -715,7 +714,7 @@ struct PlaybackFeatureTests {
     func delayedCompletionCannotReplaceAnActiveTransition() async {
         let tracks = makeTracks()
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: tracks[1].id,
+            target: tracks[1],
             baselineTrackID: tracks[0].id
         )
         let store = makeStore(
@@ -739,7 +738,7 @@ struct PlaybackFeatureTests {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: tracks[1].id,
+            target: tracks[1],
             baselineTrackID: nil
         )
         let store = makeStore(
@@ -796,7 +795,7 @@ struct PlaybackFeatureTests {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: tracks[1].id,
+            target: tracks[1],
             baselineTrackID: tracks[0].id
         )
         let store = makeStore(
@@ -1028,6 +1027,9 @@ struct PlaybackFeatureTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackObservation.observations = { .finished }
+            $0.playbackItem.load = { _, _, _ in
+                throw CancellationError()
+            }
             $0.playbackItem.rollback = { _ in }
             configureDependencies(&$0)
         }
@@ -1091,28 +1093,15 @@ struct PlaybackFeatureTests {
     }
 
     private func transaction(
-        targetTrackID: TrackID,
+        target: Track,
         baselineTrackID: TrackID?
     ) -> PlaybackTransitionFeature.Transaction {
         PlaybackTransitionFeature.Transaction(
             requestID: UUID(0),
             intent: .init(
-                targetTrackID: targetTrackID,
+                target: target,
                 baselineTrackID: baselineTrackID
             )
-        )
-    }
-
-    private func cancellingResourceClients(
-        resolvedTrackIDs: LockIsolated<[TrackID]> = LockIsolated([])
-    ) -> ProviderClientRegistry<PlaybackResourceClient> {
-        ProviderClientRegistry(
-            clients: [
-                "fake": PlaybackResourceClient { trackID in
-                    resolvedTrackIDs.withValue { $0.append(trackID) }
-                    throw CancellationError()
-                }
-            ]
         )
     }
 

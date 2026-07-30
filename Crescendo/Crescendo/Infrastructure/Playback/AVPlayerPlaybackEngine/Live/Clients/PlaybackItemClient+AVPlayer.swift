@@ -4,11 +4,11 @@ extension PlaybackItemClient {
         installer: AVPlayerItemInstaller
     ) -> Self {
         Self(
-            load: { resource, installation in
-                let item = try await preparer.prepare(resource)
+            load: { trackID, playbackURL, installation in
+                let item = try await preparer.prepare(playbackURL)
                 try await installer.install(
                     item,
-                    for: resource,
+                    trackID: trackID,
                     installation: installation
                 )
             },

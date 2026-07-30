@@ -80,6 +80,56 @@ struct ProviderSearchClientJamendoTests {
         #expect(queryItems.contains(URLQueryItem(name: "limit", value: "37")))
     }
 
+    @Test
+    func cursorAdvancesPastProviderRowsRejectedForInvalidAudio() async throws {
+        let fixtureData = Data(
+            """
+            {
+              "headers": {
+                "status": "success",
+                "code": 0,
+                "results_count": 2,
+                "results_fullcount": 3
+              },
+              "results": [
+                {
+                  "id": "valid",
+                  "name": "Valid",
+                  "artist_name": "Artist",
+                  "album_name": "Album",
+                  "image": "https://example.com/valid.jpg",
+                  "duration": "180",
+                  "audio": "https://example.com/valid.mp3"
+                },
+                {
+                  "id": "invalid",
+                  "name": "Invalid",
+                  "artist_name": "Artist",
+                  "album_name": "Album",
+                  "image": "https://example.com/invalid.jpg",
+                  "duration": "180",
+                  "audio": "ftp://example.com/invalid.mp3"
+                }
+              ]
+            }
+            """.utf8
+        )
+        let api = JamendoAPI(
+            configuration: try Self.makeConfiguration(),
+            data: { request in
+                (fixtureData, try Self.okResponse(for: request))
+            }
+        )
+        let client = ProviderSearchClient.live(jamendo: api)
+
+        let page = try await client.searchPage(.initial(query: "x"), 2)
+
+        #expect(page.tracks.map(\.id.nativeID) == ["valid"])
+        let cursor = try #require(page.nextCursor)
+        let continuation = try JamendoSearchCursor(searchCursor: cursor)
+        #expect(continuation.offset == 2)
+    }
+
     // MARK: - Helpers
 
     private static func makeConfiguration() throws -> JamendoConfiguration {

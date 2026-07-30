@@ -60,7 +60,6 @@ struct PlaybackNowPlayingPresentationTests {
     @Test
     func barToggleWhilePausedResumesWithoutResettingSelection() async throws {
         let song = makeTrack(duration: nil)
-        let resolveCallCount = LockIsolated(0)
         let resumeCallCount = LockIsolated(0)
         let (resumeStarted, resumeStartedContinuation) = AsyncStream<Void>.makeStream()
         let (finishResume, finishResumeContinuation) = AsyncStream<Void>.makeStream()
@@ -68,21 +67,6 @@ struct PlaybackNowPlayingPresentationTests {
             PlaybackFeature()
         } withDependencies: {
             $0.uuid = .incrementing
-            $0.playbackResourceClients = ProviderClientRegistry(
-                clients: [
-                    "fake": PlaybackResourceClient(
-                        resolve: { trackID in
-                            resolveCallCount.withValue { $0 += 1 }
-                            return PlaybackResource(
-                                trackID: trackID,
-                                location: .localFile(
-                                    URL(fileURLWithPath: "/tmp/song.m4a")
-                                )
-                            )
-                        }
-                    )
-                ]
-            )
             $0.playbackTransport.play = {
                 resumeCallCount.withValue { $0 += 1 }
                 resumeStartedContinuation.yield()
@@ -97,7 +81,6 @@ struct PlaybackNowPlayingPresentationTests {
         var resumeStartedIterator = resumeStarted.makeAsyncIterator()
         _ = await resumeStartedIterator.next()
         #expect(store.queue.current?.currentTrack == song)
-        #expect(resolveCallCount.value == 0)
         #expect(resumeCallCount.value == 1)
 
         finishResumeContinuation.yield()
@@ -141,7 +124,7 @@ struct PlaybackNowPlayingPresentationTests {
         state.transition = PlaybackTransitionFeature.State(
             phase: .starting(
                 .init(
-                    targetTrackID: pendingTrack.id,
+                    target: pendingTrack,
                     baselineTrackID: confirmedTrack.id
                 )
             )
@@ -177,7 +160,7 @@ struct PlaybackNowPlayingPresentationTests {
         state.transition = PlaybackTransitionFeature.State(
             phase: .starting(
                 .init(
-                    targetTrackID: pendingTrack.id,
+                    target: pendingTrack,
                     baselineTrackID: nil
                 )
             )

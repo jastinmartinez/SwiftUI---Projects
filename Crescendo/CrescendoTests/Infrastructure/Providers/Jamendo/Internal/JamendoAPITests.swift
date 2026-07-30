@@ -49,54 +49,6 @@ struct JamendoAPITests {
     }
 
     @Test
-    func trackSendsExactQueryItemsAndReturnsFirstResult() async throws {
-        let fixtureData = Data(Self.fixtureJSON.utf8)
-        let capturedRequest = RequestCapture()
-
-        let api = JamendoAPI(
-            configuration: try Self.makeConfiguration(),
-            data: { request in
-                await capturedRequest.capture(request)
-                return (fixtureData, try Self.okResponse(for: request))
-            }
-        )
-
-        let track = try await api.track(id: "42")
-
-        #expect(track.id == "42")
-        #expect(track.name == "Signal")
-
-        let request = try #require(await capturedRequest.request)
-        let url = try #require(request.url)
-        let components = try #require(
-            URLComponents(url: url, resolvingAgainstBaseURL: false)
-        )
-        let queryItems = try #require(components.queryItems)
-
-        #expect(queryItems.contains(URLQueryItem(name: "client_id", value: "test-client")))
-        #expect(queryItems.contains(URLQueryItem(name: "id", value: "42")))
-        #expect(queryItems.contains(URLQueryItem(name: "limit", value: "1")))
-        #expect(queryItems.contains(URLQueryItem(name: "format", value: "json")))
-        #expect(queryItems.contains(URLQueryItem(name: "audioformat", value: "mp32")))
-        #expect(queryItems.contains(URLQueryItem(name: "imagesize", value: "300")))
-    }
-
-    @Test
-    func trackDecodesResponseWithoutFullCount() async throws {
-        let fixtureData = Data(Self.trackWithoutFullCountJSON.utf8)
-        let api = JamendoAPI(
-            configuration: try Self.makeConfiguration(),
-            data: { request in
-                (fixtureData, try Self.okResponse(for: request))
-            }
-        )
-
-        let track = try await api.track(id: "42")
-
-        #expect(track.id == "42")
-    }
-
-    @Test
     func tracksDecodesNumericDuration() async throws {
         let fixtureData = Data(Self.numericDurationJSON.utf8)
         let api = JamendoAPI(
@@ -113,33 +65,6 @@ struct JamendoAPITests {
         )
 
         #expect(response.results.first?.id == "42")
-    }
-
-    @Test
-    func trackThrowsUnavailableWhenResultsAreEmpty() async throws {
-        let emptyResultsJSON = """
-            {
-              "headers": {
-                "status": "success",
-                "code": 0,
-                "results_count": 0,
-                "results_fullcount": 0
-              },
-              "results": []
-            }
-            """
-        let fixtureData = Data(emptyResultsJSON.utf8)
-
-        let api = JamendoAPI(
-            configuration: try Self.makeConfiguration(),
-            data: { request in
-                (fixtureData, try Self.okResponse(for: request))
-            }
-        )
-
-        await #expect(throws: MusicProviderError.unavailable) {
-            try await api.track(id: "missing")
-        }
     }
 
     @Test
@@ -251,29 +176,6 @@ struct JamendoAPITests {
               "album_name": "Assertions",
               "image": "https://example.com/artwork.jpg",
               "duration": 180,
-              "audio": "https://example.com/audio.mp3"
-            }
-          ]
-        }
-        """
-
-    private static let trackWithoutFullCountJSON = """
-        {
-          "headers": {
-            "status": "success",
-            "code": 0,
-            "error_message": "",
-            "warnings": "",
-            "results_count": 1
-          },
-          "results": [
-            {
-              "id": "42",
-              "name": "Signal",
-              "artist_name": "The Tests",
-              "album_name": "Assertions",
-              "image": "https://example.com/artwork.jpg",
-              "duration": "180",
               "audio": "https://example.com/audio.mp3"
             }
           ]

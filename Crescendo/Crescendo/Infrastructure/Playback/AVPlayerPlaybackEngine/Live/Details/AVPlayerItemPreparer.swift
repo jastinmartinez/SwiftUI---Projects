@@ -5,15 +5,15 @@ struct AVPlayerItemPreparer {
     let loadIsPlayable: (AVURLAsset) async throws -> Bool
     let makeItem: (AVURLAsset) -> AVPlayerItem
 
-    /// Validates a resolved resource before creating its player item with the
+    /// Validates a playback URL before creating its player item with the
     /// configured item factory.
     ///
-    /// - Parameter resource: The provider-resolved location to inspect.
+    /// - Parameter playbackURL: The playable location to inspect.
     /// - Returns: An item whose asset reported that it is playable.
     /// - Throws: `PlaybackFailure.preparationFailed` when loading fails, or
     ///   `PlaybackFailure.unsupportedResource` when the asset is not playable.
-    func prepare(_ resource: PlaybackResource) async throws -> AVPlayerItem {
-        let asset = AVURLAsset(url: resource.location.url)
+    func prepare(_ playbackURL: URL) async throws -> AVPlayerItem {
+        let asset = AVURLAsset(url: playbackURL)
         do {
             guard try await loadIsPlayable(asset) else {
                 throw PlaybackFailure.unsupportedResource

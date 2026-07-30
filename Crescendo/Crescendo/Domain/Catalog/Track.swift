@@ -1,6 +1,6 @@
 import Foundation
 
-/// Metadata shared by every Phase 1 music provider.
+/// A provider-neutral, playable track retained by Search and Playback.
 struct Track: Equatable, Identifiable, Sendable {
     let id: TrackID
     let title: String
@@ -8,4 +8,5 @@ struct Track: Equatable, Identifiable, Sendable {
     let albumTitle: String?
     let artworkURL: URL?
     let duration: TimeInterval?
+    let playbackURL: URL
 }

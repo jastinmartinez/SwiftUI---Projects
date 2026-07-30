@@ -8,7 +8,7 @@
 /// `AVPlayer`.
 @MainActor
 struct AVPlayerPlaybackEngine {
-    /// Loads provider-resolved resources into the shared player.
+    /// Loads playable URLs into the shared player.
     let item: PlaybackItemClient
 
     /// Controls the shared player's transport state.

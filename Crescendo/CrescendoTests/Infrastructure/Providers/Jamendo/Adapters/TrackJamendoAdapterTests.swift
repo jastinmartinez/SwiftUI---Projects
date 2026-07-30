@@ -5,37 +5,60 @@ import Testing
 
 struct TrackJamendoAdapterTests {
     @Test
-    func idCombinesJamendoProviderAndNativeID() {
+    func audioMapsToPlaybackURL() throws {
+        let jamendoTrack = Self.makeJamendoTrack(
+            audio: "https://example.com/audio.mp3"
+        )
+
+        let track = try #require(Track(jamendoTrack: jamendoTrack))
+        let expectedURL = try #require(
+            URL(string: "https://example.com/audio.mp3")
+        )
+
+        #expect(track.playbackURL == expectedURL)
+    }
+
+    @Test
+    func nonHTTPAudioRejectsTheTrack() {
+        let jamendoTrack = Self.makeJamendoTrack(
+            audio: "ftp://example.com/audio.mp3"
+        )
+
+        #expect(Track(jamendoTrack: jamendoTrack) == nil)
+    }
+
+    @Test
+    func idCombinesJamendoProviderAndNativeID() throws {
         let jamendoTrack = Self.makeJamendoTrack(id: "42")
 
-        let track = Track(jamendoTrack: jamendoTrack)
+        let track = try #require(Track(jamendoTrack: jamendoTrack))
 
         #expect(track.id == TrackID(providerID: .jamendo, nativeID: "42"))
     }
 
     @Test
-    func emptyAlbumNameMapsToNilAlbumTitle() {
+    func emptyAlbumNameMapsToNilAlbumTitle() throws {
         let jamendoTrack = Self.makeJamendoTrack(albumName: "")
 
-        let track = Track(jamendoTrack: jamendoTrack)
+        let track = try #require(Track(jamendoTrack: jamendoTrack))
 
         #expect(track.albumTitle == nil)
     }
 
     @Test
-    func whitespaceOnlyAlbumNameMapsToNilAlbumTitle() {
+    func whitespaceOnlyAlbumNameMapsToNilAlbumTitle() throws {
         let jamendoTrack = Self.makeJamendoTrack(albumName: "   \n  ")
 
-        let track = Track(jamendoTrack: jamendoTrack)
+        let track = try #require(Track(jamendoTrack: jamendoTrack))
 
         #expect(track.albumTitle == nil)
     }
 
     @Test
-    func malformedArtworkMapsToNilWithoutRejectingTheRestOfTheTrack() {
+    func malformedArtworkMapsToNilWithoutRejectingTheRestOfTheTrack() throws {
         let jamendoTrack = Self.makeJamendoTrack(image: "ftp://example.com/art.jpg")
 
-        let track = Track(jamendoTrack: jamendoTrack)
+        let track = try #require(Track(jamendoTrack: jamendoTrack))
 
         #expect(track.artworkURL == nil)
         #expect(track.title == jamendoTrack.name)
@@ -45,10 +68,10 @@ struct TrackJamendoAdapterTests {
     }
 
     @Test
-    func malformedDurationMapsToNil() {
+    func malformedDurationMapsToNil() throws {
         let jamendoTrack = Self.makeJamendoTrack(duration: "not-a-number")
 
-        let track = Track(jamendoTrack: jamendoTrack)
+        let track = try #require(Track(jamendoTrack: jamendoTrack))
 
         #expect(track.duration == nil)
     }

@@ -6,17 +6,18 @@ struct PlaybackItemInstallation: Hashable, Sendable {
     let id: UUID
 }
 
-/// Owns transactional installation of resolved resources in shared playback.
+/// Owns transactional installation of playable URLs in shared playback.
 @DependencyClient
 struct PlaybackItemClient: Sendable {
-    /// Prepares and stages `resource` under the correlated installation.
+    /// Prepares and stages `playbackURL` under the correlated installation.
     ///
     /// If this operation throws, it leaves no staged mutation for
     /// `installation`; callers can continue relying on the previously committed
     /// playback item.
     var load:
         @Sendable (
-            _ resource: PlaybackResource,
+            _ trackID: TrackID,
+            _ playbackURL: URL,
             _ installation: PlaybackItemInstallation
         ) async throws -> Void
     var commit:

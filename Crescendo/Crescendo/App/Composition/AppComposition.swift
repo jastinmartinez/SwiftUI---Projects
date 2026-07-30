@@ -11,7 +11,6 @@ import Foundation
 struct AppComposition {
     let initialState: AppFeature.State
     let providerSearchClients: ProviderClientRegistry<ProviderSearchClient>
-    let playbackResourceClients: ProviderClientRegistry<PlaybackResourceClient>
     let playbackItem: PlaybackItemClient
     let playbackTransport: PlaybackTransportClient
     let playbackTimeline: PlaybackTimelineClient
@@ -20,7 +19,7 @@ struct AppComposition {
 
     /// Assembles provider and playback implementations around one supplied player.
     ///
-    /// Invalid Jamendo configuration leaves the two Jamendo capability registries empty.
+    /// Invalid Jamendo configuration leaves its search capability unregistered.
     ///
     /// - Parameters:
     ///   - jamendoClientID: The generated bundle value used to validate Jamendo.
@@ -39,7 +38,6 @@ struct AppComposition {
             )
     ) -> Self {
         var searchClientsByProvider: [ProviderID: ProviderSearchClient] = [:]
-        var resourceClientsByProvider: [ProviderID: PlaybackResourceClient] = [:]
 
         if let jamendoConfiguration = JamendoConfiguration(
             clientID: jamendoClientID
@@ -49,7 +47,6 @@ struct AppComposition {
                 data: data
             )
             searchClientsByProvider[.jamendo] = .live(jamendo: jamendoAPI)
-            resourceClientsByProvider[.jamendo] = .live(jamendo: jamendoAPI)
         }
 
         let playbackEngine = AVPlayerPlaybackEngine.live(
@@ -86,9 +83,6 @@ struct AppComposition {
             providerSearchClients: ProviderClientRegistry(
                 clients: searchClientsByProvider
             ),
-            playbackResourceClients: ProviderClientRegistry(
-                clients: resourceClientsByProvider
-            ),
             playbackItem: playbackEngine.item,
             playbackTransport: playbackEngine.transport,
             playbackTimeline: playbackEngine.timeline,
@@ -107,7 +101,6 @@ struct AppComposition {
             AppFeature()
         } withDependencies: {
             $0.providerSearchClients = providerSearchClients
-            $0.playbackResourceClients = playbackResourceClients
             $0.playbackItem = playbackItem
             $0.playbackTransport = playbackTransport
             $0.playbackTimeline = playbackTimeline

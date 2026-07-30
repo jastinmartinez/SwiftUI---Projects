@@ -10,8 +10,12 @@ struct PlaybackTransitionFeature {
     }
 
     struct Intent: Equatable, Sendable {
-        let targetTrackID: TrackID
+        let target: Track
         let baselineTrackID: TrackID?
+
+        var targetTrackID: TrackID {
+            target.id
+        }
     }
 
     struct Transaction: Equatable, Sendable {
@@ -28,7 +32,6 @@ struct PlaybackTransitionFeature {
         var latestTargetSnapshot: PlaybackSnapshot?
 
         enum Stage: Equatable, Sendable {
-            case resolving
             case loading
             case requestingPlayback
             case awaitingConfirmation
@@ -98,14 +101,6 @@ struct PlaybackTransitionFeature {
             snapshot: PlaybackSnapshot
         )
         case runtimeFailureReceived(TrackID?, PlaybackFailure)
-        case resourceResolved(
-            requestID: UUID,
-            resource: PlaybackResource
-        )
-        case resourceResolutionFailed(
-            requestID: UUID,
-            failure: PlaybackFailure
-        )
         case itemLoaded(requestID: UUID)
         case itemLoadFailed(
             requestID: UUID,
@@ -127,7 +122,6 @@ struct PlaybackTransitionFeature {
         case transition
     }
 
-    @Dependency(\.playbackResourceClients) var playbackResourceClients
     @Dependency(\.playbackItem) var playbackItem
     @Dependency(\.playbackTransport) var playbackTransport
     @Dependency(\.uuid) var uuid
@@ -147,81 +141,16 @@ struct PlaybackTransitionFeature {
                 state.phase = .preparing(
                     transaction,
                     Preparation(
-                        stage: .resolving,
+                        stage: .loading,
                         latestTargetSnapshot: nil
                     )
                 )
 
-                guard
-                    let resourceClient =
-                        playbackResourceClients[
-                            intent.targetTrackID.providerID
-                        ]
-                else {
-                    return .send(
-                        .resourceResolutionFailed(
-                            requestID: transaction.requestID,
-                            failure: .resourceUnavailable
-                        )
-                    )
-                }
-
-                return .run { send in
-                    do {
-                        let resource = try await resourceClient.resolve(
-                            intent.targetTrackID
-                        )
-                        try Task.checkCancellation()
-                        await send(
-                            .resourceResolved(
-                                requestID: transaction.requestID,
-                                resource: resource
-                            )
-                        )
-                    } catch is CancellationError {
-                        return
-                    } catch let failure as PlaybackFailure {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .resourceResolutionFailed(
-                                requestID: transaction.requestID,
-                                failure: failure
-                            )
-                        )
-                    } catch {
-                        guard !Task.isCancelled else { return }
-                        await send(
-                            .resourceResolutionFailed(
-                                requestID: transaction.requestID,
-                                failure: .resourceUnavailable
-                            )
-                        )
-                    }
-                }
-                .cancellable(
-                    id: CancelID.transition,
-                    cancelInFlight: true
-                )
-
-            case .resourceResolved(let requestID, let resource):
-                guard
-                    case .preparing(
-                        let transaction,
-                        var preparation
-                    ) = state.phase,
-                    transaction.requestID == requestID,
-                    transaction.intent.targetTrackID == resource.trackID,
-                    preparation.stage == .resolving
-                else {
-                    return .none
-                }
-
-                preparation.stage = .loading
-                state.phase = .preparing(transaction, preparation)
                 return .run { send in
                     do {
                         try await playbackItem.load(
-                            resource,
+                            intent.target.id,
+                            intent.target.playbackURL,
                             transaction.installation
                         )
                         try Task.checkCancellation()
@@ -447,33 +376,6 @@ struct PlaybackTransitionFeature {
                     cancelInFlight: true
                 )
 
-            case .resourceResolutionFailed(
-                let requestID,
-                let failure
-            ):
-                guard
-                    case .preparing(
-                        let transaction,
-                        let preparation
-                    ) = state.phase,
-                    transaction.requestID == requestID,
-                    preparation.stage == .resolving
-                else {
-                    return .none
-                }
-                let targetTrackID =
-                    transaction.intent.targetTrackID
-                return .send(
-                    .delegate(
-                        .completed(
-                            .failed(
-                                trackID: targetTrackID,
-                                failure: failure
-                            )
-                        )
-                    )
-                )
-
             case .itemLoadFailed(let requestID, let failure):
                 guard
                     case .preparing(
@@ -598,7 +500,7 @@ struct PlaybackTransitionFeature {
 
                 case .transition(let intent):
                     let rebasedIntent = Intent(
-                        targetTrackID: intent.targetTrackID,
+                        target: intent.target,
                         baselineTrackID: commit.snapshot.currentTrackID
                     )
                     state.phase = .starting(rebasedIntent)
@@ -682,15 +584,8 @@ struct PlaybackTransitionFeature {
 
                 case .preparing(
                     let transaction,
-                    let preparation
+                    _
                 ):
-                    if preparation.stage == .resolving {
-                        state.phase = .starting(intent)
-                        return .concatenate(
-                            .cancel(id: CancelID.transition),
-                            .send(.start)
-                        )
-                    }
                     state.phase = .rollingBack(
                         transaction,
                         Rollback(
@@ -743,16 +638,8 @@ struct PlaybackTransitionFeature {
 
                 case .preparing(
                     let transaction,
-                    let preparation
+                    _
                 ):
-                    if preparation.stage == .resolving {
-                        return .concatenate(
-                            .cancel(id: CancelID.transition),
-                            .send(
-                                .delegate(.completed(.cancelled))
-                            )
-                        )
-                    }
                     state.phase = .rollingBack(
                         transaction,
                         Rollback(
@@ -808,16 +695,8 @@ struct PlaybackTransitionFeature {
 
                 case .preparing(
                     let transaction,
-                    let preparation
+                    _
                 ):
-                    if preparation.stage == .resolving {
-                        return .concatenate(
-                            .cancel(id: CancelID.transition),
-                            .send(
-                                .delegate(.completed(.stopReady))
-                            )
-                        )
-                    }
                     state.phase = .rollingBack(
                         transaction,
                         Rollback(

@@ -29,17 +29,12 @@ struct AVPlayerPlaybackEngineTests {
             preparer: preparer
         )
         let trackID = TrackID(providerID: .jamendo, nativeID: "shared")
-        let resource = try PlaybackResource(
-            trackID: trackID,
-            location: .progressive(
-                #require(URL(string: "memory://shared"))
-            )
-        )
+        let playbackURL = try #require(URL(string: "memory://shared"))
 
         #expect(player.currentItem == nil)
 
         let installation = PlaybackItemInstallation(id: UUID(0))
-        try await engine.item.load(resource, installation)
+        try await engine.item.load(trackID, playbackURL, installation)
         try await engine.transport.play()
         let stopOutcome = await engine.transport.stop()
 
@@ -95,16 +90,12 @@ struct AVPlayerPlaybackEngineTests {
             providerID: .jamendo,
             nativeID: "rejected"
         )
-        let resource = try PlaybackResource(
-            trackID: rejectedTrackID,
-            location: .progressive(
-                #require(URL(string: "memory://rejected"))
-            )
-        )
+        let playbackURL = try #require(URL(string: "memory://rejected"))
 
         await #expect(throws: PlaybackFailure.unsupportedResource) {
             try await engine.item.load(
-                resource,
+                rejectedTrackID,
+                playbackURL,
                 PlaybackItemInstallation(id: UUID(0))
             )
         }
@@ -138,15 +129,10 @@ struct AVPlayerPlaybackEngineTests {
             providerID: .jamendo,
             nativeID: "target"
         )
-        let resource = try PlaybackResource(
-            trackID: targetTrackID,
-            location: .progressive(
-                #require(URL(string: "memory://target"))
-            )
-        )
+        let playbackURL = try #require(URL(string: "memory://target"))
         let installation = PlaybackItemInstallation(id: UUID(0))
 
-        try await engine.item.load(resource, installation)
+        try await engine.item.load(targetTrackID, playbackURL, installation)
         await engine.item.rollback(installation)
 
         #expect(player.currentItem === confirmedItem)

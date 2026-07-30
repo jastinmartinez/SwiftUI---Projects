@@ -10,10 +10,7 @@ struct AppPlaybackCoordinationTests {
     func searchSelectionForwardsDirectlyToPlayback() async {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
-        let store = makeStore {
-            $0.playbackResourceClients =
-                self.cancellingResourceClients()
-        }
+        let store = makeStore()
 
         await store.send(
             .search(
@@ -56,10 +53,7 @@ struct AppPlaybackCoordinationTests {
             tracks: currentTracks,
             currentTrackID: currentTracks[0].id
         )
-        let store = makeStore(playbackQueue: queue) {
-            $0.playbackResourceClients =
-                self.cancellingResourceClients()
-        }
+        let store = makeStore(playbackQueue: queue)
 
         await store.send(
             .search(
@@ -136,8 +130,6 @@ struct AppPlaybackCoordinationTests {
                     )
                 ]
             )
-            $0.playbackResourceClients =
-                self.cancellingResourceClients()
         }
 
         await store.send(.search(.pagination(.nextPageRequested)))
@@ -255,8 +247,11 @@ struct AppPlaybackCoordinationTests {
                 followUp: nil
             )
         }
+        guard let target = loadedResults[id: targetTrackID] else {
+            preconditionFailure("Expected target track in loaded results")
+        }
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: targetTrackID,
+            target: target,
             baselineTrackID: baselineTrackID
         )
         await store.receive(
@@ -279,7 +274,7 @@ struct AppPlaybackCoordinationTests {
                     requestID: requestID,
                     intent: intent
                 ),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
         await store.finish()
@@ -300,6 +295,9 @@ struct AppPlaybackCoordinationTests {
         } withDependencies: {
             $0.uuid = .incrementing
             $0.playbackObservation.observations = { .finished }
+            $0.playbackItem.load = { _, _, _ in
+                throw CancellationError()
+            }
             $0.playbackItem.rollback = { _ in }
             configureDependencies(&$0)
         }
@@ -362,18 +360,6 @@ struct AppPlaybackCoordinationTests {
             preconditionFailure("Expected a valid playback queue fixture")
         }
         return queue
-    }
-
-    private func cancellingResourceClients()
-        -> ProviderClientRegistry<PlaybackResourceClient>
-    {
-        ProviderClientRegistry(
-            clients: [
-                providerID: PlaybackResourceClient { _ in
-                    throw CancellationError()
-                }
-            ]
-        )
     }
 
     private func makeTracks(prefix: String = "track") -> [Track] {

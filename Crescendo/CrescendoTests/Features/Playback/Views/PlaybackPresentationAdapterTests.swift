@@ -728,7 +728,7 @@ struct PlaybackPresentationAdapterTests {
                     PlaybackTransitionFeature.State(
                         phase: .starting(
                             .init(
-                                targetTrackID: $0.id,
+                                target: $0,
                                 baselineTrackID: song?.id
                             )
                         )

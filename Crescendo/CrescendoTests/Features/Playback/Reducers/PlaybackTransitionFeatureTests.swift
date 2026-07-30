@@ -7,79 +7,36 @@ import Testing
 @MainActor
 struct PlaybackTransitionFeatureTests {
     @Test
-    func transitionRoutesTheTargetWithoutQueueContext() async {
-        let jamendo = makeTrack(providerID: .jamendo, nativeID: "remote")
-        let local = makeTrack(providerID: .localMusic, nativeID: "local")
+    func transitionLoadsTheTargetURLWithoutResolvingByID() async {
+        let baseline = makeTrack(providerID: .jamendo, nativeID: "remote")
+        let target = makeTrack(providerID: .localMusic, nativeID: "local")
         let intent = PlaybackTransitionFeature.Intent(
-            targetTrackID: local.id,
-            baselineTrackID: jamendo.id
+            target: target,
+            baselineTrackID: baseline.id
         )
-        let resolvedIDs = LockIsolated<[TrackID]>([])
-        let resolveProbe = SuspendedOperationProbe<PlaybackResource>()
-        let jamendoResource = makeResource(for: jamendo.id)
+        let loadedTrackIDs = LockIsolated<[TrackID]>([])
+        let loadedURLs = LockIsolated<[URL]>([])
+        let loadProbe = SuspendedOperationProbe<Void>()
         let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = ProviderClientRegistry(
-                clients: [
-                    .jamendo: PlaybackResourceClient { _ in
-                        Issue.record("The non-target provider must not resolve")
-                        return jamendoResource
-                    },
-                    .localMusic: PlaybackResourceClient { trackID in
-                        resolvedIDs.withValue { $0.append(trackID) }
-                        return try await resolveProbe.run()
-                    },
-                ]
-            )
-        }
-
-        await store.send(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await resolveProbe.waitUntilStarted()
-
-        #expect(resolvedIDs.value == [local.id])
-
-        resolveProbe.fail(with: CancellationError())
-        await store.finish()
-    }
-
-    @Test
-    func confirmedPlaybackSurvivesWhileTheNextTrackResolves() async {
-        let tracks = makeTracks()
-        let baselineID = tracks[0].id
-        let intent = makeIntent(
-            targetTrackID: tracks[1].id,
-            baselineTrackID: baselineID
-        )
-        let baselineSnapshot = makeSnapshot(
-            itemID: baselineID,
-            status: .playing,
-            position: 42
-        )
-        let resolveProbe = SuspendedOperationProbe<PlaybackResource>()
-        let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                try await resolveProbe.run()
+            $0.playbackItem.load = { trackID, playbackURL, _ in
+                loadedTrackIDs.withValue { $0.append(trackID) }
+                loadedURLs.withValue { $0.append(playbackURL) }
+                try await loadProbe.run()
             }
         }
 
         await store.send(.start) {
             $0.phase = .preparing(
                 self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
-        await resolveProbe.waitUntilStarted()
+        await loadProbe.waitUntilStarted()
 
-        await store.send(.snapshotReceived(baselineSnapshot))
-        await store.receive(
-            .delegate(.confirmedSnapshotReady(baselineSnapshot))
-        )
+        #expect(loadedTrackIDs.value == [target.id])
+        #expect(loadedURLs.value == [target.playbackURL])
 
-        resolveProbe.fail(with: CancellationError())
+        loadProbe.fail(with: CancellationError())
         await store.finish()
     }
 
@@ -92,7 +49,6 @@ struct PlaybackTransitionFeatureTests {
             targetTrackID: targetID,
             baselineTrackID: baselineID
         )
-        let resource = makeResource(for: targetID)
         let baselineSnapshot = makeSnapshot(
             itemID: baselineID,
             status: .playing,
@@ -100,23 +56,12 @@ struct PlaybackTransitionFeatureTests {
         )
         let loadProbe = SuspendedOperationProbe<Void>()
         let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                resource
-            }
-            $0.playbackItem.load = { _, _ in
+            $0.playbackItem.load = { _, _, _ in
                 try await loadProbe.run()
             }
         }
 
         await store.send(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await store.receive(
-            .resourceResolved(requestID: UUID(0), resource: resource)
-        ) {
             $0.phase = .preparing(
                 self.transaction(intent: intent),
                 .init(stage: .loading, latestTargetSnapshot: nil)
@@ -134,49 +79,7 @@ struct PlaybackTransitionFeatureTests {
     }
 
     @Test
-    func resolutionReceivesOnlyTheTargetTrackIdentity() async {
-        let tracks = makeTracks()
-        let targetID = tracks[1].id
-        let intent = makeIntent(
-            targetTrackID: targetID
-        )
-        let resource = makeResource(for: targetID)
-        let resolvedTrackIDs = LockIsolated<[TrackID]>([])
-        let loadProbe = SuspendedOperationProbe<Void>()
-        let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = self.makeResourceClients { trackID in
-                resolvedTrackIDs.withValue { $0.append(trackID) }
-                return resource
-            }
-            $0.playbackItem.load = { _, _ in
-                try await loadProbe.run()
-            }
-        }
-
-        await store.send(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await store.receive(
-            .resourceResolved(requestID: UUID(0), resource: resource)
-        ) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .loading, latestTargetSnapshot: nil)
-            )
-        }
-        await loadProbe.waitUntilStarted()
-
-        #expect(resolvedTrackIDs.value == [targetID])
-
-        loadProbe.fail(with: CancellationError())
-        await store.finish()
-    }
-
-    @Test
-    func itemLoadingReceivesTheResolvedResourceWithoutADuplicateIdentity()
+    func itemLoadingUsesTheTargetURLAndTransactionInstallation()
         async
     {
         let tracks = makeTracks()
@@ -184,30 +87,19 @@ struct PlaybackTransitionFeatureTests {
         let intent = makeIntent(
             targetTrackID: targetID
         )
-        let resource = makeResource(for: targetID)
-        let loadedResources = LockIsolated<[PlaybackResource]>([])
+        let loadedURLs = LockIsolated<[URL]>([])
         let installations = LockIsolated<[PlaybackItemInstallation]>([])
         let playProbe = SuspendedOperationProbe<Void>()
         let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                resource
-            }
-            $0.playbackItem.load = { loaded, installation in
-                loadedResources.withValue { $0.append(loaded) }
+            $0.playbackItem.load = { loadedTrackID, loaded, installation in
+                #expect(loadedTrackID == targetID)
+                loadedURLs.withValue { $0.append(loaded) }
                 installations.withValue { $0.append(installation) }
             }
             $0.playbackTransport.play = playProbe.run
         }
 
         await store.send(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await store.receive(
-            .resourceResolved(requestID: UUID(0), resource: resource)
-        ) {
             $0.phase = .preparing(
                 self.transaction(intent: intent),
                 .init(stage: .loading, latestTargetSnapshot: nil)
@@ -224,7 +116,7 @@ struct PlaybackTransitionFeatureTests {
         }
         await playProbe.waitUntilStarted()
 
-        #expect(loadedResources.value == [resource])
+        #expect(loadedURLs.value == [tracks[1].playbackURL])
         #expect(installations.value == [.init(id: UUID(0))])
 
         playProbe.fail(with: CancellationError())
@@ -238,15 +130,10 @@ struct PlaybackTransitionFeatureTests {
         let intent = makeIntent(
             targetTrackID: targetID
         )
-        let resource = makeResource(for: targetID)
         let calls = LockIsolated<[String]>([])
         let loadProbe = SuspendedOperationProbe<Void>()
         let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                calls.withValue { $0.append("resolve") }
-                return resource
-            }
-            $0.playbackItem.load = { _, _ in
+            $0.playbackItem.load = { _, _, _ in
                 calls.withValue { $0.append("load") }
                 try await loadProbe.run()
             }
@@ -258,19 +145,11 @@ struct PlaybackTransitionFeatureTests {
         await store.send(.start) {
             $0.phase = .preparing(
                 self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await store.receive(
-            .resourceResolved(requestID: UUID(0), resource: resource)
-        ) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
                 .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
         await loadProbe.waitUntilStarted()
-        #expect(calls.value == ["resolve", "load"])
+        #expect(calls.value == ["load"])
 
         loadProbe.succeed()
         await store.receive(.itemLoaded(requestID: UUID(0))) {
@@ -292,7 +171,7 @@ struct PlaybackTransitionFeatureTests {
             )
         }
 
-        #expect(calls.value == ["resolve", "load", "play"])
+        #expect(calls.value == ["load", "play"])
     }
 
     @Test
@@ -302,24 +181,12 @@ struct PlaybackTransitionFeatureTests {
         let intent = makeIntent(
             targetTrackID: targetID
         )
-        let resource = makeResource(for: targetID)
         let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                resource
-            }
-            $0.playbackItem.load = { _, _ in }
+            $0.playbackItem.load = { _, _, _ in }
             $0.playbackTransport.play = {}
         }
 
         await store.send(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await store.receive(
-            .resourceResolved(requestID: UUID(0), resource: resource)
-        ) {
             $0.phase = .preparing(
                 self.transaction(intent: intent),
                 .init(stage: .loading, latestTargetSnapshot: nil)
@@ -357,67 +224,15 @@ struct PlaybackTransitionFeatureTests {
     }
 
     @Test
-    func failedResolutionClearsOnlyTheMatchingTransition() async {
-        let tracks = makeTracks()
-        let targetID = tracks[1].id
-        let intent = makeIntent(
-            targetTrackID: targetID
-        )
-        let resolveProbe = SuspendedOperationProbe<PlaybackResource>()
-        let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                try await resolveProbe.run()
-            }
-        }
-
-        await store.send(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await resolveProbe.waitUntilStarted()
-
-        await store.send(
-            .resourceResolutionFailed(
-                requestID: UUID(99),
-                failure: .resourceUnavailable
-            )
-        )
-
-        resolveProbe.fail(with: PlaybackFailure.unsupportedResource)
-        await store.receive(
-            .resourceResolutionFailed(
-                requestID: UUID(0),
-                failure: .unsupportedResource
-            )
-        )
-        await store.receive(
-            .delegate(
-                .completed(
-                    .failed(
-                        trackID: targetID,
-                        failure: .unsupportedResource
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
     func failedItemLoadClearsTheTransitionAndNeverRequestsPlay() async {
         let tracks = makeTracks()
         let targetID = tracks[1].id
         let intent = makeIntent(
             targetTrackID: targetID
         )
-        let resource = makeResource(for: targetID)
         let playCount = LockIsolated(0)
         let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                resource
-            }
-            $0.playbackItem.load = { _, _ in
+            $0.playbackItem.load = { _, _, _ in
                 throw MusicProviderError.network
             }
             $0.playbackTransport.play = {
@@ -426,14 +241,6 @@ struct PlaybackTransitionFeatureTests {
         }
 
         await store.send(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await store.receive(
-            .resourceResolved(requestID: UUID(0), resource: resource)
-        ) {
             $0.phase = .preparing(
                 self.transaction(intent: intent),
                 .init(stage: .loading, latestTargetSnapshot: nil)
@@ -599,7 +406,6 @@ struct PlaybackTransitionFeatureTests {
         let intent = makeIntent(
             targetTrackID: targetID
         )
-        let resource = makeResource(for: targetID)
         let olderSnapshot = makeSnapshot(
             itemID: targetID,
             status: .waiting,
@@ -612,23 +418,12 @@ struct PlaybackTransitionFeatureTests {
         )
         let playProbe = SuspendedOperationProbe<Void>()
         let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                resource
-            }
-            $0.playbackItem.load = { _, _ in }
+            $0.playbackItem.load = { _, _, _ in }
             $0.playbackItem.commit = { _ in }
             $0.playbackTransport.play = playProbe.run
         }
 
         await store.send(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await store.receive(
-            .resourceResolved(requestID: UUID(0), resource: resource)
-        ) {
             $0.phase = .preparing(
                 self.transaction(intent: intent),
                 .init(stage: .loading, latestTargetSnapshot: nil)
@@ -1059,15 +854,15 @@ struct PlaybackTransitionFeatureTests {
             intent: oldIntent,
             requestID: UUID(99)
         )
-        let resolveProbe = SuspendedOperationProbe<PlaybackResource>()
+        let loadProbe = SuspendedOperationProbe<Void>()
         let store = makeStore(
             phase: .preparing(
                 oldTransaction,
                 .init(stage: .loading, latestTargetSnapshot: nil)
             )
         ) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                try await resolveProbe.run()
+            $0.playbackItem.load = { _, _, _ in
+                try await loadProbe.run()
             }
         }
 
@@ -1092,14 +887,14 @@ struct PlaybackTransitionFeatureTests {
         await store.receive(.start) {
             $0.phase = .preparing(
                 self.transaction(intent: latestIntent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
-        await resolveProbe.waitUntilStarted()
+        await loadProbe.waitUntilStarted()
 
         await store.send(.itemLoaded(requestID: oldTransaction.requestID))
 
-        resolveProbe.fail(with: CancellationError())
+        loadProbe.fail(with: CancellationError())
         await store.finish()
     }
 
@@ -1125,7 +920,7 @@ struct PlaybackTransitionFeatureTests {
             targetTrackID: requestedIntent.targetTrackID,
             baselineTrackID: confirmedIntent.targetTrackID
         )
-        let resolveProbe = SuspendedOperationProbe<PlaybackResource>()
+        let loadProbe = SuspendedOperationProbe<Void>()
         let store = makeStore(
             phase: .applyingConfirmation(
                 transaction,
@@ -1135,8 +930,8 @@ struct PlaybackTransitionFeatureTests {
                 )
             )
         ) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                try await resolveProbe.run()
+            $0.playbackItem.load = { _, _, _ in
+                try await loadProbe.run()
             }
         }
 
@@ -1146,12 +941,12 @@ struct PlaybackTransitionFeatureTests {
         await store.receive(.start) {
             $0.phase = .preparing(
                 self.transaction(intent: rebasedIntent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
-        await resolveProbe.waitUntilStarted()
+        await loadProbe.waitUntilStarted()
 
-        resolveProbe.fail(with: CancellationError())
+        loadProbe.fail(with: CancellationError())
         await store.finish()
     }
 
@@ -1182,15 +977,15 @@ struct PlaybackTransitionFeatureTests {
             targetTrackID: latestTracks[1].id,
             baselineTrackID: oldIntent.targetTrackID
         )
-        let resolveProbe = SuspendedOperationProbe<PlaybackResource>()
+        let loadProbe = SuspendedOperationProbe<Void>()
         let store = makeStore(
             phase: .applyingConfirmation(
                 oldTransaction,
                 .init(snapshot: snapshot, followUp: nil)
             )
         ) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                try await resolveProbe.run()
+            $0.playbackItem.load = { _, _, _ in
+                try await loadProbe.run()
             }
         }
 
@@ -1218,12 +1013,12 @@ struct PlaybackTransitionFeatureTests {
         await store.receive(.start) {
             $0.phase = .preparing(
                 self.transaction(intent: latestIntent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
+                .init(stage: .loading, latestTargetSnapshot: nil)
             )
         }
-        await resolveProbe.waitUntilStarted()
+        await loadProbe.waitUntilStarted()
 
-        resolveProbe.fail(with: CancellationError())
+        loadProbe.fail(with: CancellationError())
         await store.finish()
     }
 
@@ -1610,87 +1405,6 @@ struct PlaybackTransitionFeatureTests {
     }
 
     @Test
-    func resolvingSupersessionStartsLatestAndIgnoresOldResponse() async {
-        let oldTracks = makeTracks(prefix: "old")
-        let oldIntent = makeIntent(
-            targetTrackID: oldTracks[1].id
-        )
-        let oldTransaction = transaction(
-            intent: oldIntent,
-            requestID: UUID(99)
-        )
-        let latestTracks = makeTracks(prefix: "latest")
-        let latestIntent = makeIntent(
-            targetTrackID: latestTracks[1].id
-        )
-        let latestProbe = SuspendedOperationProbe<PlaybackResource>()
-        let store = makeStore(
-            phase: .preparing(
-                oldTransaction,
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        ) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                try await latestProbe.run()
-            }
-        }
-
-        await store.send(.supersede(latestIntent)) {
-            $0.phase = .starting(latestIntent)
-        }
-        await store.receive(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: latestIntent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await latestProbe.waitUntilStarted()
-
-        await store.send(
-            .resourceResolved(
-                requestID: oldTransaction.requestID,
-                resource: makeResource(
-                    for: oldIntent.targetTrackID
-                )
-            )
-        )
-
-        latestProbe.fail(with: CancellationError())
-        await store.finish()
-    }
-
-    @Test
-    func stopDuringResolutionNeedsNoRollbackOrTransportStop() async {
-        let tracks = makeTracks()
-        let intent = makeIntent(
-            targetTrackID: tracks[1].id
-        )
-        let transaction = transaction(intent: intent)
-        let rollbackCount = LockIsolated(0)
-        let stopCount = LockIsolated(0)
-        let store = makeStore(
-            phase: .preparing(
-                transaction,
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        ) {
-            $0.playbackItem.rollback = { _ in
-                rollbackCount.withValue { $0 += 1 }
-            }
-            $0.playbackTransport.stop = {
-                stopCount.withValue { $0 += 1 }
-                return .completed
-            }
-        }
-
-        await store.send(.stopRequested)
-        await store.receive(.delegate(.completed(.stopReady)))
-
-        #expect(rollbackCount.value == 0)
-        #expect(stopCount.value == 0)
-    }
-
-    @Test
     func cancellationDuringSettlementClearsQueuedFollowUp() async {
         let tracks = makeTracks()
         let intent = makeIntent(
@@ -1862,45 +1576,6 @@ struct PlaybackTransitionFeatureTests {
     }
 
     @Test
-    func missingTargetProviderFailsWithoutTouchingConfirmedPlayback()
-        async
-    {
-        let tracks = makeTracks()
-        let intent = makeIntent(
-            targetTrackID: tracks[1].id,
-            baselineTrackID: tracks[0].id
-        )
-        let store = makeStore(intent: intent) {
-            $0.playbackResourceClients = ProviderClientRegistry(
-                clients: [:]
-            )
-        }
-
-        await store.send(.start) {
-            $0.phase = .preparing(
-                self.transaction(intent: intent),
-                .init(stage: .resolving, latestTargetSnapshot: nil)
-            )
-        }
-        await store.receive(
-            .resourceResolutionFailed(
-                requestID: UUID(0),
-                failure: .resourceUnavailable
-            )
-        )
-        await store.receive(
-            .delegate(
-                .completed(
-                    .failed(
-                        trackID: intent.targetTrackID,
-                        failure: .resourceUnavailable
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
     func stopReplacesLatestFollowUpDuringRollback() async {
         let tracks = makeTracks()
         let intent = makeIntent(
@@ -1958,6 +1633,9 @@ struct PlaybackTransitionFeatureTests {
             PlaybackTransitionFeature()
         } withDependencies: {
             $0.uuid = .incrementing
+            $0.playbackItem.load = { _, _, _ in
+                throw CancellationError()
+            }
             $0.playbackItem.rollback = { _ in }
             configureDependencies(&$0)
         }
@@ -1978,26 +1656,11 @@ struct PlaybackTransitionFeatureTests {
         baselineTrackID: TrackID? = nil
     ) -> PlaybackTransitionFeature.Intent {
         PlaybackTransitionFeature.Intent(
-            targetTrackID: targetTrackID,
+            target: makeTrack(
+                providerID: targetTrackID.providerID,
+                nativeID: targetTrackID.nativeID
+            ),
             baselineTrackID: baselineTrackID
-        )
-    }
-
-    private func makeResourceClients(
-        resolve:
-            @escaping @Sendable (TrackID) async throws -> PlaybackResource
-    ) -> ProviderClientRegistry<PlaybackResourceClient> {
-        ProviderClientRegistry(
-            clients: [providerID: PlaybackResourceClient(resolve: resolve)]
-        )
-    }
-
-    private func makeResource(for trackID: TrackID) -> PlaybackResource {
-        PlaybackResource(
-            trackID: trackID,
-            location: .localFile(
-                URL(fileURLWithPath: "/tmp/\(trackID.nativeID).m4a")
-            )
         )
     }
 
