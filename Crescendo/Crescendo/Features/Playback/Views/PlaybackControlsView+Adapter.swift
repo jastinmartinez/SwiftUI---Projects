@@ -23,7 +23,7 @@ extension PlaybackControlsView.Model {
         strings: Strings
     ) {
         let primaryState: PlaybackPrimaryButtonView.Model.State
-        if let change = store.pendingStatusChange {
+        if let change = store.session.pendingStatusChange {
             switch change.target {
             case .playing:
                 primaryState = .pause
@@ -31,11 +31,14 @@ extension PlaybackControlsView.Model {
                 primaryState = .play
             }
         } else {
-            primaryState = store.status == .playing ? .pause : .play
+            primaryState =
+                store.session.status == .playing ? .pause : .play
         }
 
+        let repeatMode = store.queue.current?.repeatMode ?? .off
+        let shuffleMode = store.queue.current?.shuffleMode ?? .off
         let repeatAccessibilityValue: String
-        switch store.queue.repeatMode {
+        switch repeatMode {
         case .off:
             repeatAccessibilityValue = strings.modeOff
         case .all:
@@ -48,10 +51,10 @@ extension PlaybackControlsView.Model {
             shuffle: PlaybackModeButtonView.Model(
                 systemImage: "shuffle",
                 accessibilityLabel: strings.shuffle,
-                accessibilityValue: store.queue.shuffleMode == .tracks
+                accessibilityValue: shuffleMode == .tracks
                     ? strings.modeOn
                     : strings.modeOff,
-                isSelected: store.queue.shuffleMode == .tracks,
+                isSelected: shuffleMode == .tracks,
                 isEnabled: store.canRequestShuffle,
                 perform: { store.send(.shuffleTapped) }
             ),
@@ -76,12 +79,12 @@ extension PlaybackControlsView.Model {
                 perform: { store.send(.nextTapped) }
             ),
             repeatMode: PlaybackModeButtonView.Model(
-                systemImage: store.queue.repeatMode == .one
+                systemImage: repeatMode == .one
                     ? "repeat.1"
                     : "repeat",
                 accessibilityLabel: strings.repeatMode,
                 accessibilityValue: repeatAccessibilityValue,
-                isSelected: store.queue.repeatMode != .off,
+                isSelected: repeatMode != .off,
                 isEnabled: store.canRequestRepeat,
                 perform: { store.send(.repeatTapped) }
             )

@@ -6,7 +6,7 @@ import Testing
 @MainActor
 struct AppPlaybackPresentationTests {
     @Test
-    func dismissingAndReopeningSheetKeepsPlaybackState() async {
+    func dismissingAndReopeningSheetKeepsPlaybackState() async throws {
         let song = Track(
             id: .init(providerID: "fake", nativeID: "1"),
             title: "Song",
@@ -16,18 +16,12 @@ struct AppPlaybackPresentationTests {
             duration: nil
         )
         let queue = IdentifiedArray(uniqueElements: [song])
+        let confirmed = try #require(
+            PlaybackQueue(tracks: queue, startingAt: song.id)
+        )
         let playback = PlaybackFeature.State(
             queue: PlaybackQueueFeature.State(
-                tracks: queue,
-                playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
-                currentTrackID: song.id,
-                repeatMode: .off,
-                shuffleMode: .off
-            ),
-            status: .paused,
-            failureNotice: PlaybackFailureNotice(
-                trackID: song.id,
-                failure: .playbackFailed
+                current: confirmed
             ),
             timeline: PlaybackTimelineFeature.State(
                 confirmedPosition: 42,
@@ -35,8 +29,15 @@ struct AppPlaybackPresentationTests {
                 isSeekable: false,
                 interaction: .idle
             ),
-            pendingPlaybackTransition: nil,
-            pendingStatusChange: nil,
+            session: PlaybackSessionFeature.State(
+                status: .paused,
+                pendingStatusChange: nil
+            ),
+            transition: nil,
+            failureNotice: PlaybackFailureNotice(
+                trackID: song.id,
+                failure: .playbackFailed
+            ),
             isPlayerPresented: true
         )
         let state = AppFeature.State(

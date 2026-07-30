@@ -37,21 +37,21 @@ struct PlaybackPresentationAdapterTests {
     @Test(arguments: [
         (
             PlaybackStatus.playing,
-            PlaybackFeature.PendingStatusChange.Target.paused,
+            PlaybackSessionFeature.PendingStatusChange.Target.paused,
             Locs.Playback.Status.paused,
             PlaybackPrimaryButtonView.Model.State.play,
             false
         ),
         (
             PlaybackStatus.paused,
-            PlaybackFeature.PendingStatusChange.Target.playing,
+            PlaybackSessionFeature.PendingStatusChange.Target.playing,
             Locs.Playback.Status.playing,
             PlaybackPrimaryButtonView.Model.State.pause,
             false
         ),
         (
             PlaybackStatus.playing,
-            PlaybackFeature.PendingStatusChange.Target.stopped,
+            PlaybackSessionFeature.PendingStatusChange.Target.stopped,
             Locs.Playback.Status.stopped,
             PlaybackPrimaryButtonView.Model.State.play,
             false
@@ -59,7 +59,7 @@ struct PlaybackPresentationAdapterTests {
     ])
     func pendingStatusTargetProjectsImmediatePresentation(
         confirmedStatus: PlaybackStatus,
-        target: PlaybackFeature.PendingStatusChange.Target,
+        target: PlaybackSessionFeature.PendingStatusChange.Target,
         expectedStatusText: String,
         expectedPrimaryState: PlaybackPrimaryButtonView.Model.State,
         expectedIsPrimaryEnabled: Bool
@@ -106,14 +106,9 @@ struct PlaybackPresentationAdapterTests {
     @Test
     func pendingInitialReplacementShowsTargetTrackWhileLoading() {
         let song = makeTrack()
-        let tracks = IdentifiedArray(uniqueElements: [song])
         let store = makePlaybackStore(
             song: nil,
-            pendingPlaybackTransition: PendingPlaybackTransition(
-                requestID: UUID(0),
-                queue: tracks,
-                targetTrackID: song.id
-            )
+            pendingTrack: song
         )
 
         let model = PlaybackView.Model(store)
@@ -136,15 +131,10 @@ struct PlaybackPresentationAdapterTests {
             artworkURL: URL(string: "https://example.com/pending"),
             duration: 120
         )
-        let pendingQueue = IdentifiedArray(uniqueElements: [pendingTrack])
         let store = makePlaybackStore(
             song: confirmedTrack,
             status: .playing,
-            pendingPlaybackTransition: PendingPlaybackTransition(
-                requestID: UUID(0),
-                queue: pendingQueue,
-                targetTrackID: pendingTrack.id
-            )
+            pendingTrack: pendingTrack
         )
 
         let model = PlaybackView.Model(store)
@@ -387,7 +377,7 @@ struct PlaybackPresentationAdapterTests {
         )
 
         await store.send(
-            .reconcileSnapshot(
+            .confirmedSnapshotReceived(
                 PlaybackSnapshot(
                     currentTrackID: song.id,
                     status: .playing,
@@ -526,7 +516,6 @@ struct PlaybackPresentationAdapterTests {
     @Test
     func controlsProjectReducerOwnedPermissions() {
         let song = makeTrack()
-        let tracks = IdentifiedArray(uniqueElements: [song])
         let store = makePlaybackStore(
             song: song,
             status: .playing,
@@ -540,11 +529,7 @@ struct PlaybackPresentationAdapterTests {
         let transitioningStore = makePlaybackStore(
             song: song,
             status: .playing,
-            pendingPlaybackTransition: PendingPlaybackTransition(
-                requestID: UUID(0),
-                queue: tracks,
-                targetTrackID: song.id
-            )
+            pendingTrack: song
         )
         let transitioningModel = PlaybackView.Model(transitioningStore)
         #expect(!transitioningModel.controls.primary.isEnabled)
@@ -553,11 +538,7 @@ struct PlaybackPresentationAdapterTests {
         let unconfirmedStore = makePlaybackStore(
             song: nil,
             status: .stopped,
-            pendingPlaybackTransition: PendingPlaybackTransition(
-                requestID: UUID(0),
-                queue: tracks,
-                targetTrackID: song.id
-            )
+            pendingTrack: song
         )
         let unconfirmedModel = PlaybackView.Model(unconfirmedStore)
         #expect(!unconfirmedModel.controls.primary.isEnabled)
@@ -649,34 +630,66 @@ struct PlaybackPresentationAdapterTests {
         timelineInteraction: PlaybackTimelineFeature.Interaction = .idle,
         repeatMode: PlaybackRepeatMode = .off,
         shuffleMode: PlaybackShuffleMode = .off,
-        pendingPlaybackTransition: PendingPlaybackTransition? = nil,
-        pendingStatusChange: PlaybackFeature.PendingStatusChange? = nil,
+        pendingTrack: Track? = nil,
+        pendingStatusChange:
+            PlaybackSessionFeature.PendingStatusChange? = nil,
         playbackOrder: [TrackID]? = nil
     ) -> StoreOf<PlaybackFeature> {
         let tracks = IdentifiedArray(
             uniqueElements: queueTracks ?? song.map { [$0] } ?? []
         )
+        let pendingChanges = pendingTrack.map { pendingTrack in
+            let pendingTracks = IdentifiedArray(
+                uniqueElements: [pendingTrack]
+            )
+            return PlaybackQueueFeature.PendingChanges(
+                active: .replacement(
+                    makeConfirmedQueue(
+                        pendingTracks,
+                        startingAt: pendingTrack.id
+                    )
+                ),
+                followUp: nil
+            )
+        }
+        let confirmed = song.map {
+            makeConfirmedQueue(
+                tracks,
+                playbackOrder: PlaybackQueueOrder(
+                    trackIDs: playbackOrder ?? Array(tracks.ids)
+                ),
+                currentTrackID: $0.id,
+                repeatMode: repeatMode,
+                shuffleMode: shuffleMode
+            )
+        }
         return Store(
             initialState: PlaybackFeature.State(
                 queue: PlaybackQueueFeature.State(
-                    tracks: tracks,
-                    playbackOrder: PlaybackQueueOrder(
-                        trackIDs: playbackOrder ?? Array(tracks.ids)
-                    ),
-                    currentTrackID: song?.id,
-                    repeatMode: repeatMode,
-                    shuffleMode: shuffleMode
+                    current: confirmed,
+                    pendingChanges: pendingChanges
                 ),
-                status: status,
-                failureNotice: failureNotice,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: confirmedPosition,
                     duration: timelineDuration,
                     isSeekable: timelineIsSeekable,
                     interaction: timelineInteraction
                 ),
-                pendingPlaybackTransition: pendingPlaybackTransition,
-                pendingStatusChange: pendingStatusChange,
+                session: PlaybackSessionFeature.State(
+                    status: status,
+                    pendingStatusChange: pendingStatusChange
+                ),
+                transition: pendingTrack.map {
+                    PlaybackTransitionFeature.State(
+                        phase: .starting(
+                            .init(
+                                targetTrackID: $0.id,
+                                baselineTrackID: song?.id
+                            )
+                        )
+                    )
+                },
+                failureNotice: failureNotice,
                 isPlayerPresented: false
             )
         ) {
@@ -694,22 +707,23 @@ struct PlaybackPresentationAdapterTests {
         return Store(
             initialState: PlaybackFeature.State(
                 queue: .init(
-                    tracks: tracks,
-                    playbackOrder: PlaybackQueueOrder(trackIDs: Array(tracks.ids)),
-                    currentTrackID: song.id,
-                    repeatMode: .off,
-                    shuffleMode: .off
+                    current: makeConfirmedQueue(
+                        tracks,
+                        startingAt: song.id
+                    )
                 ),
-                status: .playing,
-                failureNotice: nil,
                 timeline: .init(
                     confirmedPosition: 43,
                     duration: timelineDuration,
                     isSeekable: timelineIsSeekable,
                     interaction: .idle
                 ),
-                pendingPlaybackTransition: nil,
-                pendingStatusChange: nil,
+                session: .init(
+                    status: .playing,
+                    pendingStatusChange: nil
+                ),
+                transition: nil,
+                failureNotice: nil,
                 isPlayerPresented: false
             )
         ) {
@@ -718,6 +732,42 @@ struct PlaybackPresentationAdapterTests {
                 return .none
             }
         }
+    }
+
+    private func makeConfirmedQueue(
+        _ tracks: IdentifiedArrayOf<Track>,
+        startingAt trackID: TrackID
+    ) -> PlaybackQueue {
+        guard
+            let queue = PlaybackQueue(
+                tracks: tracks,
+                startingAt: trackID
+            )
+        else {
+            preconditionFailure("Expected a valid playback queue fixture")
+        }
+        return queue
+    }
+
+    private func makeConfirmedQueue(
+        _ tracks: IdentifiedArrayOf<Track>,
+        playbackOrder: PlaybackQueueOrder,
+        currentTrackID: TrackID,
+        repeatMode: PlaybackRepeatMode,
+        shuffleMode: PlaybackShuffleMode
+    ) -> PlaybackQueue {
+        guard
+            let queue = PlaybackQueue(
+                tracks: tracks,
+                playbackOrder: playbackOrder,
+                currentTrackID: currentTrackID,
+                repeatMode: repeatMode,
+                shuffleMode: shuffleMode
+            )
+        else {
+            preconditionFailure("Expected a valid playback queue fixture")
+        }
+        return queue
     }
 
     private func makeTrack(

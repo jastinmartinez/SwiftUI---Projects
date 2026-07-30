@@ -9,7 +9,9 @@ extension PlaybackNowPlayingView.Model {
     /// - Parameter store: The playback store supplying confirmed state and actions.
     @MainActor
     init?(_ store: StoreOf<PlaybackFeature>) {
-        guard let track = store.queue.currentTrack else { return nil }
+        guard let track = store.queue.current?.currentTrack else {
+            return nil
+        }
         self.init(store, track: track, strings: .localized)
     }
 
@@ -20,10 +22,10 @@ extension PlaybackNowPlayingView.Model {
         strings: Strings
     ) {
         let isPlaying: Bool
-        if let change = store.pendingStatusChange {
+        if let change = store.session.pendingStatusChange {
             isPlaying = change.target == .playing
         } else {
-            isPlaying = store.status == .playing
+            isPlaying = store.session.status == .playing
         }
 
         self.init(

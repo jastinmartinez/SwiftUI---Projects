@@ -10,11 +10,9 @@ struct AppPlaybackCoordinationTests {
     func searchSelectionForwardsDirectlyToPlayback() async {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
-        let probe = SuspendedOperationProbe<PlaybackResource>()
         let store = makeStore {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                try await probe.run()
-            }
+            $0.playbackResourceClients =
+                self.cancellingResourceClients()
         }
 
         await store.send(
@@ -34,58 +32,41 @@ struct AppPlaybackCoordinationTests {
                     loadedResults: loadedResults
                 )
             )
-        ) {
-            $0.playback.isPlayerPresented = true
-            $0.playback.pendingPlaybackTransition = PendingPlaybackTransition(
-                requestID: UUID(0),
-                queue: loadedResults,
-                targetTrackID: tracks[1].id
-            )
-        }
-        await store.receive(
-            .playback(
-                .resolveTransition(
-                    requestID: UUID(0),
-                    trackID: tracks[1].id
-                )
-            )
         )
-        await probe.waitUntilStarted()
+        await receiveTransitionStart(
+            in: store,
+            targetTrackID: tracks[1].id,
+            loadedResults: loadedResults,
+            baselineTrackID: nil,
+            presentsPlayer: true
+        )
 
-        await cancelPlaybackTransition(in: store)
-        await probe.waitUntilCancelled()
+        #expect(store.state.playback.queue.pendingTrack == tracks[1])
+        #expect(store.state.playback.queue.current == nil)
     }
 
     @Test
-    func laterSelectionStartsATransitionWithoutReopeningDismissedPlayer() async {
-        let currentSongs = makeTracks(prefix: "current")
-        let currentQueue = IdentifiedArray(uniqueElements: currentSongs)
-        let nextSongs = makeTracks(prefix: "next")
-        let nextQueue = IdentifiedArray(uniqueElements: nextSongs)
-        let probe = SuspendedOperationProbe<PlaybackResource>()
-        let store = makeStore(
-            playbackQueue: .init(
-                tracks: currentQueue,
-                playbackOrder: PlaybackQueueOrder(
-                    trackIDs: Array(currentQueue.ids)
-                ),
-                currentTrackID: currentSongs[0].id,
-                repeatMode: .off,
-                shuffleMode: .off
-            ),
-            isPlayerPresented: false
-        ) {
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                try await probe.run()
-            }
+    func laterSelectionStartsATransitionWithoutReopeningDismissedPlayer()
+        async
+    {
+        let currentTracks = makeTracks(prefix: "current")
+        let selectedTracks = makeTracks(prefix: "selected")
+        let loadedResults = IdentifiedArray(uniqueElements: selectedTracks)
+        let queue = makeQueue(
+            tracks: currentTracks,
+            currentTrackID: currentTracks[0].id
+        )
+        let store = makeStore(playbackQueue: queue) {
+            $0.playbackResourceClients =
+                self.cancellingResourceClients()
         }
 
         await store.send(
             .search(
                 .delegate(
                     .trackTapped(
-                        nextSongs[0],
-                        loadedResults: nextQueue
+                        selectedTracks[0],
+                        loadedResults: loadedResults
                     )
                 )
             )
@@ -93,55 +74,48 @@ struct AppPlaybackCoordinationTests {
         await store.receive(
             .playback(
                 .selectionReceived(
-                    nextSongs[0].id,
-                    loadedResults: nextQueue
-                )
-            )
-        ) {
-            $0.playback.pendingPlaybackTransition = PendingPlaybackTransition(
-                requestID: UUID(0),
-                queue: nextQueue,
-                targetTrackID: nextSongs[0].id
-            )
-        }
-        await store.receive(
-            .playback(
-                .resolveTransition(
-                    requestID: UUID(0),
-                    trackID: nextSongs[0].id
+                    selectedTracks[0].id,
+                    loadedResults: loadedResults
                 )
             )
         )
-        await probe.waitUntilStarted()
+        await receiveTransitionStart(
+            in: store,
+            targetTrackID: selectedTracks[0].id,
+            loadedResults: loadedResults,
+            baselineTrackID: currentTracks[0].id,
+            presentsPlayer: false
+        )
 
         #expect(!store.state.playback.isPlayerPresented)
-        #expect(store.state.playback.queue.tracks == currentQueue)
-
-        await cancelPlaybackTransition(in: store)
-        await probe.waitUntilCancelled()
+        #expect(
+            store.state.playback.queue.current?.currentTrack
+                == currentTracks[0]
+        )
+        #expect(
+            store.state.playback.queue.pendingTrack
+                == selectedTracks[0]
+        )
     }
 
     @Test
-    func laterPaginatedResultsAreFrozenOnlyWhenLaterSongIsTapped() async {
-        let firstPageSongs = makeTracks(prefix: "first")
-        let firstPage = IdentifiedArray(uniqueElements: firstPageSongs)
-        let laterSong = makeTrack(nativeID: "later")
-        let laterSongs = firstPageSongs + [laterSong]
-        let laterResults = IdentifiedArray(uniqueElements: laterSongs)
+    func laterPaginatedResultsAreFrozenOnlyWhenLaterTrackIsTapped() async {
+        let firstTracks = makeTracks(prefix: "first")
+        let firstResults = IdentifiedArray(uniqueElements: firstTracks)
+        let laterTrack = makeTrack(nativeID: "later")
+        let loadedResults = IdentifiedArray(
+            uniqueElements: firstTracks + [laterTrack]
+        )
         let cursor = SearchCursor(value: "page-2")
-        let probe = SuspendedOperationProbe<PlaybackResource>()
         var state = makeState(
-            playbackQueue: PlaybackQueueFeature.State(
-                tracks: firstPage,
-                playbackOrder: PlaybackQueueOrder(trackIDs: Array(firstPage.ids)),
-                currentTrackID: firstPageSongs[0].id,
-                repeatMode: .off,
-                shuffleMode: .off
+            playbackQueue: makeQueue(
+                tracks: firstTracks,
+                currentTrackID: firstTracks[0].id
             )
         )
         state.search.status = .loaded(
             SearchPaginationFeature.State(
-                tracks: firstPage,
+                tracks: firstResults,
                 nextCursor: cursor,
                 status: .idle,
                 providerID: providerID
@@ -150,21 +124,20 @@ struct AppPlaybackCoordinationTests {
         let store = makeStore(state: state) {
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
-                    providerID: ProviderSearchClient(
+                    self.providerID: ProviderSearchClient(
                         searchPage: { request, limit in
                             #expect(request == .continuation(cursor))
                             #expect(limit == 20)
                             return SearchPage(
-                                tracks: [laterSong],
+                                tracks: [laterTrack],
                                 nextCursor: nil
                             )
                         }
                     )
                 ]
             )
-            $0.playbackResourceClients = self.makeResourceClients { _ in
-                try await probe.run()
-            }
+            $0.playbackResourceClients =
+                self.cancellingResourceClients()
         }
 
         await store.send(.search(.pagination(.nextPageRequested)))
@@ -191,7 +164,10 @@ struct AppPlaybackCoordinationTests {
                     .searchPageResponse(
                         UUID(0),
                         .success(
-                            SearchPage(tracks: [laterSong], nextCursor: nil)
+                            SearchPage(
+                                tracks: [laterTrack],
+                                nextCursor: nil
+                            )
                         )
                     )
                 )
@@ -200,105 +176,130 @@ struct AppPlaybackCoordinationTests {
             guard case .loaded(var pagination) = $0.search.status else {
                 return
             }
-            pagination.tracks.append(laterSong)
+            pagination.tracks.append(laterTrack)
             pagination.nextCursor = nil
             pagination.status = .idle
             $0.search.status = .loaded(pagination)
         }
 
-        #expect(store.state.playback.queue.tracks == firstPage)
+        #expect(
+            store.state.playback.queue.current?.tracks
+                == firstResults
+        )
+        #expect(store.state.playback.queue.pendingTrack == nil)
 
-        await store.send(.search(.resultTapped(laterSong.id)))
+        await store.send(.search(.resultTapped(laterTrack.id)))
         await store.receive(
-            .search(.delegate(.trackTapped(laterSong, loadedResults: laterResults)))
+            .search(
+                .delegate(
+                    .trackTapped(
+                        laterTrack,
+                        loadedResults: loadedResults
+                    )
+                )
+            )
         )
         await store.receive(
             .playback(
                 .selectionReceived(
-                    laterSong.id,
-                    loadedResults: laterResults
-                )
-            )
-        ) {
-            $0.playback.pendingPlaybackTransition = PendingPlaybackTransition(
-                requestID: UUID(1),
-                queue: laterResults,
-                targetTrackID: laterSong.id
-            )
-        }
-        await store.receive(
-            .playback(
-                .resolveTransition(
-                    requestID: UUID(1),
-                    trackID: laterSong.id
+                    laterTrack.id,
+                    loadedResults: loadedResults
                 )
             )
         )
-        await probe.waitUntilStarted()
+        await receiveTransitionStart(
+            in: store,
+            targetTrackID: laterTrack.id,
+            loadedResults: loadedResults,
+            baselineTrackID: firstTracks[0].id,
+            presentsPlayer: false,
+            requestID: UUID(1)
+        )
 
-        #expect(store.state.playback.queue.tracks == firstPage)
         #expect(
-            store.state.playback.pendingPlaybackTransition?.queue
-                == laterResults
+            store.state.playback.queue.current?.tracks
+                == firstResults
         )
-
-        await cancelPlaybackTransition(in: store)
-        await probe.waitUntilCancelled()
+        #expect(store.state.playback.queue.pendingTrack == laterTrack)
     }
 
     // MARK: - Helpers
 
     private let providerID = ProviderID(rawValue: "fake")
 
-    private func cancelPlaybackTransition(
-        in store: TestStoreOf<AppFeature>
+    private func receiveTransitionStart(
+        in store: TestStoreOf<AppFeature>,
+        targetTrackID: TrackID,
+        loadedResults: IdentifiedArrayOf<Track>,
+        baselineTrackID: TrackID?,
+        presentsPlayer: Bool,
+        requestID: UUID = UUID(0)
     ) async {
-        guard
-            let pending = store.state.playback.pendingPlaybackTransition
-        else {
-            Issue.record("Expected a pending playback transition")
-            return
-        }
-        let installation = pending.rollbackInstallation
-        await store.send(.playback(.cancelPlaybackTransition)) {
-            $0.playback.pendingPlaybackTransition?.settlement = .rollingBack(
-                .abandoning(
-                    installation,
-                    followUp: .none
-                )
-            )
-        }
         await store.receive(
             .playback(
-                .transitionRollbackCompleted(requestID: pending.requestID)
+                .queue(
+                    .selectionRequested(
+                        targetTrackID,
+                        loadedResults: loadedResults
+                    )
+                )
             )
         ) {
-            $0.playback.pendingPlaybackTransition = nil
+            $0.playback.queue.pendingChanges = .init(
+                active: .replacement(
+                    makeConfirmedQueue(
+                        loadedResults,
+                        startingAt: targetTrackID
+                    )
+                ),
+                followUp: nil
+            )
         }
+        let intent = PlaybackTransitionFeature.Intent(
+            targetTrackID: targetTrackID,
+            baselineTrackID: baselineTrackID
+        )
+        await store.receive(
+            .playback(
+                .queue(
+                    .delegate(.transitionRequested(targetTrackID))
+                )
+            )
+        ) {
+            $0.playback.transition = .init(phase: .starting(intent))
+            $0.playback.failureNotice = nil
+            $0.playback.isPlayerPresented = presentsPlayer
+        }
+        await store.receive(
+            .playback(.session(.cancelPendingStatusChange))
+        )
+        await store.receive(.playback(.transition(.start))) {
+            $0.playback.transition?.phase = .preparing(
+                PlaybackTransitionFeature.Transaction(
+                    requestID: requestID,
+                    intent: intent
+                ),
+                .init(stage: .resolving, latestTargetSnapshot: nil)
+            )
+        }
+        await store.finish()
     }
 
     private func makeStore(
         state: AppFeature.State? = nil,
         playbackQueue: PlaybackQueueFeature.State = .init(
-            tracks: [],
-            playbackOrder: PlaybackQueueOrder(trackIDs: []),
-            currentTrackID: nil,
-            repeatMode: .off,
-            shuffleMode: .off
+            current: nil
         ),
-        isPlayerPresented: Bool = false,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
     ) -> TestStoreOf<AppFeature> {
         TestStore(
             initialState: state
-                ?? makeState(
-                    playbackQueue: playbackQueue,
-                    isPlayerPresented: isPlayerPresented
-                )
+                ?? makeState(playbackQueue: playbackQueue)
         ) {
             AppFeature()
         } withDependencies: {
             $0.uuid = .incrementing
+            $0.playbackObservation.observations = { .finished }
             $0.playbackItem.rollback = { _ in }
             configureDependencies(&$0)
         }
@@ -306,13 +307,8 @@ struct AppPlaybackCoordinationTests {
 
     private func makeState(
         playbackQueue: PlaybackQueueFeature.State = .init(
-            tracks: [],
-            playbackOrder: PlaybackQueueOrder(trackIDs: []),
-            currentTrackID: nil,
-            repeatMode: .off,
-            shuffleMode: .off
-        ),
-        isPlayerPresented: Bool = false
+            current: nil
+        )
     ) -> AppFeature.State {
         AppFeature.State(
             search: SearchFeature.State(
@@ -322,39 +318,65 @@ struct AppPlaybackCoordinationTests {
             ),
             playback: PlaybackFeature.State(
                 queue: playbackQueue,
-                status: playbackQueue.currentTrack == nil ? .idle : .playing,
-                failureNotice: nil,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: 0,
                     duration: nil,
                     isSeekable: false,
                     interaction: .idle
                 ),
-                pendingPlaybackTransition: nil,
-                pendingStatusChange: nil,
-                isPlayerPresented: isPlayerPresented
+                session: PlaybackSessionFeature.State(
+                    status: playbackQueue.current == nil
+                        ? .idle
+                        : .playing,
+                    pendingStatusChange: nil
+                ),
+                transition: nil,
+                failureNotice: nil,
+                isPlayerPresented: false
             )
         )
     }
 
-    private func makeResourceClients(
-        resolve: @escaping @Sendable (TrackID) async throws -> PlaybackResource
-    ) -> ProviderClientRegistry<PlaybackResourceClient> {
+    private func makeQueue(
+        tracks: [Track],
+        currentTrackID: TrackID
+    ) -> PlaybackQueueFeature.State {
+        PlaybackQueueFeature.State(
+            current: makeConfirmedQueue(
+                IdentifiedArray(uniqueElements: tracks),
+                startingAt: currentTrackID
+            )
+        )
+    }
+
+    private func makeConfirmedQueue(
+        _ tracks: IdentifiedArrayOf<Track>,
+        startingAt trackID: TrackID
+    ) -> PlaybackQueue {
+        guard
+            let queue = PlaybackQueue(
+                tracks: tracks,
+                startingAt: trackID
+            )
+        else {
+            preconditionFailure("Expected a valid playback queue fixture")
+        }
+        return queue
+    }
+
+    private func cancellingResourceClients()
+        -> ProviderClientRegistry<PlaybackResourceClient>
+    {
         ProviderClientRegistry(
-            clients: [providerID: PlaybackResourceClient(resolve: resolve)]
+            clients: [
+                providerID: PlaybackResourceClient { _ in
+                    throw CancellationError()
+                }
+            ]
         )
     }
 
-    private func makeResource(for trackID: TrackID) -> PlaybackResource {
-        PlaybackResource(
-            trackID: trackID,
-            location: .localFile(
-                URL(fileURLWithPath: "/tmp/\(trackID.nativeID).m4a")
-            )
-        )
-    }
-
-    private func makeTracks(prefix: String = "song") -> [Track] {
+    private func makeTracks(prefix: String = "track") -> [Track] {
         [
             makeTrack(nativeID: "\(prefix)-1"),
             makeTrack(nativeID: "\(prefix)-2"),
@@ -364,7 +386,7 @@ struct AppPlaybackCoordinationTests {
 
     private func makeTrack(nativeID: String) -> Track {
         Track(
-            id: .init(providerID: providerID, nativeID: nativeID),
+            id: TrackID(providerID: providerID, nativeID: nativeID),
             title: nativeID,
             artistName: "Artist",
             albumTitle: nil,

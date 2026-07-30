@@ -28,22 +28,20 @@ struct AppFeatureTests {
             ),
             playback: PlaybackFeature.State(
                 queue: PlaybackQueueFeature.State(
-                    tracks: [],
-                    playbackOrder: PlaybackQueueOrder(trackIDs: []),
-                    currentTrackID: nil,
-                    repeatMode: .off,
-                    shuffleMode: .off
+                    current: nil
                 ),
-                status: .idle,
-                failureNotice: nil,
                 timeline: PlaybackTimelineFeature.State(
                     confirmedPosition: 0,
                     duration: nil,
                     isSeekable: false,
                     interaction: .idle
                 ),
-                pendingPlaybackTransition: nil,
-                pendingStatusChange: nil,
+                session: PlaybackSessionFeature.State(
+                    status: .idle,
+                    pendingStatusChange: nil
+                ),
+                transition: nil,
+                failureNotice: nil,
                 isPlayerPresented: false
             )
         )

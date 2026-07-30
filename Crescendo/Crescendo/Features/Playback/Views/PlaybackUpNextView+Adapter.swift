@@ -14,9 +14,7 @@ extension PlaybackUpNextView.Model {
         _ store: StoreOf<PlaybackFeature>,
         title: String
     ) {
-        let tracks = store.queue.upNextTrackIDs.compactMap {
-            store.queue.tracks[id: $0]
-        }
+        let tracks = store.queue.current?.upNextTracks ?? []
         guard !tracks.isEmpty else { return nil }
 
         self.init(

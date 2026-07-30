@@ -5,11 +5,49 @@ import ComposableArchitecture
 struct PlaybackQueueFeature {
     @ObservableState
     struct State: Equatable {
-        var tracks: IdentifiedArrayOf<Track>
-        var playbackOrder: PlaybackQueueOrder
-        var currentTrackID: TrackID?
-        var repeatMode: PlaybackRepeatMode
-        var shuffleMode: PlaybackShuffleMode
+        var current: PlaybackQueue?
+        var pendingChanges: PendingChanges? = nil
+    }
+
+    struct PendingChanges: Equatable {
+        var active: QueueChange
+        var followUp: QueueChange?
+
+        var latest: QueueChange {
+            followUp ?? active
+        }
+    }
+
+    enum QueueChange: Equatable {
+        case replacement(PlaybackQueue)
+        case navigation(to: TrackID)
+
+        var targetTrackID: TrackID {
+            switch self {
+            case .replacement(let queue):
+                return queue.currentTrackID
+            case .navigation(let trackID):
+                return trackID
+            }
+        }
+
+        func targetTrack(in current: PlaybackQueue?) -> Track? {
+            switch self {
+            case .replacement(let queue):
+                return queue.currentTrack
+            case .navigation(let trackID):
+                return current?.tracks[id: trackID]
+            }
+        }
+
+        func applying(to current: PlaybackQueue?) -> PlaybackQueue? {
+            switch self {
+            case .replacement(let queue):
+                return queue
+            case .navigation(let trackID):
+                return current?.navigating(to: trackID)
+            }
+        }
     }
 
     enum Delegate: Equatable {
@@ -21,6 +59,13 @@ struct PlaybackQueueFeature {
             IdentifiedArrayOf<Track>,
             startingAt: TrackID
         )
+        case selectionRequested(
+            TrackID,
+            loadedResults: IdentifiedArrayOf<Track>
+        )
+        case pendingChangeConfirmed(TrackID)
+        case pendingFollowUpDiscarded
+        case pendingChangesDiscarded
         case currentTrackConfirmed(TrackID)
         case previousTapped
         case nextTapped
@@ -37,82 +82,176 @@ struct PlaybackQueueFeature {
         Reduce { state, action in
             switch action {
             case .replace(let tracks, let startingTrackID):
-                guard tracks[id: startingTrackID] != nil else {
+                guard
+                    let replacement = PlaybackQueue(
+                        tracks: tracks,
+                        startingAt: startingTrackID
+                    )
+                else {
                     return .none
                 }
-                state.tracks = tracks
-                state.playbackOrder = PlaybackQueueOrder(
-                    trackIDs: Array(tracks.ids)
-                )
-                state.currentTrackID = startingTrackID
-                state.repeatMode = .off
-                state.shuffleMode = .off
+                state.current = replacement
+                state.pendingChanges = nil
+                return .none
+
+            case .selectionRequested(
+                let trackID,
+                let loadedResults
+            ):
+                guard
+                    let replacement = PlaybackQueue(
+                        tracks: loadedResults,
+                        startingAt: trackID
+                    )
+                else {
+                    return .none
+                }
+                let change = QueueChange.replacement(replacement)
+                if state.pendingChanges == nil {
+                    state.pendingChanges = PendingChanges(
+                        active: change,
+                        followUp: nil
+                    )
+                } else {
+                    state.pendingChanges?.followUp = change
+                }
+                return .send(.delegate(.transitionRequested(trackID)))
+
+            case .pendingChangeConfirmed(let trackID):
+                guard let pendingChanges = state.pendingChanges else {
+                    return .none
+                }
+
+                let confirmedChange: QueueChange
+                let remainingChanges: PendingChanges?
+                if pendingChanges.active.targetTrackID == trackID {
+                    confirmedChange = pendingChanges.active
+                    remainingChanges = pendingChanges.followUp.map {
+                        PendingChanges(active: $0, followUp: nil)
+                    }
+                } else if let followUp = pendingChanges.followUp,
+                    followUp.targetTrackID == trackID
+                {
+                    confirmedChange = followUp
+                    remainingChanges = nil
+                } else {
+                    return .none
+                }
+
+                guard
+                    let updatedQueue = confirmedChange.applying(
+                        to: state.current
+                    )
+                else {
+                    return .none
+                }
+                state.current = updatedQueue
+                state.pendingChanges = remainingChanges
+                return .none
+
+            case .pendingFollowUpDiscarded:
+                state.pendingChanges?.followUp = nil
+                return .none
+
+            case .pendingChangesDiscarded:
+                state.pendingChanges = nil
                 return .none
 
             case .currentTrackConfirmed(let trackID):
-                guard state.tracks[id: trackID] != nil else { return .none }
-                state.currentTrackID = trackID
+                guard
+                    let updatedQueue = state.current?.navigating(
+                        to: trackID
+                    )
+                else {
+                    return .none
+                }
+                state.current = updatedQueue
                 return .none
 
             case .previousTapped:
-                guard let targetTrackID = state.previousTrackID else {
+                guard
+                    let targetTrackID =
+                        state.current?.previousTrackID
+                else {
                     return .none
+                }
+                let change = QueueChange.navigation(to: targetTrackID)
+                if state.pendingChanges == nil {
+                    state.pendingChanges = PendingChanges(
+                        active: change,
+                        followUp: nil
+                    )
+                } else {
+                    state.pendingChanges?.followUp = change
                 }
                 return .send(.delegate(.transitionRequested(targetTrackID)))
 
             case .nextTapped:
-                guard let targetTrackID = state.nextTrackID else {
+                guard
+                    let targetTrackID = state.current?.nextTrackID
+                else {
                     return .none
+                }
+                let change = QueueChange.navigation(to: targetTrackID)
+                if state.pendingChanges == nil {
+                    state.pendingChanges = PendingChanges(
+                        active: change,
+                        followUp: nil
+                    )
+                } else {
+                    state.pendingChanges?.followUp = change
                 }
                 return .send(.delegate(.transitionRequested(targetTrackID)))
 
             case .currentTrackCompleted(let completedTrackID):
                 guard
-                    let targetTrackID = state.automaticTrackID(
-                        after: completedTrackID
-                    )
+                    let targetTrackID =
+                        state.current?.automaticTrackID(
+                            after: completedTrackID
+                        )
                 else { return .none }
+                let change = QueueChange.navigation(to: targetTrackID)
+                if state.pendingChanges == nil {
+                    state.pendingChanges = PendingChanges(
+                        active: change,
+                        followUp: nil
+                    )
+                } else {
+                    state.pendingChanges?.followUp = change
+                }
                 return .send(.delegate(.transitionRequested(targetTrackID)))
 
             case .repeatTapped:
-                let cycleOrder = PlaybackRepeatMode.cycleOrder
-                guard
-                    let index = cycleOrder.firstIndex(of: state.repeatMode)
-                else { return .none }
-                let nextIndex = (index + 1) % cycleOrder.count
-                state.repeatMode = cycleOrder[nextIndex]
+                guard let current = state.current else {
+                    return .none
+                }
+                state.current = current.cyclingRepeatMode()
                 return .none
 
             case .shuffleTapped:
-                let canonicalTrackIDs = Array(state.tracks.ids)
-                switch state.shuffleMode {
+                guard let current = state.current else {
+                    return .none
+                }
+                switch current.shuffleMode {
                 case .tracks:
-                    state.playbackOrder = PlaybackQueueOrder(
-                        trackIDs: canonicalTrackIDs
-                    )
-                    state.shuffleMode = .off
+                    state.current = current.disablingShuffle()
                     return .none
                 case .off:
                     let shuffledTrackIDs = playbackShuffle.shuffle(
-                        canonicalTrackIDs
+                        Array(current.tracks.ids)
                     )
                     guard
-                        shuffledTrackIDs.count == canonicalTrackIDs.count,
-                        Set(shuffledTrackIDs) == Set(canonicalTrackIDs)
+                        let shuffled = current.enablingShuffle(
+                            with: shuffledTrackIDs
+                        )
                     else { return .none }
-                    state.playbackOrder = PlaybackQueueOrder(
-                        trackIDs: shuffledTrackIDs
-                    )
-                    state.shuffleMode = .tracks
+                    state.current = shuffled
                     return .none
                 }
 
             case .reset:
-                state.tracks = []
-                state.playbackOrder = PlaybackQueueOrder(trackIDs: [])
-                state.currentTrackID = nil
-                state.repeatMode = .off
-                state.shuffleMode = .off
+                state.current = nil
+                state.pendingChanges = nil
                 return .none
 
             case .delegate:
@@ -123,40 +262,7 @@ struct PlaybackQueueFeature {
 }
 
 extension PlaybackQueueFeature.State {
-    var currentTrack: Track? {
-        guard let currentTrackID else { return nil }
-        return tracks[id: currentTrackID]
-    }
-
-    var previousTrackID: TrackID? {
-        guard let currentTrackID else { return nil }
-        return playbackOrder.previousTrackID(before: currentTrackID)
-    }
-
-    var nextTrackID: TrackID? {
-        guard let currentTrackID else { return nil }
-        return playbackOrder.nextTrackID(after: currentTrackID)
-    }
-
-    var upNextTrackIDs: [TrackID] {
-        guard let currentTrackID else { return [] }
-        return playbackOrder.trackIDs(after: currentTrackID)
-    }
-
-    /// Returns the identity playback should advance to after a track finishes.
-    ///
-    /// - Parameter completedTrackID: The identity reported as finished.
-    /// - Returns: The next identity under the confirmed Repeat mode, or `nil`
-    ///   when the report is stale or the queue has ended.
-    func automaticTrackID(after completedTrackID: TrackID) -> TrackID? {
-        guard completedTrackID == currentTrackID else { return nil }
-        switch repeatMode {
-        case .one:
-            return currentTrackID
-        case .all:
-            return nextTrackID ?? playbackOrder.firstTrackID
-        case .off:
-            return nextTrackID
-        }
+    var pendingTrack: Track? {
+        pendingChanges?.latest.targetTrack(in: current)
     }
 }

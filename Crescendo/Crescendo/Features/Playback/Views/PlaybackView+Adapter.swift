@@ -31,7 +31,7 @@ extension PlaybackView.Model {
         strings: Strings
     ) {
         let statusText: String
-        if let change = store.pendingStatusChange {
+        if let change = store.session.pendingStatusChange {
             switch change.target {
             case .playing:
                 statusText = Locs.Playback.Status.playing
@@ -40,7 +40,7 @@ extension PlaybackView.Model {
             case .stopped:
                 statusText = Locs.Playback.Status.stopped
             }
-        } else if store.pendingPlaybackTransition != nil {
+        } else if store.transition != nil {
             statusText = strings.loading
         } else if let failure = store.failureNotice?.failure {
             statusText =
@@ -55,7 +55,7 @@ extension PlaybackView.Model {
                     strings.playbackFailed
                 }
         } else {
-            switch store.status {
+            switch store.session.status {
             case .idle:
                 statusText = Locs.Playback.Status.idle
             case .waiting:
@@ -69,10 +69,8 @@ extension PlaybackView.Model {
             }
         }
 
-        let confirmedTrack = store.queue.currentTrack
-        let pendingTrack = store.pendingPlaybackTransition.flatMap {
-            $0.queue[id: $0.targetTrackID]
-        }
+        let confirmedTrack = store.queue.current?.currentTrack
+        let pendingTrack = store.queue.pendingTrack
         let displayedTrack = confirmedTrack ?? pendingTrack
 
         let timeline = PlaybackTimelineView.Model(store)

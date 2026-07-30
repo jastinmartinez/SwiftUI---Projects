@@ -19,6 +19,11 @@ struct PlaybackTimelineFeature {
     }
 
     enum Action: Equatable {
+        case confirmedSnapshot(
+            position: TimeInterval,
+            duration: TimeInterval?,
+            isSeekable: Bool
+        )
         case positionObserved(TimeInterval)
         case positionChanged(TimeInterval)
         case dragEnded
@@ -44,6 +49,16 @@ struct PlaybackTimelineFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
+            case .confirmedSnapshot(
+                let position,
+                let duration,
+                let isSeekable
+            ):
+                state.confirmedPosition = max(position, 0)
+                state.duration = duration
+                state.isSeekable = isSeekable
+                return .none
+
             case .positionObserved(let position):
                 state.confirmedPosition = max(position, 0)
                 return .none

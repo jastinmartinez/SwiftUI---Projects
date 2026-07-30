@@ -7,6 +7,28 @@ import Testing
 @MainActor
 struct PlaybackTimelineFeatureTests {
     @Test
+    func confirmedSnapshotUpdatesOnlyTimelineOwnedFacts() async {
+        let store = makeStore(
+            duration: 90,
+            interaction: .dragging(position: 20)
+        )
+
+        await store.send(
+            .confirmedSnapshot(
+                position: 42,
+                duration: 180,
+                isSeekable: true
+            )
+        ) {
+            $0.confirmedPosition = 42
+            $0.duration = 180
+            $0.isSeekable = true
+        }
+
+        #expect(store.state.interaction == .dragging(position: 20))
+    }
+
+    @Test
     func observedPositionUpdatesConfirmedTimeWithoutEndingInteraction() async {
         let store = makeStore(
             interaction: .dragging(position: 20)

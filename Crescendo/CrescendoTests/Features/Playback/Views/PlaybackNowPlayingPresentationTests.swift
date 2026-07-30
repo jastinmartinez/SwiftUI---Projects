@@ -29,10 +29,11 @@ struct PlaybackNowPlayingPresentationTests {
     func barToggleProjectsPendingStatusChangePermission() throws {
         let song = makeTrack(duration: nil)
         var state = makeState(song: song, status: .playing)
-        state.pendingStatusChange = PlaybackFeature.PendingStatusChange(
-            requestID: UUID(0),
-            target: .paused
-        )
+        state.session.pendingStatusChange =
+            PlaybackSessionFeature.PendingStatusChange(
+                requestID: UUID(0),
+                target: .paused
+            )
         let store = Store(initialState: state) {
             PlaybackFeature()
         }
@@ -95,7 +96,7 @@ struct PlaybackNowPlayingPresentationTests {
 
         var resumeStartedIterator = resumeStarted.makeAsyncIterator()
         _ = await resumeStartedIterator.next()
-        #expect(store.queue.currentTrack == song)
+        #expect(store.queue.current?.currentTrack == song)
         #expect(resolveCallCount.value == 0)
         #expect(resumeCallCount.value == 1)
 
@@ -125,10 +126,25 @@ struct PlaybackNowPlayingPresentationTests {
         )
         let pendingTrack = makeTrack(nativeID: "pending", title: "Pending")
         var state = makeState(song: confirmedTrack, status: .playing)
-        state.pendingPlaybackTransition = PendingPlaybackTransition(
-            requestID: UUID(0),
-            queue: IdentifiedArray(uniqueElements: [pendingTrack]),
-            targetTrackID: pendingTrack.id
+        let pendingTracks = IdentifiedArray(
+            uniqueElements: [pendingTrack]
+        )
+        state.queue.pendingChanges = .init(
+            active: .replacement(
+                makeConfirmedQueue(
+                    pendingTracks,
+                    startingAt: pendingTrack.id
+                )
+            ),
+            followUp: nil
+        )
+        state.transition = PlaybackTransitionFeature.State(
+            phase: .starting(
+                .init(
+                    targetTrackID: pendingTrack.id,
+                    baselineTrackID: confirmedTrack.id
+                )
+            )
         )
         let store = Store(initialState: state) {
             PlaybackFeature()
@@ -145,11 +161,26 @@ struct PlaybackNowPlayingPresentationTests {
     func compactPlayerRequiresAConfirmedTrack() {
         let pendingTrack = makeTrack(nativeID: "pending", title: "Pending")
         var state = makeState(song: pendingTrack, status: .idle)
-        state.queue.currentTrackID = nil
-        state.pendingPlaybackTransition = PendingPlaybackTransition(
-            requestID: UUID(0),
-            queue: IdentifiedArray(uniqueElements: [pendingTrack]),
-            targetTrackID: pendingTrack.id
+        state.queue.current = nil
+        let pendingTracks = IdentifiedArray(
+            uniqueElements: [pendingTrack]
+        )
+        state.queue.pendingChanges = .init(
+            active: .replacement(
+                makeConfirmedQueue(
+                    pendingTracks,
+                    startingAt: pendingTrack.id
+                )
+            ),
+            followUp: nil
+        )
+        state.transition = PlaybackTransitionFeature.State(
+            phase: .starting(
+                .init(
+                    targetTrackID: pendingTrack.id,
+                    baselineTrackID: nil
+                )
+            )
         )
         let store = Store(initialState: state) {
             PlaybackFeature()
@@ -169,24 +200,40 @@ struct PlaybackNowPlayingPresentationTests {
         let queue = IdentifiedArray(uniqueElements: [song])
         return PlaybackFeature.State(
             queue: PlaybackQueueFeature.State(
-                tracks: queue,
-                playbackOrder: PlaybackQueueOrder(trackIDs: Array(queue.ids)),
-                currentTrackID: song.id,
-                repeatMode: .off,
-                shuffleMode: .off
+                current: makeConfirmedQueue(
+                    queue,
+                    startingAt: song.id
+                )
             ),
-            status: status,
-            failureNotice: nil,
             timeline: PlaybackTimelineFeature.State(
                 confirmedPosition: 0,
                 duration: song.duration,
                 isSeekable: true,
                 interaction: .idle
             ),
-            pendingPlaybackTransition: nil,
-            pendingStatusChange: nil,
+            session: PlaybackSessionFeature.State(
+                status: status,
+                pendingStatusChange: nil
+            ),
+            transition: nil,
+            failureNotice: nil,
             isPlayerPresented: false
         )
+    }
+
+    private func makeConfirmedQueue(
+        _ tracks: IdentifiedArrayOf<Track>,
+        startingAt trackID: TrackID
+    ) -> PlaybackQueue {
+        guard
+            let queue = PlaybackQueue(
+                tracks: tracks,
+                startingAt: trackID
+            )
+        else {
+            preconditionFailure("Expected a valid playback queue fixture")
+        }
+        return queue
     }
 
     private func makeTrack(

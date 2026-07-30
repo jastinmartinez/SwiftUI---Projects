@@ -597,7 +597,11 @@ struct PlaybackTransitionFeature {
                     return .send(.delegate(.completed(.confirmed)))
 
                 case .transition(let intent):
-                    state.phase = .starting(intent)
+                    let rebasedIntent = Intent(
+                        targetTrackID: intent.targetTrackID,
+                        baselineTrackID: commit.snapshot.currentTrackID
+                    )
+                    state.phase = .starting(rebasedIntent)
                     return .send(.start)
 
                 case .stop:

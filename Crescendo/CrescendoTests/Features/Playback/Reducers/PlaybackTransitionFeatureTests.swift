@@ -1104,6 +1104,58 @@ struct PlaybackTransitionFeatureTests {
     }
 
     @Test
+    func confirmedTargetBecomesTheFollowUpRollbackBaseline() async {
+        let tracks = makeTracks(prefix: "confirmed")
+        let confirmedIntent = makeIntent(
+            targetTrackID: tracks[1].id,
+            baselineTrackID: tracks[0].id
+        )
+        let transaction = transaction(intent: confirmedIntent)
+        let snapshot = makeSnapshot(
+            itemID: confirmedIntent.targetTrackID,
+            status: .playing,
+            position: 4
+        )
+        let nextTracks = makeTracks(prefix: "next")
+        let requestedIntent = makeIntent(
+            targetTrackID: nextTracks[1].id,
+            baselineTrackID: tracks[0].id
+        )
+        let rebasedIntent = makeIntent(
+            targetTrackID: requestedIntent.targetTrackID,
+            baselineTrackID: confirmedIntent.targetTrackID
+        )
+        let resolveProbe = SuspendedOperationProbe<PlaybackResource>()
+        let store = makeStore(
+            phase: .applyingConfirmation(
+                transaction,
+                .init(
+                    snapshot: snapshot,
+                    followUp: .transition(requestedIntent)
+                )
+            )
+        ) {
+            $0.playbackResourceClients = self.makeResourceClients { _ in
+                try await resolveProbe.run()
+            }
+        }
+
+        await store.send(.confirmationApplied) {
+            $0.phase = .starting(rebasedIntent)
+        }
+        await store.receive(.start) {
+            $0.phase = .preparing(
+                self.transaction(intent: rebasedIntent),
+                .init(stage: .resolving, latestTargetSnapshot: nil)
+            )
+        }
+        await resolveProbe.waitUntilStarted()
+
+        resolveProbe.fail(with: CancellationError())
+        await store.finish()
+    }
+
+    @Test
     func latestFollowUpReplacesEarlierIntentWhileConfirmationIsPending()
         async
     {

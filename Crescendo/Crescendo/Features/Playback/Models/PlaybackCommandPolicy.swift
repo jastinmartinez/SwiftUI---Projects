@@ -3,11 +3,9 @@ import Foundation
 /// Derives playback-command validity from confirmed state and pending workflows.
 struct PlaybackCommandPolicy: Equatable {
     let queue: PlaybackQueueFeature.State
-    let status: PlaybackStatus
-    let duration: TimeInterval?
-    let isSeekable: Bool
-    let pendingPlaybackTransition: PendingPlaybackTransition?
-    let pendingStatusChange: PlaybackFeature.PendingStatusChange?
+    let timeline: PlaybackTimelineFeature.State
+    let session: PlaybackSessionFeature.State
+    let transition: PlaybackTransitionFeature.State?
 
     /// Reports whether a command can begin from the represented domain state.
     ///
@@ -16,27 +14,27 @@ struct PlaybackCommandPolicy: Equatable {
     func allows(_ command: PlaybackCommand) -> Bool {
         switch command {
         case .playPause:
-            return queue.currentTrackID != nil
-                && pendingPlaybackTransition == nil
-                && pendingStatusChange == nil
+            return queue.current != nil
+                && transition == nil
+                && session.pendingStatusChange == nil
         case .stop:
-            return queue.currentTrackID != nil
-                && status != .stopped
-                && pendingStatusChange == nil
+            return queue.current != nil
+                && session.status != .stopped
+                && session.pendingStatusChange == nil
         case .seek:
-            return isSeekable
-                && queue.currentTrackID != nil
-                && duration.map { $0 > 0 } == true
-                && pendingPlaybackTransition == nil
+            return timeline.isSeekable
+                && queue.current != nil
+                && timeline.duration.map { $0 > 0 } == true
+                && transition == nil
         case .previous:
-            return pendingPlaybackTransition == nil
-                && queue.previousTrackID != nil
+            return transition == nil
+                && queue.current?.previousTrackID != nil
         case .next:
-            return pendingPlaybackTransition == nil
-                && queue.nextTrackID != nil
+            return transition == nil
+                && queue.current?.nextTrackID != nil
         case .repeatMode, .shuffleMode:
-            return pendingPlaybackTransition == nil
-                && queue.currentTrackID != nil
+            return transition == nil
+                && queue.current != nil
         }
     }
 }
