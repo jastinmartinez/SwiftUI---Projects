@@ -168,6 +168,51 @@ struct PlaybackPresentationAdapterTests {
     }
 
     @Test
+    func pendingSessionStatusPrecedesFailureNotice() {
+        let track = makeTrack()
+        let model = PlaybackView.Model(
+            makePlaybackStore(
+                song: track,
+                status: .playing,
+                failureNotice: PlaybackFailureNotice(
+                    trackID: track.id,
+                    failure: .playbackFailed
+                ),
+                pendingStatusChange: .init(
+                    requestID: UUID(0),
+                    target: .paused
+                )
+            )
+        )
+
+        #expect(
+            model.metadata.statusText == Locs.Playback.Status.paused
+        )
+    }
+
+    @Test
+    func activeTransitionPrecedesFailureNotice() {
+        let confirmedTrack = makeTrack(nativeID: "confirmed")
+        let pendingTrack = makeTrack(nativeID: "pending")
+        let model = PlaybackView.Model(
+            makePlaybackStore(
+                song: confirmedTrack,
+                status: .playing,
+                failureNotice: PlaybackFailureNotice(
+                    trackID: confirmedTrack.id,
+                    failure: .playbackFailed
+                ),
+                pendingTrack: pendingTrack
+            )
+        )
+
+        #expect(model.metadata.title == confirmedTrack.title)
+        #expect(
+            model.metadata.statusText == Locs.Playback.Status.loading
+        )
+    }
+
+    @Test
     func controlsUseInjectedStringsAndReducerOwnedPermissions() {
         let track = makeTrack()
         let store = makePlaybackStore(

@@ -9,7 +9,10 @@ struct PlaybackCommandPolicyTests {
     func playPauseRequiresConfirmedTrackAndStableChildren() {
         #expect(makePolicy().allows(.playPause))
         #expect(!makePolicy(queue: .empty).allows(.playPause))
-        #expect(!makePolicy(hasTransition: true).allows(.playPause))
+        #expect(
+            !makePolicy(transition: makeStartingTransition())
+                .allows(.playPause)
+        )
         #expect(
             !makePolicy(pendingTarget: .paused).allows(.playPause)
         )
@@ -17,7 +20,91 @@ struct PlaybackCommandPolicyTests {
 
     @Test
     func stopRemainsAvailableWhileTransitionOwnsCleanup() {
-        #expect(makePolicy(hasTransition: true).allows(.stop))
+        #expect(
+            makePolicy(transition: makeStartingTransition())
+                .allows(.stop)
+        )
+    }
+
+    @Test @MainActor
+    func stopIsBlockedAfterTransitionRetainsTheRequest() async {
+        let intent = PlaybackTransitionFeature.Intent(
+            targetTrackID: TrackID(
+                providerID: "fake",
+                nativeID: "pending"
+            ),
+            baselineTrackID: TrackID(
+                providerID: "fake",
+                nativeID: "current"
+            )
+        )
+        let transaction = PlaybackTransitionFeature.Transaction(
+            requestID: UUID(0),
+            intent: intent
+        )
+        let resource = PlaybackResource(
+            trackID: intent.targetTrackID,
+            location: .localFile(
+                URL(fileURLWithPath: "/tmp/pending.m4a")
+            )
+        )
+        let store = TestStore(
+            initialState: PlaybackTransitionFeature.State(
+                phase: .starting(intent)
+            )
+        ) {
+            PlaybackTransitionFeature()
+        } withDependencies: {
+            $0.uuid = .incrementing
+            $0.playbackResourceClients = ProviderClientRegistry(
+                clients: [
+                    "fake": PlaybackResourceClient(
+                        resolve: { _ in resource }
+                    )
+                ]
+            )
+            $0.playbackItem.load = { _, _ in
+                try await Task.sleep(for: .seconds(60))
+            }
+            $0.playbackItem.rollback = { _ in }
+        }
+
+        await store.send(.start) {
+            $0.phase = .preparing(
+                transaction,
+                .init(stage: .resolving, latestTargetSnapshot: nil)
+            )
+        }
+        await store.receive(
+            .resourceResolved(
+                requestID: UUID(0),
+                resource: resource
+            )
+        ) {
+            $0.phase = .preparing(
+                transaction,
+                .init(stage: .loading, latestTargetSnapshot: nil)
+            )
+        }
+
+        #expect(makePolicy(transition: store.state).allows(.stop))
+
+        await store.send(.stopRequested) {
+            $0.phase = .rollingBack(
+                transaction,
+                .init(
+                    installation: transaction.installation,
+                    reason: .cancellation,
+                    followUp: .stop
+                )
+            )
+        }
+
+        #expect(!makePolicy(transition: store.state).allows(.stop))
+
+        await store.receive(.rollbackRequested(requestID: UUID(0)))
+        await store.receive(.rollbackCompleted(requestID: UUID(0)))
+        await store.receive(.delegate(.completed(.stopReady)))
     }
 
     @Test
@@ -25,6 +112,7 @@ struct PlaybackCommandPolicyTests {
         #expect(!makePolicy(queue: .empty).allows(.stop))
         #expect(!makePolicy(status: .stopped).allows(.stop))
         #expect(!makePolicy(pendingTarget: .playing).allows(.stop))
+        #expect(!makePolicy(pendingTarget: .paused).allows(.stop))
         #expect(!makePolicy(pendingTarget: .stopped).allows(.stop))
     }
 
@@ -35,7 +123,10 @@ struct PlaybackCommandPolicyTests {
         #expect(!makePolicy(duration: nil).allows(.seek))
         #expect(!makePolicy(duration: 0).allows(.seek))
         #expect(!makePolicy(isSeekable: false).allows(.seek))
-        #expect(!makePolicy(hasTransition: true).allows(.seek))
+        #expect(
+            !makePolicy(transition: makeStartingTransition())
+                .allows(.seek)
+        )
     }
 
     @Test
@@ -59,14 +150,14 @@ struct PlaybackCommandPolicyTests {
         #expect(
             !makePolicy(
                 queue: .sequence(currentIndex: 1),
-                hasTransition: true
+                transition: makeStartingTransition()
             )
             .allows(.previous)
         )
         #expect(
             !makePolicy(
                 queue: .sequence(currentIndex: 1),
-                hasTransition: true
+                transition: makeStartingTransition()
             )
             .allows(.next)
         )
@@ -79,10 +170,12 @@ struct PlaybackCommandPolicyTests {
         #expect(!makePolicy(queue: .empty).allows(.repeatMode))
         #expect(!makePolicy(queue: .empty).allows(.shuffleMode))
         #expect(
-            !makePolicy(hasTransition: true).allows(.repeatMode)
+            !makePolicy(transition: makeStartingTransition())
+                .allows(.repeatMode)
         )
         #expect(
-            !makePolicy(hasTransition: true).allows(.shuffleMode)
+            !makePolicy(transition: makeStartingTransition())
+                .allows(.shuffleMode)
         )
     }
 }
@@ -91,7 +184,7 @@ private func makePolicy(
     queue: PlaybackQueueFeature.State = .populated,
     status: PlaybackStatus = .playing,
     pendingTarget: PlaybackSessionFeature.PendingStatusChange.Target? = nil,
-    hasTransition: Bool = false,
+    transition: PlaybackTransitionFeature.State? = nil,
     duration: TimeInterval? = 180,
     isSeekable: Bool = true
 ) -> PlaybackCommandPolicy {
@@ -112,20 +205,21 @@ private func makePolicy(
                 )
             }
         ),
-        transition: hasTransition
-            ? PlaybackTransitionFeature.State(
-                phase: .starting(
-                    .init(
-                        targetTrackID: TrackID(
-                            providerID: "fake",
-                            nativeID: "pending"
-                        ),
-                        baselineTrackID:
-                            queue.current?.currentTrackID
-                    )
-                )
+        transition: transition
+    )
+}
+
+private func makeStartingTransition() -> PlaybackTransitionFeature.State {
+    PlaybackTransitionFeature.State(
+        phase: .starting(
+            .init(
+                targetTrackID: TrackID(
+                    providerID: "fake",
+                    nativeID: "pending"
+                ),
+                baselineTrackID: nil
             )
-            : nil
+        )
     )
 }
 

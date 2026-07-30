@@ -21,6 +21,7 @@ struct PlaybackCommandPolicy: Equatable {
             return queue.current != nil
                 && session.status != .stopped
                 && session.pendingStatusChange == nil
+                && (transition?.acceptsStopRequest ?? true)
         case .seek:
             return timeline.isSeekable
                 && queue.current != nil

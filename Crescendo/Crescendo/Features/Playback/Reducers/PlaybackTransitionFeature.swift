@@ -963,5 +963,22 @@ struct PlaybackTransitionFeature {
             }
         }
     }
+}
 
+extension PlaybackTransitionFeature.State {
+    /// Reports whether the transition can accept a new Stop request.
+    ///
+    /// A transition stops accepting Stop after it has retained one as its
+    /// follow-up operation.
+    var acceptsStopRequest: Bool {
+        switch phase {
+        case .starting, .preparing:
+            return true
+        case .committing(_, let commit),
+            .applyingConfirmation(_, let commit):
+            return commit.followUp != .stop
+        case .rollingBack(_, let rollback):
+            return rollback.followUp != .stop
+        }
+    }
 }
