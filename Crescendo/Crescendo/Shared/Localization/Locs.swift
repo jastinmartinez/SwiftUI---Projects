@@ -11,6 +11,7 @@ enum Locs {
 extension Locs {
     enum Common {
         static let retry = String(localized: "common.retry")
+        static let unknownArtist = String(localized: "common.unknown_artist")
     }
 
     enum Search {

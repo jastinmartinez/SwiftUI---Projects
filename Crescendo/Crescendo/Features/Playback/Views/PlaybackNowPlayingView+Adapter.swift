@@ -31,7 +31,7 @@ extension PlaybackNowPlayingView.Model {
 
         self.init(
             title: track.title,
-            artistName: track.artistName,
+            artistName: track.artistName ?? Locs.Common.unknownArtist,
             artworkURL: track.artworkURL,
             isPlaying: isPlaying,
             playPauseAvailability: policy.availability(for: .playPause),

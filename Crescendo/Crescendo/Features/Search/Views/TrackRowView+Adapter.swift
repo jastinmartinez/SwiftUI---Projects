@@ -13,7 +13,7 @@ extension TrackRowView.Model {
         self.init(
             id: track.id,
             title: track.title,
-            artistName: track.artistName,
+            artistName: track.artistName ?? Locs.Common.unknownArtist,
             artworkURL: track.artworkURL,
             durationText: showsDuration
                 ? track.duration?.musicDurationText

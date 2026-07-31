@@ -120,6 +120,23 @@ struct PlaybackPresentationAdapterTests {
     }
 
     @Test
+    func currentTrackWithoutAnArtistUsesLocalizedPresentationFallback() {
+        let track = Track(
+            id: .init(providerID: .library, nativeID: "library"),
+            title: "Library Track",
+            artistName: nil,
+            albumTitle: nil,
+            artworkURL: nil,
+            duration: 180
+        )
+        let model = PlaybackCurrentTrackView.Model(
+            makePlaybackStore(song: track)
+        )
+
+        #expect(model.metadata.artistName == Locs.Common.unknownArtist)
+    }
+
+    @Test
     func pendingInitialReplacementShowsTargetTrackWhileLoading() {
         let song = makeTrack()
         let store = makePlaybackStore(

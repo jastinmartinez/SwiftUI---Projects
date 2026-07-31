@@ -21,6 +21,16 @@
         }
       }
     },
+    "common.unknown_artist" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown Artist"
+          }
+        }
+      }
+    },
     "music_playback.backward_fifteen_seconds" : {
       "localizations" : {
         "en" : {

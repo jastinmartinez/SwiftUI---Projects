@@ -6,7 +6,7 @@ extension Track {
     init(
         id: TrackID,
         title: String,
-        artistName: String,
+        artistName: String?,
         albumTitle: String?,
         artworkURL: URL?,
         duration: TimeInterval?

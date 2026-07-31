@@ -8,7 +8,7 @@ struct AVPlayerItemRegistryTests {
     func registryMapsInstalledItemToTrackIdentity() {
         let registry = AVPlayerItemRegistry()
         let item = AVPlayerItemFixture.make()
-        let trackID = TrackID(providerID: .localMusic, nativeID: "42")
+        let trackID = TrackID(providerID: .library, nativeID: "42")
 
         registry.register(item, trackID: trackID)
 

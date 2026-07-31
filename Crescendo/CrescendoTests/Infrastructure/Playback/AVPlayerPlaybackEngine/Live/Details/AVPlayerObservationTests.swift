@@ -88,7 +88,7 @@ struct AVPlayerObservationTests {
         let trackA = TrackID(providerID: .jamendo, nativeID: "a")
         registry.register(itemA, trackID: trackA)
         let itemB = AVPlayerItemFixture.make()
-        let trackB = TrackID(providerID: .localMusic, nativeID: "b")
+        let trackB = TrackID(providerID: .library, nativeID: "b")
         registry.register(itemB, trackID: trackB)
 
         player.replaceCurrentItem(with: itemA)
@@ -245,7 +245,7 @@ struct AVPlayerObservationTests {
         let oldTrackID = TrackID(providerID: .jamendo, nativeID: "old")
         registry.register(oldItem, trackID: oldTrackID)
         let currentItem = AVPlayerItemFixture.make()
-        let currentTrackID = TrackID(providerID: .localMusic, nativeID: "current")
+        let currentTrackID = TrackID(providerID: .library, nativeID: "current")
         registry.register(currentItem, trackID: currentTrackID)
         player.replaceCurrentItem(with: oldItem)
 
@@ -466,7 +466,7 @@ struct AVPlayerObservationTests {
         let trackID = TrackID(providerID: .jamendo, nativeID: "reinstalled")
         registry.register(item, trackID: trackID)
         let alternateItem = AVPlayerItemFixture.make()
-        let alternateTrackID = TrackID(providerID: .localMusic, nativeID: "alternate")
+        let alternateTrackID = TrackID(providerID: .library, nativeID: "alternate")
         registry.register(alternateItem, trackID: alternateTrackID)
         player.replaceCurrentItem(with: item)
 
@@ -625,7 +625,7 @@ struct AVPlayerObservationTests {
         let itemA = AVPlayerItemFixture.make()
         registry.register(itemA, trackID: TrackID(providerID: .jamendo, nativeID: "a"))
         let itemB = AVPlayerItemFixture.make()
-        registry.register(itemB, trackID: TrackID(providerID: .localMusic, nativeID: "b"))
+        registry.register(itemB, trackID: TrackID(providerID: .library, nativeID: "b"))
         player.replaceCurrentItem(with: itemA)
 
         let recorder = Recorder()

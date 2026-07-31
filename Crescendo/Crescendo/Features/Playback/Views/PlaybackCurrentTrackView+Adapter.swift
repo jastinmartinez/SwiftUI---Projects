@@ -67,7 +67,9 @@ extension PlaybackCurrentTrackView.Model {
             artworkURL: displayedTrack?.artworkURL,
             metadata: PlaybackMetadataView.Model(
                 title: displayedTrack?.title ?? Locs.Playback.noSelection,
-                artistName: displayedTrack?.artistName,
+                artistName: displayedTrack.map {
+                    $0.artistName ?? Locs.Common.unknownArtist
+                },
                 statusText: statusText
             )
         )

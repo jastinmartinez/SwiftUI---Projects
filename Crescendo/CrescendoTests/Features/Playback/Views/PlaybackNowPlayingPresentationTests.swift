@@ -116,6 +116,27 @@ struct PlaybackNowPlayingPresentationTests {
     }
 
     @Test
+    func compactTrackWithoutAnArtistUsesLocalizedPresentationFallback() throws {
+        let track = Track(
+            id: .init(providerID: .library, nativeID: "library"),
+            title: "Library Track",
+            artistName: nil,
+            albumTitle: nil,
+            artworkURL: nil,
+            duration: nil
+        )
+        let store = Store(
+            initialState: makeState(song: track, status: .paused)
+        ) {
+            PlaybackReducer()
+        }
+
+        let model = try #require(PlaybackNowPlayingView.Model(store))
+
+        #expect(model.artistName == Locs.Common.unknownArtist)
+    }
+
+    @Test
     func compactPlayerKeepsConfirmedTrackWhileAnotherTrackIsPending() throws {
         let confirmedTrack = makeTrack(
             nativeID: "confirmed",

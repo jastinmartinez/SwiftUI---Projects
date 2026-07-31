@@ -4,7 +4,7 @@ import Foundation
 struct Track: Equatable, Identifiable, Sendable {
     let id: TrackID
     let title: String
-    let artistName: String
+    let artistName: String?
     let albumTitle: String?
     let artworkURL: URL?
     let duration: TimeInterval?

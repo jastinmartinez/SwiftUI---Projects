@@ -9,7 +9,7 @@ struct PlaybackTransitionReducerTests {
     @Test
     func transitionLoadsTheTargetURLWithoutResolvingByID() async {
         let baseline = makeTrack(providerID: .jamendo, nativeID: "remote")
-        let target = makeTrack(providerID: .localMusic, nativeID: "local")
+        let target = makeTrack(providerID: .library, nativeID: "library")
         let intent = PlaybackTransitionReducer.Intent(
             target: target,
             baselineTrackID: baseline.id

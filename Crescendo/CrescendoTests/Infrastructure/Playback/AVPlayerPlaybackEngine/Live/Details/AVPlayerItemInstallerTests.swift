@@ -69,7 +69,7 @@ struct AVPlayerItemInstallerTests {
         let player = AVPlayer(playerItem: previousItem)
         let registry = AVPlayerItemRegistry()
         let previousTrackID = TrackID(
-            providerID: .localMusic,
+            providerID: .library,
             nativeID: "previous"
         )
         registry.register(
@@ -104,7 +104,7 @@ struct AVPlayerItemInstallerTests {
         let registry = AVPlayerItemRegistry()
         registry.register(
             previousItem,
-            trackID: TrackID(providerID: .localMusic, nativeID: "previous")
+            trackID: TrackID(providerID: .library, nativeID: "previous")
         )
         let installer = AVPlayerItemInstaller(player: player, registry: registry)
         let targetItem = AVPlayerItemFixture.make()
@@ -133,7 +133,7 @@ struct AVPlayerItemInstallerTests {
         let player = AVPlayer(playerItem: confirmedItem)
         let registry = AVPlayerItemRegistry()
         let confirmedTrackID = TrackID(
-            providerID: .localMusic,
+            providerID: .library,
             nativeID: "confirmed"
         )
         registry.register(

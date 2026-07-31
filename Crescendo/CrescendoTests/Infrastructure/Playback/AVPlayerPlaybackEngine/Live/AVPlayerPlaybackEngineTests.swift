@@ -112,7 +112,7 @@ struct AVPlayerPlaybackEngineTests {
         let player = AVPlayer(playerItem: confirmedItem)
         let registry = AVPlayerItemRegistry()
         let confirmedTrackID = TrackID(
-            providerID: .localMusic,
+            providerID: .library,
             nativeID: "confirmed"
         )
         registry.register(confirmedItem, trackID: confirmedTrackID)

@@ -1,5 +1,11 @@
 /// Identifies a provider independently from any provider SDK type.
-struct ProviderID: Hashable, RawRepresentable, Sendable, ExpressibleByStringLiteral {
+struct ProviderID:
+    Codable,
+    Hashable,
+    RawRepresentable,
+    Sendable,
+    ExpressibleByStringLiteral
+{
     let rawValue: String
 
     init(rawValue: String) { self.rawValue = rawValue }
@@ -8,5 +14,5 @@ struct ProviderID: Hashable, RawRepresentable, Sendable, ExpressibleByStringLite
 
 extension ProviderID {
     static let jamendo = Self(rawValue: "jamendo")
-    static let localMusic = Self(rawValue: "local-music")
+    static let library = Self(rawValue: "library")
 }

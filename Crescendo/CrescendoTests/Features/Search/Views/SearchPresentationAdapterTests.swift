@@ -46,6 +46,32 @@ struct SearchPresentationAdapterTests {
     }
 
     @Test
+    func trackWithoutAnArtistMapsToLocalizedPresentationFallback() throws {
+        let track = Track(
+            id: .init(providerID: .library, nativeID: "library"),
+            title: "Library Track",
+            artistName: nil,
+            albumTitle: nil,
+            artworkURL: nil,
+            duration: nil
+        )
+        let model = SearchResultsView.Model(
+            makeStore(
+                query: "library",
+                status: loadedStatus(
+                    tracks: [track],
+                    nextCursor: nil,
+                    paginationStatus: .idle
+                )
+            )
+        )
+
+        let results = try results(from: model)
+
+        #expect(results.rows.first?.song.artistName == Locs.Common.unknownArtist)
+    }
+
+    @Test
     func nextPageTriggerMapsOnlyToLastResultRow() {
         let firstTrack = makeTrack()
         let lastTrack = makeTrack(nativeID: "2")

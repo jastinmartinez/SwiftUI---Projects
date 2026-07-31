@@ -21,13 +21,13 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A6CD63AD4026EF5A06BDADAC /* Crescendo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Crescendo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A6CD63AD4026EF5A06BDADAC /* Crescendo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Crescendo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AADFB0527DA3DAEF28E2B4C9 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
-		E12EA47845F2407A829FBCD9 /* CrescendoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CrescendoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E12EA47845F2407A829FBCD9 /* CrescendoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CrescendoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		07CFBE6AF69980987E66E10E /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		07CFBE6AF69980987E66E10E /* Exceptions for "Crescendo" folder in "Crescendo" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -40,21 +40,13 @@
 		27FDABCCBC426BEB37A50B04 /* Crescendo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				07CFBE6AF69980987E66E10E /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				07CFBE6AF69980987E66E10E /* Exceptions for "Crescendo" folder in "Crescendo" target */,
 			);
 			path = Crescendo;
 			sourceTree = "<group>";
 		};
 		33A9FB4EC25E6BE349E23A73 /* CrescendoTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = CrescendoTests;
 			sourceTree = "<group>";
 		};
