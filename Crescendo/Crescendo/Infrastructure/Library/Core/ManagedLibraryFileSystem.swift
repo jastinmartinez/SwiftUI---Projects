@@ -40,10 +40,24 @@ struct ManagedLibraryFileSystem: Sendable {
         )
     }
 
+    /// Creates the opaque managed-artwork reference for a Library-owned track.
+    ///
+    /// - Parameter trackID: A Library-qualified UUID track identity.
+    /// - Returns: A contained relative reference, or `nil` for invalid input.
+    func artworkReference(for trackID: TrackID) -> LibraryMediaStoreClient.FileReference? {
+        guard
+            trackID.providerID == .library,
+            UUID(uuidString: trackID.nativeID) != nil
+        else {
+            return nil
+        }
+        return LibraryMediaStoreClient.FileReference(
+            rawValue: "Artwork/\(trackID.nativeID)"
+        )
+    }
+
     /// Resolves an opaque relative reference only when it remains under root.
-    func resolve(
-        _ reference: LibraryMediaStoreClient.FileReference
-    ) -> URL? {
+    func resolve(_ reference: LibraryMediaStoreClient.FileReference) -> URL? {
         let components = reference.rawValue.split(
             separator: "/",
             omittingEmptySubsequences: false

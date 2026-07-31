@@ -9,7 +9,7 @@ struct AVPlayerItemStatusObserver {
         private let invalidateRegistration: @MainActor () -> Void
 
         init(invalidate: @escaping @MainActor () -> Void) {
-            self.invalidateRegistration = invalidate
+            invalidateRegistration = invalidate
         }
 
         /// Stops future callbacks from this status registration.
@@ -18,11 +18,10 @@ struct AVPlayerItemStatusObserver {
         }
     }
 
-    let observe:
-        @MainActor (
-            AVPlayerItem,
-            @escaping @MainActor (AVPlayerItem.Status) -> Void
-        ) -> Token
+    let observe: @MainActor (
+        AVPlayerItem,
+        @escaping @MainActor (AVPlayerItem.Status) -> Void
+    ) -> Token
 
     /// The typed KVO observer used by live AVFoundation composition.
     ///

@@ -11,14 +11,10 @@ import IdentifiedCollections
 /// and translate it at this boundary.
 struct LibraryCatalogClient: Sendable {
     /// Loads the latest complete catalog snapshot.
-    var load:
-        @Sendable () async
-            -> Result<Snapshot, LibraryFailure>
+    var load: @Sendable () async -> Result<Snapshot, LibraryFailure>
 
     /// Replaces the complete catalog and returns the confirmed snapshot.
-    var replace:
-        @Sendable (Snapshot) async
-            -> Result<Snapshot, LibraryFailure>
+    var replace: @Sendable (Snapshot) async -> Result<Snapshot, LibraryFailure>
 }
 
 extension LibraryCatalogClient {

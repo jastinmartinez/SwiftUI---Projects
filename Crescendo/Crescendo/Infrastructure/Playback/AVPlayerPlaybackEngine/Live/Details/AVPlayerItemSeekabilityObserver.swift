@@ -3,11 +3,10 @@
 /// Observes whether one AVPlayerItem currently exposes a positive seekable range.
 @MainActor
 struct AVPlayerItemSeekabilityObserver {
-    let observe:
-        @MainActor (
-            AVPlayerItem,
-            @escaping @MainActor (Bool) -> Void
-        ) -> Token
+    let observe: @MainActor (
+        AVPlayerItem,
+        @escaping @MainActor (Bool) -> Void
+    ) -> Token
 }
 
 extension AVPlayerItemSeekabilityObserver {
@@ -20,7 +19,7 @@ extension AVPlayerItemSeekabilityObserver {
         /// - Parameter invalidate: The action that removes the owned
         ///   AVFoundation registration.
         init(invalidate: @escaping @MainActor () -> Void) {
-            self.invalidateRegistration = invalidate
+            invalidateRegistration = invalidate
         }
 
         /// Invalidates the owned seekability observation.

@@ -8,9 +8,7 @@ import Foundation
 /// import, or deciding how failures are presented.
 struct AudioMetadataClient: Sendable {
     /// Reads source metadata without retaining or modifying the file.
-    var read:
-        @Sendable (URL) async
-            -> Result<Metadata, LibraryFailure>
+    var read: @Sendable (URL) async -> Result<Metadata, LibraryFailure>
 }
 
 extension AudioMetadataClient {

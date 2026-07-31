@@ -3,6 +3,10 @@ import Testing
 
 @testable import Crescendo
 
+/// Proves Crescendo-owned managed-path and containment policy.
+///
+/// The suite intentionally avoids retesting Foundation filesystem mechanics;
+/// live media-store tests cover the composed lifecycle against a temporary root.
 struct ManagedLibraryFileSystemTests {
     @Test
     func derivesEveryManagedLocationFromTheInjectedRoot() {
@@ -59,6 +63,34 @@ struct ManagedLibraryFileSystemTests {
             fileSystem.audioReference(
                 for: libraryTrackID,
                 fileExtension: .init(rawValue: "../m4a")
+            ) == nil
+        )
+    }
+
+    @Test
+    func artworkReferenceRequiresALibraryUUIDIdentity() throws {
+        let fileSystem = ManagedLibraryFileSystem(
+            rootURL: URL(fileURLWithPath: "/container/Library")
+        )
+        let nativeID = "01234567-89AB-CDEF-0123-456789ABCDEF"
+        let libraryTrackID = TrackID(
+            providerID: .library,
+            nativeID: nativeID
+        )
+
+        let reference = try #require(
+            fileSystem.artworkReference(for: libraryTrackID)
+        )
+
+        #expect(reference.rawValue == "Artwork/\(nativeID)")
+        #expect(
+            fileSystem.artworkReference(
+                for: TrackID(providerID: .jamendo, nativeID: nativeID)
+            ) == nil
+        )
+        #expect(
+            fileSystem.artworkReference(
+                for: TrackID(providerID: .library, nativeID: "not-a-uuid")
             ) == nil
         )
     }

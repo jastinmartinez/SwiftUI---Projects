@@ -10,37 +10,25 @@ import Foundation
 /// boundary.
 struct LibraryMediaStoreClient: Sendable {
     /// Copies external audio into temporary app-owned storage.
-    var stageAudio:
-        @Sendable (URL) async
-            -> Result<StagedAudio, LibraryFailure>
+    var stageAudio: @Sendable (URL) async -> Result<StagedAudio, LibraryFailure>
 
     /// Promotes staged audio into the managed location for `TrackID`.
-    var storeAudio:
-        @Sendable (StagedAudio, TrackID) async
-            -> Result<StoredAudio, LibraryFailure>
+    var storeAudio: @Sendable (StagedAudio, TrackID) async -> Result<StoredAudio, LibraryFailure>
 
     /// Removes one staged file after completion or rollback.
     var discardStagedAudio: @Sendable (StagedAudio) async -> Void
 
     /// Lists audio files currently owned by managed storage.
-    var listStoredAudio:
-        @Sendable () async
-            -> Result<[StoredAudio], LibraryFailure>
+    var listStoredAudio: @Sendable () async -> Result<[StoredAudio], LibraryFailure>
 
     /// Produces the opaque content identity used by duplicate policy.
-    var identifyAudio:
-        @Sendable (URL) async
-            -> Result<Library.ContentIdentity, LibraryFailure>
+    var identifyAudio: @Sendable (URL) async -> Result<Library.ContentIdentity, LibraryFailure>
 
     /// Stores artwork for the identified track in managed storage.
-    var storeArtwork:
-        @Sendable (Data, TrackID) async
-            -> Result<StoredArtwork, LibraryFailure>
+    var storeArtwork: @Sendable (Data, TrackID) async -> Result<StoredArtwork, LibraryFailure>
 
     /// Resolves an opaque managed-file reference to a playback-capable URL.
-    var resolveFileURL:
-        @Sendable (FileReference) async
-            -> Result<URL, LibraryFailure>
+    var resolveFileURL: @Sendable (FileReference) async -> Result<URL, LibraryFailure>
 }
 
 extension LibraryMediaStoreClient {
