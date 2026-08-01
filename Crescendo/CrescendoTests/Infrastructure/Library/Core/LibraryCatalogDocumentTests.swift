@@ -95,7 +95,7 @@ struct LibraryCatalogDocumentTests {
                     discNumber: 1,
                     artworkReference: "Artwork/01234567-89AB-CDEF-0123-456789ABCDEF",
                     addedAt: Date(timeIntervalSinceReferenceDate: 100)
-                ),
+                )
             ]
         )
     }

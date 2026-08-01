@@ -18,10 +18,7 @@ struct AVPlayerItemStatusObserver {
         }
     }
 
-    let observe: @MainActor (
-        AVPlayerItem,
-        @escaping @MainActor (AVPlayerItem.Status) -> Void
-    ) -> Token
+    let observe: @MainActor (AVPlayerItem, @escaping @MainActor (AVPlayerItem.Status) -> Void) -> Token
 
     /// The typed KVO observer used by live AVFoundation composition.
     ///

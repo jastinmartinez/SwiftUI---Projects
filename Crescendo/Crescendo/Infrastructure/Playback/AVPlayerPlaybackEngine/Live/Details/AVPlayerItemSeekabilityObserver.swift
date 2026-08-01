@@ -3,10 +3,7 @@
 /// Observes whether one AVPlayerItem currently exposes a positive seekable range.
 @MainActor
 struct AVPlayerItemSeekabilityObserver {
-    let observe: @MainActor (
-        AVPlayerItem,
-        @escaping @MainActor (Bool) -> Void
-    ) -> Token
+    let observe: @MainActor (AVPlayerItem, @escaping @MainActor (Bool) -> Void) -> Token
 }
 
 extension AVPlayerItemSeekabilityObserver {

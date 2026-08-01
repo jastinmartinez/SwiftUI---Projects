@@ -135,10 +135,7 @@ struct ManagedLibraryFileSystem: Sendable {
         let standardizedCandidateURL = candidateURL.standardizedFileURL
         let resolvedRootComponents = rootURL.resolvingSymlinksInPath()
             .pathComponents
-        let resolvedCandidateComponents =
-            standardizedCandidateURL
-                .resolvingSymlinksInPath()
-                .pathComponents
+        let resolvedCandidateComponents = standardizedCandidateURL.resolvingSymlinksInPath().pathComponents
         guard resolvedCandidateComponents.starts(with: resolvedRootComponents)
         else {
             throw Error.unmanagedURL

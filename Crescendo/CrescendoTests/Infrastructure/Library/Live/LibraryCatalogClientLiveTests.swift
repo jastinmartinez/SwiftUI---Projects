@@ -12,12 +12,9 @@ struct LibraryCatalogClientLiveTests {
         let client = makeClient(initialData: nil)
 
         let result = await client.load()
+        let expectedSnapshot = LibraryCatalogClient.Snapshot(entries: [])
 
-        #expect(
-            result == .success(
-                LibraryCatalogClient.Snapshot(entries: [])
-            )
-        )
+        #expect(result == .success(expectedSnapshot))
     }
 
     @Test

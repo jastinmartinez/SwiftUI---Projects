@@ -21,12 +21,7 @@ struct LibraryFileFingerprinter: Sendable {
             defer { try? fileHandle.close() }
 
             var hasher = SHA256()
-            while
-                let chunk = try fileHandle.read(
-                    upToCount: Self.chunkByteCount
-                ),
-                !chunk.isEmpty
-            {
+            while let chunk = try fileHandle.read(upToCount: Self.chunkByteCount), !chunk.isEmpty {
                 hasher.update(data: chunk)
             }
 
