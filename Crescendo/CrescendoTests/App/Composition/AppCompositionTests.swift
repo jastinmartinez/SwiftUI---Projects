@@ -8,6 +8,20 @@ import Testing
 @MainActor
 struct AppCompositionTests {
     @Test
+    func liveStartsOnSearchWithAnEmptyIdleLibrary() {
+        let composition = AppComposition.live(
+            jamendoClientID: nil,
+            player: AVPlayer(),
+            preparer: Self.preparer,
+            data: { _ in throw MusicProviderError.network }
+        )
+
+        #expect(composition.initialState.selectedTab == .search)
+        #expect(composition.initialState.library.library.items.isEmpty)
+        #expect(composition.initialState.library.loadStatus == .idle)
+    }
+
+    @Test
     func invalidConfigurationOmitsJamendoCapabilities() {
         let composition = AppComposition.live(
             jamendoClientID: "  ",

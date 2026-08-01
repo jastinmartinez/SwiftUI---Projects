@@ -6,9 +6,23 @@ struct AppFeatureView: View {
     let store: StoreOf<AppReducer>
 
     var body: some View {
-        SearchFeatureView(
-            store: store.scope(state: \.search, action: \.search)
-        )
+        TabView(selection: selectedTab) {
+            SearchFeatureView(
+                store: store.scope(state: \.search, action: \.search)
+            )
+            .tabItem {
+                Label(Locs.Search.action, systemImage: "magnifyingglass")
+            }
+            .tag(AppTab.search)
+
+            LibraryFeatureView(
+                store: store.scope(state: \.library, action: \.library)
+            )
+            .tabItem {
+                Label(Locs.Library.title, systemImage: "music.note.list")
+            }
+            .tag(AppTab.library)
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let model = PlaybackNowPlayingView.Model(
                 store.scope(state: \.playback, action: \.playback)
@@ -33,5 +47,12 @@ struct AppFeatureView: View {
                 store: store.scope(state: \.playback, action: \.playback)
             )
         }
+    }
+
+    private var selectedTab: Binding<AppTab> {
+        Binding(
+            get: { store.selectedTab },
+            set: { store.send(.selectedTabChanged($0)) }
+        )
     }
 }

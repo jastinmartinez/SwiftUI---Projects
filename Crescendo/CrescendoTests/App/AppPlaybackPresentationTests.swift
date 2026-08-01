@@ -41,6 +41,7 @@ struct AppPlaybackPresentationTests {
             isPlayerPresented: true
         )
         let state = AppReducer.State(
+            selectedTab: .search,
             search: SearchReducer.State(
                 query: "",
                 status: .loaded(
@@ -53,6 +54,7 @@ struct AppPlaybackPresentationTests {
                 ),
                 providerID: .testProvider
             ),
+            library: makeLibraryState(),
             playback: playback
         )
         let store = TestStore(initialState: state) { AppReducer() }
@@ -67,4 +69,73 @@ struct AppPlaybackPresentationTests {
         #expect(store.state.playback == playback)
     }
 
+    @Test
+    func switchingTabsKeepsCompactAndFullPlayerPresentation() async throws {
+        let song = Track(
+            id: .init(providerID: "fake", nativeID: "presentation"),
+            title: "Song",
+            artistName: "Artist",
+            albumTitle: nil,
+            artworkURL: nil,
+            duration: nil
+        )
+        let confirmed = try #require(
+            PlaybackQueue(
+                tracks: [song],
+                startingAt: song.id
+            )
+        )
+        let playback = PlaybackReducer.State(
+            queue: .init(current: confirmed),
+            timeline: .init(
+                confirmedPosition: 30,
+                duration: 120,
+                isSeekable: true,
+                interaction: .idle
+            ),
+            session: .init(status: .playing, pendingStatusChange: nil),
+            transition: nil,
+            failureNotice: nil,
+            isPlayerPresented: true
+        )
+        let store = TestStore(
+            initialState: AppReducer.State(
+                selectedTab: .search,
+                search: SearchReducer.State(
+                    query: "",
+                    status: .idle,
+                    providerID: .testProvider
+                ),
+                library: makeLibraryState(),
+                playback: playback
+            )
+        ) {
+            AppReducer()
+        }
+
+        await store.send(.selectedTabChanged(.library)) {
+            $0.selectedTab = .library
+        }
+        #expect(store.state.playback == playback)
+        #expect(store.state.playback.queue.current?.currentTrack == song)
+        #expect(store.state.playback.isPlayerPresented)
+
+        await store.send(.selectedTabChanged(.search)) {
+            $0.selectedTab = .search
+        }
+        #expect(store.state.playback == playback)
+    }
+
+    private func makeLibraryState() -> LibraryReducer.State {
+        LibraryReducer.State(
+            library: Library(items: []),
+            catalog: .init(entries: []),
+            loadStatus: .idle,
+            path: [],
+            isFileImporterPresented: false,
+            recovery: nil,
+            importBatch: nil,
+            fileSelectionFailure: nil
+        )
+    }
 }

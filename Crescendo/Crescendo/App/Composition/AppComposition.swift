@@ -56,10 +56,21 @@ struct AppComposition {
 
         return Self(
             initialState: AppReducer.State(
+                selectedTab: .search,
                 search: SearchReducer.State(
                     query: "",
                     status: .idle,
                     providerID: .jamendo
+                ),
+                library: LibraryReducer.State(
+                    library: Library(items: []),
+                    catalog: .init(entries: []),
+                    loadStatus: .idle,
+                    path: [],
+                    isFileImporterPresented: false,
+                    recovery: nil,
+                    importBatch: nil,
+                    fileSelectionFailure: nil
                 ),
                 playback: PlaybackReducer.State(
                     queue: PlaybackQueueReducer.State(

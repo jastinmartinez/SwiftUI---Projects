@@ -7,6 +7,63 @@ import Testing
 @MainActor
 struct AppPlaybackCoordinationTests {
     @Test
+    func librarySelectionForwardsEmbeddedManagedURLDirectlyToPlayback() async {
+        let playbackURL = URL(
+            fileURLWithPath: "/managed/Library/library-track.m4a"
+        )
+        let track = Track(
+            id: .init(providerID: .library, nativeID: "library-track"),
+            title: "Library Track",
+            artistName: "Library Artist",
+            albumTitle: "Library Album",
+            artworkURL: nil,
+            duration: 180,
+            playbackURL: playbackURL
+        )
+        let loadedTracks = IdentifiedArray(uniqueElements: [track])
+        let store = makeStore {
+            $0.libraryCatalog = LibraryCatalogClient(
+                load: {
+                    Issue.record("Library playback must not reload the catalog")
+                    return .failure(.catalogReadFailed)
+                },
+                replace: { _ in
+                    Issue.record("Library playback must not replace the catalog")
+                    return .failure(.catalogWriteFailed)
+                }
+            )
+        }
+
+        await store.send(
+            .library(
+                .delegate(
+                    .trackTapped(
+                        track,
+                        loadedTracks: loadedTracks
+                    )
+                )
+            )
+        )
+        await store.receive(
+            .playback(
+                .selectionReceived(
+                    track.id,
+                    loadedResults: loadedTracks
+                )
+            )
+        )
+        await receiveTransitionStart(
+            in: store,
+            targetTrackID: track.id,
+            loadedResults: loadedTracks,
+            baselineTrackID: nil,
+            presentsPlayer: true
+        )
+
+        #expect(store.state.playback.queue.pendingTrack?.playbackURL == playbackURL)
+    }
+
+    @Test
     func searchSelectionForwardsDirectlyToPlayback() async {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
@@ -309,11 +366,13 @@ struct AppPlaybackCoordinationTests {
         )
     ) -> AppReducer.State {
         AppReducer.State(
+            selectedTab: .search,
             search: SearchReducer.State(
                 query: "",
                 status: .idle,
                 providerID: providerID
             ),
+            library: makeLibraryState(),
             playback: PlaybackReducer.State(
                 queue: playbackQueue,
                 timeline: PlaybackTimelineReducer.State(
@@ -332,6 +391,19 @@ struct AppPlaybackCoordinationTests {
                 failureNotice: nil,
                 isPlayerPresented: false
             )
+        )
+    }
+
+    private func makeLibraryState() -> LibraryReducer.State {
+        LibraryReducer.State(
+            library: Library(items: []),
+            catalog: .init(entries: []),
+            loadStatus: .idle,
+            path: [],
+            isFileImporterPresented: false,
+            recovery: nil,
+            importBatch: nil,
+            fileSelectionFailure: nil
         )
     }
 
