@@ -13,7 +13,8 @@ struct AppCompositionTests {
             jamendoClientID: nil,
             player: AVPlayer(),
             preparer: Self.preparer,
-            data: { _ in throw MusicProviderError.network }
+            data: { _ in throw MusicProviderError.network },
+            applicationSupportURL: Self.makeApplicationSupportURL()
         )
 
         #expect(composition.initialState.selectedTab == .search)
@@ -30,7 +31,8 @@ struct AppCompositionTests {
             data: { _ in
                 Issue.record("Invalid configuration must not create Jamendo API work")
                 throw MusicProviderError.network
-            }
+            },
+            applicationSupportURL: Self.makeApplicationSupportURL()
         )
 
         #expect(composition.initialState.search.providerID == .jamendo)
@@ -48,7 +50,8 @@ struct AppCompositionTests {
                 requests.withValue { $0.append(request) }
                 let data = Data(Self.trackFixture.utf8)
                 return try (data, Self.okResponse(for: request))
-            }
+            },
+            applicationSupportURL: Self.makeApplicationSupportURL()
         )
 
         let searchClient = try #require(
@@ -86,7 +89,8 @@ struct AppCompositionTests {
             jamendoClientID: nil,
             player: player,
             preparer: preparer,
-            data: { _ in throw MusicProviderError.network }
+            data: { _ in throw MusicProviderError.network },
+            applicationSupportURL: Self.makeApplicationSupportURL()
         )
         let trackID = TrackID(providerID: .jamendo, nativeID: "shared")
         let playbackURL = try #require(URL(string: "memory://shared"))
@@ -118,12 +122,97 @@ struct AppCompositionTests {
         #expect(snapshot.currentTrackID == trackID)
     }
 
+    @Test
+    func liveLibraryClientsShareTheInjectedManagedRoot() async throws {
+        let applicationSupportURL = Self.makeApplicationSupportURL()
+        let crescendoSupportURL = applicationSupportURL.appending(
+            path: "Crescendo"
+        )
+        let libraryRootURL = crescendoSupportURL.appending(path: "Library")
+        let fileSystem = ManagedLibraryFileSystem(rootURL: libraryRootURL)
+        defer { try? fileSystem.removeItemIfPresent(at: libraryRootURL) }
+        let composition = AppComposition.live(
+            jamendoClientID: nil,
+            player: AVPlayer(),
+            preparer: Self.preparer,
+            data: { _ in throw MusicProviderError.network },
+            applicationSupportURL: applicationSupportURL
+        )
+        let emptyCatalog = LibraryCatalogClient.Snapshot(entries: [])
+
+        #expect(
+            await composition.libraryMediaStore.listStoredAudio()
+                == .success([])
+        )
+        #expect(
+            await composition.libraryCatalog.replace(emptyCatalog)
+                == .success(emptyCatalog)
+        )
+        #expect(
+            await composition.libraryCatalog.load()
+                == .success(emptyCatalog)
+        )
+        #expect(
+            try fileSystem.readDataIfPresent(at: fileSystem.catalogURL) != nil
+        )
+
+        let metadata = try await composition.audioMetadata.read(
+            Self.audioFixtureURL()
+        ).get()
+        #expect(metadata.title == "Fixture Song")
+    }
+
+    @Test
+    func rootStoreLoadsLibraryWithRegisteredLiveDependencies() async {
+        let applicationSupportURL = Self.makeApplicationSupportURL()
+        let crescendoSupportURL = applicationSupportURL.appending(
+            path: "Crescendo"
+        )
+        let libraryRootURL = crescendoSupportURL.appending(path: "Library")
+        let fileSystem = ManagedLibraryFileSystem(rootURL: libraryRootURL)
+        defer { try? fileSystem.removeItemIfPresent(at: libraryRootURL) }
+        let composition = AppComposition.live(
+            jamendoClientID: nil,
+            player: AVPlayer(),
+            preparer: Self.preparer,
+            data: { _ in throw MusicProviderError.network },
+            applicationSupportURL: applicationSupportURL
+        )
+        let store = composition.store()
+
+        await store.send(.library(.task)).finish()
+
+        #expect(store.library.loadStatus == .loaded)
+        #expect(store.library.library.items.isEmpty)
+    }
+
     // MARK: - Helpers
 
     private static var preparer: AVPlayerItemPreparer {
         AVPlayerItemPreparer(
             loadIsPlayable: { _ in true },
             makeItem: { _ in AVPlayerItemFixture.make() }
+        )
+    }
+
+    private static func makeApplicationSupportURL() -> URL {
+        URL.temporaryDirectory.appending(
+            path: "AppCompositionTests-\(UUID().uuidString)"
+        )
+    }
+
+    private static func audioFixtureURL() throws -> URL {
+        let bundle = Bundle(for: AppCompositionFixtureBundleToken.self)
+        return try #require(
+            bundle.url(
+                forResource: "library-metadata-fixture",
+                withExtension: "m4a"
+            )
+                ?? bundle.url(
+                    forResource: "library-metadata-fixture",
+                    withExtension: "m4a",
+                    subdirectory: "Fixtures/Audio"
+                )
         )
     }
 
@@ -161,3 +250,5 @@ struct AppCompositionTests {
         )
     }
 }
+
+private final class AppCompositionFixtureBundleToken: NSObject {}

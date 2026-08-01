@@ -18,7 +18,8 @@ struct CrescendoApp: App {
             jamendoClientID: jamendoClientID,
             player: player,
             preparer: preparer,
-            data: { try await URLSession.shared.data(for: $0) }
+            data: { try await URLSession.shared.data(for: $0) },
+            applicationSupportURL: URL.applicationSupportDirectory
         )
         self.store = composition.store()
     }

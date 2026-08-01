@@ -42,7 +42,8 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
-      onlyGenerateCoverageForSpecifiedTargets = "NO">
+      codeCoverageEnabled = "YES"
+      onlyGenerateCoverageForSpecifiedTargets = "YES">
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
@@ -66,6 +67,15 @@
             </BuildableReference>
          </TestableReference>
       </Testables>
+      <CodeCoverageTargets>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "AC6E1A0DAFF421EF810CE742"
+            BuildableName = "Crescendo.app"
+            BlueprintName = "Crescendo"
+            ReferencedContainer = "container:Crescendo.xcodeproj">
+         </BuildableReference>
+      </CodeCoverageTargets>
       <CommandLineArguments>
       </CommandLineArguments>
    </TestAction>

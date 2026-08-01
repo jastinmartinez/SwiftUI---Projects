@@ -16,16 +16,23 @@ struct AppComposition {
     let playbackTimeline: PlaybackTimelineClient
     let playbackObservation: PlaybackObservationClient
     let playbackShuffle: PlaybackShuffleClient
+    let libraryMediaStore: LibraryMediaStoreClient
+    let audioMetadata: AudioMetadataClient
+    let libraryCatalog: LibraryCatalogClient
 
-    /// Assembles provider and playback implementations around one supplied player.
+    /// Assembles provider, Library, and playback implementations.
     ///
     /// Invalid Jamendo configuration leaves its search capability unregistered.
+    /// All Library adapters share one managed filesystem rooted at
+    /// `Application Support/Crescendo/Library`, while every typed catalog
+    /// operation is serialized by one actor-backed store.
     ///
     /// - Parameters:
     ///   - jamendoClientID: The generated bundle value used to validate Jamendo.
     ///   - player: The single player shared by the selected playback engine.
     ///   - preparer: The explicit AVPlayer resource-validation mechanism.
     ///   - data: The Jamendo HTTP transport.
+    ///   - applicationSupportURL: The system Application Support directory.
     /// - Returns: Concrete initial state and dependency values for the root store.
     static func live(
         jamendoClientID: String?,
@@ -35,7 +42,8 @@ struct AppComposition {
             @escaping @Sendable (URLRequest) async throws -> (
                 Data,
                 URLResponse
-            )
+            ),
+        applicationSupportURL: URL
     ) -> Self {
         var searchClientsByProvider: [ProviderID: ProviderSearchClient] = [:]
 
@@ -52,6 +60,26 @@ struct AppComposition {
         let playbackEngine = AVPlayerPlaybackEngine.live(
             player: player,
             preparer: preparer
+        )
+        let crescendoSupportURL = applicationSupportURL.appending(
+            path: "Crescendo"
+        )
+        let libraryRootURL = crescendoSupportURL.appending(path: "Library")
+        let libraryFileSystem = ManagedLibraryFileSystem(
+            rootURL: libraryRootURL
+        )
+        let securityScopedFileCopy = SecurityScopedFileCopyClient.live(
+            fileSystem: libraryFileSystem
+        )
+        let libraryMediaStore = LibraryMediaStoreClient.live(
+            fileSystem: libraryFileSystem,
+            securityScopedFileCopy: securityScopedFileCopy
+        )
+        let libraryCatalogStore = LibraryCatalogStore(
+            catalogURL: libraryFileSystem.catalogURL,
+            catalogFile: LibraryCatalogFileClient.live(
+                fileSystem: libraryFileSystem
+            )
         )
 
         return Self(
@@ -100,7 +128,10 @@ struct AppComposition {
             playbackObservation: playbackEngine.observation,
             playbackShuffle: PlaybackShuffleClient(
                 shuffle: { $0.shuffled() }
-            )
+            ),
+            libraryMediaStore: libraryMediaStore,
+            audioMetadata: .live(),
+            libraryCatalog: .live(store: libraryCatalogStore)
         )
     }
 
@@ -117,6 +148,9 @@ struct AppComposition {
             $0.playbackTimeline = playbackTimeline
             $0.playbackObservation = playbackObservation
             $0.playbackShuffle = playbackShuffle
+            $0.libraryMediaStore = libraryMediaStore
+            $0.audioMetadata = audioMetadata
+            $0.libraryCatalog = libraryCatalog
         }
     }
 }
