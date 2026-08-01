@@ -26,8 +26,11 @@ struct LibraryRecoveryReducerTests {
         await store.receive(
             .delegate(
                 .completed(
-                    library,
-                    catalogWriteFailure: nil
+                    LibraryRecoveryReducer.Completion(
+                        library: library,
+                        catalog: snapshot,
+                        catalogWriteFailure: nil
+                    )
                 )
             )
         )
@@ -130,8 +133,11 @@ struct LibraryRecoveryReducerTests {
         await store.receive(
             .delegate(
                 .completed(
-                    library,
-                    catalogWriteFailure: nil
+                    LibraryRecoveryReducer.Completion(
+                        library: library,
+                        catalog: snapshot,
+                        catalogWriteFailure: nil
+                    )
                 )
             )
         )

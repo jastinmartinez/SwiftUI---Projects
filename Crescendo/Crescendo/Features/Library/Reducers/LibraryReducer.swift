@@ -1,13 +1,18 @@
 import ComposableArchitecture
 
-/// Owns the confirmed Library and coordinates its load and recovery child.
+/// Owns the confirmed Library, Library navigation, and feature-level routing.
 ///
 /// The reducer starts catalog/media loading, preserves confirmed contents while
-/// loading or after failure, and accepts only completed recovery delegates. It
-/// does not reconcile files, perform persistence, import media, control
-/// playback, select tabs, localize text, or render views.
+/// loading or after failure, accepts completed recovery delegates, presents the
+/// file importer, and delegates valid track selections. It does not reconcile
+/// files, perform persistence, import media, control playback, select tabs,
+/// localize text, or render views.
 @Reducer
 struct LibraryReducer {
+    enum Destination: Hashable, Sendable {
+        case songs
+    }
+
     enum LoadStatus: Equatable, Sendable {
         case idle
         case loading
@@ -19,8 +24,18 @@ struct LibraryReducer {
     @ObservableState
     struct State: Equatable {
         var library: Library
+        var catalog: LibraryCatalogClient.Snapshot
         var loadStatus: LoadStatus
+        var path: [Destination]
+        var isFileImporterPresented: Bool
         var recovery: LibraryRecoveryReducer.State?
+    }
+
+    enum Delegate: Equatable {
+        case trackTapped(
+            Track,
+            loadedTracks: IdentifiedArrayOf<Track>
+        )
     }
 
     enum Action: Equatable {
@@ -36,7 +51,13 @@ struct LibraryReducer {
                 LibraryFailure
             >
         )
+        case importButtonTapped
+        case setFileImporterPresented(Bool)
+        case destinationTapped(Destination)
+        case pathChanged([Destination])
+        case trackTapped(TrackID)
         case recovery(LibraryRecoveryReducer.Action)
+        case delegate(Delegate)
     }
 
     private enum CancelID {
@@ -74,6 +95,39 @@ struct LibraryReducer {
             case .retryButtonTapped:
                 return .send(.task)
 
+            case .importButtonTapped:
+                state.isFileImporterPresented = true
+                return .none
+
+            case let .setFileImporterPresented(isPresented):
+                state.isFileImporterPresented = isPresented
+                return .none
+
+            case let .destinationTapped(destination):
+                state.path.append(destination)
+                return .none
+
+            case let .pathChanged(path):
+                state.path = path
+                return .none
+
+            case let .trackTapped(trackID):
+                guard let item = state.library.items[id: trackID] else {
+                    return .none
+                }
+                return .send(
+                    .delegate(
+                        .trackTapped(
+                            item.track,
+                            loadedTracks: IdentifiedArray(
+                                uniqueElements: state.library.items.map(
+                                    \.track
+                                )
+                            )
+                        )
+                    )
+                )
+
             case let .libraryLoadCompleted(_, .failure(failure)):
                 state.loadStatus = .failed(failure)
                 return .none
@@ -88,14 +142,11 @@ struct LibraryReducer {
                 )
                 return .send(.recovery(.start))
 
-            case let .recovery(
-                .delegate(
-                    .completed(library, catalogWriteFailure)
-                )
-            ):
+            case let .recovery(.delegate(.completed(completion))):
                 state.recovery = nil
-                state.library = library
-                if let catalogWriteFailure {
+                state.library = completion.library
+                state.catalog = completion.catalog
+                if let catalogWriteFailure = completion.catalogWriteFailure {
                     state.loadStatus = .recoveredWithCatalogFailure(
                         catalogWriteFailure
                     )
@@ -109,7 +160,7 @@ struct LibraryReducer {
                 state.loadStatus = .failed(failure)
                 return .none
 
-            case .recovery:
+            case .recovery, .delegate:
                 return .none
             }
         }

@@ -8,6 +8,91 @@ import Testing
 @MainActor
 struct LibraryReducerTests {
     @Test
+    func importButtonPresentsFileImporter() async {
+        let store = makeStore(scenario: Scenario())
+
+        await store.send(.importButtonTapped) {
+            $0.isFileImporterPresented = true
+        }
+        await store.send(.setFileImporterPresented(false)) {
+            $0.isFileImporterPresented = false
+        }
+    }
+
+    @Test
+    func songsDestinationUpdatesNavigationPath() async {
+        let store = makeStore(scenario: Scenario())
+
+        await store.send(.destinationTapped(.songs)) {
+            $0.path = [.songs]
+        }
+        await store.send(.pathChanged([])) {
+            $0.path = []
+        }
+    }
+
+    @Test
+    func retainedTrackSelectionDelegatesFrozenLibraryOrder() async {
+        let firstTrack = Track(
+            id: TrackID(providerID: .library, nativeID: "first"),
+            title: "First",
+            artistName: nil,
+            albumTitle: nil,
+            artworkURL: nil,
+            duration: nil,
+            playbackURL: URL(fileURLWithPath: "/managed/first.m4a")
+        )
+        let secondTrack = Track(
+            id: TrackID(providerID: .library, nativeID: "second"),
+            title: "Second",
+            artistName: nil,
+            albumTitle: nil,
+            artworkURL: nil,
+            duration: nil,
+            playbackURL: URL(fileURLWithPath: "/managed/second.m4a")
+        )
+        let library = Library(
+            items: [
+                Library.Item(
+                    track: firstTrack,
+                    contentIdentity: .init(rawValue: "first-content"),
+                    addedAt: Date(timeIntervalSinceReferenceDate: 1)
+                ),
+                Library.Item(
+                    track: secondTrack,
+                    contentIdentity: .init(rawValue: "second-content"),
+                    addedAt: Date(timeIntervalSinceReferenceDate: 2)
+                ),
+            ]
+        )
+        let store = makeStore(
+            scenario: Scenario(),
+            initialLibrary: library
+        )
+
+        await store.send(.trackTapped(secondTrack.id))
+        await store.receive(
+            .delegate(
+                .trackTapped(
+                    secondTrack,
+                    loadedTracks: [firstTrack, secondTrack]
+                )
+            )
+        )
+    }
+
+    @Test
+    func missingTrackSelectionDoesNotDelegate() async {
+        let store = makeStore(scenario: Scenario())
+
+        await store.send(
+            .trackTapped(
+                TrackID(providerID: .library, nativeID: "missing")
+            )
+        )
+    }
+
+    @Test
     func emptyLoadBecomesLoadedWithoutReplacingCatalog() async {
         let scenario = Scenario()
         let store = makeStore(scenario: scenario)
@@ -27,13 +112,17 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        emptyLibrary,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: emptyLibrary,
+                            catalog: emptySnapshot,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
         ) {
             $0.library = emptyLibrary
+            $0.catalog = emptySnapshot
             $0.loadStatus = .loaded
         }
 
@@ -68,7 +157,10 @@ struct LibraryReducerTests {
         let store = TestStore(
             initialState: LibraryReducer.State(
                 library: emptyLibrary,
+                catalog: emptySnapshot,
                 loadStatus: .idle,
+                path: [],
+                isFileImporterPresented: false,
                 recovery: nil
             )
         ) {
@@ -93,8 +185,11 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        emptyLibrary,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: emptyLibrary,
+                            catalog: emptySnapshot,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
@@ -131,13 +226,17 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        library,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: library,
+                            catalog: snapshot,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
         ) {
             $0.library = library
+            $0.catalog = snapshot
             $0.loadStatus = .loaded
         }
 
@@ -168,8 +267,11 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        emptyLibrary,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: emptyLibrary,
+                            catalog: emptySnapshot,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
@@ -225,8 +327,11 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        library,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: library,
+                            catalog: replacement,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
@@ -287,8 +392,11 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        library,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: library,
+                            catalog: replacement,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
@@ -347,8 +455,11 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        library,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: library,
+                            catalog: replacement,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
@@ -407,13 +518,17 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        library,
-                        catalogWriteFailure: .catalogWriteFailed
+                        .init(
+                            library: library,
+                            catalog: replacement,
+                            catalogWriteFailure: .catalogWriteFailed
+                        )
                     )
                 )
             )
         ) {
             $0.library = library
+            $0.catalog = replacement
             $0.loadStatus = .recoveredWithCatalogFailure(
                 .catalogWriteFailed
             )
@@ -482,8 +597,11 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        library,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: library,
+                            catalog: replacement,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
@@ -549,8 +667,11 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        library,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: library,
+                            catalog: replacement,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
@@ -622,8 +743,11 @@ struct LibraryReducerTests {
             .recovery(
                 .delegate(
                     .completed(
-                        emptyLibrary,
-                        catalogWriteFailure: nil
+                        .init(
+                            library: emptyLibrary,
+                            catalog: emptySnapshot,
+                            catalogWriteFailure: nil
+                        )
                     )
                 )
             )
@@ -658,7 +782,10 @@ struct LibraryReducerTests {
         let store = TestStore(
             initialState: LibraryReducer.State(
                 library: initialLibrary,
+                catalog: .init(entries: []),
                 loadStatus: .idle,
+                path: [],
+                isFileImporterPresented: false,
                 recovery: nil
             )
         ) {

@@ -40,15 +40,22 @@ struct LibraryRecoveryReducer {
 
     enum Phase: Equatable {
         case ready
-        case replacingCatalog(Library)
+        case replacingCatalog(Completion)
         case completed
     }
 
+    /// The complete in-memory projection produced by one recovery run.
+    ///
+    /// `catalog` remains available even when its replacement failed so a later
+    /// import can retry from the recovered projection without another load.
+    struct Completion: Equatable, Sendable {
+        let library: Library
+        let catalog: LibraryCatalogClient.Snapshot
+        let catalogWriteFailure: LibraryFailure?
+    }
+
     enum Delegate: Equatable {
-        case completed(
-            Library,
-            catalogWriteFailure: LibraryFailure?
-        )
+        case completed(Completion)
         case failed(LibraryFailure)
     }
 
@@ -131,14 +138,23 @@ struct LibraryRecoveryReducer {
                         return .send(
                             .delegate(
                                 .completed(
-                                    library,
-                                    catalogWriteFailure: nil
+                                    Completion(
+                                        library: library,
+                                        catalog: snapshot,
+                                        catalogWriteFailure: nil
+                                    )
                                 )
                             )
                         )
                     }
 
-                    state.phase = .replacingCatalog(library)
+                    state.phase = .replacingCatalog(
+                        Completion(
+                            library: library,
+                            catalog: snapshot,
+                            catalogWriteFailure: nil
+                        )
+                    )
                     return .run { send in
                         let result = await libraryCatalog.replace(snapshot)
                         await send(.catalogReplacementCompleted(result))
@@ -169,27 +185,23 @@ struct LibraryRecoveryReducer {
                 return .none
 
             case let .catalogReplacementCompleted(result):
-                guard case let .replacingCatalog(library) = state.phase else {
+                guard case let .replacingCatalog(completion) = state.phase else {
                     return .none
                 }
 
                 state.phase = .completed
                 switch result {
                 case .success:
-                    return .send(
-                        .delegate(
-                            .completed(
-                                library,
-                                catalogWriteFailure: nil
-                            )
-                        )
-                    )
+                    return .send(.delegate(.completed(completion)))
                 case let .failure(failure):
                     return .send(
                         .delegate(
                             .completed(
-                                library,
-                                catalogWriteFailure: failure
+                                Completion(
+                                    library: completion.library,
+                                    catalog: completion.catalog,
+                                    catalogWriteFailure: failure
+                                )
                             )
                         )
                     )
