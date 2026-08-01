@@ -10,6 +10,9 @@ struct AppFeatureView: View {
             SearchFeatureView(
                 store: store.scope(state: \.search, action: \.search)
             )
+            .playbackNowPlayingAccessory(
+                store: store.scope(state: \.playback, action: \.playback)
+            )
             .tabItem {
                 Label(Locs.Search.action, systemImage: "magnifyingglass")
             }
@@ -18,21 +21,13 @@ struct AppFeatureView: View {
             LibraryFeatureView(
                 store: store.scope(state: \.library, action: \.library)
             )
+            .playbackNowPlayingAccessory(
+                store: store.scope(state: \.playback, action: \.playback)
+            )
             .tabItem {
                 Label(Locs.Library.title, systemImage: "music.note.list")
             }
             .tag(AppTab.library)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let model = PlaybackNowPlayingView.Model(
-                store.scope(state: \.playback, action: \.playback)
-            ) {
-                PlaybackNowPlayingView(
-                    model: model
-                )
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-            }
         }
         .task {
             await store.send(.task).finish()
