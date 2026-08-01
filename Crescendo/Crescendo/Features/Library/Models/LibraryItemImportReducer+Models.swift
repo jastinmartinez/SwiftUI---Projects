@@ -1,3 +1,7 @@
+/// Defines the progress and outcome values used to import one Library item.
+///
+/// These models retain operation inputs and results without invoking clients,
+/// iterating an import batch, or committing confirmed Library state.
 extension LibraryItemImportReducer {
     enum Phase: Equatable {
         case ready

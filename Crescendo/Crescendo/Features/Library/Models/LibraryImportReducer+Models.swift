@@ -1,5 +1,10 @@
 import Foundation
 
+/// Defines batch progress, terminal summaries, and delegate values coordinated
+/// by `LibraryImportReducer`.
+///
+/// These models describe import state and communication without importing one
+/// item, mutating the confirmed Library, invoking clients, or rendering UI.
 extension LibraryImportReducer {
     /// One source that could not complete every import operation.
     struct Issue: Equatable, Identifiable, Sendable {

@@ -36,6 +36,26 @@ extension LibraryCatalogClient {
         let discNumber: Int?
         let artworkReference: LibraryMediaStoreClient.FileReference?
         let addedAt: Date
+
+        /// Returns this membership with one replacement artwork reference.
+        func withArtworkReference(
+            _ artworkReference: LibraryMediaStoreClient.FileReference?
+        ) -> Self {
+            Self(
+                id: id,
+                audioReference: audioReference,
+                contentIdentity: contentIdentity,
+                title: title,
+                artistName: artistName,
+                albumTitle: albumTitle,
+                albumArtistName: albumArtistName,
+                duration: duration,
+                trackNumber: trackNumber,
+                discNumber: discNumber,
+                artworkReference: artworkReference,
+                addedAt: addedAt
+            )
+        }
     }
 
     /// The complete catalog value exchanged in one load or replacement.

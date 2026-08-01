@@ -9,18 +9,6 @@ import ComposableArchitecture
 /// localize text, or render views.
 @Reducer
 struct LibraryReducer {
-    enum Destination: Hashable, Sendable {
-        case songs
-    }
-
-    enum LoadStatus: Equatable, Sendable {
-        case idle
-        case loading
-        case loaded
-        case recoveredWithCatalogFailure(LibraryFailure)
-        case failed(LibraryFailure)
-    }
-
     @ObservableState
     struct State: Equatable {
         var library: Library
@@ -29,13 +17,6 @@ struct LibraryReducer {
         var path: [Destination]
         var isFileImporterPresented: Bool
         var recovery: LibraryRecoveryReducer.State?
-    }
-
-    enum Delegate: Equatable {
-        case trackTapped(
-            Track,
-            loadedTracks: IdentifiedArrayOf<Track>
-        )
     }
 
     enum Action: Equatable {
