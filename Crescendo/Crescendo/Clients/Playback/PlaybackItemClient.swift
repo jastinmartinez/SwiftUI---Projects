@@ -14,11 +14,12 @@ struct PlaybackItemClient: Sendable {
     /// If this operation throws, it leaves no staged mutation for
     /// `installation`; callers can continue relying on the previously committed
     /// playback item.
-    var load: @Sendable (
-        _ trackID: TrackID,
-        _ playbackURL: URL,
-        _ installation: PlaybackItemInstallation
-    ) async throws -> Void
+    var load:
+        @Sendable (
+            _ trackID: TrackID,
+            _ playbackURL: URL,
+            _ installation: PlaybackItemInstallation
+        ) async throws -> Void
     var commit: @Sendable (_ installation: PlaybackItemInstallation) async -> Void
     var rollback: @Sendable (_ installation: PlaybackItemInstallation) async -> Void
 }
