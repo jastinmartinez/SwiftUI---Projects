@@ -1,12 +1,14 @@
 import ComposableArchitecture
+import Foundation
 
 /// Owns the confirmed Library, Library navigation, and feature-level routing.
 ///
 /// The reducer starts catalog/media loading, preserves confirmed contents while
 /// loading or after failure, accepts completed recovery delegates, presents the
-/// file importer, and delegates valid track selections. It does not reconcile
-/// files, perform persistence, import media, control playback, select tabs,
-/// localize text, or render views.
+/// file importer, routes selected files through the import child, and delegates
+/// valid track selections. It does not reconcile files, perform persistence,
+/// import individual media items, control playback, select tabs, localize text,
+/// or render views.
 @Reducer
 struct LibraryReducer {
     @ObservableState
@@ -17,6 +19,8 @@ struct LibraryReducer {
         var path: [Destination]
         var isFileImporterPresented: Bool
         var recovery: LibraryRecoveryReducer.State?
+        var importBatch: LibraryImportReducer.State?
+        var fileSelectionFailure: LibraryFailure?
     }
 
     enum Action: Equatable {
@@ -34,10 +38,14 @@ struct LibraryReducer {
         )
         case importButtonTapped
         case setFileImporterPresented(Bool)
+        case filesSelected([URL])
+        case fileSelectionFailed(LibraryFailure)
+        case cancelImportButtonTapped
         case destinationTapped(Destination)
         case pathChanged([Destination])
         case trackTapped(TrackID)
         case recovery(LibraryRecoveryReducer.Action)
+        case importBatch(LibraryImportReducer.Action)
         case delegate(Delegate)
     }
 
@@ -78,11 +86,32 @@ struct LibraryReducer {
 
             case .importButtonTapped:
                 state.isFileImporterPresented = true
+                state.fileSelectionFailure = nil
                 return .none
 
             case let .setFileImporterPresented(isPresented):
                 state.isFileImporterPresented = isPresented
                 return .none
+
+            case let .filesSelected(sources):
+                state.isFileImporterPresented = false
+                state.fileSelectionFailure = nil
+                guard !sources.isEmpty else { return .none }
+                state.importBatch = LibraryImportReducer.State(
+                    sources: sources,
+                    library: state.library,
+                    catalog: state.catalog
+                )
+                return .send(.importBatch(.start))
+
+            case let .fileSelectionFailed(failure):
+                state.isFileImporterPresented = false
+                state.fileSelectionFailure = failure
+                return .none
+
+            case .cancelImportButtonTapped:
+                guard state.importBatch != nil else { return .none }
+                return .send(.importBatch(.cancelButtonTapped))
 
             case let .destinationTapped(destination):
                 state.path.append(destination)
@@ -141,12 +170,21 @@ struct LibraryReducer {
                 state.loadStatus = .failed(failure)
                 return .none
 
-            case .recovery, .delegate:
+            case let .importBatch(.delegate(.completed(completion))),
+                let .importBatch(.delegate(.cancelled(completion))):
+                state.library = completion.library
+                state.catalog = completion.catalog
+                return .none
+
+            case .recovery, .importBatch, .delegate:
                 return .none
             }
         }
         .ifLet(\.recovery, action: \.recovery) {
             LibraryRecoveryReducer()
+        }
+        .ifLet(\.importBatch, action: \.importBatch) {
+            LibraryImportReducer()
         }
     }
 }

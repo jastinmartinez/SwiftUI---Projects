@@ -20,6 +20,142 @@ struct LibraryReducerTests {
     }
 
     @Test
+    func selectedFilesStartImportFromConfirmedProjection() async {
+        let source = URL(fileURLWithPath: "/external/song.m4a")
+        let storedAudio = makeStoredAudio()
+        let entry = makeEntry(audioReference: storedAudio.reference)
+        let catalog = LibraryCatalogClient.Snapshot(entries: [entry])
+        let library = makeLibrary(entry: entry, storedAudio: storedAudio)
+        let store = makeStore(
+            scenario: Scenario(),
+            initialLibrary: library,
+            initialCatalog: catalog
+        )
+
+        await store.send(.filesSelected([source])) {
+            $0.isFileImporterPresented = false
+            $0.fileSelectionFailure = nil
+            $0.importBatch = LibraryImportReducer.State(
+                sources: [source],
+                library: library,
+                catalog: catalog
+            )
+        }
+    }
+
+    @Test
+    func completedImportCommitsConfirmedProjectionAndKeepsSummary() async {
+        let storedAudio = makeStoredAudio()
+        let entry = makeEntry(audioReference: storedAudio.reference)
+        let catalog = LibraryCatalogClient.Snapshot(entries: [entry])
+        let library = makeLibrary(entry: entry, storedAudio: storedAudio)
+        let summary = LibraryImportReducer.Summary(
+            importedCount: 1,
+            duplicateCount: 0,
+            issues: []
+        )
+        var importBatch = LibraryImportReducer.State(
+            sources: [],
+            library: Library(items: []),
+            catalog: .init(entries: [])
+        )
+        importBatch.lifecycle = .completed(summary)
+        importBatch.phase = .completed
+        let completion = LibraryImportReducer.Completion(
+            library: library,
+            catalog: catalog,
+            summary: summary
+        )
+        let store = makeStore(
+            scenario: Scenario(),
+            initialImportBatch: importBatch
+        )
+
+        await store.send(
+            .importBatch(.delegate(.completed(completion)))
+        ) {
+            $0.library = library
+            $0.catalog = catalog
+        }
+
+        #expect(store.state.importBatch?.lifecycle == .completed(summary))
+    }
+
+    @Test
+    func cancelledImportCommitsPartialConfirmedProjection() async {
+        let storedAudio = makeStoredAudio()
+        let entry = makeEntry(audioReference: storedAudio.reference)
+        let catalog = LibraryCatalogClient.Snapshot(entries: [entry])
+        let library = makeLibrary(entry: entry, storedAudio: storedAudio)
+        let summary = LibraryImportReducer.Summary(
+            importedCount: 1,
+            duplicateCount: 0,
+            issues: []
+        )
+        var importBatch = LibraryImportReducer.State(
+            sources: [],
+            library: Library(items: []),
+            catalog: .init(entries: [])
+        )
+        importBatch.lifecycle = .cancelled(summary)
+        importBatch.phase = .completed
+        let completion = LibraryImportReducer.Completion(
+            library: library,
+            catalog: catalog,
+            summary: summary
+        )
+        let store = makeStore(
+            scenario: Scenario(),
+            initialImportBatch: importBatch
+        )
+
+        await store.send(
+            .importBatch(.delegate(.cancelled(completion)))
+        ) {
+            $0.library = library
+            $0.catalog = catalog
+        }
+
+        #expect(store.state.importBatch?.lifecycle == .cancelled(summary))
+    }
+
+    @Test
+    func cancelImportRoutesToActiveBatch() async {
+        let source = URL(fileURLWithPath: "/external/song.m4a")
+        let importBatch = LibraryImportReducer.State(
+            sources: [source],
+            library: Library(items: []),
+            catalog: .init(entries: [])
+        )
+        let store = makeStore(
+            scenario: Scenario(),
+            initialImportBatch: importBatch
+        )
+
+        await store.send(.cancelImportButtonTapped)
+        await store.receive(.importBatch(.cancelButtonTapped)) {
+            $0.importBatch?.phase = .cancellationRequested
+        }
+    }
+
+    @Test
+    func pickerFailureDismissesImporterAndNextAttemptClearsFailure() async {
+        let store = makeStore(scenario: Scenario())
+
+        await store.send(.importButtonTapped) {
+            $0.isFileImporterPresented = true
+        }
+        await store.send(.fileSelectionFailed(.fileReadFailed)) {
+            $0.isFileImporterPresented = false
+            $0.fileSelectionFailure = .fileReadFailed
+        }
+        await store.send(.importButtonTapped) {
+            $0.isFileImporterPresented = true
+            $0.fileSelectionFailure = nil
+        }
+    }
+
+    @Test
     func songsDestinationUpdatesNavigationPath() async {
         let store = makeStore(scenario: Scenario())
 
@@ -161,7 +297,9 @@ struct LibraryReducerTests {
                 loadStatus: .idle,
                 path: [],
                 isFileImporterPresented: false,
-                recovery: nil
+                recovery: nil,
+                importBatch: nil,
+                fileSelectionFailure: nil
             )
         ) {
             LibraryReducer()
@@ -777,20 +915,25 @@ struct LibraryReducerTests {
 
     private func makeStore(
         scenario: Scenario,
-        initialLibrary: Library = Library(items: [])
+        initialLibrary: Library = Library(items: []),
+        initialCatalog: LibraryCatalogClient.Snapshot = .init(entries: []),
+        initialImportBatch: LibraryImportReducer.State? = nil
     ) -> TestStoreOf<LibraryReducer> {
         let store = TestStore(
             initialState: LibraryReducer.State(
                 library: initialLibrary,
-                catalog: .init(entries: []),
+                catalog: initialCatalog,
                 loadStatus: .idle,
                 path: [],
                 isFileImporterPresented: false,
-                recovery: nil
+                recovery: nil,
+                importBatch: initialImportBatch,
+                fileSelectionFailure: nil
             )
         ) {
             LibraryReducer()
         } withDependencies: {
+            $0.uuid = .incrementing
             $0.libraryCatalog = scenario.catalogClient
             $0.libraryMediaStore = scenario.mediaStoreClient
             $0.audioMetadata = scenario.metadataClient

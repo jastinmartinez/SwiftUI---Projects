@@ -40,6 +40,87 @@ extension Locs {
         }
     }
 
+    enum Library {
+        static let title = String(localized: "library.title")
+        static let songs = String(localized: "library.songs")
+        static let albums = String(localized: "library.albums")
+        static let recentlyAdded = String(localized: "library.recently_added")
+        static let importMusic = String(localized: "library.import_music")
+        static let emptyTitle = String(localized: "library.empty_title")
+        static let emptyMessage = String(localized: "library.empty_message")
+        static let unknownAlbum = String(localized: "library.unknown_album")
+
+        static func failure(_ failure: LibraryFailure) -> String {
+            switch failure {
+            case .accessDenied:
+                String(localized: "library.failure.access_denied")
+            case .unsupportedFile:
+                String(localized: "library.failure.unsupported_file")
+            case .fileReadFailed:
+                String(localized: "library.failure.file_read_failed")
+            case .fileWriteFailed:
+                String(localized: "library.failure.file_write_failed")
+            case .metadataReadFailed:
+                String(localized: "library.failure.metadata_read_failed")
+            case .catalogReadFailed:
+                String(localized: "library.failure.catalog_read_failed")
+            case .catalogWriteFailed:
+                String(localized: "library.failure.catalog_write_failed")
+            case .invalidManagedFile:
+                String(localized: "library.failure.invalid_managed_file")
+            }
+        }
+
+        enum Import {
+            static let importing = String(localized: "library.import.importing")
+            static let completed = String(localized: "library.import.completed")
+            static let cancelled = String(localized: "library.import.cancelled")
+            static let failed = String(localized: "library.import.failed")
+            static let cancel = String(localized: "library.import.cancel")
+
+            static func progress(current: Int, total: Int) -> String {
+                String(
+                    format: String(localized: "library.import.progress"),
+                    Int64(current),
+                    Int64(total)
+                )
+            }
+
+            static func imported(count: Int) -> String {
+                String(
+                    format: count == 1
+                        ? String(localized: "library.import.imported_one")
+                        : String(localized: "library.import.imported_many"),
+                    Int64(count)
+                )
+            }
+
+            static func importedBeforeCancellation(count: Int) -> String {
+                String(
+                    format: count == 1
+                        ? String(
+                            localized:
+                                "library.import.imported_before_cancellation_one"
+                        )
+                        : String(
+                            localized:
+                                "library.import.imported_before_cancellation_many"
+                        ),
+                    Int64(count)
+                )
+            }
+
+            static func duplicates(count: Int) -> String {
+                String(
+                    format: count == 1
+                        ? String(localized: "library.import.duplicate_one")
+                        : String(localized: "library.import.duplicate_many"),
+                    Int64(count)
+                )
+            }
+        }
+    }
+
     enum Playback {
         static let noSelection = String(localized: "music_playback.no_selection")
         static let play = String(localized: "music_playback.play")
