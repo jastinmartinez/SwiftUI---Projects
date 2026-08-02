@@ -30,6 +30,72 @@ struct SearchReducerTests {
     }
 
     @Test
+    func submittedSearchIsInProgressBeforeChildRequestsStart() {
+        var state = SearchReducer.State(
+            providerIDs: [.library, .jamendo]
+        )
+        state.submittedQuery = "query"
+
+        #expect(state.isSearchInProgress)
+        #expect(!state.hasSearchResults)
+        #expect(!state.hasCompletedSearchWithoutResults)
+    }
+
+    @Test
+    func providerResultsAndAggregateProgressCanCoexist() {
+        var state = SearchReducer.State(
+            providerIDs: [.library, .jamendo]
+        )
+        state.submittedQuery = "query"
+        state.providers[id: .library]?.status = .loaded(
+            ProviderSearchReducer.Page(
+                tracks: [makeTrack(providerID: .library)],
+                nextCursor: nil
+            )
+        )
+        state.providers[id: .jamendo]?.status = .searching(
+            requestID: UUID(0)
+        )
+
+        #expect(state.isSearchInProgress)
+        #expect(state.hasSearchResults)
+        #expect(!state.hasCompletedSearchWithoutResults)
+    }
+
+    @Test
+    func completedSearchWithoutProviderResultsShowsNoResults() {
+        var state = SearchReducer.State(
+            providerIDs: [.library, .jamendo]
+        )
+        state.submittedQuery = "query"
+        state.providers[id: .library]?.status = .loaded(emptyPage())
+        state.providers[id: .jamendo]?.status = .failed(.network)
+
+        #expect(!state.isSearchInProgress)
+        #expect(!state.hasSearchResults)
+        #expect(state.hasCompletedSearchWithoutResults)
+    }
+
+    @Test
+    func completedSearchWithProviderResultsDoesNotShowNoResults() {
+        var state = SearchReducer.State(
+            providerIDs: [.library, .jamendo]
+        )
+        state.submittedQuery = "query"
+        state.providers[id: .library]?.status = .failed(.network)
+        state.providers[id: .jamendo]?.status = .loaded(
+            ProviderSearchReducer.Page(
+                tracks: [makeTrack(providerID: .jamendo)],
+                nextCursor: nil
+            )
+        )
+
+        #expect(!state.isSearchInProgress)
+        #expect(state.hasSearchResults)
+        #expect(!state.hasCompletedSearchWithoutResults)
+    }
+
+    @Test
     func emptySubmitCancelsEveryProviderWithoutSearching() async {
         let first = ProviderID(rawValue: "first")
         let second = ProviderID(rawValue: "second")
@@ -76,7 +142,7 @@ struct SearchReducerTests {
     }
 
     @Test
-    func validSubmitTrimsAndActivatesEveryProviderUpToFive() async {
+    func validSubmitTrimsAndActivatesEveryProvider() async {
         let providerIDs = [
             ProviderID(rawValue: "first"),
             ProviderID(rawValue: "second"),
@@ -111,7 +177,7 @@ struct SearchReducerTests {
     }
 
     @Test
-    func submitActivatesOnlyTheFirstFiveOrderedProviders() async {
+    func submitActivatesEveryOrderedProvider() async {
         let first = ProviderID(rawValue: "first")
         let second = ProviderID(rawValue: "second")
         let third = ProviderID(rawValue: "third")
@@ -136,14 +202,13 @@ struct SearchReducerTests {
             fifth,
             sixth,
         ]
-        let activatedProviderIDs = Array(orderedProviderIDs.prefix(5))
         let state = SearchReducer.State(
             query: "query",
             providerIDs: inputProviderIDs
         )
         let store = makeStore(
             state: state,
-            clients: suspendedClients(for: activatedProviderIDs)
+            clients: suspendedClients(for: orderedProviderIDs)
         )
 
         await store.send(.submitButtonTapped)
@@ -152,101 +217,18 @@ struct SearchReducerTests {
         }
         await receiveSearchRequests(
             in: store,
-            providerIDs: activatedProviderIDs,
+            providerIDs: orderedProviderIDs,
             query: "query"
         )
 
         #expect(
             store.state.providers.ids.elements == orderedProviderIDs
         )
-        #expect(
-            store.state.providers[id: fifth]?.status == .inactive
-        )
-        #expect(
-            store.state.providers[id: sixth]?.status == .inactive
-        )
 
         await cancelProviderSearches(
             in: store,
             providerIDs: orderedProviderIDs
         )
-    }
-
-    @Test
-    func inactiveVisibleProviderUsesTheLatestSubmittedQuery() async {
-        let active = ProviderID(rawValue: "active")
-        let later = ProviderID(rawValue: "later")
-        var state = SearchReducer.State(
-            providerIDs: [active, later]
-        )
-        state.submittedQuery = "frozen query"
-        state.providers[id: active]?.status = .loaded(emptyPage())
-        let store = makeStore(
-            state: state,
-            clients: suspendedClients(for: [later])
-        )
-
-        await store.send(
-            .providers(
-                .element(
-                    id: later,
-                    action: .railBecameVisible
-                )
-            )
-        )
-        await store.receive(
-            .providers(
-                .element(
-                    id: later,
-                    action: .delegate(.activationRequested)
-                )
-            )
-        )
-        await store.receive(
-            .providers(
-                .element(
-                    id: later,
-                    action: .searchRequested(query: "frozen query")
-                )
-            )
-        ) {
-            $0.providers[id: later]?.status = .searching(
-                requestID: UUID(0)
-            )
-        }
-
-        await cancelProviderSearches(
-            in: store,
-            providerIDs: [active, later]
-        )
-    }
-
-    @Test
-    func visibilityDoesNotReactivateNoninactiveProviders() async {
-        let searching = ProviderID(rawValue: "searching")
-        let loaded = ProviderID(rawValue: "loaded")
-        let failed = ProviderID(rawValue: "failed")
-        var state = SearchReducer.State(
-            providerIDs: [searching, loaded, failed]
-        )
-        state.submittedQuery = "query"
-        state.providers[id: searching]?.status = .searching(
-            requestID: UUID(0)
-        )
-        state.providers[id: loaded]?.status = .loaded(emptyPage())
-        state.providers[id: failed]?.status = .failed(.network)
-        let store = makeStore(state: state)
-
-        for providerID in [searching, loaded, failed] {
-            await store.send(
-                .providers(
-                    .element(
-                        id: providerID,
-                        action: .railBecameVisible
-                    )
-                )
-            )
-        }
     }
 
     @Test
@@ -304,65 +286,6 @@ struct SearchReducerTests {
 
         #expect(store.state.submittedQuery == nil)
         #expect(store.state.providers.allSatisfy { $0.status == .inactive })
-    }
-
-    @Test
-    func failedProviderRetryUsesLatestQueryWithoutMutatingSibling() async {
-        let failed = ProviderID(rawValue: "failed")
-        let sibling = ProviderID(rawValue: "sibling")
-        let siblingPage = ProviderSearchReducer.Page(
-            tracks: [makeTrack(providerID: sibling)],
-            nextCursor: nil
-        )
-        var state = SearchReducer.State(
-            providerIDs: [failed, sibling]
-        )
-        state.submittedQuery = "latest query"
-        state.providers[id: failed]?.status = .failed(.network)
-        state.providers[id: sibling]?.status = .loaded(siblingPage)
-        let store = makeStore(
-            state: state,
-            clients: suspendedClients(for: [failed])
-        )
-
-        await store.send(
-            .providers(
-                .element(
-                    id: failed,
-                    action: .retryButtonTapped
-                )
-            )
-        )
-        await store.receive(
-            .providers(
-                .element(
-                    id: failed,
-                    action: .delegate(.retryRequested)
-                )
-            )
-        )
-        await store.receive(
-            .providers(
-                .element(
-                    id: failed,
-                    action: .searchRequested(query: "latest query")
-                )
-            )
-        ) {
-            $0.providers[id: failed]?.status = .searching(
-                requestID: UUID(0)
-            )
-        }
-
-        #expect(
-            store.state.providers[id: sibling]?.status
-                == .loaded(siblingPage)
-        )
-
-        await cancelProviderSearches(
-            in: store,
-            providerIDs: [failed, sibling]
-        )
     }
 
     @Test
@@ -615,30 +538,6 @@ struct SearchReducerTests {
         )
     }
 
-    @Test
-    func emptyLibraryActionDelegatesLibraryRequest() async {
-        var state = SearchReducer.State(providerIDs: [.library])
-        state.providers[id: .library]?.status = .loaded(emptyPage())
-        let store = makeStore(state: state)
-
-        await store.send(
-            .providers(
-                .element(
-                    id: .library,
-                    action: .libraryButtonTapped
-                )
-            )
-        )
-        await store.receive(
-            .providers(
-                .element(
-                    id: .library,
-                    action: .delegate(.libraryRequested)
-                )
-            )
-        )
-        await store.receive(.delegate(.libraryRequested))
-    }
 }
 
 private extension SearchReducerTests {

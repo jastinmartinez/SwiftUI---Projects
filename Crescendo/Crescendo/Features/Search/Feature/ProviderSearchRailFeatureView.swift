@@ -1,15 +1,17 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// Connects one provider child Store to its stateless horizontal rail.
+/// Connects one provider child Store to an optional result rail.
 ///
-/// This boundary observes only one provider's first-page state and forwards its
-/// actions. Shared-query coordination, pagination, navigation, App routing, and
-/// playback remain outside this feature view.
+/// A provider without nonempty first-page results renders no view. Shared-query
+/// coordination, aggregate loading and empty presentation, pagination,
+/// navigation, and playback remain outside this feature view.
 struct ProviderSearchRailFeatureView: View {
     let store: StoreOf<ProviderSearchReducer>
 
     var body: some View {
-        ProviderSearchRailView(model: .init(store))
+        if let model = ProviderSearchRailView.Model(store) {
+            ProviderSearchRailView(model: model)
+        }
     }
 }

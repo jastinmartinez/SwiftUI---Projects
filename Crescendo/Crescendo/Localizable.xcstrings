@@ -631,16 +631,6 @@
         }
       }
     },
-    "search.empty_title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search for songs"
-          }
-        }
-      }
-    },
     "search.load_more_failed" : {
       "localizations" : {
         "en" : {
@@ -671,16 +661,6 @@
         }
       }
     },
-    "search.provider.failure" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This source couldn’t be searched."
-          }
-        }
-      }
-    },
     "search.provider.jamendo" : {
       "localizations" : {
         "en" : {
@@ -697,36 +677,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Local"
-          }
-        }
-      }
-    },
-    "search.provider.local_empty_message" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Try another search or open Library to browse your music."
-          }
-        }
-      }
-    },
-    "search.provider.local_empty_title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No Local Songs Found"
-          }
-        }
-      }
-    },
-    "search.provider.open_library" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Library"
           }
         }
       }

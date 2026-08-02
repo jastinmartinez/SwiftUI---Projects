@@ -4,9 +4,9 @@ import Foundation
 /// Owns application-level destinations and cross-feature coordination.
 ///
 /// The reducer scopes Search, Library, and Playback, starts playback observation,
-/// routes selected tracks into Playback, and selects Library when Search requests
-/// it. It does not inspect provider state, build queues, perform searches, open
-/// the Library importer, or render root presentation.
+/// and routes selected tracks into Playback. It does not inspect provider state,
+/// build queues, perform searches, open the Library importer, or render root
+/// presentation.
 @Reducer
 struct AppReducer {
     @ObservableState
@@ -42,10 +42,6 @@ struct AppReducer {
 
             case let .selectedTabChanged(selectedTab):
                 state.selectedTab = selectedTab
-                return .none
-
-            case .search(.delegate(.libraryRequested)):
-                state.selectedTab = .library
                 return .none
 
             case let .search(

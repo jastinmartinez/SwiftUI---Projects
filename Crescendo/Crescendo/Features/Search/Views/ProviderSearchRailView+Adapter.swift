@@ -1,13 +1,20 @@
 import ComposableArchitecture
 
 extension ProviderSearchRailView.Model {
-    /// Projects one provider reducer into its bounded rail presentation.
+    /// Projects a provider's nonempty first page into a bounded rail.
     ///
-    /// Only the first five Tracks become cards. The reducer's full first page
-    /// remains unchanged for See All and playback delegation, and no
-    /// continuation callback crosses this boundary.
+    /// Providers without results produce no rail. Only the first five Tracks
+    /// become cards; the reducer retains the complete first page for See All
+    /// and playback delegation, and no continuation callback crosses this
+    /// boundary.
     @MainActor
-    init(_ store: StoreOf<ProviderSearchReducer>) {
+    init?(_ store: StoreOf<ProviderSearchReducer>) {
+        guard case .loaded(let page) = store.status,
+            !page.tracks.isEmpty
+        else {
+            return nil
+        }
+
         let title: String
         switch store.providerID {
         case .library:
@@ -18,54 +25,19 @@ extension ProviderSearchRailView.Model {
             title = store.providerID.rawValue
         }
 
-        let content: Content
-        switch store.status {
-        case .inactive:
-            content = .inactive
-        case .searching:
-            content = .loading
-        case .loaded(let page) where page.tracks.isEmpty:
-            content = .empty(
-                showsLibraryAction: store.providerID == .library
-            )
-        case .loaded(let page):
-            content = .loaded(
-                page.tracks.prefix(5).map {
-                    TrackRowView.Model(
-                        $0,
-                        accessory: .none,
-                        showsDuration: false
-                    )
-                }
-            )
-        case .failed:
-            content = .failed
-        }
-
         self.init(
             id: store.providerID,
             title: title,
-            content: content,
-            strings: Strings(
-                searching: Locs.Search.searching,
-                seeAll: Locs.Search.Provider.seeAll,
-                localEmptyTitle: Locs.Search.Provider.localEmptyTitle,
-                localEmptyMessage: Locs.Search.Provider.localEmptyMessage,
-                openLibrary: Locs.Search.Provider.openLibrary,
-                failure: Locs.Search.Provider.failure,
-                retry: Locs.Common.retry
-            ),
-            onAppear: {
-                store.send(.railBecameVisible)
+            tracks: page.tracks.prefix(5).map {
+                TrackRowView.Model(
+                    $0,
+                    accessory: .none,
+                    showsDuration: false
+                )
             },
-            onRetry: {
-                store.send(.retryButtonTapped)
-            },
+            seeAllTitle: Locs.Search.Provider.seeAll,
             onSeeAll: {
                 store.send(.seeAllButtonTapped)
-            },
-            onOpenLibrary: {
-                store.send(.libraryButtonTapped)
             },
             onTrackTapped: {
                 store.send(.resultTapped($0))

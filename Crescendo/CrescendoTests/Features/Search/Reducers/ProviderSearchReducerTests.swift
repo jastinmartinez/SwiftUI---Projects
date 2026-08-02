@@ -223,41 +223,6 @@ struct ProviderSearchReducerTests {
     }
 
     @Test
-    func visibilityDelegatesActivationOnlyWhenInactive() async {
-        let inactiveStore = makeStore(providerID: .testProvider)
-
-        await inactiveStore.send(.railBecameVisible)
-        await inactiveStore.receive(.delegate(.activationRequested))
-
-        for status in noninactiveStatuses() {
-            let store = makeStore(
-                providerID: .testProvider,
-                status: status
-            )
-            await store.send(.railBecameVisible)
-        }
-    }
-
-    @Test
-    func retryDelegatesOnlyWhenFailed() async {
-        let failedStore = makeStore(
-            providerID: .testProvider,
-            status: .failed(.network)
-        )
-
-        await failedStore.send(.retryButtonTapped)
-        await failedStore.receive(.delegate(.retryRequested))
-
-        for status in statusesExceptFailed() {
-            let store = makeStore(
-                providerID: .testProvider,
-                status: status
-            )
-            await store.send(.retryButtonTapped)
-        }
-    }
-
-    @Test
     func seeAllDelegatesExactNonemptyFirstPage() async {
         let track = makeTrack(providerID: .testProvider, nativeID: "1")
         let page = ProviderSearchReducer.Page(
@@ -319,36 +284,6 @@ struct ProviderSearchReducerTests {
         )
     }
 
-    @Test
-    func libraryActionDelegatesOnlyForEmptyLibraryPage() async {
-        let libraryStore = makeStore(
-            providerID: .library,
-            status: .loaded(emptyPage())
-        )
-
-        await libraryStore.send(.libraryButtonTapped)
-        await libraryStore.receive(.delegate(.libraryRequested))
-
-        let populatedLibraryStore = makeStore(
-            providerID: .library,
-            status: .loaded(
-                ProviderSearchReducer.Page(
-                    tracks: [makeTrack(providerID: .library, nativeID: "1")],
-                    nextCursor: nil
-                )
-            )
-        )
-        await populatedLibraryStore.send(.libraryButtonTapped)
-
-        let otherProviderStore = makeStore(
-            providerID: .jamendo,
-            status: .loaded(emptyPage())
-        )
-        await otherProviderStore.send(.libraryButtonTapped)
-
-        let inactiveLibraryStore = makeStore(providerID: .library)
-        await inactiveLibraryStore.send(.libraryButtonTapped)
-    }
 }
 
 private extension ProviderSearchReducerTests {
@@ -377,22 +312,6 @@ private extension ProviderSearchReducerTests {
             tracks: [],
             nextCursor: nil
         )
-    }
-
-    func noninactiveStatuses() -> [ProviderSearchReducer.Status] {
-        [
-            .searching(requestID: UUID(0)),
-            .loaded(emptyPage()),
-            .failed(.network),
-        ]
-    }
-
-    func statusesExceptFailed() -> [ProviderSearchReducer.Status] {
-        [
-            .inactive,
-            .searching(requestID: UUID(0)),
-            .loaded(emptyPage()),
-        ]
     }
 
     func statusesWithoutLoadedPage() -> [ProviderSearchReducer.Status] {

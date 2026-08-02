@@ -7,23 +7,6 @@ import Testing
 @MainActor
 struct AppPlaybackCoordinationTests {
     @Test
-    func localEmptyStateRoutesToLibraryWithoutOpeningTheImporter() async {
-        let state = makeState()
-        let store = makeStore(state: state)
-
-        await store.send(
-            .search(.delegate(.libraryRequested))
-        ) {
-            $0.selectedTab = .library
-        }
-
-        #expect(store.state.search == state.search)
-        #expect(store.state.library == state.library)
-        #expect(!store.state.library.isFileImporterPresented)
-        #expect(store.state.playback == state.playback)
-    }
-
-    @Test
     func librarySelectionForwardsEmbeddedManagedURLDirectlyToPlayback() async {
         let playbackURL = URL(
             fileURLWithPath: "/managed/Library/library-track.m4a"

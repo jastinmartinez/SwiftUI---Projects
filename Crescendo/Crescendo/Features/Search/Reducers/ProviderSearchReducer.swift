@@ -4,10 +4,10 @@ import Foundation
 /// Owns the first-page search lifecycle and interactions for one provider rail.
 ///
 /// The reducer routes initial search through its provider identity, stores one
-/// immutable first page, rejects stale responses, and validates rail actions
-/// before delegating facts to its parent. The parent remains responsible for the
-/// latest submitted query, activation policy, destination navigation, and App
-/// routing.
+/// immutable first page, rejects stale responses, and validates result actions
+/// before delegating facts to its parent. The parent remains responsible for
+/// starting every configured provider, the latest submitted query, and
+/// destination navigation.
 @Reducer
 struct ProviderSearchReducer {
     @ObservableState
@@ -22,10 +22,7 @@ struct ProviderSearchReducer {
     enum Action: Equatable {
         case searchRequested(query: String)
         case cancel
-        case railBecameVisible
-        case retryButtonTapped
         case seeAllButtonTapped
-        case libraryButtonTapped
         case resultTapped(TrackID)
         case searchResponse(
             UUID,
@@ -84,28 +81,12 @@ struct ProviderSearchReducer {
                     id: CancelID.search(state.providerID)
                 )
 
-            case .railBecameVisible:
-                guard case .inactive = state.status else { return .none }
-                return .send(.delegate(.activationRequested))
-
-            case .retryButtonTapped:
-                guard case .failed = state.status else { return .none }
-                return .send(.delegate(.retryRequested))
-
             case .seeAllButtonTapped:
                 guard case .loaded(let page) = state.status else {
                     return .none
                 }
                 guard !page.tracks.isEmpty else { return .none }
                 return .send(.delegate(.seeAllRequested(page)))
-
-            case .libraryButtonTapped:
-                guard state.providerID == .library else { return .none }
-                guard case .loaded(let page) = state.status else {
-                    return .none
-                }
-                guard page.tracks.isEmpty else { return .none }
-                return .send(.delegate(.libraryRequested))
 
             case .resultTapped(let trackID):
                 guard case .loaded(let page) = state.status else {

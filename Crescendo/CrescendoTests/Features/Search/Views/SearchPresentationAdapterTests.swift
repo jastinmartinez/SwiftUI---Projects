@@ -20,34 +20,35 @@ struct SearchPresentationAdapterTests {
     }
 
     @Test
-    func providerRailsUseLocalizedProviderPresentation() {
-        let library = ProviderSearchRailView.Model(
-            makeRailStore(providerID: .library)
+    func providerRailsUseLocalizedProviderPresentation() throws {
+        let library = try #require(
+            ProviderSearchRailView.Model(
+                makeRailStore(
+                    providerID: .library,
+                    status: loadedRailStatus(
+                        tracks: [makeTrack()],
+                        nextCursor: nil
+                    )
+                )
+            )
         )
-        let jamendo = ProviderSearchRailView.Model(
-            makeRailStore(providerID: .jamendo)
+        let jamendo = try #require(
+            ProviderSearchRailView.Model(
+                makeRailStore(
+                    providerID: .jamendo,
+                    status: loadedRailStatus(
+                        tracks: [makeTrack()],
+                        nextCursor: nil
+                    )
+                )
+            )
         )
 
         #expect(library.id == .library)
         #expect(library.title == Locs.Search.Provider.library)
         #expect(jamendo.id == .jamendo)
         #expect(jamendo.title == Locs.Search.Provider.jamendo)
-        #expect(library.strings.seeAll == Locs.Search.Provider.seeAll)
-        #expect(library.strings.searching == Locs.Search.searching)
-        #expect(
-            library.strings.localEmptyTitle
-                == Locs.Search.Provider.localEmptyTitle
-        )
-        #expect(
-            library.strings.localEmptyMessage
-                == Locs.Search.Provider.localEmptyMessage
-        )
-        #expect(
-            library.strings.openLibrary
-                == Locs.Search.Provider.openLibrary
-        )
-        #expect(library.strings.failure == Locs.Search.Provider.failure)
-        #expect(library.strings.retry == Locs.Common.retry)
+        #expect(library.seeAllTitle == Locs.Search.Provider.seeAll)
     }
 
     @Test
@@ -62,13 +63,13 @@ struct SearchPresentationAdapterTests {
             status: status
         )
 
-        let rows = try loadedRows(
-            from: ProviderSearchRailView.Model(store)
+        let model = try #require(
+            ProviderSearchRailView.Model(store)
         )
 
-        #expect(rows.map(\.id) == tracks.prefix(5).map(\.id))
-        #expect(rows.allSatisfy { $0.accessory == .none })
-        #expect(rows.allSatisfy { $0.durationText == nil })
+        #expect(model.tracks.map(\.id) == tracks.prefix(5).map(\.id))
+        #expect(model.tracks.allSatisfy { $0.accessory == .none })
+        #expect(model.tracks.allSatisfy { $0.durationText == nil })
         guard case .loaded(let page) = store.status else {
             Issue.record("Expected the reducer to retain its loaded page")
             return
@@ -78,68 +79,72 @@ struct SearchPresentationAdapterTests {
     }
 
     @Test
-    func railMapsMutuallyExclusiveLifecycleContent() {
-        let inactive = ProviderSearchRailView.Model(
-            makeRailStore(providerID: .jamendo, status: .inactive)
+    func providerRailExistsOnlyForNonemptyLoadedPage() {
+        #expect(
+            ProviderSearchRailView.Model(
+                makeRailStore(providerID: .jamendo, status: .inactive)
+            ) == nil
         )
-        let searching = ProviderSearchRailView.Model(
-            makeRailStore(
-                providerID: .jamendo,
-                status: .searching(requestID: UUID(0))
-            )
+        #expect(
+            ProviderSearchRailView.Model(
+                makeRailStore(
+                    providerID: .jamendo,
+                    status: .searching(requestID: UUID(0))
+                )
+            ) == nil
         )
-        let failed = ProviderSearchRailView.Model(
-            makeRailStore(providerID: .jamendo, status: .failed(.network))
+        #expect(
+            ProviderSearchRailView.Model(
+                makeRailStore(
+                    providerID: .jamendo,
+                    status: loadedRailStatus(tracks: [], nextCursor: nil)
+                )
+            ) == nil
         )
-
-        #expect(inactive.content == .inactive)
-        #expect(searching.content == .loading)
-        #expect(failed.content == .failed)
+        #expect(
+            ProviderSearchRailView.Model(
+                makeRailStore(
+                    providerID: .jamendo,
+                    status: .failed(.network)
+                )
+            ) == nil
+        )
+        #expect(
+            ProviderSearchRailView.Model(
+                makeRailStore(
+                    providerID: .jamendo,
+                    status: loadedRailStatus(
+                        tracks: [makeTrack()],
+                        nextCursor: nil
+                    )
+                )
+            ) != nil
+        )
     }
 
     @Test
-    func onlyTheLocalEmptyRailOffersTheLibraryAction() {
-        let library = ProviderSearchRailView.Model(
-            makeRailStore(
-                providerID: .library,
-                status: loadedRailStatus(tracks: [], nextCursor: nil)
-            )
-        )
-        let jamendo = ProviderSearchRailView.Model(
-            makeRailStore(
-                providerID: .jamendo,
-                status: loadedRailStatus(tracks: [], nextCursor: nil)
-            )
-        )
-
-        #expect(library.content == .empty(showsLibraryAction: true))
-        #expect(jamendo.content == .empty(showsLibraryAction: false))
-    }
-
-    @Test
-    func railCallbacksSendTheCorrespondingChildActions() {
+    func railCallbacksSendOnlyResultActions() throws {
         let track = makeTrack()
         let actions = LockIsolated<[ProviderSearchReducer.Action]>([])
-        let model = ProviderSearchRailView.Model(
-            makeRailStore(
-                providerID: .library,
-                status: loadedRailStatus(tracks: [track], nextCursor: nil),
-                actions: actions
+        let model = try #require(
+            ProviderSearchRailView.Model(
+                makeRailStore(
+                    providerID: .library,
+                    status: loadedRailStatus(
+                        tracks: [track],
+                        nextCursor: nil
+                    ),
+                    actions: actions
+                )
             )
         )
 
-        model.onAppear()
-        model.onRetry()
         model.onSeeAll()
-        model.onOpenLibrary()
         model.onTrackTapped(track.id)
 
         #expect(
             actions.value == [
-                .railBecameVisible,
-                .retryButtonTapped,
                 .seeAllButtonTapped,
-                .libraryButtonTapped,
                 .resultTapped(track.id),
             ]
         )
@@ -280,15 +285,6 @@ private extension SearchPresentationAdapterTests {
         )
     }
 
-    func loadedRows(
-        from model: ProviderSearchRailView.Model
-    ) throws -> [TrackRowView.Model] {
-        guard case .loaded(let rows) = model.content else {
-            throw TestFailure.expectedLoadedRail
-        }
-        return rows
-    }
-
     func makeResultsStore(
         providerID: ProviderID = .testProvider,
         tracks: [Track]? = nil,
@@ -322,8 +318,4 @@ private extension SearchPresentationAdapterTests {
             duration: 215
         )
     }
-}
-
-private enum TestFailure: Error {
-    case expectedLoadedRail
 }

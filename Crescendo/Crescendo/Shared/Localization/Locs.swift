@@ -18,7 +18,6 @@ extension Locs {
         static let action = String(localized: "search.action")
         static let clear = String(localized: "search.clear")
         static let prompt = String(localized: "search.prompt")
-        static let emptyTitle = String(localized: "search.empty_title")
         static let searching = String(localized: "search.searching")
         static let loadingMore = String(localized: "search.loading_more")
         static let loadMoreFailed = String(localized: "search.load_more_failed")
@@ -27,16 +26,6 @@ extension Locs {
             static let library = String(localized: "search.provider.library")
             static let jamendo = String(localized: "search.provider.jamendo")
             static let seeAll = String(localized: "search.provider.see_all")
-            static let localEmptyTitle = String(
-                localized: "search.provider.local_empty_title"
-            )
-            static let localEmptyMessage = String(
-                localized: "search.provider.local_empty_message"
-            )
-            static let openLibrary = String(
-                localized: "search.provider.open_library"
-            )
-            static let failure = String(localized: "search.provider.failure")
         }
 
         static func resultsSummary(

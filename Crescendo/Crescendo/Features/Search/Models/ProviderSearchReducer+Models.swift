@@ -3,12 +3,12 @@ import Foundation
 
 /// Reducer-owned values for one provider's first-page search lifecycle.
 ///
-/// These values describe mutually exclusive rail state and validated facts for
-/// the parent. They contain no shared query, destination pagination, navigation,
-/// presentation, App routing, or playback policy.
+/// These values describe one provider's lifecycle and validated result facts
+/// for the parent. They contain no shared query, destination pagination,
+/// navigation, presentation, or playback policy.
 extension ProviderSearchReducer {
-    /// Describes whether this provider rail is inactive, searching, loaded, or
-    /// failed. This is the rail's only activation representation.
+    /// Describes whether this provider is inactive, searching, loaded, or
+    /// failed.
     enum Status: Equatable {
         case inactive
         case searching(requestID: UUID)
@@ -23,12 +23,9 @@ extension ProviderSearchReducer {
         let nextCursor: SearchCursor?
     }
 
-    /// Facts emitted after this reducer validates a rail interaction.
+    /// Facts emitted after this reducer validates a result interaction.
     enum Delegate: Equatable {
-        case activationRequested
-        case retryRequested
         case seeAllRequested(Page)
-        case libraryRequested
         case trackTapped(
             Track,
             loadedTracks: IdentifiedArrayOf<Track>

@@ -1,7 +1,11 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// The search feature boundary that composes stateless search views.
+/// Composes one aggregate search presentation from provider child state.
+///
+/// The feature shows shared progress while any provider is unresolved, reveals
+/// nonempty provider rails as they arrive, and presents one empty state only
+/// after every provider reaches a terminal state.
 struct SearchFeatureView: View {
     @Bindable var store: StoreOf<SearchReducer>
 
@@ -11,6 +15,18 @@ struct SearchFeatureView: View {
                 VStack(spacing: 24) {
                     SearchHeaderView(model: .init(store))
                         .padding(.horizontal, 20)
+
+                    if store.isSearchInProgress {
+                        ProgressView(Locs.Search.searching)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .padding(.horizontal, 20)
+                    }
+
+                    if store.hasCompletedSearchWithoutResults {
+                        ContentUnavailableView.search
+                            .frame(maxWidth: .infinity, minHeight: 180)
+                            .padding(.horizontal, 20)
+                    }
 
                     LazyVStack(spacing: 28) {
                         ForEach(

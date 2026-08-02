@@ -4,9 +4,10 @@ import Foundation
 /// Coordinates a submitted query across provider search children.
 ///
 /// Each provider child owns its request lifecycle and first-page result. This
-/// parent owns provider order, the frozen submitted query, destination
-/// presentation, and delegation toward App. It does not perform provider
-/// requests, paginate results, route tabs, or coordinate playback.
+/// parent starts every configured provider and owns provider order, the frozen
+/// submitted query, destination presentation, and delegation toward App. It
+/// does not perform provider requests, paginate results, route tabs, or
+/// coordinate playback.
 @Reducer
 struct SearchReducer {
     @ObservableState
@@ -78,7 +79,7 @@ struct SearchReducer {
             case .searchSubmitted(let query):
                 state.submittedQuery = query
                 state.destination = nil
-                let providerIDs = state.providers.prefix(5).map(\.id)
+                let providerIDs = state.providers.map(\.id)
                 return .merge(
                     providerIDs.map { providerID in
                         .send(
@@ -112,42 +113,6 @@ struct SearchReducer {
             case .providers(
                 .element(
                     id: let providerID,
-                    action: .delegate(.activationRequested)
-                )
-            ):
-                guard let query = state.submittedQuery else {
-                    return .none
-                }
-                return .send(
-                    .providers(
-                        .element(
-                            id: providerID,
-                            action: .searchRequested(query: query)
-                        )
-                    )
-                )
-
-            case .providers(
-                .element(
-                    id: let providerID,
-                    action: .delegate(.retryRequested)
-                )
-            ):
-                guard let query = state.submittedQuery else {
-                    return .none
-                }
-                return .send(
-                    .providers(
-                        .element(
-                            id: providerID,
-                            action: .searchRequested(query: query)
-                        )
-                    )
-                )
-
-            case .providers(
-                .element(
-                    id: let providerID,
                     action: .delegate(.seeAllRequested(let page))
                 )
             ):
@@ -162,14 +127,6 @@ struct SearchReducer {
                     status: .idle
                 )
                 return .none
-
-            case .providers(
-                .element(
-                    id: _,
-                    action: .delegate(.libraryRequested)
-                )
-            ):
-                return .send(.delegate(.libraryRequested))
 
             case .providers(
                 .element(
