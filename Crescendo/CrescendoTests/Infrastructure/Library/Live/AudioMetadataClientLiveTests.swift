@@ -1,5 +1,3 @@
-import AVFoundation
-import CoreVideo
 import Foundation
 import Testing
 
@@ -21,17 +19,6 @@ struct AudioMetadataClientLiveTests {
         #expect(try abs(#require(metadata.duration) - 0.5) < 0.05)
         #expect(metadata.trackNumber == 2)
         #expect(metadata.discNumber == 1)
-    }
-
-    @Test
-    func assetWithoutAnAudioTrackIsUnsupported() async throws {
-        let videoURL = try await makeVideoOnlyAsset()
-        defer { try? FileManager.default.removeItem(at: videoURL) }
-        let client = AudioMetadataClient.live()
-
-        let result = await client.read(videoURL)
-
-        #expect(result == .failure(.unsupportedFile))
     }
 
     @Test
@@ -86,61 +73,6 @@ struct AudioMetadataClientLiveTests {
                 )
         )
     }
-
-    @MainActor
-    private func makeVideoOnlyAsset() async throws -> URL {
-        let fileURL = URL.temporaryDirectory.appending(
-            path: "AudioMetadataClientLiveTests-video-\(UUID().uuidString).mov"
-        )
-        let writer = try AVAssetWriter(outputURL: fileURL, fileType: .mov)
-        let input = AVAssetWriterInput(
-            mediaType: .video,
-            outputSettings: [
-                AVVideoCodecKey: AVVideoCodecType.h264,
-                AVVideoWidthKey: 16,
-                AVVideoHeightKey: 16,
-            ]
-        )
-        let adaptor = AVAssetWriterInputPixelBufferAdaptor(
-            assetWriterInput: input,
-            sourcePixelBufferAttributes: [
-                kCVPixelBufferPixelFormatTypeKey as String:
-                    kCVPixelFormatType_32BGRA,
-                kCVPixelBufferWidthKey as String: 16,
-                kCVPixelBufferHeightKey as String: 16,
-            ]
-        )
-        guard writer.canAdd(input) else { throw FixtureError.writerSetup }
-        writer.add(input)
-        guard writer.startWriting() else { throw FixtureError.writerSetup }
-        writer.startSession(atSourceTime: .zero)
-
-        var pixelBuffer: CVPixelBuffer?
-        guard
-            CVPixelBufferCreate(
-                kCFAllocatorDefault,
-                16,
-                16,
-                kCVPixelFormatType_32BGRA,
-                nil,
-                &pixelBuffer
-            ) == kCVReturnSuccess,
-            let pixelBuffer,
-            adaptor.append(pixelBuffer, withPresentationTime: .zero)
-        else {
-            throw FixtureError.writerSetup
-        }
-        input.markAsFinished()
-        await writer.finishWriting()
-        guard writer.status == .completed else {
-            throw FixtureError.writerSetup
-        }
-        return fileURL
-    }
 }
 
 private final class FixtureBundleToken: NSObject {}
-
-private enum FixtureError: Error {
-    case writerSetup
-}

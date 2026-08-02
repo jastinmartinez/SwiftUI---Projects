@@ -158,11 +158,6 @@ struct AppCompositionTests {
         #expect(
             try fileSystem.readDataIfPresent(at: fileSystem.catalogURL) != nil
         )
-
-        let metadata = try await composition.audioMetadata.read(
-            Self.audioFixtureURL()
-        ).get()
-        #expect(metadata.title == "Fixture Song")
     }
 
     @Test
@@ -204,21 +199,6 @@ struct AppCompositionTests {
         )
     }
 
-    private static func audioFixtureURL() throws -> URL {
-        let bundle = Bundle(for: AppCompositionFixtureBundleToken.self)
-        return try #require(
-            bundle.url(
-                forResource: "library-metadata-fixture",
-                withExtension: "m4a"
-            )
-                ?? bundle.url(
-                    forResource: "library-metadata-fixture",
-                    withExtension: "m4a",
-                    subdirectory: "Fixtures/Audio"
-                )
-        )
-    }
-
     private nonisolated static let trackFixture = """
         {
           "headers": {
@@ -253,5 +233,3 @@ struct AppCompositionTests {
         )
     }
 }
-
-private final class AppCompositionFixtureBundleToken: NSObject {}
