@@ -661,6 +661,16 @@
         }
       }
     },
+    "search.provider.audius" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audius"
+          }
+        }
+      }
+    },
     "search.provider.jamendo" : {
       "localizations" : {
         "en" : {

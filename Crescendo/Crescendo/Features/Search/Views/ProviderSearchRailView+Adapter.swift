@@ -17,6 +17,8 @@ extension ProviderSearchRailView.Model {
 
         let title: String
         switch store.providerID {
+        case .audius:
+            title = Locs.Search.Provider.audius
         case .library:
             title = Locs.Search.Provider.library
         case .jamendo:

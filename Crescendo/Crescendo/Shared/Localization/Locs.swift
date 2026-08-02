@@ -23,6 +23,7 @@ extension Locs {
         static let loadMoreFailed = String(localized: "search.load_more_failed")
 
         enum Provider {
+            static let audius = String(localized: "search.provider.audius")
             static let library = String(localized: "search.provider.library")
             static let jamendo = String(localized: "search.provider.jamendo")
             static let seeAll = String(localized: "search.provider.see_all")

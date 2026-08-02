@@ -43,12 +43,38 @@ struct SearchPresentationAdapterTests {
                 )
             )
         )
+        let audius = try #require(
+            ProviderSearchRailView.Model(
+                makeRailStore(
+                    providerID: .audius,
+                    status: loadedRailStatus(
+                        tracks: [makeTrack()],
+                        nextCursor: nil
+                    )
+                )
+            )
+        )
 
         #expect(library.id == .library)
         #expect(library.title == Locs.Search.Provider.library)
         #expect(jamendo.id == .jamendo)
         #expect(jamendo.title == Locs.Search.Provider.jamendo)
+        #expect(audius.id == .audius)
+        #expect(audius.title == Locs.Search.Provider.audius)
         #expect(library.seeAllTitle == Locs.Search.Provider.seeAll)
+    }
+
+    @Test
+    func audiusDestinationUsesLocalizedProviderSummary() {
+        let model = SearchResultListView.Model(
+            makeResultsStore(providerID: .audius, tracks: [makeTrack()])
+        )
+        let expectedSummary = Locs.Search.resultsSummary(
+            count: 1,
+            providerName: Locs.Search.Provider.audius
+        )
+
+        #expect(model.summary == expectedSummary)
     }
 
     @Test

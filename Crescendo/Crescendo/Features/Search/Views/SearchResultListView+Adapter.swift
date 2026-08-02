@@ -24,6 +24,8 @@ extension SearchResultListView.Model {
 
         let providerName: String?
         switch store.providerID {
+        case .audius:
+            providerName = Locs.Search.Provider.audius
         case .library:
             providerName = Locs.Search.Provider.library
         case .jamendo:
