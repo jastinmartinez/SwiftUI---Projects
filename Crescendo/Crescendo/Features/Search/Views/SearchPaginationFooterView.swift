@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// Renders continuation progress and recovery without owning workflow state.
+/// Renders destination continuation progress and recovery.
+///
+/// The footer invokes an injected retry callback and owns no Store, request,
+/// provider rail, localization lookup, or pagination policy.
 struct SearchPaginationFooterView: View {
     let model: Model
 

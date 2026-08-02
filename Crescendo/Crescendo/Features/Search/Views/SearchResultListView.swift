@@ -1,6 +1,10 @@
 import SwiftUI
 
-/// Displays a grouped collection of tappable catalog results.
+/// Displays one provider's complete accumulated result collection vertically.
+///
+/// The view renders immutable rows and invokes destination callbacks. It owns
+/// no Store, request lifecycle, provider rail, localization lookup, or playback
+/// behavior.
 struct SearchResultListView: View {
     let model: Model
 

@@ -671,6 +671,76 @@
         }
       }
     },
+    "search.provider.failure" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This source couldn’t be searched."
+          }
+        }
+      }
+    },
+    "search.provider.jamendo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamendo"
+          }
+        }
+      }
+    },
+    "search.provider.library" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local"
+          }
+        }
+      }
+    },
+    "search.provider.local_empty_message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try another search or open Library to browse your music."
+          }
+        }
+      }
+    },
+    "search.provider.local_empty_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Local Songs Found"
+          }
+        }
+      }
+    },
+    "search.provider.open_library" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Library"
+          }
+        }
+      }
+    },
+    "search.provider.see_all" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See All"
+          }
+        }
+      }
+    },
     "search.result_count" : {
       "localizations" : {
         "en" : {
