@@ -13,6 +13,7 @@ struct ProviderID:
 }
 
 extension ProviderID {
+    static let audius = Self(rawValue: "audius")
     static let jamendo = Self(rawValue: "jamendo")
     static let library = Self(rawValue: "library")
 }
