@@ -10,6 +10,10 @@ struct AudiusTracksResponse: Decodable, Sendable {
         case data
     }
 
+    /// Decodes provider rows independently so one malformed track cannot
+    /// discard valid siblings or distort the raw count used for pagination.
+    ///
+    /// - Parameter decoder: A decoder positioned at an Audius search response.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let rows = try container.decode([Row].self, forKey: .data)

@@ -59,6 +59,8 @@ struct AudiusAPI: Sendable {
         return try makeURL(path: "/v1/tracks/\(trackID)/stream")
     }
 
+    /// Builds one HTTPS Audius endpoint and appends the client metadata
+    /// required by every request and stable playback URL.
     private func makeURL(
         path: String,
         queryItems: [URLQueryItem] = []
