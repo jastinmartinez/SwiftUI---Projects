@@ -1,37 +1,36 @@
 import ComposableArchitecture
 import Foundation
 
-/// Owns continuation-page state and operations for loaded search results.
+/// Owns the accumulated results and continuation lifecycle for one provider.
+///
+/// The reducer freezes the submitted query with the provider identity, requests
+/// subsequent pages, rejects stale responses, and delegates validated Track
+/// selections with the complete loaded snapshot. Shared-query coordination,
+/// provider activation, navigation, presentation, and playback remain outside
+/// this boundary.
 @Reducer
-struct SearchPaginationReducer {
+struct ProviderSearchResultsReducer {
     @ObservableState
     struct State: Equatable {
+        let providerID: ProviderID
+        let query: String
         var tracks: IdentifiedArrayOf<Track>
         var nextCursor: SearchCursor?
         var status: Status
-        var providerID: ProviderID
-    }
-
-    enum Status: Equatable {
-        case idle
-        case loading(requestID: UUID)
-        case failed(MusicProviderError)
     }
 
     @CasePathable
     enum Action: Equatable {
         case nextPageRequested
         case retryButtonTapped
+        case resultTapped(TrackID)
         case cancel
-        case continueSearch(
-            providerID: ProviderID,
-            cursor: SearchCursor,
-            requestID: UUID
-        )
+        case continueSearch(SearchCursor, requestID: UUID)
         case searchPageResponse(
             UUID,
             Result<SearchPage, MusicProviderError>
         )
+        case delegate(Delegate)
     }
 
     enum CancelID {
@@ -48,12 +47,10 @@ struct SearchPaginationReducer {
                 guard case .idle = state.status else { return .none }
                 guard let cursor = state.nextCursor else { return .none }
 
-                let requestID = uuid()
                 return .send(
                     .continueSearch(
-                        providerID: state.providerID,
-                        cursor: cursor,
-                        requestID: requestID
+                        cursor,
+                        requestID: uuid()
                     )
                 )
 
@@ -61,17 +58,29 @@ struct SearchPaginationReducer {
                 guard case .failed = state.status else { return .none }
                 guard let cursor = state.nextCursor else { return .none }
 
-                let requestID = uuid()
                 return .send(
                     .continueSearch(
-                        providerID: state.providerID,
-                        cursor: cursor,
-                        requestID: requestID
+                        cursor,
+                        requestID: uuid()
                     )
                 )
 
-            case .continueSearch(let providerID, let cursor, let requestID):
+            case .resultTapped(let trackID):
+                guard let track = state.tracks[id: trackID] else {
+                    return .none
+                }
+                return .send(
+                    .delegate(
+                        .trackTapped(
+                            track,
+                            loadedTracks: state.tracks
+                        )
+                    )
+                )
+
+            case .continueSearch(let cursor, let requestID):
                 state.status = .loading(requestID: requestID)
+                let providerID = state.providerID
                 return .run { send in
                     do {
                         guard
@@ -107,8 +116,8 @@ struct SearchPaginationReducer {
                     return .none
                 }
 
-                for song in page.tracks where state.tracks[id: song.id] == nil {
-                    state.tracks.append(song)
+                for track in page.tracks where state.tracks[id: track.id] == nil {
+                    state.tracks.append(track)
                 }
                 state.nextCursor = page.nextCursor
                 state.status = .idle
@@ -120,6 +129,9 @@ struct SearchPaginationReducer {
                 }
 
                 state.status = .failed(error)
+                return .none
+
+            case .delegate:
                 return .none
             }
         }

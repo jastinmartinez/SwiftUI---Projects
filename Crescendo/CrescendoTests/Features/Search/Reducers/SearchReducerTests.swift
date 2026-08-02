@@ -57,6 +57,7 @@ struct SearchReducerTests {
         }
         await store.receive(.searchResponse(UUID(0), .success(page))) {
             $0.status = loadedStatus(
+                query: "result",
                 tracks: page.tracks,
                 nextCursor: page.nextCursor,
                 paginationStatus: .idle,
@@ -168,6 +169,7 @@ struct SearchReducerTests {
             initialState: makeState(
                 query: "result",
                 status: loadedStatus(
+                    query: "result",
                     tracks: [track, secondTrack],
                     nextCursor: nil,
                     paginationStatus: .idle,
@@ -179,12 +181,25 @@ struct SearchReducerTests {
             SearchReducer()
         }
 
-        await store.send(.resultTapped(track.id))
+        let loadedTracks = IdentifiedArray(
+            uniqueElements: [track, secondTrack]
+        )
+        await store.send(.pagination(.resultTapped(track.id)))
+        await store.receive(
+            .pagination(
+                .delegate(
+                    .trackTapped(
+                        track,
+                        loadedTracks: loadedTracks
+                    )
+                )
+            )
+        )
         await store.receive(
             .delegate(
                 .trackTapped(
                     track,
-                    loadedResults: [track, secondTrack]
+                    loadedResults: loadedTracks
                 )
             )
         )
@@ -197,6 +212,7 @@ struct SearchReducerTests {
             initialState: makeState(
                 query: "old",
                 status: loadedStatus(
+                    query: "old",
                     tracks: [track],
                     nextCursor: SearchCursor(value: "page-2"),
                     paginationStatus: .idle,
@@ -227,13 +243,13 @@ struct SearchReducerTests {
         await store.receive(
             .pagination(
                 .continueSearch(
-                    providerID: .testProvider,
-                    cursor: SearchCursor(value: "page-2"),
+                    SearchCursor(value: "page-2"),
                     requestID: UUID(0)
                 )
             )
         ) {
             $0.status = loadedStatus(
+                query: "old",
                 tracks: [track],
                 nextCursor: SearchCursor(value: "page-2"),
                 paginationStatus: .loading(requestID: UUID(0)),
@@ -261,17 +277,19 @@ struct SearchReducerTests {
     }
 
     private func loadedStatus(
+        query: String,
         tracks: [Track],
         nextCursor: SearchCursor?,
-        paginationStatus: SearchPaginationReducer.Status,
+        paginationStatus: ProviderSearchResultsReducer.Status,
         providerID: ProviderID
     ) -> SearchReducer.Status {
         .loaded(
-            SearchPaginationReducer.State(
+            ProviderSearchResultsReducer.State(
+                providerID: providerID,
+                query: query,
                 tracks: .init(uniqueElements: tracks),
                 nextCursor: nextCursor,
-                status: paginationStatus,
-                providerID: providerID
+                status: paginationStatus
             )
         )
     }

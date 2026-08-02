@@ -8,7 +8,7 @@ struct SearchReducer {
     enum Status: Equatable {
         case idle
         case searching(requestID: UUID)
-        case loaded(SearchPaginationReducer.State)
+        case loaded(ProviderSearchResultsReducer.State)
         case failed(MusicProviderError)
     }
 
@@ -39,8 +39,7 @@ struct SearchReducer {
             requestID: UUID
         )
         case cancelSearch
-        case resultTapped(TrackID)
-        case pagination(SearchPaginationReducer.Action)
+        case pagination(ProviderSearchResultsReducer.Action)
         case delegate(Delegate)
         case searchResponse(UUID, Result<SearchPage, MusicProviderError>)
     }
@@ -52,9 +51,9 @@ struct SearchReducer {
 
     var body: some ReducerOf<Self> {
         Scope(state: \.status, action: \.pagination) {
-            EmptyReducer<Status, SearchPaginationReducer.Action>()
+            EmptyReducer<Status, ProviderSearchResultsReducer.Action>()
                 .ifCaseLet(\.loaded, action: \.self) {
-                    SearchPaginationReducer()
+                    ProviderSearchResultsReducer()
                 }
         }
         Reduce { state, action in
@@ -106,18 +105,17 @@ struct SearchReducer {
                 state.status = .idle
                 return .merge(
                     .cancel(id: CancelID.search),
-                    .cancel(id: SearchPaginationReducer.CancelID.nextPage)
+                    .cancel(id: ProviderSearchResultsReducer.CancelID.nextPage)
                 )
 
-            case .resultTapped(let songID):
-                guard case .loaded(let pagination) = state.status,
-                    let song = pagination.tracks[id: songID]
-                else { return .none }
+            case .pagination(
+                .delegate(.trackTapped(let track, let loadedTracks))
+            ):
                 return .send(
                     .delegate(
                         .trackTapped(
-                            song,
-                            loadedResults: pagination.tracks
+                            track,
+                            loadedResults: loadedTracks
                         )
                     )
                 )
@@ -130,11 +128,14 @@ struct SearchReducer {
                     return .none
                 }
                 state.status = .loaded(
-                    SearchPaginationReducer.State(
+                    ProviderSearchResultsReducer.State(
+                        providerID: state.providerID,
+                        query: state.query.trimmingCharacters(
+                            in: .whitespacesAndNewlines
+                        ),
                         tracks: .init(uniqueElements: page.tracks),
                         nextCursor: page.nextCursor,
-                        status: .idle,
-                        providerID: state.providerID
+                        status: .idle
                     )
                 )
                 return .none

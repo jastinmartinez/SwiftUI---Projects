@@ -61,7 +61,9 @@ extension SearchResultsView.Model {
                             store.send(.pagination(.retryButtonTapped))
                         }
                     ),
-                    onTrackTapped: { store.send(.resultTapped($0)) },
+                    onTrackTapped: {
+                        store.send(.pagination(.resultTapped($0)))
+                    },
                     onLoadNextPage: {
                         store.send(.pagination(.nextPageRequested))
                     }

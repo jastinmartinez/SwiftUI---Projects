@@ -4,10 +4,15 @@ import Testing
 
 @testable import Crescendo
 
+/// Verifies the behavior owned by one provider's independent results destination.
+///
+/// These tests cover continuation, cancellation, stale-response rejection, and
+/// selection snapshots. Shared-query coordination, provider activation, and App
+/// routing belong to their respective parent reducers.
 @MainActor
-struct SearchPaginationReducerTests {
+struct ProviderSearchResultsReducerTests {
     @Test
-    func nextPageAppendsUniqueSongsAndStoresContinuation() async {
+    func nextPageUsesOwnedProviderAndAppendsOnlyNewTracks() async {
         let first = makeTrack(nativeID: "1")
         let duplicate = makeTrack(nativeID: "1")
         let second = makeTrack(nativeID: "2")
@@ -17,24 +22,25 @@ struct SearchPaginationReducerTests {
             tracks: [duplicate, second],
             nextCursor: nextCursor
         )
-        let testProviderSearchCount = LockIsolated(0)
+        let otherProviderSearchCount = LockIsolated(0)
         let jamendoSearchCount = LockIsolated(0)
         let store = TestStore(
-            initialState: SearchPaginationReducer.State(
+            initialState: ProviderSearchResultsReducer.State(
+                providerID: .jamendo,
+                query: "frozen query",
                 tracks: [first],
                 nextCursor: cursor,
-                status: .idle,
-                providerID: .jamendo
+                status: .idle
             )
         ) {
-            SearchPaginationReducer()
+            ProviderSearchResultsReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
                     .testProvider: ProviderSearchClient(
                         searchPage: { _, _ in
-                            testProviderSearchCount.withValue { $0 += 1 }
+                            otherProviderSearchCount.withValue { $0 += 1 }
                             return SearchPage(tracks: [], nextCursor: nil)
                         }
                     ),
@@ -52,11 +58,7 @@ struct SearchPaginationReducerTests {
 
         await store.send(.nextPageRequested)
         await store.receive(
-            .continueSearch(
-                providerID: .jamendo,
-                cursor: cursor,
-                requestID: UUID(0)
-            )
+            .continueSearch(cursor, requestID: UUID(0))
         ) {
             $0.status = .loading(requestID: UUID(0))
         }
@@ -68,30 +70,62 @@ struct SearchPaginationReducerTests {
             $0.status = .idle
         }
 
-        #expect(testProviderSearchCount.value == 0)
+        #expect(store.state.query == "frozen query")
+        #expect(otherProviderSearchCount.value == 0)
         #expect(jamendoSearchCount.value == 1)
     }
 
     @Test
-    func missingSearchRegistrationFailsClosedWithoutUsingAnotherProvider() async {
-        let testProviderSearchCount = LockIsolated(0)
+    func selectionDelegatesTrackAndEveryCurrentlyLoadedTrack() async {
+        let first = makeTrack(nativeID: "1")
+        let second = makeTrack(nativeID: "2")
+        let tracks = IdentifiedArray(uniqueElements: [first, second])
+        let store = makeStore(tracks: tracks)
+
+        await store.send(.resultTapped(second.id))
+        await store.receive(
+            .delegate(
+                .trackTapped(
+                    second,
+                    loadedTracks: tracks
+                )
+            )
+        )
+    }
+
+    @Test
+    func unknownSelectionDoesNotDelegate() async {
+        let tracks = IdentifiedArray(uniqueElements: [makeTrack(nativeID: "1")])
+        let store = makeStore(tracks: tracks)
+
+        await store.send(
+            .resultTapped(
+                TrackID(providerID: .testProvider, nativeID: "missing")
+            )
+        )
+    }
+
+    @Test
+    func missingSearchRegistrationFailsWithoutUsingAnotherProvider() async {
+        let otherProviderSearchCount = LockIsolated(0)
         let cursor = SearchCursor(value: "page-2")
         let store = TestStore(
-            initialState: SearchPaginationReducer.State(
+            initialState: ProviderSearchResultsReducer.State(
+                providerID: .jamendo,
+                query: "query",
                 tracks: [],
                 nextCursor: cursor,
-                status: .idle,
-                providerID: .jamendo
+                status: .idle
             )
         ) {
-            SearchPaginationReducer()
+            ProviderSearchResultsReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
                     .testProvider: ProviderSearchClient(
                         searchPage: { _, _ in
-                            testProviderSearchCount.withValue { $0 += 1 }
+                            otherProviderSearchCount.withValue { $0 += 1 }
                             return SearchPage(tracks: [], nextCursor: nil)
                         }
                     )
@@ -101,11 +135,7 @@ struct SearchPaginationReducerTests {
 
         await store.send(.nextPageRequested)
         await store.receive(
-            .continueSearch(
-                providerID: .jamendo,
-                cursor: cursor,
-                requestID: UUID(0)
-            )
+            .continueSearch(cursor, requestID: UUID(0))
         ) {
             $0.status = .loading(requestID: UUID(0))
         }
@@ -118,19 +148,20 @@ struct SearchPaginationReducerTests {
             $0.status = .failed(.providerUnavailable(.jamendo))
         }
 
-        #expect(testProviderSearchCount.value == 0)
+        #expect(otherProviderSearchCount.value == 0)
     }
 
     @Test
     func exhaustedSearchDoesNotRequestAnotherPage() async {
-        let state = SearchPaginationReducer.State(
+        let state = ProviderSearchResultsReducer.State(
+            providerID: .testProvider,
+            query: "query",
             tracks: [],
             nextCursor: nil,
-            status: .idle,
-            providerID: .testProvider
+            status: .idle
         )
         let store = TestStore(initialState: state) {
-            SearchPaginationReducer()
+            ProviderSearchResultsReducer()
         } withDependencies: {
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
@@ -151,29 +182,17 @@ struct SearchPaginationReducerTests {
     }
 
     @Test
-    func unresolvedRequestRejectsDuplicateAndStaleResponses() async {
+    func unresolvedRequestRejectsDuplicateWorkAndStaleResponse() async {
         let cursor = SearchCursor(value: "page-2")
-        let state = SearchPaginationReducer.State(
+        let state = ProviderSearchResultsReducer.State(
+            providerID: .testProvider,
+            query: "query",
             tracks: [],
             nextCursor: cursor,
-            status: .loading(requestID: UUID(0)),
-            providerID: .testProvider
+            status: .loading(requestID: UUID(0))
         )
         let store = TestStore(initialState: state) {
-            SearchPaginationReducer()
-        } withDependencies: {
-            $0.providerSearchClients = ProviderClientRegistry(
-                clients: [
-                    .testProvider: ProviderSearchClient(
-                        searchPage: { _, _ in
-                            Issue.record(
-                                "An unresolved request must reject duplicate work"
-                            )
-                            return SearchPage(tracks: [], nextCursor: nil)
-                        }
-                    )
-                ]
-            )
+            ProviderSearchResultsReducer()
         }
 
         await store.send(.nextPageRequested)
@@ -187,12 +206,13 @@ struct SearchPaginationReducerTests {
     }
 
     @Test
-    func failurePreservesSongsAndCursorThenRetryUsesThatCursor() async {
-        let song = makeTrack(nativeID: "1")
+    func failurePreservesTracksAndCursorThenRetryUsesThatCursor() async {
+        let track = makeTrack(nativeID: "1")
+        let tracks = IdentifiedArray(uniqueElements: [track])
         let cursor = SearchCursor(value: "page-2")
         let page = SearchPage(tracks: [], nextCursor: nil)
         let store = makeStore(
-            tracks: [song],
+            tracks: tracks,
             nextCursor: cursor,
             status: .loading(requestID: UUID(99)),
             nextPage: page
@@ -203,13 +223,12 @@ struct SearchPaginationReducerTests {
         ) {
             $0.status = .failed(.network)
         }
+        #expect(store.state.tracks == tracks)
+        #expect(store.state.nextCursor == cursor)
+
         await store.send(.retryButtonTapped)
         await store.receive(
-            .continueSearch(
-                providerID: .testProvider,
-                cursor: cursor,
-                requestID: UUID(0)
-            )
+            .continueSearch(cursor, requestID: UUID(0))
         ) {
             $0.status = .loading(requestID: UUID(0))
         }
@@ -223,25 +242,25 @@ struct SearchPaginationReducerTests {
 
     @Test
     func cancelStopsAnUnresolvedPageRequest() async {
+        let cursor = SearchCursor(value: "page-2")
         let store = TestStore(
-            initialState: SearchPaginationReducer.State(
+            initialState: ProviderSearchResultsReducer.State(
+                providerID: .testProvider,
+                query: "frozen query",
                 tracks: [],
-                nextCursor: SearchCursor(value: "page-2"),
-                status: .idle,
-                providerID: .testProvider
+                nextCursor: cursor,
+                status: .idle
             )
         ) {
-            SearchPaginationReducer()
+            ProviderSearchResultsReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
                 clients: [
                     .testProvider: ProviderSearchClient(
-                        searchPage: { request, _ in
-                            let expectedRequest = SearchPageRequest.continuation(
-                                SearchCursor(value: "page-2")
-                            )
-                            #expect(request == expectedRequest)
+                        searchPage: { request, limit in
+                            #expect(request == .continuation(cursor))
+                            #expect(limit == 20)
                             return try await Task.never()
                         }
                     )
@@ -251,11 +270,7 @@ struct SearchPaginationReducerTests {
 
         await store.send(.nextPageRequested)
         await store.receive(
-            .continueSearch(
-                providerID: .testProvider,
-                cursor: SearchCursor(value: "page-2"),
-                requestID: UUID(0)
-            )
+            .continueSearch(cursor, requestID: UUID(0))
         ) {
             $0.status = .loading(requestID: UUID(0))
         }
@@ -263,24 +278,25 @@ struct SearchPaginationReducerTests {
             $0.status = .idle
         }
     }
+}
 
-    // MARK: - Helpers
-
-    private func makeStore(
-        tracks: [Track],
-        nextCursor: SearchCursor?,
-        status: SearchPaginationReducer.Status,
-        nextPage: SearchPage
-    ) -> TestStoreOf<SearchPaginationReducer> {
+private extension ProviderSearchResultsReducerTests {
+    func makeStore(
+        tracks: IdentifiedArrayOf<Track> = [],
+        nextCursor: SearchCursor? = nil,
+        status: ProviderSearchResultsReducer.Status = .idle,
+        nextPage: SearchPage = SearchPage(tracks: [], nextCursor: nil)
+    ) -> TestStoreOf<ProviderSearchResultsReducer> {
         TestStore(
-            initialState: SearchPaginationReducer.State(
-                tracks: .init(uniqueElements: tracks),
+            initialState: ProviderSearchResultsReducer.State(
+                providerID: .testProvider,
+                query: "frozen query",
+                tracks: tracks,
                 nextCursor: nextCursor,
-                status: status,
-                providerID: .testProvider
+                status: status
             )
         ) {
-            SearchPaginationReducer()
+            ProviderSearchResultsReducer()
         } withDependencies: {
             $0.uuid = .incrementing
             $0.providerSearchClients = ProviderClientRegistry(
@@ -289,7 +305,7 @@ struct SearchPaginationReducerTests {
                         searchPage: { request, limit in
                             guard let nextCursor else {
                                 Issue.record(
-                                    "Pagination requires a continuation cursor"
+                                    "Continuation requires an owned cursor"
                                 )
                                 return SearchPage(tracks: [], nextCursor: nil)
                             }
@@ -303,9 +319,9 @@ struct SearchPaginationReducerTests {
         }
     }
 
-    private func makeTrack(nativeID: String) -> Track {
+    func makeTrack(nativeID: String) -> Track {
         Track(
-            id: TrackID(providerID: "fake", nativeID: nativeID),
+            id: TrackID(providerID: .testProvider, nativeID: nativeID),
             title: "Song \(nativeID)",
             artistName: "Artist",
             albumTitle: nil,

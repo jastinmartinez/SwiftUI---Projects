@@ -61,7 +61,8 @@ struct SearchPresentationAdapterTests {
                 status: loadedStatus(
                     tracks: [track],
                     nextCursor: nil,
-                    paginationStatus: .idle
+                    paginationStatus: .idle,
+                    query: "library"
                 )
             )
         )
@@ -121,11 +122,11 @@ struct SearchPresentationAdapterTests {
     }
 
     @Test(arguments: [
-        SearchPaginationReducer.Status.idle,
+        ProviderSearchResultsReducer.Status.idle,
         .failed(.network),
     ])
     func paginationCallbackStartsTheExpectedPageRequest(
-        paginationStatus: SearchPaginationReducer.Status
+        paginationStatus: ProviderSearchResultsReducer.Status
     ) throws {
         let store = Store(
             initialState: SearchReducer.State(
@@ -191,21 +192,23 @@ struct SearchPresentationAdapterTests {
     private func loadedStatus(
         tracks: [Track],
         nextCursor: SearchCursor?,
-        paginationStatus: SearchPaginationReducer.Status
+        paginationStatus: ProviderSearchResultsReducer.Status,
+        query: String = "result"
     ) -> SearchReducer.Status {
         .loaded(
-            SearchPaginationReducer.State(
+            ProviderSearchResultsReducer.State(
+                providerID: .testProvider,
+                query: query,
                 tracks: .init(uniqueElements: tracks),
                 nextCursor: nextCursor,
-                status: paginationStatus,
-                providerID: .testProvider
+                status: paginationStatus
             )
         )
     }
 
     private func makeResultsModel(
         nextCursor: SearchCursor?,
-        paginationStatus: SearchPaginationReducer.Status
+        paginationStatus: ProviderSearchResultsReducer.Status
     ) -> SearchResultsView.Model {
         SearchResultsView.Model(
             makeStore(

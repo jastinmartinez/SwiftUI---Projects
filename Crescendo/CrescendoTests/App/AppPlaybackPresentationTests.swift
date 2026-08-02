@@ -45,11 +45,12 @@ struct AppPlaybackPresentationTests {
             search: SearchReducer.State(
                 query: "",
                 status: .loaded(
-                    SearchPaginationReducer.State(
+                    ProviderSearchResultsReducer.State(
+                        providerID: .testProvider,
+                        query: "",
                         tracks: [song],
                         nextCursor: nil,
-                        status: .idle,
-                        providerID: .testProvider
+                        status: .idle
                     )
                 ),
                 providerID: .testProvider
