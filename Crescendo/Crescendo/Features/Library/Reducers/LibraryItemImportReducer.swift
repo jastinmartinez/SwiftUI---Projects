@@ -333,28 +333,23 @@ struct LibraryItemImportReducer {
                     return .none
                 }
 
-                if case let .failure(failure) = result {
-                    state.issues.append(
-                        LibraryImportReducer.Issue(
-                            id: uuid(),
-                            sourceName: state.source.lastPathComponent,
-                            failure: failure
-                        )
-                    )
-                }
-
                 state.phase = .completed
-                return .send(
-                    .delegate(
-                        .imported(
-                            ImportedItem(
-                                item: item,
-                                catalog: catalog,
-                                issues: state.issues
+                switch result {
+                case .success:
+                    return .send(
+                        .delegate(
+                            .imported(
+                                ImportedItem(
+                                    item: item,
+                                    catalog: catalog,
+                                    issues: state.issues
+                                )
                             )
                         )
                     )
-                )
+                case let .failure(failure):
+                    return .send(.fileFailed(failure))
+                }
 
             case .duplicateStagedAudioDiscarded:
                 guard case .discardingDuplicate = state.phase else {

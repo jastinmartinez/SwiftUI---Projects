@@ -40,7 +40,7 @@ struct LibraryPresentationAdapterTests {
 
     @Test
     func overviewRoutesImportAndSongsActions() {
-        let store = makeStore()
+        let store = makeStore(loadStatus: .loaded)
         let model = LibraryOverviewView.Model(store)
 
         model.onImport()
@@ -48,6 +48,45 @@ struct LibraryPresentationAdapterTests {
 
         model.onOpenSongs()
         #expect(store.path == [.songs])
+    }
+
+    @Test
+    func overviewEnablesImportOnlyAfterLoadCompletes() {
+        let loadingModel = LibraryOverviewView.Model(
+            makeStore(loadStatus: .loading)
+        )
+        let loadedModel = LibraryOverviewView.Model(
+            makeStore(loadStatus: .loaded)
+        )
+
+        #expect(!loadingModel.isImportEnabled)
+        #expect(loadedModel.isImportEnabled)
+    }
+
+    @Test
+    func emptyOverviewProjectsInitialLoadingWhileLibraryLoads() {
+        let idleModel = LibraryOverviewView.Model(
+            makeStore(loadStatus: .idle)
+        )
+        let loadingModel = LibraryOverviewView.Model(
+            makeStore(loadStatus: .loading)
+        )
+
+        #expect(idleModel.loadingPresentation == .initial)
+        #expect(loadingModel.loadingPresentation == .initial)
+    }
+
+    @Test
+    func confirmedOverviewProjectsRefreshingWhileLibraryReloads() {
+        let item = makeItem(index: 1)
+        let model = LibraryOverviewView.Model(
+            makeStore(
+                library: Library(items: [item]),
+                loadStatus: .loading
+            )
+        )
+
+        #expect(model.loadingPresentation == .refreshing)
     }
 
     @Test
@@ -186,13 +225,14 @@ private extension LibraryPresentationAdapterTests {
     func makeStore(
         library: Library = Library(items: []),
         importBatch: LibraryImportReducer.State? = nil,
-        fileSelectionFailure: LibraryFailure? = nil
+        fileSelectionFailure: LibraryFailure? = nil,
+        loadStatus: LibraryReducer.LoadStatus = .idle
     ) -> StoreOf<LibraryReducer> {
         Store(
             initialState: LibraryReducer.State(
                 library: library,
                 catalog: .init(entries: []),
-                loadStatus: .idle,
+                loadStatus: loadStatus,
                 path: [],
                 isFileImporterPresented: false,
                 recovery: nil,

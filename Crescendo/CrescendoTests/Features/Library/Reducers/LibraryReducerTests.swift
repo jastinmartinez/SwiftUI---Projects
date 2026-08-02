@@ -9,7 +9,10 @@ import Testing
 struct LibraryReducerTests {
     @Test
     func importButtonPresentsFileImporter() async {
-        let store = makeStore(scenario: Scenario())
+        let store = makeStore(
+            scenario: Scenario(),
+            initialLoadStatus: .loaded
+        )
 
         await store.send(.importButtonTapped) {
             $0.isFileImporterPresented = true
@@ -17,6 +20,21 @@ struct LibraryReducerTests {
         await store.send(.setFileImporterPresented(false)) {
             $0.isFileImporterPresented = false
         }
+    }
+
+    @Test
+    func importDoesNotStartBeforeLibraryLoadCompletes() async {
+        let source = URL(fileURLWithPath: "/external/song.m4a")
+        let store = makeStore(
+            scenario: Scenario(),
+            initialLoadStatus: .loading
+        )
+
+        await store.send(.importButtonTapped)
+        #expect(!store.state.isFileImporterPresented)
+
+        await store.send(.filesSelected([source]))
+        #expect(store.state.importBatch == nil)
     }
 
     @Test
@@ -29,7 +47,8 @@ struct LibraryReducerTests {
         let store = makeStore(
             scenario: Scenario(),
             initialLibrary: library,
-            initialCatalog: catalog
+            initialCatalog: catalog,
+            initialLoadStatus: .loaded
         )
 
         await store.send(.filesSelected([source])) {
@@ -79,6 +98,31 @@ struct LibraryReducerTests {
         }
 
         #expect(store.state.importBatch?.lifecycle == .completed(summary))
+    }
+
+    @Test
+    func completedImportDoesNotBlockTheNextImport() async {
+        let summary = LibraryImportReducer.Summary(
+            importedCount: 1,
+            duplicateCount: 0,
+            issues: []
+        )
+        var importBatch = LibraryImportReducer.State(
+            sources: [],
+            library: Library(items: []),
+            catalog: .init(entries: [])
+        )
+        importBatch.lifecycle = .completed(summary)
+        importBatch.phase = .completed
+        let store = makeStore(
+            scenario: Scenario(),
+            initialImportBatch: importBatch,
+            initialLoadStatus: .loaded
+        )
+
+        await store.send(.importButtonTapped) {
+            $0.isFileImporterPresented = true
+        }
     }
 
     @Test
@@ -140,7 +184,10 @@ struct LibraryReducerTests {
 
     @Test
     func pickerFailureDismissesImporterAndNextAttemptClearsFailure() async {
-        let store = makeStore(scenario: Scenario())
+        let store = makeStore(
+            scenario: Scenario(),
+            initialLoadStatus: .loaded
+        )
 
         await store.send(.importButtonTapped) {
             $0.isFileImporterPresented = true
@@ -917,13 +964,14 @@ struct LibraryReducerTests {
         scenario: Scenario,
         initialLibrary: Library = Library(items: []),
         initialCatalog: LibraryCatalogClient.Snapshot = .init(entries: []),
-        initialImportBatch: LibraryImportReducer.State? = nil
+        initialImportBatch: LibraryImportReducer.State? = nil,
+        initialLoadStatus: LibraryReducer.LoadStatus = .idle
     ) -> TestStoreOf<LibraryReducer> {
         let store = TestStore(
             initialState: LibraryReducer.State(
                 library: initialLibrary,
                 catalog: initialCatalog,
-                loadStatus: .idle,
+                loadStatus: initialLoadStatus,
                 path: [],
                 isFileImporterPresented: false,
                 recovery: nil,

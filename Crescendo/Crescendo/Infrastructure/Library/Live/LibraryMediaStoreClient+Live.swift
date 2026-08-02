@@ -217,10 +217,20 @@ private extension LibraryMediaStoreClient {
                     for: trackID,
                     fileExtension: fileExtension
                 ),
-                fileSystem.resolve(reference) == fileURL
+                let resolvedURL = fileSystem.resolve(reference)
             else {
                 return .failure(.invalidManagedFile)
             }
+
+            // FileManager may enumerate the app container through `/private/var`
+            // even when its root was supplied through `/var`. Resolving both
+            // paths preserves their file identity.
+            let canonicalResolvedURL = resolvedURL.resolvingSymlinksInPath()
+            let canonicalFileURL = fileURL.resolvingSymlinksInPath()
+            guard canonicalResolvedURL == canonicalFileURL else {
+                return .failure(.invalidManagedFile)
+            }
+
             do {
                 return try .success(
                     LibraryMediaStoreClient.StoredAudio(

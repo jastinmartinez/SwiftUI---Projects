@@ -25,3 +25,15 @@ extension LibraryReducer {
         )
     }
 }
+
+extension LibraryReducer.State {
+    /// Whether a new import can start from a fully recovered projection.
+    var isImportAvailable: Bool {
+        loadStatus == .loaded && !hasActiveImportBatch
+    }
+
+    private var hasActiveImportBatch: Bool {
+        guard let importBatch else { return false }
+        return importBatch.phase != .completed
+    }
+}

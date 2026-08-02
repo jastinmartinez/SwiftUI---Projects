@@ -274,7 +274,7 @@ struct LibraryImportReducerTests {
     }
 
     @Test
-    func catalogFailureKeepsManagedItemAndRecordsIssue() async {
+    func catalogFailureDoesNotCommitLibraryMembership() async {
         let sourceURL = URL(fileURLWithPath: "/external/Song.m4a")
         let stagedAudio = makeStagedAudio()
         let metadata = makeMetadata()
@@ -283,33 +283,21 @@ struct LibraryImportReducerTests {
             nativeID: UUID(0).uuidString
         )
         let storedAudio = makeStoredAudio(trackID: trackID)
-        let entry = makeEntry(
-            trackID: trackID,
-            stagedAudio: stagedAudio,
-            storedAudio: storedAudio,
-            metadata: metadata
-        )
-        let item = makeItem(
-            trackID: trackID,
-            stagedAudio: stagedAudio,
-            storedAudio: storedAudio,
-            metadata: metadata
-        )
-        let catalog = LibraryCatalogClient.Snapshot(entries: [entry])
-        let library = Library(items: [item])
+        let emptyCatalog = LibraryCatalogClient.Snapshot(entries: [])
+        let emptyLibrary = Library(items: [])
         let issue = LibraryImportReducer.Issue(
             id: UUID(1),
             sourceName: stagedAudio.sourceName,
             failure: .catalogWriteFailed
         )
         let summary = LibraryImportReducer.Summary(
-            importedCount: 1,
+            importedCount: 0,
             duplicateCount: 0,
             issues: [issue]
         )
         let completion = LibraryImportReducer.Completion(
-            library: library,
-            catalog: catalog,
+            library: emptyLibrary,
+            catalog: emptyCatalog,
             summary: summary
         )
         let scenario = Scenario(
@@ -326,8 +314,8 @@ struct LibraryImportReducerTests {
         await store.send(.start)
         await store.receive(.delegate(.completed(completion)))
 
-        #expect(store.state.workingLibrary == library)
-        #expect(store.state.workingCatalog == catalog)
+        #expect(store.state.workingLibrary == emptyLibrary)
+        #expect(store.state.workingCatalog == emptyCatalog)
         #expect(store.state.lifecycle == .completed(summary))
         #expect(store.state.phase == .completed)
         #expect(
@@ -335,7 +323,18 @@ struct LibraryImportReducerTests {
                 .stageAudio(sourceURL),
                 .readMetadata(stagedAudio.temporaryURL),
                 .storeAudio(stagedAudio, trackID),
-                .replaceCatalog(catalog),
+                .replaceCatalog(
+                    LibraryCatalogClient.Snapshot(
+                        entries: [
+                            makeEntry(
+                                trackID: trackID,
+                                stagedAudio: stagedAudio,
+                                storedAudio: storedAudio,
+                                metadata: metadata
+                            )
+                        ]
+                    )
+                ),
             ]
         )
     }

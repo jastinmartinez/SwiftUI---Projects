@@ -48,6 +48,7 @@ extension Locs {
         static let importMusic = String(localized: "library.import_music")
         static let emptyTitle = String(localized: "library.empty_title")
         static let emptyMessage = String(localized: "library.empty_message")
+        static let loading = String(localized: "library.loading")
         static let unknownAlbum = String(localized: "library.unknown_album")
 
         static func failure(_ failure: LibraryFailure) -> String {

@@ -2,13 +2,39 @@ import SwiftUI
 
 /// Renders the stateless Library overview and its primary affordances.
 ///
-/// The view owns overview layout, empty presentation, counts, and the limited
-/// Recently Added list. It does not hold a Store, localize text, sort or count
-/// Library data, present the file picker, navigate, or control playback.
+/// The view owns overview layout, loading and empty presentation, counts, and
+/// the limited Recently Added list. It does not hold a Store, localize text,
+/// sort or count Library data, present the file picker, navigate, or control
+/// playback.
 struct LibraryOverviewView: View {
     let model: Model
 
     var body: some View {
+        Group {
+            switch model.loadingPresentation {
+            case .initial:
+                ProgressView(model.strings.loading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            case .refreshing, .hidden:
+                overview
+            }
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+        .navigationTitle(model.strings.title)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if model.loadingPresentation == .refreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Button(model.strings.importMusic, action: model.onImport)
+                    .disabled(!model.isImportEnabled)
+            }
+        }
+    }
+
+    private var overview: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 counts
@@ -21,19 +47,13 @@ struct LibraryOverviewView: View {
                     } actions: {
                         Button(model.strings.importMusic, action: model.onImport)
                             .buttonStyle(.borderedProminent)
+                            .disabled(!model.isImportEnabled)
                     }
                 } else {
                     recentlyAdded
                 }
             }
             .padding(20)
-        }
-        .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle(model.strings.title)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(model.strings.importMusic, action: model.onImport)
-            }
         }
     }
 
@@ -113,6 +133,8 @@ extension LibraryOverviewView {
         let albumCount: Int
         let recentlyAdded: [LibraryTrackRowView.Model]
         let isEmpty: Bool
+        let isImportEnabled: Bool
+        let loadingPresentation: LoadingPresentation
         let strings: Strings
         let onImport: () -> Void
         let onOpenSongs: () -> Void
@@ -120,6 +142,13 @@ extension LibraryOverviewView {
 }
 
 extension LibraryOverviewView.Model {
+    /// Describes how loading appears with or without confirmed Library content.
+    enum LoadingPresentation: Equatable {
+        case initial
+        case refreshing
+        case hidden
+    }
+
     /// Contains every localized string rendered by the Library overview.
     struct Strings: Equatable {
         let title: String
@@ -129,5 +158,6 @@ extension LibraryOverviewView.Model {
         let importMusic: String
         let emptyTitle: String
         let emptyMessage: String
+        let loading: String
     }
 }

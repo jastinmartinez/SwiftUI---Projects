@@ -85,6 +85,9 @@ struct LibraryReducer {
                 return .send(.task)
 
             case .importButtonTapped:
+                guard state.isImportAvailable else {
+                    return .none
+                }
                 state.isFileImporterPresented = true
                 state.fileSelectionFailure = nil
                 return .none
@@ -96,7 +99,12 @@ struct LibraryReducer {
             case let .filesSelected(sources):
                 state.isFileImporterPresented = false
                 state.fileSelectionFailure = nil
-                guard !sources.isEmpty else { return .none }
+                guard
+                    state.isImportAvailable,
+                    !sources.isEmpty
+                else {
+                    return .none
+                }
                 state.importBatch = LibraryImportReducer.State(
                     sources: sources,
                     library: state.library,

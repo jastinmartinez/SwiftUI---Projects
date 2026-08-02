@@ -271,6 +271,16 @@
         }
       }
     },
+    "library.loading" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading Library"
+          }
+        }
+      }
+    },
     "library.recently_added" : {
       "localizations" : {
         "en" : {
