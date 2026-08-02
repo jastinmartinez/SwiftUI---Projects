@@ -1,152 +1,224 @@
 import ComposableArchitecture
 import Foundation
 
-/// Owns catalog-search input and request state for an immutable provider routing context.
+/// Coordinates a submitted query across provider search children.
+///
+/// Each provider child owns its request lifecycle and first-page result. This
+/// parent owns provider order, the frozen submitted query, destination
+/// presentation, and delegation toward App. It does not perform provider
+/// requests, paginate results, route tabs, or coordinate playback.
 @Reducer
 struct SearchReducer {
-    @CasePathable
-    enum Status: Equatable {
-        case idle
-        case searching(requestID: UUID)
-        case loaded(ProviderSearchResultsReducer.State)
-        case failed(MusicProviderError)
-    }
-
     @ObservableState
     struct State: Equatable {
         var query: String
-        var status: Status
-        var providerID: ProviderID
-    }
+        var submittedQuery: String?
+        var providers: IdentifiedArrayOf<ProviderSearchReducer.State>
+        @Presents var destination: ProviderSearchResultsReducer.State?
 
-    /// Events emitted after search state validates a presentation action.
-    enum Delegate: Equatable {
-        case trackTapped(
-            Track,
-            loadedResults: IdentifiedArrayOf<Track>
-        )
+        init(query: String = "", providerIDs: [ProviderID]) {
+            self.query = query
+            submittedQuery = nil
+            destination = nil
+
+            var uniqueProviderIDs: [ProviderID] = []
+            var seenProviderIDs: Set<ProviderID> = []
+            for providerID in providerIDs {
+                guard seenProviderIDs.insert(providerID).inserted else {
+                    continue
+                }
+                uniqueProviderIDs.append(providerID)
+            }
+
+            if let libraryIndex = uniqueProviderIDs.firstIndex(of: .library) {
+                uniqueProviderIDs.remove(at: libraryIndex)
+                uniqueProviderIDs.insert(.library, at: 0)
+            }
+
+            providers = IdentifiedArray(
+                uniqueElements: uniqueProviderIDs.map {
+                    ProviderSearchReducer.State(
+                        providerID: $0,
+                        status: .inactive
+                    )
+                }
+            )
+        }
     }
 
     @CasePathable
     enum Action: Equatable {
         case queryChanged(String)
         case submitButtonTapped
-        case retryButtonTapped
-        case cancel
-        case startSearch(
-            providerID: ProviderID,
-            query: String,
-            requestID: UUID
+        case searchSubmitted(String)
+        case cancelProviderSearches
+        case providers(IdentifiedActionOf<ProviderSearchReducer>)
+        case destination(
+            PresentationAction<ProviderSearchResultsReducer.Action>
         )
-        case cancelSearch
-        case pagination(ProviderSearchResultsReducer.Action)
         case delegate(Delegate)
-        case searchResponse(UUID, Result<SearchPage, MusicProviderError>)
     }
 
-    enum CancelID { case search }
-
-    @Dependency(\.providerSearchClients) var providerSearchClients
-    @Dependency(\.uuid) var uuid
-
     var body: some ReducerOf<Self> {
-        Scope(state: \.status, action: \.pagination) {
-            EmptyReducer<Status, ProviderSearchResultsReducer.Action>()
-                .ifCaseLet(\.loaded, action: \.self) {
-                    ProviderSearchResultsReducer()
-                }
-        }
         Reduce { state, action in
             switch action {
             case .queryChanged(let query):
                 state.query = query
-                return .send(.cancelSearch)
+                return .send(.cancelProviderSearches)
 
-            case .cancel:
-                return .send(.cancelSearch)
-
-            case .submitButtonTapped, .retryButtonTapped:
-                let query = state.query.trimmingCharacters(in: .whitespacesAndNewlines)
+            case .submitButtonTapped:
+                let query = state.query.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
                 guard !query.isEmpty else {
-                    return .send(.cancelSearch)
+                    return .send(.cancelProviderSearches)
                 }
-                let requestID = uuid()
+                return .send(.searchSubmitted(query))
+
+            case .searchSubmitted(let query):
+                state.submittedQuery = query
+                state.destination = nil
+                let providerIDs = state.providers.prefix(5).map(\.id)
+                return .merge(
+                    providerIDs.map { providerID in
+                        .send(
+                            .providers(
+                                .element(
+                                    id: providerID,
+                                    action: .searchRequested(query: query)
+                                )
+                            )
+                        )
+                    }
+                )
+
+            case .cancelProviderSearches:
+                state.submittedQuery = nil
+                state.destination = nil
+                let providerIDs = state.providers.map(\.id)
+                return .merge(
+                    providerIDs.map { providerID in
+                        .send(
+                            .providers(
+                                .element(
+                                    id: providerID,
+                                    action: .cancel
+                                )
+                            )
+                        )
+                    }
+                )
+
+            case .providers(
+                .element(
+                    id: let providerID,
+                    action: .delegate(.activationRequested)
+                )
+            ):
+                guard let query = state.submittedQuery else {
+                    return .none
+                }
                 return .send(
-                    .startSearch(
-                        providerID: state.providerID,
-                        query: query,
-                        requestID: requestID
+                    .providers(
+                        .element(
+                            id: providerID,
+                            action: .searchRequested(query: query)
+                        )
                     )
                 )
 
-            case .startSearch(let providerID, let query, let requestID):
-                state.status = .searching(requestID: requestID)
-                return .run { send in
-                    do {
-                        guard
-                            let searchClient = providerSearchClients[providerID]
-                        else {
-                            throw MusicProviderError.providerUnavailable(providerID)
-                        }
-                        let page = try await searchClient.searchPage(
-                            .initial(query: query),
-                            20
-                        )
-                        await send(.searchResponse(requestID, .success(page)))
-                    } catch let error as MusicProviderError {
-                        await send(.searchResponse(requestID, .failure(error)))
-                    } catch {
-                        await send(.searchResponse(requestID, .failure(.network)))
-                    }
+            case .providers(
+                .element(
+                    id: let providerID,
+                    action: .delegate(.retryRequested)
+                )
+            ):
+                guard let query = state.submittedQuery else {
+                    return .none
                 }
-                .cancellable(id: CancelID.search, cancelInFlight: true)
-
-            case .cancelSearch:
-                state.status = .idle
-                return .merge(
-                    .cancel(id: CancelID.search),
-                    .cancel(id: ProviderSearchResultsReducer.CancelID.nextPage)
+                return .send(
+                    .providers(
+                        .element(
+                            id: providerID,
+                            action: .searchRequested(query: query)
+                        )
+                    )
                 )
 
-            case .pagination(
-                .delegate(.trackTapped(let track, let loadedTracks))
+            case .providers(
+                .element(
+                    id: let providerID,
+                    action: .delegate(.seeAllRequested(let page))
+                )
+            ):
+                guard let query = state.submittedQuery else {
+                    return .none
+                }
+                state.destination = ProviderSearchResultsReducer.State(
+                    providerID: providerID,
+                    query: query,
+                    tracks: page.tracks,
+                    nextCursor: page.nextCursor,
+                    status: .idle
+                )
+                return .none
+
+            case .providers(
+                .element(
+                    id: _,
+                    action: .delegate(.libraryRequested)
+                )
+            ):
+                return .send(.delegate(.libraryRequested))
+
+            case .providers(
+                .element(
+                    id: _,
+                    action: .delegate(
+                        .trackTapped(
+                            let track,
+                            loadedTracks: let loadedTracks
+                        )
+                    )
+                )
             ):
                 return .send(
                     .delegate(
                         .trackTapped(
                             track,
-                            loadedResults: loadedTracks
+                            loadedTracks: loadedTracks
                         )
                     )
                 )
 
-            case .pagination, .delegate:
-                return .none
-
-            case .searchResponse(let requestID, .success(let page)):
-                guard state.status == .searching(requestID: requestID) else {
-                    return .none
-                }
-                state.status = .loaded(
-                    ProviderSearchResultsReducer.State(
-                        providerID: state.providerID,
-                        query: state.query.trimmingCharacters(
-                            in: .whitespacesAndNewlines
-                        ),
-                        tracks: .init(uniqueElements: page.tracks),
-                        nextCursor: page.nextCursor,
-                        status: .idle
+            case .destination(
+                .presented(
+                    .delegate(
+                        .trackTapped(
+                            let track,
+                            loadedTracks: let loadedTracks
+                        )
                     )
                 )
-                return .none
+            ):
+                return .send(
+                    .delegate(
+                        .trackTapped(
+                            track,
+                            loadedTracks: loadedTracks
+                        )
+                    )
+                )
 
-            case .searchResponse(let requestID, .failure(let error)):
-                guard state.status == .searching(requestID: requestID) else {
-                    return .none
-                }
-                state.status = .failed(error)
+            case .providers, .destination, .delegate:
                 return .none
             }
+        }
+        .forEach(\.providers, action: \.providers) {
+            ProviderSearchReducer()
+        }
+        .ifLet(\.$destination, action: \.destination) {
+            ProviderSearchResultsReducer()
         }
     }
 }

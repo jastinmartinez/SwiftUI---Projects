@@ -40,21 +40,18 @@ struct AppPlaybackPresentationTests {
             ),
             isPlayerPresented: true
         )
+        var search = SearchReducer.State(
+            providerIDs: [.testProvider]
+        )
+        search.providers[id: .testProvider]?.status = .loaded(
+            ProviderSearchReducer.Page(
+                tracks: [song],
+                nextCursor: nil
+            )
+        )
         let state = AppReducer.State(
             selectedTab: .search,
-            search: SearchReducer.State(
-                query: "",
-                status: .loaded(
-                    ProviderSearchResultsReducer.State(
-                        providerID: .testProvider,
-                        query: "",
-                        tracks: [song],
-                        nextCursor: nil,
-                        status: .idle
-                    )
-                ),
-                providerID: .testProvider
-            ),
+            search: search,
             library: makeLibraryState(),
             playback: playback
         )
@@ -103,9 +100,7 @@ struct AppPlaybackPresentationTests {
             initialState: AppReducer.State(
                 selectedTab: .search,
                 search: SearchReducer.State(
-                    query: "",
-                    status: .idle,
-                    providerID: .testProvider
+                    providerIDs: [.testProvider]
                 ),
                 library: makeLibraryState(),
                 playback: playback

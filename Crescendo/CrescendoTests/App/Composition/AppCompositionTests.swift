@@ -35,7 +35,10 @@ struct AppCompositionTests {
             applicationSupportURL: Self.makeApplicationSupportURL()
         )
 
-        #expect(composition.initialState.search.providerID == .jamendo)
+        #expect(
+            composition.initialState.search.providers.ids.elements
+                == [.jamendo]
+        )
         #expect(composition.providerSearchClients[.jamendo] == nil)
     }
 

@@ -52,9 +52,7 @@ struct AppReducerTests {
         AppReducer.State(
             selectedTab: .search,
             search: SearchReducer.State(
-                query: "",
-                status: .idle,
-                providerID: .testProvider
+                providerIDs: [.testProvider]
             ),
             library: makeLibraryState(),
             playback: PlaybackReducer.State(

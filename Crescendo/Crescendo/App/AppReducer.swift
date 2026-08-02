@@ -43,8 +43,23 @@ struct AppReducer {
                 state.selectedTab = selectedTab
                 return .none
 
-            case let .search(.delegate(.trackTapped(track, loadedTracks))),
-                let .library(.delegate(.trackTapped(track, loadedTracks))):
+            case let .search(
+                .delegate(
+                    .trackTapped(track, loadedTracks: loadedTracks)
+                )
+            ):
+                return .send(
+                    .playback(
+                        .selectionReceived(
+                            track.id,
+                            loadedResults: loadedTracks
+                        )
+                    )
+                )
+
+            case let .library(
+                .delegate(.trackTapped(track, loadedTracks))
+            ):
                 return .send(
                     .playback(
                         .selectionReceived(

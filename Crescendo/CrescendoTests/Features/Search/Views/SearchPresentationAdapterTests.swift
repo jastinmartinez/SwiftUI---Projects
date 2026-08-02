@@ -9,10 +9,10 @@ struct SearchPresentationAdapterTests {
     @Test
     func searchHeaderRequiresOnlyANonemptyTrimmedQuery() {
         let enabled = SearchHeaderView.Model(
-            makeStore(query: " vela ", status: .idle)
+            makeStore(query: " vela ")
         )
         let disabled = SearchHeaderView.Model(
-            makeStore(query: "   ", status: .idle)
+            makeStore(query: "   ")
         )
 
         #expect(enabled.isSearchEnabled)
@@ -20,27 +20,24 @@ struct SearchPresentationAdapterTests {
     }
 
     @Test
-    func loadedTracksMapToProviderNeutralResultRows() {
-        let track = makeTrack()
+    func firstProviderPageMapsToProviderNeutralResultRows() throws {
+        let firstTrack = makeTrack()
+        let secondTrack = makeTrack(nativeID: "2")
         let model = SearchResultsView.Model(
             makeStore(
                 query: "result",
                 status: loadedStatus(
-                    tracks: [track],
-                    nextCursor: SearchCursor(value: "next"),
-                    paginationStatus: .idle
+                    tracks: [firstTrack, secondTrack],
+                    nextCursor: SearchCursor(value: "next")
                 )
             )
         )
 
-        guard case .results(let results) = model.content else {
-            Issue.record("Expected loaded results")
-            return
-        }
+        let results = try results(from: model)
 
-        #expect(results.summary == "1 song")
-        #expect(results.rows.map(\.id) == [track.id])
-        #expect(results.rows.map(\.paginationTriggerID) == ["next"])
+        #expect(results.summary == "2 songs")
+        #expect(results.rows.map(\.id) == [firstTrack.id, secondTrack.id])
+        #expect(results.rows.allSatisfy { $0.paginationTriggerID == nil })
         #expect(results.rows.first?.song.durationText == nil)
         #expect(results.footer.content == .hidden)
     }
@@ -60,175 +57,58 @@ struct SearchPresentationAdapterTests {
                 query: "library",
                 status: loadedStatus(
                     tracks: [track],
-                    nextCursor: nil,
-                    paginationStatus: .idle,
-                    query: "library"
+                    nextCursor: nil
                 )
             )
         )
 
-        let results = try results(from: model)
-
-        #expect(results.rows.first?.song.artistName == Locs.Common.unknownArtist)
+        #expect(
+            try results(from: model).rows.first?.song.artistName
+                == Locs.Common.unknownArtist
+        )
     }
 
     @Test
-    func nextPageTriggerMapsOnlyToLastResultRow() {
-        let firstTrack = makeTrack()
-        let lastTrack = makeTrack(nativeID: "2")
+    func providerFailureMapsToRetryPresentation() {
         let model = SearchResultsView.Model(
-            makeStore(
-                query: "result",
-                status: loadedStatus(
-                    tracks: [firstTrack, lastTrack],
-                    nextCursor: SearchCursor(value: "next"),
-                    paginationStatus: .idle
-                )
-            )
+            makeStore(query: "result", status: .failed(.network))
         )
 
-        guard case .results(let results) = model.content else {
-            Issue.record("Expected loaded results")
+        guard case .failed = model.content else {
+            Issue.record("Expected failure presentation")
             return
         }
-
-        #expect(results.rows.map(\.paginationTriggerID) == [nil, "next"])
     }
+}
 
-    @Test
-    func loadedPaginationMapsFooterPresentation() throws {
-        let cursor = SearchCursor(value: "next")
-        let hidden = makeResultsModel(
-            nextCursor: nil,
-            paginationStatus: .idle
-        )
-        let ready = makeResultsModel(
-            nextCursor: cursor,
-            paginationStatus: .idle
-        )
-        let loading = makeResultsModel(
-            nextCursor: cursor,
-            paginationStatus: .loading(requestID: UUID(0))
-        )
-        let failed = makeResultsModel(
-            nextCursor: cursor,
-            paginationStatus: .failed(.network)
-        )
-
-        #expect(try footer(from: hidden).content == .hidden)
-        #expect(try footer(from: ready).content == .hidden)
-        #expect(try footer(from: loading).content == .loading)
-        #expect(try footer(from: failed).content == .failed)
-    }
-
-    @Test(arguments: [
-        ProviderSearchResultsReducer.Status.idle,
-        .failed(.network),
-    ])
-    func paginationCallbackStartsTheExpectedPageRequest(
-        paginationStatus: ProviderSearchResultsReducer.Status
-    ) throws {
-        let store = Store(
-            initialState: SearchReducer.State(
-                query: "result",
-                status: loadedStatus(
-                    tracks: [makeTrack()],
-                    nextCursor: SearchCursor(value: "next"),
-                    paginationStatus: paginationStatus
-                ),
-                providerID: .testProvider
-            )
-        ) {
-            SearchReducer()
-        } withDependencies: {
-            $0.uuid = .incrementing
-            $0.providerSearchClients = ProviderClientRegistry(
-                clients: [
-                    .testProvider: ProviderSearchClient(
-                        searchPage: { request, _ in
-                            let expectedRequest = SearchPageRequest.continuation(
-                                SearchCursor(value: "next")
-                            )
-                            #expect(request == expectedRequest)
-                            return try await Task.never()
-                        }
-                    )
-                ]
-            )
-        }
-        let results = try results(from: SearchResultsView.Model(store))
-
-        switch paginationStatus {
-        case .idle:
-            results.onLoadNextPage()
-        case .failed:
-            results.footer.onRetry()
-        case .loading:
-            Issue.record("This test covers only actionable footer states")
-        }
-
-        guard case .loaded(let pagination) = store.status else {
-            Issue.record("Expected loaded pagination state")
-            return
-        }
-        #expect(pagination.status == .loading(requestID: UUID(0)))
-    }
-
-    private func makeStore(
+private extension SearchPresentationAdapterTests {
+    func makeStore(
         query: String,
-        status: SearchReducer.Status
+        status: ProviderSearchReducer.Status = .inactive
     ) -> StoreOf<SearchReducer> {
-        Store(
-            initialState: SearchReducer.State(
-                query: query,
-                status: status,
-                providerID: .testProvider
-            )
-        ) {
+        var state = SearchReducer.State(
+            query: query,
+            providerIDs: [.testProvider]
+        )
+        state.providers[id: .testProvider]?.status = status
+        return Store(initialState: state) {
             SearchReducer()
         }
     }
 
-    private func loadedStatus(
+    func loadedStatus(
         tracks: [Track],
-        nextCursor: SearchCursor?,
-        paginationStatus: ProviderSearchResultsReducer.Status,
-        query: String = "result"
-    ) -> SearchReducer.Status {
+        nextCursor: SearchCursor?
+    ) -> ProviderSearchReducer.Status {
         .loaded(
-            ProviderSearchResultsReducer.State(
-                providerID: .testProvider,
-                query: query,
+            ProviderSearchReducer.Page(
                 tracks: .init(uniqueElements: tracks),
-                nextCursor: nextCursor,
-                status: paginationStatus
+                nextCursor: nextCursor
             )
         )
     }
 
-    private func makeResultsModel(
-        nextCursor: SearchCursor?,
-        paginationStatus: ProviderSearchResultsReducer.Status
-    ) -> SearchResultsView.Model {
-        SearchResultsView.Model(
-            makeStore(
-                query: "result",
-                status: loadedStatus(
-                    tracks: [makeTrack()],
-                    nextCursor: nextCursor,
-                    paginationStatus: paginationStatus
-                )
-            )
-        )
-    }
-
-    private func footer(
-        from model: SearchResultsView.Model
-    ) throws -> SearchPaginationFooterView.Model {
-        try results(from: model).footer
-    }
-
-    private func results(
+    func results(
         from model: SearchResultsView.Model
     ) throws -> SearchResultListView.Model {
         guard case .results(let results) = model.content else {
@@ -237,7 +117,7 @@ struct SearchPresentationAdapterTests {
         return results
     }
 
-    private func makeTrack(nativeID: String = "1") -> Track {
+    func makeTrack(nativeID: String = "1") -> Track {
         Track(
             id: .init(providerID: "fake", nativeID: nativeID),
             title: "Result",

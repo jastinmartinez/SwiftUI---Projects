@@ -1,72 +1,69 @@
 import ComposableArchitecture
 
 extension SearchResultsView.Model {
-    /// Adapts reducer-owned search state and actions into presentation content.
+    /// Temporarily adapts the first provider rail into the existing search
+    /// presentation while the dedicated multi-provider rail UI is introduced.
     @MainActor
     init(_ store: StoreOf<SearchReducer>) {
+        guard let provider = store.providers.first else {
+            self.init(
+                content: .idle,
+                strings: Self.strings,
+                onRetry: {}
+            )
+            return
+        }
+
+        let providerID = provider.id
         let content: Content
-        switch store.status {
-        case .idle:
+        switch provider.status {
+        case .inactive:
             content = .idle
 
         case .searching:
             content = .loading
 
-        case .loaded(let pagination) where pagination.tracks.isEmpty:
-            content = .empty(query: store.query)
+        case .loaded(let page) where page.tracks.isEmpty:
+            content = .empty(query: store.submittedQuery ?? store.query)
 
-        case .loaded(let pagination):
-            let paginationTriggerID: String?
-            let footerContent: SearchPaginationFooterView.Model.Content
-            switch pagination.status {
-            case .idle:
-                paginationTriggerID = pagination.nextCursor?.value
-                footerContent = .hidden
-            case .loading:
-                paginationTriggerID = nil
-                footerContent = .loading
-            case .failed:
-                paginationTriggerID = nil
-                footerContent = .failed
-            }
-            let lastSongID = pagination.tracks.last?.id
-
+        case .loaded(let page):
             content = .results(
                 SearchResultListView.Model(
                     summary: Locs.Search.resultsSummary(
-                        count: pagination.tracks.count,
+                        count: page.tracks.count,
                         providerName: nil
                     ),
-                    rows: pagination.tracks.map { song in
+                    rows: page.tracks.map { track in
                         SearchResultListView.Model.Row(
-                            id: song.id,
+                            id: track.id,
                             song: TrackRowView.Model(
-                                song,
+                                track,
                                 accessory: .disclosure,
                                 showsDuration: false
                             ),
-                            paginationTriggerID: song.id == lastSongID
-                                ? paginationTriggerID
-                                : nil
+                            paginationTriggerID: nil
                         )
                     },
                     footer: SearchPaginationFooterView.Model(
-                        content: footerContent,
+                        content: .hidden,
                         strings: .init(
                             loading: Locs.Search.loadingMore,
                             failure: Locs.Search.loadMoreFailed,
                             retry: Locs.Common.retry
                         ),
-                        onRetry: {
-                            store.send(.pagination(.retryButtonTapped))
-                        }
+                        onRetry: {}
                     ),
-                    onTrackTapped: {
-                        store.send(.pagination(.resultTapped($0)))
+                    onTrackTapped: { trackID in
+                        store.send(
+                            .providers(
+                                .element(
+                                    id: providerID,
+                                    action: .resultTapped(trackID)
+                                )
+                            )
+                        )
                     },
-                    onLoadNextPage: {
-                        store.send(.pagination(.nextPageRequested))
-                    }
+                    onLoadNextPage: {}
                 )
             )
 
@@ -76,12 +73,25 @@ extension SearchResultsView.Model {
 
         self.init(
             content: content,
-            strings: Strings(
-                emptyTitle: Locs.Search.emptyTitle,
-                searching: Locs.Search.searching,
-                retry: Locs.Common.retry
-            ),
-            onRetry: { store.send(.retryButtonTapped) }
+            strings: Self.strings,
+            onRetry: {
+                store.send(
+                    .providers(
+                        .element(
+                            id: providerID,
+                            action: .retryButtonTapped
+                        )
+                    )
+                )
+            }
+        )
+    }
+
+    private static var strings: Strings {
+        Strings(
+            emptyTitle: Locs.Search.emptyTitle,
+            searching: Locs.Search.searching,
+            retry: Locs.Common.retry
         )
     }
 }

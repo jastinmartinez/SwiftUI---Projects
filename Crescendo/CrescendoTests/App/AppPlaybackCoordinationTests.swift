@@ -74,7 +74,7 @@ struct AppPlaybackCoordinationTests {
                 .delegate(
                     .trackTapped(
                         tracks[1],
-                        loadedResults: loadedResults
+                        loadedTracks: loadedResults
                     )
                 )
             )
@@ -117,7 +117,7 @@ struct AppPlaybackCoordinationTests {
                 .delegate(
                     .trackTapped(
                         selectedTracks[0],
-                        loadedResults: loadedResults
+                        loadedTracks: loadedResults
                     )
                 )
             )
@@ -164,14 +164,12 @@ struct AppPlaybackCoordinationTests {
                 currentTrackID: firstTracks[0].id
             )
         )
-        state.search.status = .loaded(
-            ProviderSearchResultsReducer.State(
-                providerID: providerID,
-                query: "track",
-                tracks: firstResults,
-                nextCursor: cursor,
-                status: .idle
-            )
+        state.search.destination = ProviderSearchResultsReducer.State(
+            providerID: providerID,
+            query: "track",
+            tracks: firstResults,
+            nextCursor: cursor,
+            status: .idle
         )
         let store = makeStore(state: state) {
             $0.providerSearchClients = ProviderClientRegistry(
@@ -190,45 +188,45 @@ struct AppPlaybackCoordinationTests {
             )
         }
 
-        await store.send(.search(.pagination(.nextPageRequested)))
+        await store.send(
+            .search(.destination(.presented(.nextPageRequested)))
+        )
         await store.receive(
             .search(
-                .pagination(
-                    .continueSearch(
-                        cursor,
-                        requestID: UUID(0)
+                .destination(
+                    .presented(
+                        .continueSearch(
+                            cursor,
+                            requestID: UUID(0)
+                        )
                     )
                 )
             )
         ) {
-            guard case .loaded(var pagination) = $0.search.status else {
-                return
-            }
-            pagination.status = .loading(requestID: UUID(0))
-            $0.search.status = .loaded(pagination)
+            $0.search.destination?.status = .loading(
+                requestID: UUID(0)
+            )
         }
         await store.receive(
             .search(
-                .pagination(
-                    .searchPageResponse(
-                        UUID(0),
-                        .success(
-                            SearchPage(
-                                tracks: [laterTrack],
-                                nextCursor: nil
+                .destination(
+                    .presented(
+                        .searchPageResponse(
+                            UUID(0),
+                            .success(
+                                SearchPage(
+                                    tracks: [laterTrack],
+                                    nextCursor: nil
+                                )
                             )
                         )
                     )
                 )
             )
         ) {
-            guard case .loaded(var pagination) = $0.search.status else {
-                return
-            }
-            pagination.tracks.append(laterTrack)
-            pagination.nextCursor = nil
-            pagination.status = .idle
-            $0.search.status = .loaded(pagination)
+            $0.search.destination?.tracks.append(laterTrack)
+            $0.search.destination?.nextCursor = nil
+            $0.search.destination?.status = .idle
         }
 
         #expect(
@@ -238,15 +236,21 @@ struct AppPlaybackCoordinationTests {
         #expect(store.state.playback.queue.pendingTrack == nil)
 
         await store.send(
-            .search(.pagination(.resultTapped(laterTrack.id)))
+            .search(
+                .destination(
+                    .presented(.resultTapped(laterTrack.id))
+                )
+            )
         )
         await store.receive(
             .search(
-                .pagination(
-                    .delegate(
-                        .trackTapped(
-                            laterTrack,
-                            loadedTracks: loadedResults
+                .destination(
+                    .presented(
+                        .delegate(
+                            .trackTapped(
+                                laterTrack,
+                                loadedTracks: loadedResults
+                            )
                         )
                     )
                 )
@@ -257,7 +261,7 @@ struct AppPlaybackCoordinationTests {
                 .delegate(
                     .trackTapped(
                         laterTrack,
-                        loadedResults: loadedResults
+                        loadedTracks: loadedResults
                     )
                 )
             )
@@ -382,9 +386,7 @@ struct AppPlaybackCoordinationTests {
         AppReducer.State(
             selectedTab: .search,
             search: SearchReducer.State(
-                query: "",
-                status: .idle,
-                providerID: providerID
+                providerIDs: [providerID]
             ),
             library: makeLibraryState(),
             playback: PlaybackReducer.State(

@@ -86,9 +86,7 @@ struct AppComposition {
             initialState: AppReducer.State(
                 selectedTab: .search,
                 search: SearchReducer.State(
-                    query: "",
-                    status: .idle,
-                    providerID: .jamendo
+                    providerIDs: [.jamendo]
                 ),
                 library: LibraryReducer.State(
                     library: Library(items: []),
