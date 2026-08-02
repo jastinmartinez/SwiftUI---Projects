@@ -22,21 +22,25 @@ struct AppComposition {
 
     /// Assembles provider, Library, and playback implementations.
     ///
-    /// Local search is always registered first. Invalid Jamendo configuration
-    /// leaves only its search capability unregistered. All Library adapters and
-    /// Local search share one managed filesystem rooted at
+    /// Local search is always registered first. Each remote provider is
+    /// registered only when its generated configuration value is valid.
+    /// Invalid Jamendo or Audius configuration does not affect the other
+    /// providers. All Library adapters and Local search share one managed
+    /// filesystem rooted at
     /// `Application Support/Crescendo/Library`, while every typed catalog
     /// operation is serialized by one actor-backed store.
     ///
     /// - Parameters:
     ///   - jamendoClientID: The generated bundle value used to validate Jamendo.
+    ///   - audiusAPIKey: The generated bundle value used to validate Audius.
     ///   - player: The single player shared by the selected playback engine.
     ///   - preparer: The explicit AVPlayer resource-validation mechanism.
-    ///   - data: The Jamendo HTTP transport.
+    ///   - data: The HTTP transport shared by configured remote providers.
     ///   - applicationSupportURL: The system Application Support directory.
     /// - Returns: Concrete initial state and dependency values for the root store.
     static func live(
         jamendoClientID: String?,
+        audiusAPIKey: String?,
         player: AVPlayer,
         preparer: AVPlayerItemPreparer,
         data:
@@ -90,6 +94,15 @@ struct AppComposition {
             )
             searchProviderIDs.append(.jamendo)
             searchClientsByProvider[.jamendo] = .live(jamendo: jamendoAPI)
+        }
+
+        if let audiusConfiguration = AudiusConfiguration(apiKey: audiusAPIKey) {
+            let audiusAPI = AudiusAPI(
+                configuration: audiusConfiguration,
+                data: data
+            )
+            searchProviderIDs.append(.audius)
+            searchClientsByProvider[.audius] = .live(audius: audiusAPI)
         }
 
         return Self(

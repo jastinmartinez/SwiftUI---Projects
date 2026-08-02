@@ -49,6 +49,7 @@ struct LibraryVerticalSliceTests {
         )
         let composition = AppComposition.live(
             jamendoClientID: nil,
+            audiusAPIKey: nil,
             player: AVPlayer(),
             preparer: AVPlayerItemPreparer(
                 loadIsPlayable: { _ in true },

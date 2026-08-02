@@ -11,6 +11,7 @@ struct AppCompositionTests {
     func liveStartsOnSearchWithAnEmptyIdleLibrary() {
         let composition = AppComposition.live(
             jamendoClientID: nil,
+            audiusAPIKey: nil,
             player: AVPlayer(),
             preparer: Self.preparer,
             data: { _ in throw MusicProviderError.network },
@@ -26,6 +27,7 @@ struct AppCompositionTests {
     func invalidConfigurationKeepsLibraryAsTheOnlySearchProvider() {
         let composition = AppComposition.live(
             jamendoClientID: "  ",
+            audiusAPIKey: nil,
             player: AVPlayer(),
             preparer: Self.preparer,
             data: { _ in
@@ -44,10 +46,46 @@ struct AppCompositionTests {
     }
 
     @Test
+    func blankAudiusConfigurationDoesNotRegisterAudius() {
+        let composition = AppComposition.live(
+            jamendoClientID: nil,
+            audiusAPIKey: "   ",
+            player: AVPlayer(),
+            preparer: Self.preparer,
+            data: { _ in
+                Issue.record("Blank configuration must not create Audius work")
+                throw MusicProviderError.network
+            },
+            applicationSupportURL: Self.makeApplicationSupportURL()
+        )
+
+        let providerIDs = composition.initialState.search.providers.ids.elements
+        #expect(providerIDs == [.library])
+        #expect(composition.providerSearchClients[.audius] == nil)
+    }
+
+    @Test
+    func validRemoteConfigurationsRegisterInDeterministicOrder() {
+        let composition = AppComposition.live(
+            jamendoClientID: "jamendo-key",
+            audiusAPIKey: "audius-key",
+            player: AVPlayer(),
+            preparer: Self.preparer,
+            data: { _ in throw MusicProviderError.network },
+            applicationSupportURL: Self.makeApplicationSupportURL()
+        )
+
+        let providerIDs = composition.initialState.search.providers.ids.elements
+        #expect(providerIDs == [.library, .jamendo, .audius])
+        #expect(composition.providerSearchClients[.audius] != nil)
+    }
+
+    @Test
     func validConfigurationRegistersPlayableJamendoSearchResults() async throws {
         let requests = LockIsolated<[URLRequest]>([])
         let composition = AppComposition.live(
             jamendoClientID: "test-client",
+            audiusAPIKey: nil,
             player: AVPlayer(),
             preparer: Self.preparer,
             data: { request in
@@ -81,6 +119,46 @@ struct AppCompositionTests {
     }
 
     @Test
+    func validAudiusConfigurationRegistersPlayableSearchResults() async throws {
+        let requests = LockIsolated<[URLRequest]>([])
+        let composition = AppComposition.live(
+            jamendoClientID: nil,
+            audiusAPIKey: "audius-key",
+            player: AVPlayer(),
+            preparer: Self.preparer,
+            data: { request in
+                requests.withValue { $0.append(request) }
+                let data = Data(Self.audiusTrackFixture.utf8)
+                return (data, try Self.okResponse(for: request))
+            },
+            applicationSupportURL: Self.makeApplicationSupportURL()
+        )
+        let client = try #require(
+            composition.providerSearchClients[.audius]
+        )
+
+        let page = try await client.searchPage(
+            .initial(query: "Signal"),
+            20
+        )
+
+        let providerIDs = composition.initialState.search.providers.ids.elements
+        #expect(providerIDs == [.library, .audius])
+        #expect(page.tracks.map(\.id.providerID) == [.audius])
+        let playbackURL = try #require(page.tracks.first?.playbackURL)
+        let components = try #require(
+            URLComponents(url: playbackURL, resolvingAgainstBaseURL: false)
+        )
+        #expect(components.path == "/v1/tracks/audius-42/stream")
+        #expect(
+            components.queryItems?.contains(
+                .init(name: "api_key", value: "audius-key")
+            ) == true
+        )
+        #expect(requests.value.count == 1)
+    }
+
+    @Test
     func livePlaybackClientsShareTheSuppliedPlayer() async throws {
         let playCallCount = LockIsolated(0)
         let pauseCallCount = LockIsolated(0)
@@ -97,6 +175,7 @@ struct AppCompositionTests {
         )
         let composition = AppComposition.live(
             jamendoClientID: nil,
+            audiusAPIKey: nil,
             player: player,
             preparer: preparer,
             data: { _ in throw MusicProviderError.network },
@@ -143,6 +222,7 @@ struct AppCompositionTests {
         defer { try? fileSystem.removeItemIfPresent(at: libraryRootURL) }
         let composition = AppComposition.live(
             jamendoClientID: nil,
+            audiusAPIKey: nil,
             player: AVPlayer(),
             preparer: Self.preparer,
             data: { _ in throw MusicProviderError.network },
@@ -215,6 +295,7 @@ struct AppCompositionTests {
         defer { try? fileSystem.removeItemIfPresent(at: libraryRootURL) }
         let composition = AppComposition.live(
             jamendoClientID: nil,
+            audiusAPIKey: nil,
             player: AVPlayer(),
             preparer: Self.preparer,
             data: { _ in throw MusicProviderError.network },
@@ -259,6 +340,20 @@ struct AppCompositionTests {
             "image": "https://example.com/artwork.jpg",
             "duration": "180",
             "audio": "https://example.com/audio.mp3"
+          }]
+        }
+        """
+
+    private nonisolated static let audiusTrackFixture = """
+        {
+          "data": [{
+            "id": "audius-42",
+            "title": "Signal",
+            "duration": 180,
+            "is_streamable": true,
+            "is_stream_gated": false,
+            "artwork": {"480x480": "https://example.com/audius.jpg"},
+            "user": {"name": "The Tests"}
           }]
         }
         """

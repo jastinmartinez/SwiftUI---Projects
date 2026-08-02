@@ -20,6 +20,8 @@
 	<string>1</string>
 	<key>JamendoClientID</key>
 	<string>$(JAMENDO_CLIENT_ID)</string>
+	<key>AudiusAPIKey</key>
+	<string>$(AUDIUS_API_KEY)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

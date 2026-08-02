@@ -14,8 +14,12 @@ struct CrescendoApp: App {
         let jamendoClientID =
             Bundle.main.object(forInfoDictionaryKey: "JamendoClientID")
             as? String
+        let audiusAPIKey =
+            Bundle.main.object(forInfoDictionaryKey: "AudiusAPIKey")
+            as? String
         let composition = AppComposition.live(
             jamendoClientID: jamendoClientID,
+            audiusAPIKey: audiusAPIKey,
             player: player,
             preparer: preparer,
             data: { try await URLSession.shared.data(for: $0) },
