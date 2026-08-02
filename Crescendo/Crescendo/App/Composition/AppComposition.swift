@@ -22,8 +22,9 @@ struct AppComposition {
 
     /// Assembles provider, Library, and playback implementations.
     ///
-    /// Invalid Jamendo configuration leaves its search capability unregistered.
-    /// All Library adapters share one managed filesystem rooted at
+    /// Local search is always registered first. Invalid Jamendo configuration
+    /// leaves only its search capability unregistered. All Library adapters and
+    /// Local search share one managed filesystem rooted at
     /// `Application Support/Crescendo/Library`, while every typed catalog
     /// operation is serialized by one actor-backed store.
     ///
@@ -45,18 +46,6 @@ struct AppComposition {
             ),
         applicationSupportURL: URL
     ) -> Self {
-        var searchClientsByProvider: [ProviderID: ProviderSearchClient] = [:]
-
-        if let jamendoConfiguration = JamendoConfiguration(
-            clientID: jamendoClientID
-        ) {
-            let jamendoAPI = JamendoAPI(
-                configuration: jamendoConfiguration,
-                data: data
-            )
-            searchClientsByProvider[.jamendo] = .live(jamendo: jamendoAPI)
-        }
-
         let playbackEngine = AVPlayerPlaybackEngine.live(
             player: player,
             preparer: preparer
@@ -81,12 +70,33 @@ struct AppComposition {
                 fileSystem: libraryFileSystem
             )
         )
+        let libraryCatalog = LibraryCatalogClient.live(
+            store: libraryCatalogStore
+        )
+        var searchProviderIDs: [ProviderID] = [.library]
+        var searchClientsByProvider: [ProviderID: ProviderSearchClient] = [
+            .library: .live(
+                libraryCatalog: libraryCatalog,
+                libraryMediaStore: libraryMediaStore
+            )
+        ]
+
+        if let jamendoConfiguration = JamendoConfiguration(
+            clientID: jamendoClientID
+        ) {
+            let jamendoAPI = JamendoAPI(
+                configuration: jamendoConfiguration,
+                data: data
+            )
+            searchProviderIDs.append(.jamendo)
+            searchClientsByProvider[.jamendo] = .live(jamendo: jamendoAPI)
+        }
 
         return Self(
             initialState: AppReducer.State(
                 selectedTab: .search,
                 search: SearchReducer.State(
-                    providerIDs: [.jamendo]
+                    providerIDs: searchProviderIDs
                 ),
                 library: LibraryReducer.State(
                     library: Library(items: []),
@@ -129,7 +139,7 @@ struct AppComposition {
             ),
             libraryMediaStore: libraryMediaStore,
             audioMetadata: .live(),
-            libraryCatalog: .live(store: libraryCatalogStore)
+            libraryCatalog: libraryCatalog
         )
     }
 

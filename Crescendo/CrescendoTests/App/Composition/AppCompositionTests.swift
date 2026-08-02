@@ -23,7 +23,7 @@ struct AppCompositionTests {
     }
 
     @Test
-    func invalidConfigurationOmitsJamendoCapabilities() {
+    func invalidConfigurationKeepsLibraryAsTheOnlySearchProvider() {
         let composition = AppComposition.live(
             jamendoClientID: "  ",
             player: AVPlayer(),
@@ -37,8 +37,9 @@ struct AppCompositionTests {
 
         #expect(
             composition.initialState.search.providers.ids.elements
-                == [.jamendo]
+                == [.library]
         )
+        #expect(composition.providerSearchClients[.library] != nil)
         #expect(composition.providerSearchClients[.jamendo] == nil)
     }
 
@@ -60,6 +61,12 @@ struct AppCompositionTests {
         let searchClient = try #require(
             composition.providerSearchClients[.jamendo]
         )
+
+        #expect(
+            composition.initialState.search.providers.ids.elements
+                == [.library, .jamendo]
+        )
+        #expect(composition.providerSearchClients[.library] != nil)
 
         let page = try await searchClient.searchPage(
             .initial(query: "Signal"),
@@ -141,20 +148,57 @@ struct AppCompositionTests {
             data: { _ in throw MusicProviderError.network },
             applicationSupportURL: applicationSupportURL
         )
-        let emptyCatalog = LibraryCatalogClient.Snapshot(entries: [])
+        let trackID = TrackID(
+            providerID: .library,
+            nativeID: UUID(0).uuidString
+        )
+        let contentIdentity = Library.ContentIdentity(
+            rawValue: String(repeating: "a", count: 64)
+        )
+        try fileSystem.createDirectory(at: fileSystem.stagingDirectoryURL)
+        let stagedURL = fileSystem.stagingDirectoryURL.appending(
+            path: "fixture.mp3"
+        )
+        try fileSystem.writeData(Data("fixture audio".utf8), to: stagedURL)
+        let storedAudio = try await composition.libraryMediaStore.storeAudio(
+            LibraryMediaStoreClient.StagedAudio(
+                sourceName: "fixture.mp3",
+                temporaryURL: stagedURL,
+                fileExtension: .init(rawValue: "mp3"),
+                contentIdentity: contentIdentity
+            ),
+            trackID
+        ).get()
+        let catalog = LibraryCatalogClient.Snapshot(
+            entries: [
+                LibraryCatalogClient.Entry(
+                    id: trackID,
+                    audioReference: storedAudio.reference,
+                    contentIdentity: contentIdentity,
+                    title: "Shared Fixture",
+                    artistName: "Composition Tests",
+                    albumTitle: nil,
+                    albumArtistName: nil,
+                    duration: 10,
+                    trackNumber: nil,
+                    discNumber: nil,
+                    artworkReference: nil,
+                    addedAt: storedAudio.creationDate
+                )
+            ]
+        )
+        _ = try await composition.libraryCatalog.replace(catalog).get()
+        let librarySearch = try #require(
+            composition.providerSearchClients[.library]
+        )
 
-        #expect(
-            await composition.libraryMediaStore.listStoredAudio()
-                == .success([])
+        let page = try await librarySearch.searchPage(
+            .initial(query: "shared"),
+            20
         )
-        #expect(
-            await composition.libraryCatalog.replace(emptyCatalog)
-                == .success(emptyCatalog)
-        )
-        #expect(
-            await composition.libraryCatalog.load()
-                == .success(emptyCatalog)
-        )
+
+        #expect(page.tracks.map(\.id.providerID) == [.library])
+        #expect(page.tracks.map(\.playbackURL) == [storedAudio.url])
         #expect(
             try fileSystem.readDataIfPresent(at: fileSystem.catalogURL) != nil
         )
