@@ -232,60 +232,62 @@ struct SearchReducerTests {
     }
 
     @Test
-    func queryEditingClearsSearchAndRejectsStaleChildResponses() async {
-        let searching = ProviderID(rawValue: "searching")
-        let loaded = ProviderID(rawValue: "loaded")
-        let failed = ProviderID(rawValue: "failed")
+    func queryEditingPreservesResultsUntilAnotherQueryIsSubmitted() async {
+        let providerID = ProviderID(rawValue: "provider")
+        let existingPage = ProviderSearchReducer.Page(
+            tracks: [makeTrack(providerID: providerID)],
+            nextCursor: nil
+        )
         var state = SearchReducer.State(
             query: "old",
-            providerIDs: [searching, loaded, failed]
+            providerIDs: [providerID]
         )
         state.submittedQuery = "old"
-        state.providers[id: searching]?.status = .searching(
-            requestID: UUID(7)
+        state.providers[id: providerID]?.status = .loaded(existingPage)
+        let store = makeStore(
+            state: state,
+            clients: suspendedClients(for: [providerID])
         )
-        state.providers[id: loaded]?.status = .loaded(emptyPage())
-        state.providers[id: failed]?.status = .failed(.network)
-        state.destination = ProviderSearchResultsReducer.State(
-            providerID: loaded,
-            query: "old",
-            tracks: [],
-            nextCursor: nil,
-            status: .idle
+
+        await store.send(.queryChanged("")) {
+            $0.query = ""
+        }
+
+        #expect(store.state.submittedQuery == "old")
+        #expect(
+            store.state.providers[id: providerID]?.status
+                == .loaded(existingPage)
         )
-        let store = makeStore(state: state)
 
         await store.send(.queryChanged("new")) {
             $0.query = "new"
         }
-        await store.receive(.cancelProviderSearches) {
-            $0.submittedQuery = nil
-            $0.destination = nil
+
+        #expect(store.state.submittedQuery == "old")
+        #expect(
+            store.state.providers[id: providerID]?.status
+                == .loaded(existingPage)
+        )
+
+        await store.send(.submitButtonTapped)
+        await store.receive(.searchSubmitted("new")) {
+            $0.submittedQuery = "new"
         }
-        await receiveProviderCancellations(
+        await receiveSearchRequests(
             in: store,
-            providerIDs: [searching, loaded, failed]
+            providerIDs: [providerID],
+            query: "new"
         )
 
-        await store.send(
-            .providers(
-                .element(
-                    id: searching,
-                    action: .searchResponse(
-                        UUID(7),
-                        .success(
-                            SearchPage(
-                                tracks: [makeTrack(providerID: searching)],
-                                nextCursor: nil
-                            )
-                        )
-                    )
-                )
-            )
+        #expect(
+            store.state.providers[id: providerID]?.status
+                == .searching(requestID: UUID(0))
         )
 
-        #expect(store.state.submittedQuery == nil)
-        #expect(store.state.providers.allSatisfy { $0.status == .inactive })
+        await cancelProviderSearches(
+            in: store,
+            providerIDs: [providerID]
+        )
     }
 
     @Test

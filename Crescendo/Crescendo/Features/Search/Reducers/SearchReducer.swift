@@ -65,7 +65,7 @@ struct SearchReducer {
             switch action {
             case .queryChanged(let query):
                 state.query = query
-                return .send(.cancelProviderSearches)
+                return .none
 
             case .submitButtonTapped:
                 let query = state.query.trimmingCharacters(
