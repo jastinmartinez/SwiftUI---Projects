@@ -941,8 +941,6 @@ struct PlaybackReducerTests {
         await store.send(.timelinePositionChanged(40))
         await store.send(.timelineInteractionEnded)
         await store.send(.restartTapped)
-        await store.send(.seekBackwardTapped)
-        await store.send(.seekForwardTapped)
 
         #expect(store.state == initialState)
     }

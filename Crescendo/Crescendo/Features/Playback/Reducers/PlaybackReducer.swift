@@ -30,8 +30,6 @@ struct PlaybackReducer {
         case timelinePositionChanged(TimeInterval)
         case timelineInteractionEnded
         case restartTapped
-        case seekBackwardTapped
-        case seekForwardTapped
         case setPlayerPresented(Bool)
         case observationReceived(PlaybackObservation)
         case confirmedSnapshotReceived(PlaybackSnapshot)
@@ -145,30 +143,6 @@ struct PlaybackReducer {
             case .restartTapped:
                 guard state.canRequestSeek else { return .none }
                 return .send(.timeline(.seekRequested(0)))
-
-            case .seekBackwardTapped:
-                guard state.canRequestSeek,
-                    let duration = state.timelineDuration
-                else {
-                    return .none
-                }
-                let target = min(
-                    max(state.timeline.position - 15, 0),
-                    duration
-                )
-                return .send(.timeline(.seekRequested(target)))
-
-            case .seekForwardTapped:
-                guard state.canRequestSeek,
-                    let duration = state.timelineDuration
-                else {
-                    return .none
-                }
-                let target = min(
-                    state.timeline.position + 15,
-                    duration
-                )
-                return .send(.timeline(.seekRequested(target)))
 
             case .setPlayerPresented(let isPresented):
                 state.isPlayerPresented = isPresented

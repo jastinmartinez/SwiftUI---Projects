@@ -372,7 +372,7 @@ struct PlaybackPresentationAdapterTests {
     }
 
     @Test
-    func fullTimelineProjectsSliderControlsAndLocalizedLabels() throws {
+    func fullTimelineProjectsSliderAndUtilityControls() throws {
         let song = makeTrack(duration: 215)
         let actions = LockIsolated<[PlaybackReducer.Action]>([])
         let store = makeActionRecordingStore(
@@ -382,7 +382,6 @@ struct PlaybackPresentationAdapterTests {
             actions: actions
         )
         let timeline = try #require(PlaybackTimelineView.Model(store))
-        let skipControls = PlaybackSkipControlsView.Model(store)
         let utilityControls = PlaybackUtilityControlsView.Model(store)
 
         #expect(timeline.slider.value == 43)
@@ -392,20 +391,6 @@ struct PlaybackPresentationAdapterTests {
         #expect(timeline.slider.strings.accessibilityValue == "0:43 of 3:35")
         #expect(timeline.elapsedTimeText == "0:43")
         #expect(timeline.durationText == "3:35")
-        #expect(skipControls.controls.map(\.id) == [.backward, .forward])
-        #expect(
-            skipControls.controls.map(\.systemImage) == [
-                "gobackward.15",
-                "goforward.15",
-            ]
-        )
-        #expect(
-            skipControls.controls.map(\.accessibilityLabel) == [
-                "Back 15 seconds",
-                "Forward 15 seconds",
-            ]
-        )
-        #expect(skipControls.controls.allSatisfy { $0.isEnabled })
         #expect(utilityControls.controls.map(\.id) == [.restart, .stop])
         #expect(
             utilityControls.controls.map(\.systemImage) == [
@@ -416,9 +401,6 @@ struct PlaybackPresentationAdapterTests {
 
         timeline.slider.onValueChanged(30)
         timeline.slider.onInteractionEnded()
-        for control in skipControls.controls {
-            control.perform()
-        }
         for control in utilityControls.controls {
             control.perform()
         }
@@ -427,8 +409,6 @@ struct PlaybackPresentationAdapterTests {
             actions.value == [
                 .timelinePositionChanged(30),
                 .timelineInteractionEnded,
-                .seekBackwardTapped,
-                .seekForwardTapped,
                 .restartTapped,
                 .stopTapped,
             ]
@@ -490,11 +470,6 @@ struct PlaybackPresentationAdapterTests {
         #expect(!store.timeline.isSeekable)
         #expect(!store.canRequestSeek)
         #expect(PlaybackTimelineView.Model(store).map { _ in true } == nil)
-        #expect(
-            PlaybackSkipControlsView.Model(store).controls.allSatisfy {
-                !$0.isEnabled
-            }
-        )
     }
 
     @Test
@@ -550,9 +525,7 @@ struct PlaybackPresentationAdapterTests {
         )
 
         let timeline = try #require(PlaybackTimelineView.Model(store))
-        let skipControls = PlaybackSkipControlsView.Model(store)
         #expect(!timeline.slider.isEnabled)
-        #expect(skipControls.controls.allSatisfy { !$0.isEnabled })
     }
 
     @Test
@@ -566,7 +539,6 @@ struct PlaybackPresentationAdapterTests {
             actions: actions
         )
         let controls = PlaybackControlsView.Model(store)
-        let skipControls = PlaybackSkipControlsView.Model(store)
         let utilityControls = PlaybackUtilityControlsView.Model(store)
 
         controls.shuffle.perform()
@@ -574,8 +546,6 @@ struct PlaybackPresentationAdapterTests {
         controls.primary.perform()
         controls.next.perform()
         controls.repeatMode.perform()
-        skipControls.controls[0].perform()
-        skipControls.controls[1].perform()
         utilityControls.controls[0].perform()
         utilityControls.controls[1].perform()
 
@@ -595,8 +565,6 @@ struct PlaybackPresentationAdapterTests {
                 .playPauseTapped,
                 .nextTapped,
                 .repeatTapped,
-                .seekBackwardTapped,
-                .seekForwardTapped,
                 .restartTapped,
                 .stopTapped,
             ]

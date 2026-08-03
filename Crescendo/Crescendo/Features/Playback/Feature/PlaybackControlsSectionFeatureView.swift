@@ -6,7 +6,7 @@ struct PlaybackControlsSectionFeatureView: View {
     let store: StoreOf<PlaybackReducer>
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             PlaybackControlsView(
                 model: PlaybackControlsView.Model(store)
             )

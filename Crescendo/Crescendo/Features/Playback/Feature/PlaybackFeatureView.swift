@@ -15,7 +15,7 @@ struct PlaybackFeatureView: View {
             )
 
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 12) {
                     PlaybackCurrentTrackFeatureView(store: store)
                     PlaybackTimelineSectionFeatureView(store: store)
                     PlaybackControlsSectionFeatureView(store: store)
