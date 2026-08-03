@@ -1,3 +1,4 @@
+import AVKit
 import Dispatch
 import MediaPlayer
 import QuartzCore
@@ -6,10 +7,10 @@ import UIKit
 
 /// Presents the operating system's output-volume and route controls.
 ///
-/// MediaPlayer owns the displayed volume, available routes, interactions,
-/// and accessibility behavior. This boundary applies Crescendo's appearance
-/// through public native APIs without copying system output state into the
-/// application or sending playback actions.
+/// MediaPlayer owns the displayed volume while AVKit owns route presentation
+/// and selection. This boundary applies Crescendo's appearance through public
+/// native APIs without copying system output state into the application or
+/// sending playback actions.
 struct PlaybackSystemOutputView: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         ControlView(frame: .zero)
@@ -24,9 +25,10 @@ struct PlaybackSystemOutputView: UIViewRepresentable {
 /// Owns the decorative volume symbol and native output controls in one layout
 /// boundary so the symbol can follow the system slider's actual geometry.
 ///
-/// `MPVolumeView` remains responsible for volume and route behavior. This view
-/// only lays out its sibling symbol against geometry exposed by the public
-/// MediaPlayer API.
+/// `MPVolumeView` remains responsible for volume behavior and
+/// `AVRoutePickerView` remains responsible for route behavior. This view only
+/// lays out those native controls and its decorative symbol using their public
+/// alignment geometry.
 extension PlaybackSystemOutputView {
     @MainActor
     private final class ControlView: UIView {
@@ -48,12 +50,19 @@ extension PlaybackSystemOutputView {
         }()
 
         private let volumeView = MPVolumeView(frame: .zero)
+        private let routePickerView: AVRoutePickerView = {
+            let routePickerView = AVRoutePickerView(frame: .zero)
+            routePickerView.tintColor = .secondaryLabel
+            routePickerView.activeTintColor = UIColor(CrescendoSpectrum.violet)
+            return routePickerView
+        }()
 
         override init(frame: CGRect) {
             super.init(frame: frame)
             Appearance.apply(to: volumeView)
             addSubview(volumeIconView)
             addSubview(volumeView)
+            addSubview(routePickerView)
         }
 
         @available(*, unavailable)
@@ -67,8 +76,8 @@ extension PlaybackSystemOutputView {
             guard window != nil else { return }
 
             // MPVolumeView publishes its slider geometry after the first
-            // attached layout. Request one follow-up pass so the volume icon
-            // can align with that public geometry.
+            // attached layout. Request one follow-up pass so the output row
+            // can align every element with that public geometry.
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.window != nil else { return }
                 self.setNeedsLayout()
@@ -80,10 +89,24 @@ extension PlaybackSystemOutputView {
             super.layoutSubviews()
 
             let volumeViewOriginX = Layout.iconWidth + Layout.spacing
+            let routePickerOriginX = max(
+                volumeViewOriginX,
+                bounds.width - Layout.routePickerWidth
+            )
+            let volumeViewMaxX = max(
+                volumeViewOriginX,
+                routePickerOriginX - Layout.routePickerSpacing
+            )
             volumeView.frame = CGRect(
                 x: volumeViewOriginX,
                 y: 0,
-                width: max(0, bounds.width - volumeViewOriginX),
+                width: volumeViewMaxX - volumeViewOriginX,
+                height: bounds.height
+            )
+            routePickerView.frame = CGRect(
+                x: routePickerOriginX,
+                y: 0,
+                width: Layout.routePickerWidth,
                 height: bounds.height
             )
             volumeView.layoutIfNeeded()
@@ -96,16 +119,34 @@ extension PlaybackSystemOutputView {
             // track's vertical geometry, so width must not select the fallback.
             let volumeTrackCenterY: CGFloat
             if sliderRect.height > 0 {
-                volumeTrackCenterY = volumeView.frame.minY + sliderRect.midY
+                // Center the native track in the row so the decorative symbol
+                // and route picker can retain full, in-bounds frames.
+                volumeView.frame.origin.y = bounds.midY - sliderRect.midY
+                volumeTrackCenterY = bounds.midY
             } else {
                 volumeTrackCenterY = bounds.midY
             }
 
-            volumeIconView.frame = CGRect(
+            let volumeIconFrame = CGRect(
                 x: 0,
                 y: volumeTrackCenterY - (Layout.iconHeight / 2),
                 width: Layout.iconWidth,
                 height: Layout.iconHeight
+            )
+            let volumeIconAlignmentRect = volumeIconView.alignmentRect(
+                forFrame: volumeIconFrame
+            )
+            volumeIconView.frame = volumeIconFrame.offsetBy(
+                dx: 0,
+                dy: volumeTrackCenterY - volumeIconAlignmentRect.midY
+            )
+
+            let routePickerAlignmentRect = routePickerView.alignmentRect(
+                forFrame: routePickerView.frame
+            )
+            routePickerView.frame = routePickerView.frame.offsetBy(
+                dx: 0,
+                dy: volumeTrackCenterY - routePickerAlignmentRect.midY
             )
         }
     }
@@ -114,13 +155,15 @@ extension PlaybackSystemOutputView {
         static let iconWidth: CGFloat = 24
         static let iconHeight: CGFloat = 24
         static let spacing: CGFloat = 12
+        static let routePickerSpacing: CGFloat = 8
+        static let routePickerWidth: CGFloat = 44
     }
 }
 
 /// Produces decorative images for the public `MPVolumeView` appearance API.
 ///
 /// The renderer does not inspect native subviews, handle gestures, read or
-/// write system volume, or alter the system-owned route affordance.
+/// write system volume, or alter the separate system-owned route picker.
 extension PlaybackSystemOutputView {
     @MainActor
     private enum Appearance {

@@ -6,10 +6,14 @@ import SwiftUI
 /// The palette owns visual identity only. It carries no playback state or
 /// behavior and remains outside the playback domain.
 enum CrescendoSpectrum {
+    static let indigo = Color(red: 0.24, green: 0.24, blue: 0.96)
+    static let violet = Color(red: 0.56, green: 0.16, blue: 0.94)
+    static let magenta = Color(red: 0.94, green: 0.12, blue: 0.66)
+
     static let colors: [Color] = [
-        Color(red: 0.24, green: 0.24, blue: 0.96),
-        Color(red: 0.56, green: 0.16, blue: 0.94),
-        Color(red: 0.94, green: 0.12, blue: 0.66),
+        indigo,
+        violet,
+        magenta,
     ]
 }
 
