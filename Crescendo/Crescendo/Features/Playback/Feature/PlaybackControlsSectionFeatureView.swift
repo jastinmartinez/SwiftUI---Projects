@@ -13,6 +13,10 @@ struct PlaybackControlsSectionFeatureView: View {
             PlaybackUtilityControlsView(
                 model: PlaybackUtilityControlsView.Model(store)
             )
+            PlaybackSystemOutputView()
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .padding(.horizontal, 16)
         }
     }
 }
