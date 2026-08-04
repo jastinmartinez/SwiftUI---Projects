@@ -10,6 +10,37 @@ import Foundation
 extension ProviderSearchClient {
     // MARK: - Audius
 
+    /// Creates an Audius search client when the supplied bundle value is valid.
+    ///
+    /// Construction performs no request. Invalid configuration returns `nil` so
+    /// application composition can omit only Audius while retaining other
+    /// providers.
+    ///
+    /// - Parameters:
+    ///   - audiusAPIKey: The optional generated bundle value.
+    ///   - data: The shared HTTP transport operation.
+    /// - Returns: A configured provider-neutral search client, or `nil` when the
+    ///   bundle value is invalid.
+    static func live(
+        audiusAPIKey: String?,
+        data:
+            @escaping @Sendable (URLRequest) async throws -> (
+                Data,
+                URLResponse
+            )
+    ) -> Self? {
+        let configuration = AudiusConfiguration(
+            apiKey: audiusAPIKey
+        )
+        guard let configuration else { return nil }
+        return .live(
+            audius: AudiusAPI(
+                configuration: configuration,
+                data: data
+            )
+        )
+    }
+
     /// Creates the provider-neutral search adapter backed by Audius.
     ///
     /// The adapter owns Audius continuation decoding, raw-row pagination, and

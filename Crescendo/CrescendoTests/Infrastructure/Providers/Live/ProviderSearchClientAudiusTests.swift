@@ -125,6 +125,32 @@ struct ProviderSearchClientAudiusTests {
         #expect(page.tracks.count == 1)
         #expect(page.nextCursor == nil)
     }
+
+    @Test
+    func blankAPIKeyDoesNotCreateLiveClient() {
+        let client = ProviderSearchClient.live(
+            audiusAPIKey: "   ",
+            data: { _ in
+                Issue.record("Invalid configuration must not perform transport work")
+                throw MusicProviderError.network
+            }
+        )
+
+        #expect(client == nil)
+    }
+
+    @Test
+    func validAPIKeyCreatesLiveClientWithoutPerformingTransport() throws {
+        let client = ProviderSearchClient.live(
+            audiusAPIKey: "test-key",
+            data: { _ in
+                Issue.record("Construction must not perform transport work")
+                throw MusicProviderError.network
+            }
+        )
+
+        _ = try #require(client)
+    }
 }
 
 private extension ProviderSearchClientAudiusTests {
