@@ -6,6 +6,9 @@ extension Track {
     /// This is the sole Audius infrastructure-to-domain mapping boundary.
     /// Provider DTOs and Audius eligibility fields cannot cross into features.
     ///
+    /// Initialization fails when the provider identity is blank, streaming is
+    /// disabled or gated, or the playback URL is not HTTPS.
+    ///
     /// - Parameters:
     ///   - audiusTrack: Provider metadata returned by the Audius search API.
     ///   - playbackURL: Stable Audius stream endpoint for the track identity.

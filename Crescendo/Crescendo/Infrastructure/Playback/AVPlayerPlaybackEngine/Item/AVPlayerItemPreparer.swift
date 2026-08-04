@@ -34,6 +34,9 @@ extension AVPlayerItemPreparer {
     /// Item creation is injected explicitly so tests can use deterministic
     /// in-memory items without loading network resources. Installation remains
     /// the separate responsibility of `AVPlayerItemInstaller`.
+    ///
+    /// - Returns: A preparer backed by AVFoundation playability loading and
+    ///   player-item creation.
     static func live() -> Self {
         Self(
             loadIsPlayable: { asset in

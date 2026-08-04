@@ -12,6 +12,16 @@ struct AudiusAPI: Sendable {
     ///
     /// Transport, status, and response-document failures are normalized to the
     /// provider-neutral network failure while task cancellation remains intact.
+    ///
+    /// - Parameters:
+    ///   - query: The provider search text.
+    ///   - offset: The raw provider-row offset to request.
+    ///   - limit: The maximum raw provider-row count to request.
+    /// - Returns: A decoded response preserving valid tracks and the raw row
+    ///   count.
+    /// - Throws: `CancellationError` when the task is cancelled, or
+    ///   `MusicProviderError.network` when URL construction, transport, status,
+    ///   or response decoding fails.
     func tracks(
         query: String,
         offset: Int,
@@ -51,6 +61,12 @@ struct AudiusAPI: Sendable {
     ///
     /// This operation performs no network request and rejects blank identities
     /// before they can enter a playback URL.
+    ///
+    /// - Parameter trackID: The Audius track identity; surrounding whitespace is
+    ///   ignored.
+    /// - Returns: An HTTPS stream endpoint containing required client metadata.
+    /// - Throws: `MusicProviderError.network` when the identity is blank or URL
+    ///   construction fails.
     func streamURL(trackID: String) throws -> URL {
         let trackID = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trackID.isEmpty else {
@@ -61,6 +77,14 @@ struct AudiusAPI: Sendable {
 
     /// Builds one HTTPS Audius endpoint and appends the client metadata
     /// required by every request and stable playback URL.
+    ///
+    /// - Parameters:
+    ///   - path: The Audius endpoint path.
+    ///   - queryItems: Endpoint-specific query values added before client
+    ///     metadata.
+    /// - Returns: An HTTPS Audius URL containing application name and API key.
+    /// - Throws: `MusicProviderError.network` when the components cannot form a
+    ///   URL.
     private func makeURL(
         path: String,
         queryItems: [URLQueryItem] = []

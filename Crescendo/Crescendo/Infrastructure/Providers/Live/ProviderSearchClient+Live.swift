@@ -1,12 +1,12 @@
 import Foundation
 
-/// Production constructors for provider-neutral search clients.
-///
-/// Each provider is exposed as a documented `live(...)` overload, distinguished
-/// by the infrastructure dependencies required to construct it. Provider APIs,
-/// cursors, and mappings remain owned by their provider infrastructure; this
-/// extension is only the composition boundary that adapts them to
-/// `ProviderSearchClient`.
+// Production constructors for provider-neutral search clients.
+//
+// Each provider is exposed as a documented `live(...)` overload, distinguished
+// by the infrastructure dependencies required to construct it. Provider APIs,
+// cursors, and mappings remain owned by their provider infrastructure; this
+// extension is only the composition boundary that adapts them to
+// `ProviderSearchClient`.
 extension ProviderSearchClient {
     // MARK: - Audius
 

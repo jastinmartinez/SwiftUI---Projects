@@ -14,6 +14,9 @@ struct AVPlayerTransport {
     }
 
     /// Stops playback, resets elapsed position, and retains the current item.
+    ///
+    /// - Returns: `.completed` when the reset-to-zero seek finishes, or
+    ///   `.interrupted` when that seek is superseded.
     func stop() async -> PlaybackOperationOutcome {
         player.pause()
         switch await timeline.seek(to: 0) {

@@ -1,6 +1,7 @@
 import Foundation
 
-/// Carries Audius-owned query and offset state through an opaque `SearchCursor`.
+/// Carries Audius-owned query and offset state through the provider-neutral
+/// continuation boundary.
 ///
 /// Search features cannot observe or construct provider pagination details;
 /// only the Audius adapter encodes and restores this infrastructure value.

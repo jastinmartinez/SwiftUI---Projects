@@ -1,10 +1,10 @@
 import Foundation
 
-/// Defines the source, progress, and outcome values used to recover one Library
-/// item.
-///
-/// The models construct recovered catalog and Library values without invoking
-/// clients, iterating the recovery batch, or committing confirmed feature state.
+// Defines the source, progress, and outcome values used to recover one Library
+// item.
+//
+// The models construct recovered catalog and Library values without invoking
+// clients, iterating the recovery batch, or committing confirmed feature state.
 extension LibraryItemRecoveryReducer {
     enum Source: Equatable {
         case catalogEntry(
@@ -101,6 +101,14 @@ extension LibraryItemRecoveryReducer {
 
 private extension LibraryCatalogClient.Entry {
     /// Creates catalog membership from one managed audio file and its metadata.
+    ///
+    /// - Parameters:
+    ///   - storedAudio: Managed audio supplying identity, location, and creation
+    ///     date.
+    ///   - contentIdentity: The opaque identity used by duplicate policy.
+    ///   - metadata: Source metadata used to populate catalog values.
+    ///   - storedArtwork: Managed artwork to associate, or `nil` when none was
+    ///     stored.
     init(
         storedAudio: LibraryMediaStoreClient.StoredAudio,
         contentIdentity: Library.ContentIdentity,
@@ -139,6 +147,11 @@ private extension LibraryCatalogClient.Entry {
 
 private extension Library.Item {
     /// Creates a playable Library item from catalog membership and managed audio.
+    ///
+    /// - Parameters:
+    ///   - catalogEntry: Confirmed membership metadata and identity.
+    ///   - storedAudio: Managed audio supplying the playback URL.
+    ///   - artworkURL: Resolved artwork location, or `nil` when unavailable.
     init(
         catalogEntry: LibraryCatalogClient.Entry,
         storedAudio: LibraryMediaStoreClient.StoredAudio,

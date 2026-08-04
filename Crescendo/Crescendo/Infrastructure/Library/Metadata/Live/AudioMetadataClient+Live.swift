@@ -6,6 +6,8 @@ extension AudioMetadataClient {
     ///
     /// The adapter neither moves the source nor applies fallback text, creates
     /// Library membership, stores artwork, or persists any extracted value.
+    ///
+    /// - Returns: A metadata client backed by asynchronous AVFoundation reads.
     static func live() -> Self {
         let reader = AVFoundationMetadataReader()
         return Self(read: { await reader.read($0) })
@@ -109,7 +111,12 @@ private extension AudioMetadataClient {
             return currentNumber
         }
 
-        /// Decodes the current number from an iTunes `trkn` or `disk` atom.
+        /// Decodes the current number from an iTunes track or disc atom.
+        ///
+        /// - Parameter value: The atom payload containing the big-endian current
+        ///   number at byte offsets two and three.
+        /// - Returns: The decoded number, or `nil` when fewer than four bytes are
+        ///   available.
         private static func currentNumber(
             fromITunesIndexData value: Data
         ) -> Int? {

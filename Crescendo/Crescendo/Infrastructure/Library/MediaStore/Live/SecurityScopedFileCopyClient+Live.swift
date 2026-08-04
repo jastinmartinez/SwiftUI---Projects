@@ -7,6 +7,10 @@ extension SecurityScopedFileCopyClient {
     /// Access denial and copy failure are mapped into the Library failure
     /// vocabulary. The selected URL is always released before the operation
     /// returns after a successful acquisition.
+    ///
+    /// - Parameter fileSystem: The root-confined destination copy mechanism.
+    /// - Returns: A copy client that brackets each operation with
+    ///   security-scoped access.
     static func live(fileSystem: ManagedLibraryFileSystem) -> Self {
         Self(
             copy: { sourceURL, destinationURL in

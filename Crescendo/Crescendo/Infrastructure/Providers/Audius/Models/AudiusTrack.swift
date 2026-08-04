@@ -1,6 +1,6 @@
 import Foundation
 
-/// Decodes the Audius response fields needed to construct a playable `Track`.
+/// Represents the Audius response fields needed to construct a playable track.
 ///
 /// This provider DTO remains inside Audius infrastructure so wire-format names
 /// and optional metadata cannot leak into reducer state or domain contracts.

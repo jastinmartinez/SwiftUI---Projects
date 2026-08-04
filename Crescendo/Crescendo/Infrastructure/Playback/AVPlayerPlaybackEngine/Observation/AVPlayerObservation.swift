@@ -84,6 +84,8 @@ struct AVPlayerObservation {
     /// The result is `.idle` when no item is installed. Non-finite duration becomes
     /// `nil`, and negative timeline positions are clamped to zero.
     ///
+    /// - Parameter isSeekable: Whether the active item currently exposes a
+    ///   player-confirmed seekable range.
     /// - Returns: The current provider-neutral playback snapshot.
     private func snapshot(isSeekable: Bool) -> PlaybackSnapshot {
         guard let item = player.currentItem else { return .idle }

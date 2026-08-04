@@ -1,12 +1,15 @@
-/// Adds the feature-owned mapping from confirmed playback state into the
-/// provider-neutral value consumed by system media presentation.
-///
-/// Keeping this initializer in the Playback feature prevents the client
-/// contract from depending on reducer state. Pending queue, session, timeline,
-/// and transition work is ignored; Apple framework translation remains in live
-/// infrastructure.
+// Adds the feature-owned mapping from confirmed playback state into the
+// provider-neutral value consumed by system media presentation.
+//
+// Keeping this initializer in the Playback feature prevents the client
+// contract from depending on reducer state. Pending queue, session, timeline,
+// and transition work is ignored; Apple framework translation remains in live
+// infrastructure.
 extension PlaybackNowPlayingClient.Projection {
     /// Creates a projection when the feature owns a confirmed queue.
+    ///
+    /// Initialization fails when no confirmed queue exists or its current
+    /// identity is absent from the confirmed playback order.
     ///
     /// - Parameter state: Playback state containing confirmed and pending work.
     init?(playback state: PlaybackReducer.State) {

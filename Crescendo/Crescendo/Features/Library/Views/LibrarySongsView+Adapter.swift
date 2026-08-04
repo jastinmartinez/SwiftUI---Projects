@@ -1,11 +1,14 @@
 import ComposableArchitecture
 
-/// Adapts the confirmed Library order into the Songs presentation contract.
-///
-/// The adapter owns Store-to-model projection only. It does not render, sort,
-/// navigate, resolve files, or control playback.
+// Adapts the confirmed Library order into the Songs presentation contract.
+//
+// The adapter owns Store-to-model projection only. It does not render, sort,
+// navigate, resolve files, or control playback.
 extension LibrarySongsView.Model {
     /// Projects the confirmed Library order and row actions for Songs.
+    ///
+    /// - Parameter store: The Library store supplying confirmed order and row
+    ///   actions.
     @MainActor
     init(_ store: StoreOf<LibraryReducer>) {
         self.init(

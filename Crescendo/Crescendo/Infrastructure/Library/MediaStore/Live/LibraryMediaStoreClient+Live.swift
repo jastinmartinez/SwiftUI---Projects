@@ -8,6 +8,13 @@ extension LibraryMediaStoreClient {
     /// storage, and opaque-reference resolution. Security-scoped access,
     /// filesystem containment, fingerprint mechanics, catalog persistence,
     /// metadata extraction, and import policy remain outside this adapter.
+    ///
+    /// - Parameters:
+    ///   - fileSystem: The root-confined managed-file operations.
+    ///   - securityScopedFileCopy: The external-file acquisition boundary used
+    ///     during staging.
+    /// - Returns: A reducer-facing managed-media client sharing those
+    ///   infrastructure values.
     static func live(
         fileSystem: ManagedLibraryFileSystem,
         securityScopedFileCopy: SecurityScopedFileCopyClient

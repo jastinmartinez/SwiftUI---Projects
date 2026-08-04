@@ -12,7 +12,7 @@ struct LibraryMediaStoreClient: Sendable {
     /// Copies external audio into temporary app-owned storage.
     var stageAudio: @Sendable (URL) async -> Result<StagedAudio, LibraryFailure>
 
-    /// Promotes staged audio into the managed location for `TrackID`.
+    /// Promotes staged audio into managed storage for the identified track.
     var storeAudio: @Sendable (StagedAudio, TrackID) async -> Result<StoredAudio, LibraryFailure>
 
     /// Removes one staged file after completion or rollback.

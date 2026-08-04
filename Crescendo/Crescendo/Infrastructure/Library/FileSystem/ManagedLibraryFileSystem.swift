@@ -57,6 +57,10 @@ struct ManagedLibraryFileSystem: Sendable {
     }
 
     /// Resolves an opaque relative reference only when it remains under root.
+    ///
+    /// - Parameter reference: The opaque relative managed-file reference.
+    /// - Returns: A standardized URL contained by the managed root, or `nil`
+    ///   when the reference is empty, traversing, or otherwise unmanaged.
     func resolve(_ reference: LibraryMediaStoreClient.FileReference) -> URL? {
         let components = reference.rawValue.split(
             separator: "/",
@@ -116,6 +120,11 @@ struct ManagedLibraryFileSystem: Sendable {
 
     /// Writes complete data without exposing a partial destination or
     /// destroying the previously readable file when the operation fails.
+    ///
+    /// - Parameters:
+    ///   - data: The complete bytes to persist.
+    ///   - managedURL: The destination that must remain under the managed root.
+    /// - Throws: An error when containment validation or the atomic write fails.
     func writeData(_ data: Data, to managedURL: URL) throws {
         let managedURL = try validatedManagedURL(managedURL)
         try data.write(to: managedURL, options: .atomic)

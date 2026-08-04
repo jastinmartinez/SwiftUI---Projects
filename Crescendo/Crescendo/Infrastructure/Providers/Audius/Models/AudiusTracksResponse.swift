@@ -14,6 +14,8 @@ struct AudiusTracksResponse: Decodable, Sendable {
     /// discard valid siblings or distort the raw count used for pagination.
     ///
     /// - Parameter decoder: A decoder positioned at an Audius search response.
+    /// - Throws: `DecodingError` when the top-level provider row collection
+    ///   cannot be decoded; malformed individual rows remain isolated.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let rows = try container.decode([Row].self, forKey: .data)

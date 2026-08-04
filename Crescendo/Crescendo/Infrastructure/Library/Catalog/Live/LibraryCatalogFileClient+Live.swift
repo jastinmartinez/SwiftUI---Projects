@@ -5,6 +5,10 @@ extension LibraryCatalogFileClient {
     ///
     /// Schema interpretation and catalog serialization remain in
     /// `LibraryCatalogStore`; this adapter maps filesystem failures only.
+    ///
+    /// - Parameter fileSystem: The root-confined filesystem used for complete
+    ///   reads and crash-safe writes.
+    /// - Returns: A raw catalog-byte client backed by the supplied filesystem.
     static func live(fileSystem: ManagedLibraryFileSystem) -> Self {
         Self(
             read: { catalogURL in

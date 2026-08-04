@@ -19,9 +19,14 @@ struct JamendoTrack: Decodable, Sendable {
 }
 
 extension JamendoTrack {
-    /// Decodes `duration` from either representation returned by Jamendo.
+    /// Decodes the duration field from either representation returned by
+    /// Jamendo.
     ///
     /// Jamendo responses may encode seconds as a string or a JSON number.
+    ///
+    /// - Parameter decoder: A decoder positioned at one Jamendo track.
+    /// - Throws: `DecodingError` when a required field or supported duration
+    ///   representation cannot be decoded.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 

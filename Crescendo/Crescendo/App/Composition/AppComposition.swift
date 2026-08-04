@@ -10,6 +10,9 @@ import Foundation
 @MainActor
 enum AppComposition {
     /// Constructs a new Store with Crescendo's production dependencies.
+    ///
+    /// - Returns: A root Store configured with live provider, Library, and
+    ///   playback dependencies.
     static func makeStore() -> StoreOf<AppReducer> {
         let data:
             @Sendable (URLRequest) async throws -> (

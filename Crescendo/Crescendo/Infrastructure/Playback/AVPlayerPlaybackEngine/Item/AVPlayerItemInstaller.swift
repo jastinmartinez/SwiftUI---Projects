@@ -46,6 +46,9 @@ final class AVPlayerItemInstaller {
 
     /// Makes a staged target permanent without letting stale work touch newer
     /// staged installation state.
+    ///
+    /// - Parameter installation: The correlation identity that must match the
+    ///   currently staged item.
     func commit(_ installation: PlaybackItemInstallation) {
         guard let stagedInstallation,
             stagedInstallation.token == installation
@@ -58,6 +61,9 @@ final class AVPlayerItemInstaller {
 
     /// Restores the prior item only when the token still identifies the newest
     /// staged installation.
+    ///
+    /// - Parameter installation: The correlation identity that must match the
+    ///   currently staged item before restoration.
     func rollback(_ installation: PlaybackItemInstallation) {
         guard let stagedInstallation,
             stagedInstallation.token == installation

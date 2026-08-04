@@ -1,11 +1,11 @@
 import ComposableArchitecture
 import Foundation
 
-/// Reducer-owned values for one provider's first-page search lifecycle.
-///
-/// These values describe one provider's lifecycle and validated result facts
-/// for the parent. They contain no shared query, destination pagination,
-/// navigation, presentation, or playback policy.
+// Reducer-owned values for one provider's first-page search lifecycle.
+//
+// These values describe one provider's lifecycle and validated result facts
+// for the parent. They contain no shared query, destination pagination,
+// navigation, presentation, or playback policy.
 extension ProviderSearchReducer {
     /// Describes whether this provider is inactive, searching, loaded, or
     /// failed.

@@ -1,8 +1,11 @@
 @preconcurrency import MediaPlayer
 
 extension PlaybackNowPlayingClient.Projection {
-    /// Translates confirmed playback presentation into the framework values
-    /// consumed by `MPNowPlayingInfoCenter`.
+    /// Translates confirmed playback presentation into system Now Playing
+    /// values.
+    ///
+    /// The returned dictionary is ready for
+    /// `MPNowPlayingInfoCenter.nowPlayingInfo`.
     ///
     /// This adapter owns deterministic MediaPlayer key mapping only. It does
     /// not inspect reducer state, publish global state, or load artwork.

@@ -1,8 +1,8 @@
 import ComposableArchitecture
 import Foundation
 
-/// Reducer-owned values that describe one provider results destination without
-/// introducing presentation, parent-coordination, or playback concerns.
+// Reducer-owned values that describe one provider results destination without
+// introducing presentation, parent-coordination, or playback concerns.
 extension ProviderSearchResultsReducer {
     /// Describes only the lifecycle of a continuation-page request.
     enum Status: Equatable {

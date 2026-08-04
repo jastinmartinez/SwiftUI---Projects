@@ -1,7 +1,6 @@
 @preconcurrency import AVFoundation
 
-/// Composes the `AVPlayer`-backed implementations of Crescendo's focused
-/// playback clients around one shared player.
+/// Composes focused playback clients around one shared system player.
 ///
 /// `AppComposition` selects this concrete infrastructure implementation.
 /// Reducers receive only the focused clients and never depend on this type or

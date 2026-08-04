@@ -7,7 +7,7 @@ import Foundation
 /// remain explicit so tests can replace disk access without replacing catalog
 /// serialization.
 struct LibraryCatalogFileClient: Sendable {
-    /// Reads the complete catalog bytes, or returns `nil` when no file exists.
+    /// Reads the complete catalog bytes, reporting absence without failure.
     let read: @Sendable (URL) async -> Result<Data?, LibraryFailure>
 
     /// Creates or overwrites the catalog without exposing partial data or

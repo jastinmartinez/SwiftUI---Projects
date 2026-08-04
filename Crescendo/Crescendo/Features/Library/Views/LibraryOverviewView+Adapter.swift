@@ -1,11 +1,14 @@
 import ComposableArchitecture
 
-/// Adapts confirmed Library and loading facts into the overview presentation.
-///
-/// The adapter owns Store-to-model projection and action mapping only. It does
-/// not render, present the picker, persist data, or control playback.
+// Adapts confirmed Library and loading facts into the overview presentation.
+//
+// The adapter owns Store-to-model projection and action mapping only. It does
+// not render, present the picker, persist data, or control playback.
 extension LibraryOverviewView.Model {
     /// Projects confirmed Library facts and feature actions into the overview.
+    ///
+    /// - Parameter store: The Library store supplying confirmed values and
+    ///   overview actions.
     @MainActor
     init(_ store: StoreOf<LibraryReducer>) {
         let loadingPresentation: LoadingPresentation

@@ -21,9 +21,12 @@ actor LibraryCatalogStore {
 
     /// Loads the latest complete typed snapshot.
     ///
-    /// A missing catalog is an empty snapshot. Unreadable, corrupt, invalid, or
-    /// unsupported documents return `.catalogReadFailed` without mutating any
-    /// managed media.
+    /// A missing catalog is an empty snapshot. File-client failures are
+    /// preserved, while corrupt, invalid, or unsupported documents return
+    /// `.catalogReadFailed` without mutating any managed media.
+    ///
+    /// - Returns: The decoded snapshot, an empty snapshot when the file is
+    ///   absent, or a Library failure when its bytes cannot be read or trusted.
     func load() async -> Result<LibraryCatalogClient.Snapshot, LibraryFailure> {
         switch await catalogFile.read(catalogURL) {
         case let .failure(failure):
@@ -58,6 +61,10 @@ actor LibraryCatalogStore {
     ///
     /// The previous readable catalog remains authoritative whenever encoding or
     /// the complete-write operation fails.
+    ///
+    /// - Parameter snapshot: The complete typed catalog to validate and persist.
+    /// - Returns: The supplied snapshot after a confirmed write, or the
+    ///   validation, encoding, or file-client failure.
     func replace(
         _ snapshot: LibraryCatalogClient.Snapshot
     ) async -> Result<LibraryCatalogClient.Snapshot, LibraryFailure> {

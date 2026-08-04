@@ -1,8 +1,8 @@
-/// Defines the workflow values produced and consumed by
-/// `LibraryRecoveryReducer`.
-///
-/// These values describe recovery progress and outcomes without iterating the
-/// recovery batch, invoking clients, or mutating the confirmed Library.
+// Defines the workflow values produced and consumed by
+// `LibraryRecoveryReducer`.
+//
+// These values describe recovery progress and outcomes without iterating the
+// recovery batch, invoking clients, or mutating the confirmed Library.
 extension LibraryRecoveryReducer {
     enum Phase: Equatable {
         case ready

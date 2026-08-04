@@ -6,6 +6,11 @@ extension View {
     ///
     /// Apply this modifier to each tab's content root. The tab view continues to
     /// own its tab bar while playback owns the optional compact presentation.
+    ///
+    /// - Parameter store: The playback store supplying confirmed compact-player
+    ///   state and actions.
+    /// - Returns: A view that conditionally inserts compact playback above its
+    ///   bottom safe area.
     func playbackNowPlayingAccessory(
         store: StoreOf<PlaybackReducer>
     ) -> some View {

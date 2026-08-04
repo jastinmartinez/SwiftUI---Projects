@@ -15,6 +15,9 @@ struct PlaybackQueue: Equatable, Sendable {
     /// Creates a queue after validating its current identity and traversal
     /// order.
     ///
+    /// Initialization fails when the current identity is absent or the playback
+    /// order is not an exact permutation of the supplied tracks.
+    ///
     /// - Parameters:
     ///   - tracks: The tracks owned by the queue.
     ///   - playbackOrder: The effective traversal order.
@@ -46,6 +49,9 @@ struct PlaybackQueue: Equatable, Sendable {
     }
 
     /// Creates a canonical replacement queue with Repeat and Shuffle disabled.
+    ///
+    /// Initialization fails when the track collection is empty or the requested
+    /// current identity is not among its tracks.
     ///
     /// - Parameters:
     ///   - tracks: The replacement tracks in source order.
@@ -118,6 +124,9 @@ struct PlaybackQueue: Equatable, Sendable {
     }
 
     /// Returns a queue with Repeat advanced through Off, All, and One.
+    ///
+    /// - Returns: A queue using the next supported Repeat mode, or the unchanged
+    ///   queue when its stored mode is outside the cycle.
     func cyclingRepeatMode() -> Self {
         let cycleOrder = PlaybackRepeatMode.cycleOrder
         guard let index = cycleOrder.firstIndex(of: repeatMode) else {
@@ -148,6 +157,9 @@ struct PlaybackQueue: Equatable, Sendable {
     }
 
     /// Returns a queue restored to source traversal order with Shuffle off.
+    ///
+    /// - Returns: A queue in source order with Shuffle off and all other state
+    ///   preserved.
     func disablingShuffle() -> Self {
         Self(
             validatedTracks: tracks,

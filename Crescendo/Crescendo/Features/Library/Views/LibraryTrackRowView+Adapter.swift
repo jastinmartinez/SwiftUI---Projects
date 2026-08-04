@@ -1,9 +1,9 @@
 import Foundation
 
-/// Adapts one confirmed Library membership into row presentation.
-///
-/// The adapter owns localized metadata fallback and selection mapping only. It
-/// does not render, hold feature state, navigate, resolve files, or play audio.
+// Adapts one confirmed Library membership into row presentation.
+//
+// The adapter owns localized metadata fallback and selection mapping only. It
+// does not render, hold feature state, navigate, resolve files, or play audio.
 extension LibraryTrackRowView.Model {
     /// Projects one Library item into localized row values and selection.
     ///

@@ -31,6 +31,9 @@ extension PlaybackUpNextView.Model {
 
     /// Resolves Up Next using production localization.
     ///
+    /// Initialization fails when no confirmed tracks remain after the current
+    /// item.
+    ///
     /// - Parameter store: The playback store supplying confirmed queue state.
     @MainActor
     init?(_ store: StoreOf<PlaybackReducer>) {

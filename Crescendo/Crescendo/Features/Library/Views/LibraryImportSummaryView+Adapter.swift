@@ -1,11 +1,16 @@
 import ComposableArchitecture
 
-/// Adapts picker or import lifecycle state into one localized summary model.
-///
-/// The adapter owns workflow-to-copy projection and cancellation routing only.
-/// It does not render, mutate import policy, invoke clients, or persist data.
+// Adapts picker or import lifecycle state into one localized summary model.
+//
+// The adapter owns workflow-to-copy projection and cancellation routing only.
+// It does not render, mutate import policy, invoke clients, or persist data.
 extension LibraryImportSummaryView.Model {
     /// Projects parent-owned picker failure or child-owned import lifecycle.
+    ///
+    /// Initialization fails when neither a picker failure nor an import batch
+    /// is present.
+    ///
+    /// - Parameter store: The Library store supplying picker and import state.
     @MainActor
     init?(_ store: StoreOf<LibraryReducer>) {
         if let failure = store.fileSelectionFailure {

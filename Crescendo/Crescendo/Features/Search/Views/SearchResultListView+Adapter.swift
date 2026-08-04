@@ -6,6 +6,9 @@ extension SearchResultListView.Model {
     /// The adapter exposes every accumulated Track and routes continuation,
     /// retry, and selection actions to the destination reducer. It does not
     /// derive rail previews or reach through the parent Search store.
+    ///
+    /// - Parameter store: The destination store supplying accumulated results,
+    ///   pagination state, and actions.
     @MainActor
     init(_ store: StoreOf<ProviderSearchResultsReducer>) {
         let paginationTriggerID: String?

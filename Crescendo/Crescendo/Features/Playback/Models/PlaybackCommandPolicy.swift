@@ -36,6 +36,12 @@ struct PlaybackCommandPolicy: Equatable {
 
     /// Creates a policy from feature states while discarding unrelated values,
     /// including the continuously changing timeline position.
+    ///
+    /// - Parameters:
+    ///   - queue: Confirmed queue state used for item and traversal availability.
+    ///   - timeline: Confirmed duration and seekability state.
+    ///   - session: Confirmed transport state and pending status work.
+    ///   - transition: Active item transition, or `nil` when none is running.
     init(
         queue: PlaybackQueueReducer.State,
         timeline: PlaybackTimelineReducer.State,

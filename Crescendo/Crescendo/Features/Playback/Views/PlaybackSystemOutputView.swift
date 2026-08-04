@@ -22,13 +22,13 @@ struct PlaybackSystemOutputView: UIViewRepresentable {
     ) {}
 }
 
-/// Owns the decorative volume symbol and native output controls in one layout
-/// boundary so the symbol can follow the system slider's actual geometry.
-///
-/// `MPVolumeView` remains responsible for volume behavior and
-/// `AVRoutePickerView` remains responsible for route behavior. This view only
-/// lays out those native controls and its decorative symbol using their public
-/// alignment geometry.
+// Owns the decorative volume symbol and native output controls in one layout
+// boundary so the symbol can follow the system slider's actual geometry.
+//
+// `MPVolumeView` remains responsible for volume behavior and
+// `AVRoutePickerView` remains responsible for route behavior. This view only
+// lays out those native controls and its decorative symbol using their public
+// alignment geometry.
 extension PlaybackSystemOutputView {
     @MainActor
     private final class ControlView: UIView {
@@ -160,10 +160,10 @@ extension PlaybackSystemOutputView {
     }
 }
 
-/// Produces decorative images for the public `MPVolumeView` appearance API.
-///
-/// The renderer does not inspect native subviews, handle gestures, read or
-/// write system volume, or alter the separate system-owned route picker.
+// Produces decorative images for the public `MPVolumeView` appearance API.
+//
+// The renderer does not inspect native subviews, handle gestures, read or
+// write system volume, or alter the separate system-owned route picker.
 extension PlaybackSystemOutputView {
     @MainActor
     private enum Appearance {

@@ -37,7 +37,14 @@ extension LibraryCatalogClient {
         let artworkReference: LibraryMediaStoreClient.FileReference?
         let addedAt: Date
 
-        /// Returns this membership with one replacement artwork reference.
+        /// Returns a copy with the supplied artwork reference.
+        ///
+        /// Passing `nil` clears the artwork association without changing any
+        /// other catalog value.
+        ///
+        /// - Parameter artworkReference: The managed artwork reference to store,
+        ///   or `nil` to clear the association.
+        /// - Returns: A copy preserving every other membership value.
         func withArtworkReference(
             _ artworkReference: LibraryMediaStoreClient.FileReference?
         ) -> Self {

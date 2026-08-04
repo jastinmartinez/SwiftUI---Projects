@@ -3,10 +3,13 @@ import ComposableArchitecture
 extension ProviderSearchRailView.Model {
     /// Projects a provider's nonempty first page into a bounded rail.
     ///
-    /// Providers without results produce no rail. Only the first five Tracks
-    /// become cards; the reducer retains the complete first page for See All
-    /// and playback delegation, and no continuation callback crosses this
-    /// boundary.
+    /// Initialization fails unless the provider has loaded a nonempty first
+    /// page. Only the first five Tracks become cards; the reducer retains the
+    /// complete first page for See All and playback delegation, and no
+    /// continuation callback crosses this boundary.
+    ///
+    /// - Parameter store: The provider store supplying first-page state and
+    ///   actions.
     @MainActor
     init?(_ store: StoreOf<ProviderSearchReducer>) {
         guard case .loaded(let page) = store.status,

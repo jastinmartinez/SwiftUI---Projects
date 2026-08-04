@@ -39,7 +39,12 @@ struct Library: Equatable, Sendable {
         ).count
     }
 
-    /// Returns a new aggregate that includes or replaces the item by identity.
+    /// Returns a copy that inserts or replaces one membership by identity.
+    ///
+    /// The result preserves the order of unaffected memberships.
+    ///
+    /// - Parameter item: The confirmed membership to insert or replace.
+    /// - Returns: The updated Library aggregate.
     func appending(_ item: Item) -> Self {
         var updatedItems = items
         updatedItems.updateOrAppend(item)

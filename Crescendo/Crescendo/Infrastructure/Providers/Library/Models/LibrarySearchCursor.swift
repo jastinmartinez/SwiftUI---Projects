@@ -1,7 +1,7 @@
 import Foundation
 
-/// Carries the Library provider's private continuation state through the
-/// provider-neutral `SearchCursor` boundary.
+/// Carries Library-owned query and offset state through the provider-neutral
+/// continuation boundary.
 ///
 /// The cursor freezes the submitted query and the next catalog-membership
 /// offset between pages. Its Base64-encoded JSON representation is an
