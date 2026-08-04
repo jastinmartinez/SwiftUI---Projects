@@ -772,6 +772,11 @@ struct PlaybackPresentationAdapterTests {
             )
         ) {
             PlaybackReducer()
+        } withDependencies: {
+            $0.playbackNowPlaying = PlaybackNowPlayingClient(
+                publish: { _ in },
+                clear: {}
+            )
         }
     }
 

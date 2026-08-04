@@ -7,6 +7,20 @@ import Testing
 @MainActor
 struct PlaybackReducerTests {
     @Test
+    func taskClearsSystemPresentationWithoutAConfirmedQueue() async {
+        let presentations = LockIsolated<[NowPlayingPresentation]>([])
+        let store = makeStore(
+            nowPlayingPresentations: presentations
+        )
+
+        await store.send(.task)
+        await store.receive(.nowPlayingPresentationRequested)
+        await store.finish()
+
+        #expect(presentations.value == [.cleared])
+    }
+
+    @Test
     func taskSubscribesToPlaybackObservationsOnce() async {
         let subscriptionCount = LockIsolated(0)
         let snapshot = makeSnapshot(
@@ -27,6 +41,7 @@ struct PlaybackReducerTests {
         }
 
         await store.send(.task)
+        await store.receive(.nowPlayingPresentationRequested)
         await store.receive(.observationReceived(.snapshot(snapshot)))
         await store.receive(.confirmedSnapshotReceived(snapshot))
         await store.receive(
@@ -52,6 +67,7 @@ struct PlaybackReducerTests {
         ) {
             $0.session.status = .paused
         }
+        await store.receive(.nowPlayingPresentationRequested)
 
         #expect(subscriptionCount.value == 1)
     }
@@ -338,6 +354,7 @@ struct PlaybackReducerTests {
     @Test
     func stableSnapshotRoutesQueueTimelineAndSession() async {
         let tracks = makeTracks()
+        let presentations = LockIsolated<[NowPlayingPresentation]>([])
         let snapshot = makeSnapshot(
             trackID: tracks[1].id,
             status: .paused,
@@ -353,7 +370,8 @@ struct PlaybackReducerTests {
             session: .init(
                 status: .playing,
                 pendingStatusChange: nil
-            )
+            ),
+            nowPlayingPresentations: presentations
         )
 
         await store.send(.confirmedSnapshotReceived(snapshot))
@@ -387,6 +405,161 @@ struct PlaybackReducerTests {
         ) {
             $0.session.status = .paused
         }
+        await store.receive(.nowPlayingPresentationRequested)
+        await store.finish()
+
+        #expect(
+            presentations.value == [
+                .published(
+                    PlaybackNowPlayingClient.Projection(
+                        item: .init(
+                            id: tracks[1].id,
+                            title: tracks[1].title,
+                            artistName: "Artist",
+                            albumTitle: nil,
+                            artworkURL: nil
+                        ),
+                        transport: .init(status: .paused),
+                        timeline: .init(
+                            position: 42,
+                            duration: 180
+                        ),
+                        queue: .init(index: 1, count: 3)
+                    )
+                )
+            ]
+        )
+    }
+
+    @Test(
+        arguments: [
+            NowPlayingAnchorChange(status: .paused, duration: 180),
+            NowPlayingAnchorChange(status: .playing, duration: 240),
+        ]
+    )
+    func stableSemanticAnchorChangeRequestsNowPlayingPublication(
+        _ change: NowPlayingAnchorChange
+    ) async {
+        let tracks = makeTracks()
+        let presentations = LockIsolated<[NowPlayingPresentation]>([])
+        let snapshot = makeSnapshot(
+            trackID: tracks[0].id,
+            status: change.status,
+            position: 11,
+            duration: change.duration,
+            isSeekable: true
+        )
+        let store = makeStore(
+            queue: makeQueue(
+                tracks: tracks,
+                currentTrackID: tracks[0].id
+            ),
+            timeline: .init(
+                confirmedPosition: 10,
+                duration: 180,
+                isSeekable: true,
+                interaction: .idle
+            ),
+            session: .init(
+                status: .playing,
+                pendingStatusChange: nil
+            ),
+            nowPlayingPresentations: presentations
+        )
+
+        await store.send(.confirmedSnapshotReceived(snapshot))
+        await store.receive(
+            .queue(.currentTrackConfirmed(tracks[0].id))
+        )
+        await store.receive(
+            .timeline(
+                .confirmedSnapshot(
+                    position: 11,
+                    duration: change.duration,
+                    isSeekable: true
+                )
+            )
+        ) {
+            $0.timeline.confirmedPosition = 11
+            $0.timeline.duration = change.duration
+        }
+        let sessionAction = PlaybackReducer.Action.session(
+            .confirmedSnapshot(
+                status: change.status,
+                position: 11
+            )
+        )
+        if change.status == .playing {
+            await store.receive(sessionAction)
+        } else {
+            await store.receive(sessionAction) {
+                $0.session.status = change.status
+            }
+        }
+        await store.receive(.nowPlayingPresentationRequested)
+        await store.finish()
+
+        let projection = presentations.value.first?.projection
+        #expect(presentations.value.count == 1)
+        #expect(projection?.transport.status == change.status)
+        #expect(projection?.timeline.duration == change.duration)
+    }
+
+    @Test
+    func stablePositionOnlySnapshotDoesNotPublishNowPlaying() async {
+        let tracks = makeTracks()
+        let presentations = LockIsolated<[NowPlayingPresentation]>([])
+        let snapshot = makeSnapshot(
+            trackID: tracks[0].id,
+            status: .playing,
+            position: 11,
+            duration: 180,
+            isSeekable: true
+        )
+        let store = makeStore(
+            queue: makeQueue(
+                tracks: tracks,
+                currentTrackID: tracks[0].id
+            ),
+            timeline: .init(
+                confirmedPosition: 10,
+                duration: 180,
+                isSeekable: true,
+                interaction: .idle
+            ),
+            session: .init(
+                status: .playing,
+                pendingStatusChange: nil
+            ),
+            nowPlayingPresentations: presentations
+        )
+
+        await store.send(.confirmedSnapshotReceived(snapshot))
+        await store.receive(
+            .queue(.currentTrackConfirmed(tracks[0].id))
+        )
+        await store.receive(
+            .timeline(
+                .confirmedSnapshot(
+                    position: 11,
+                    duration: 180,
+                    isSeekable: true
+                )
+            )
+        ) {
+            $0.timeline.confirmedPosition = 11
+        }
+        await store.receive(
+            .session(
+                .confirmedSnapshot(
+                    status: .playing,
+                    position: 11
+                )
+            )
+        )
+        await store.finish()
+
+        #expect(presentations.value.isEmpty)
     }
 
     @Test
@@ -436,6 +609,53 @@ struct PlaybackReducerTests {
         )
         #expect(store.state.timeline.confirmedPosition == 0)
         #expect(store.state.session.status == .idle)
+    }
+
+    @Test
+    func nowPlayingRequestDuringTransitionPublishesConfirmedMetadata()
+        async
+    {
+        let confirmedTracks = makeTracks(prefix: "confirmed")
+        let pendingTracks = makeTracks(prefix: "pending")
+        let pendingResults = IdentifiedArray(uniqueElements: pendingTracks)
+        let presentations = LockIsolated<[NowPlayingPresentation]>([])
+        let intent = PlaybackTransitionReducer.Intent(
+            target: pendingTracks[1],
+            baselineTrackID: confirmedTracks[0].id
+        )
+        let store = makeStore(
+            queue: makeQueue(
+                tracks: confirmedTracks,
+                currentTrackID: confirmedTracks[0].id,
+                pendingChanges: .init(
+                    active: replacementChange(
+                        pendingResults,
+                        startingAt: pendingTracks[1].id
+                    ),
+                    followUp: nil
+                )
+            ),
+            timeline: .init(
+                confirmedPosition: 12,
+                duration: 180,
+                isSeekable: true,
+                interaction: .idle
+            ),
+            session: .init(
+                status: .playing,
+                pendingStatusChange: nil
+            ),
+            transition: .init(phase: .starting(intent)),
+            nowPlayingPresentations: presentations
+        )
+
+        await store.send(.nowPlayingPresentationRequested)
+        await store.finish()
+
+        let projection = presentations.value.first?.projection
+        #expect(presentations.value.count == 1)
+        #expect(projection?.item.id == confirmedTracks[0].id)
+        #expect(projection?.queue == .init(index: 0, count: 3))
     }
 
     @Test
@@ -492,6 +712,7 @@ struct PlaybackReducerTests {
         ) {
             $0.session.status = .playing
         }
+        await store.receive(.nowPlayingPresentationRequested)
     }
 
     @Test
@@ -501,6 +722,7 @@ struct PlaybackReducerTests {
         let confirmedTracks = makeTracks(prefix: "confirmed")
         let selectedTracks = makeTracks(prefix: "selected")
         let loadedResults = IdentifiedArray(uniqueElements: selectedTracks)
+        let presentations = LockIsolated<[NowPlayingPresentation]>([])
         let intent = PlaybackTransitionReducer.Intent(
             target: selectedTracks[1],
             baselineTrackID: confirmedTracks[0].id
@@ -537,7 +759,8 @@ struct PlaybackReducerTests {
                     transaction,
                     .init(snapshot: snapshot, followUp: nil)
                 )
-            )
+            ),
+            nowPlayingPresentations: presentations
         )
 
         await store.send(
@@ -575,12 +798,19 @@ struct PlaybackReducerTests {
         ) {
             $0.session.status = .playing
         }
+        await store.receive(.nowPlayingPresentationRequested)
         await store.receive(.transition(.confirmationApplied))
         await store.receive(
             .transition(.delegate(.completed(.confirmed)))
         ) {
             $0.transition = nil
         }
+        await store.finish()
+
+        let projection = presentations.value.first?.projection
+        #expect(presentations.value.count == 1)
+        #expect(projection?.item.id == selectedTracks[1].id)
+        #expect(projection?.queue == .init(index: 1, count: 3))
     }
 
     @Test
@@ -794,6 +1024,7 @@ struct PlaybackReducerTests {
     func transitionStopReadyDiscardsQueueChangesThenStopsSession() async {
         let tracks = makeTracks()
         let loadedResults = IdentifiedArray(uniqueElements: tracks)
+        let presentations = LockIsolated<[NowPlayingPresentation]>([])
         let intent = PlaybackTransitionReducer.Intent(
             target: tracks[1],
             baselineTrackID: tracks[0].id
@@ -820,7 +1051,8 @@ struct PlaybackReducerTests {
                 status: .playing,
                 pendingStatusChange: nil
             ),
-            transition: .init(phase: .starting(intent))
+            transition: .init(phase: .starting(intent)),
+            nowPlayingPresentations: presentations
         ) {
             $0.playbackTransport.stop = { .completed }
         }
@@ -850,6 +1082,13 @@ struct PlaybackReducerTests {
             $0.timeline.confirmedPosition = 0
             $0.timeline.interaction = .idle
         }
+        await store.receive(.nowPlayingPresentationRequested)
+        await store.finish()
+
+        let projection = presentations.value.first?.projection
+        #expect(presentations.value.count == 1)
+        #expect(projection?.transport.status == .stopped)
+        #expect(projection?.timeline == .init(position: 0, duration: 180))
     }
 
     @Test
@@ -882,6 +1121,7 @@ struct PlaybackReducerTests {
     func timelineInteractionEndClampsDraftBeforeSeeking() async {
         let tracks = makeTracks()
         let seekPositions = LockIsolated<[TimeInterval]>([])
+        let presentations = LockIsolated<[NowPlayingPresentation]>([])
         let store = makeStore(
             queue: makeQueue(
                 tracks: tracks,
@@ -892,7 +1132,8 @@ struct PlaybackReducerTests {
                 duration: 100,
                 isSeekable: true,
                 interaction: .dragging(position: 120)
-            )
+            ),
+            nowPlayingPresentations: presentations
         ) {
             $0.playbackTimeline.seek = { position in
                 seekPositions.withValue { $0.append(position) }
@@ -917,8 +1158,14 @@ struct PlaybackReducerTests {
             $0.timeline.confirmedPosition = 100
             $0.timeline.interaction = .idle
         }
+        await store.receive(.timeline(.delegate(.seekConfirmed)))
+        await store.receive(.nowPlayingPresentationRequested)
+        await store.finish()
 
+        let projection = presentations.value.first?.projection
         #expect(seekPositions.value == [100])
+        #expect(presentations.value.count == 1)
+        #expect(projection?.timeline == .init(position: 100, duration: 100))
     }
 
     @Test
@@ -1009,6 +1256,7 @@ struct PlaybackReducerTests {
             pendingStatusChange: nil
         ),
         transition: PlaybackTransitionReducer.State? = nil,
+        nowPlayingPresentations: LockIsolated<[NowPlayingPresentation]>? = nil,
         configureDependencies: (inout DependencyValues) -> Void = { _ in }
     ) -> TestStoreOf<PlaybackReducer> {
         TestStore(
@@ -1029,6 +1277,16 @@ struct PlaybackReducerTests {
                 throw CancellationError()
             }
             $0.playbackItem.rollback = { _ in }
+            $0.playbackNowPlaying.publish = { projection in
+                nowPlayingPresentations?.withValue {
+                    $0.append(.published(projection))
+                }
+            }
+            $0.playbackNowPlaying.clear = {
+                nowPlayingPresentations?.withValue {
+                    $0.append(.cleared)
+                }
+            }
             configureDependencies(&$0)
         }
     }
@@ -1137,4 +1395,19 @@ struct PlaybackReducerTests {
             isSeekable: isSeekable
         )
     }
+}
+
+private enum NowPlayingPresentation: Equatable, Sendable {
+    case published(PlaybackNowPlayingClient.Projection)
+    case cleared
+
+    var projection: PlaybackNowPlayingClient.Projection? {
+        guard case .published(let projection) = self else { return nil }
+        return projection
+    }
+}
+
+struct NowPlayingAnchorChange: Sendable {
+    let status: PlaybackStatus
+    let duration: TimeInterval?
 }

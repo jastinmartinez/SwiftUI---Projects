@@ -36,6 +36,7 @@ struct PlaybackTimelineReducer {
     }
 
     enum Delegate: Equatable {
+        case seekConfirmed
         case transportFailed(PlaybackFailure)
     }
 
@@ -118,7 +119,7 @@ struct PlaybackTimelineReducer {
                 }
                 state.confirmedPosition = position
                 state.interaction = .idle
-                return .none
+                return .send(.delegate(.seekConfirmed))
 
             case .seekFailed(let requestID, let failure):
                 guard

@@ -285,6 +285,48 @@ struct AppCompositionTests {
     }
 
     @Test
+    func rootStoreInstallsTheComposedNowPlayingClient() async {
+        let base = AppComposition.live(
+            jamendoClientID: nil,
+            audiusAPIKey: nil,
+            player: AVPlayer(),
+            preparer: Self.preparer,
+            data: { _ in throw MusicProviderError.network },
+            applicationSupportURL: Self.makeApplicationSupportURL()
+        )
+        let published = LockIsolated<[PlaybackNowPlayingClient.Projection]>([])
+        let clearCount = LockIsolated(0)
+        let composition = AppComposition(
+            initialState: base.initialState,
+            providerSearchClients: base.providerSearchClients,
+            playbackItem: base.playbackItem,
+            playbackTransport: base.playbackTransport,
+            playbackTimeline: base.playbackTimeline,
+            playbackObservation: base.playbackObservation,
+            playbackNowPlaying: PlaybackNowPlayingClient(
+                publish: { projection in
+                    published.withValue { $0.append(projection) }
+                },
+                clear: {
+                    clearCount.withValue { $0 += 1 }
+                }
+            ),
+            playbackShuffle: base.playbackShuffle,
+            libraryMediaStore: base.libraryMediaStore,
+            audioMetadata: base.audioMetadata,
+            libraryCatalog: base.libraryCatalog
+        )
+        let store = composition.store()
+
+        await store.send(
+            .playback(.nowPlayingPresentationRequested)
+        ).finish()
+
+        #expect(published.value.isEmpty)
+        #expect(clearCount.value == 1)
+    }
+
+    @Test
     func rootStoreLoadsLibraryWithRegisteredLiveDependencies() async {
         let applicationSupportURL = Self.makeApplicationSupportURL()
         let crescendoSupportURL = applicationSupportURL.appending(

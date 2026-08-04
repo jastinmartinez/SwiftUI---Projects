@@ -17,6 +17,7 @@ struct PlaybackReducer {
 
     enum Action: Equatable {
         case task
+        case nowPlayingPresentationRequested
         case selectionReceived(
             TrackID,
             loadedResults: IdentifiedArrayOf<Track>
@@ -44,6 +45,7 @@ struct PlaybackReducer {
     }
 
     @Dependency(\.playbackObservation) var playbackObservation
+    @Dependency(\.playbackNowPlaying) var playbackNowPlaying
 
     var body: some ReducerOf<Self> {
         Scope(state: \.queue, action: \.queue) {
@@ -58,7 +60,7 @@ struct PlaybackReducer {
         Reduce { state, action in
             switch action {
             case .task:
-                return .run { send in
+                let observationEffect: Effect<Action> = .run { send in
                     let observations =
                         await playbackObservation.observations()
                     for await observation in observations {
@@ -69,6 +71,22 @@ struct PlaybackReducer {
                     id: CancelID.playbackObservation,
                     cancelInFlight: true
                 )
+                return .merge(
+                    .send(.nowPlayingPresentationRequested),
+                    observationEffect
+                )
+
+            case .nowPlayingPresentationRequested:
+                let projection = PlaybackNowPlayingClient.Projection(
+                    playback: state
+                )
+                return .run { _ in
+                    if let projection {
+                        await playbackNowPlaying.publish(projection)
+                    } else {
+                        await playbackNowPlaying.clear()
+                    }
+                }
 
             case .selectionReceived(let trackID, let loadedResults):
                 return .send(
@@ -189,6 +207,11 @@ struct PlaybackReducer {
                 return .none
 
             case .confirmedSnapshotReceived(let snapshot):
+                let confirmedTrackID = state.queue.current?.currentTrackID
+                let identityChanged = confirmedTrackID != snapshot.currentTrackID
+                let statusChanged = state.session.status != snapshot.status
+                let durationChanged = state.timeline.duration != snapshot.duration
+                let presentationAnchorChanged = identityChanged || statusChanged || durationChanged
                 if state.failureNotice?.trackID == snapshot.currentTrackID {
                     state.failureNotice = nil
                 }
@@ -209,21 +232,24 @@ struct PlaybackReducer {
                         )
                     )
                 )
-                guard let currentTrackID = snapshot.currentTrackID else {
-                    return .concatenate(
-                        timelineEffect,
-                        sessionEffect
+                var confirmationEffects: [Effect<Action>] = []
+                if let currentTrackID = snapshot.currentTrackID {
+                    confirmationEffects.append(
+                        .send(
+                            .queue(
+                                .currentTrackConfirmed(currentTrackID)
+                            )
+                        )
                     )
                 }
-                return .concatenate(
-                    .send(
-                        .queue(
-                            .currentTrackConfirmed(currentTrackID)
-                        )
-                    ),
-                    timelineEffect,
-                    sessionEffect
-                )
+                confirmationEffects.append(timelineEffect)
+                confirmationEffects.append(sessionEffect)
+                if presentationAnchorChanged {
+                    confirmationEffects.append(
+                        .send(.nowPlayingPresentationRequested)
+                    )
+                }
+                return .concatenate(confirmationEffects)
 
             case .queue(
                 .delegate(.transitionRequested(let trackID))
@@ -318,6 +344,7 @@ struct PlaybackReducer {
                             )
                         )
                     ),
+                    .send(.nowPlayingPresentationRequested),
                     .send(.transition(.confirmationApplied))
                 )
 
@@ -355,7 +382,13 @@ struct PlaybackReducer {
 
             case .session(.delegate(.stopCompleted)):
                 state.failureNotice = nil
-                return .send(.timeline(.resetPosition))
+                return .concatenate(
+                    .send(.timeline(.resetPosition)),
+                    .send(.nowPlayingPresentationRequested)
+                )
+
+            case .timeline(.delegate(.seekConfirmed)):
+                return .send(.nowPlayingPresentationRequested)
 
             case .session(
                 .delegate(.transportFailed(let failure))

@@ -7,17 +7,22 @@ import Testing
 @MainActor
 struct AppReducerTests {
     @Test
-    func appTaskStartsPlaybackObservationOnly() async {
+    func appTaskStartsPlaybackObservationAndInitialSystemPresentation() async {
         let store = TestStore(initialState: makeState()) {
             AppReducer()
         } withDependencies: {
             $0.playbackObservation = PlaybackObservationClient(
                 observations: { AsyncStream { $0.finish() } }
             )
+            $0.playbackNowPlaying = PlaybackNowPlayingClient(
+                publish: { _ in },
+                clear: {}
+            )
         }
 
         await store.send(.task)
         await store.receive(.playback(.task))
+        await store.receive(.playback(.nowPlayingPresentationRequested))
     }
 
     @Test

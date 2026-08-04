@@ -78,6 +78,7 @@ struct PlaybackTimelineReducerTests {
             $0.confirmedPosition = 20
             $0.interaction = .idle
         }
+        await store.receive(.delegate(.seekConfirmed))
 
         #expect(seekPositions.value == [20])
     }
@@ -97,6 +98,7 @@ struct PlaybackTimelineReducerTests {
             $0.confirmedPosition = 20
             $0.interaction = .idle
         }
+        await store.receive(.delegate(.seekConfirmed))
     }
 
     @Test
@@ -238,6 +240,7 @@ struct PlaybackTimelineReducerTests {
             $0.confirmedPosition = 30
             $0.interaction = .idle
         }
+        await store.receive(.delegate(.seekConfirmed))
 
         #expect(seekPositions.value == [30])
     }
@@ -256,6 +259,7 @@ struct PlaybackTimelineReducerTests {
         await store.receive(.seekSucceeded(requestID: UUID(0))) {
             $0.interaction = .idle
         }
+        await store.receive(.delegate(.seekConfirmed))
 
         #expect(seekPositions.value == [0])
     }

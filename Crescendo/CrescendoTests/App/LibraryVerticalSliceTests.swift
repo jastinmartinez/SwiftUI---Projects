@@ -114,6 +114,10 @@ struct LibraryVerticalSliceTests {
                 stop: { .completed }
             )
             $0.playbackObservation.observations = { .finished }
+            $0.playbackNowPlaying = PlaybackNowPlayingClient(
+                publish: { _ in },
+                clear: {}
+            )
         }
 
         await store.send(.library(.task)).finish()

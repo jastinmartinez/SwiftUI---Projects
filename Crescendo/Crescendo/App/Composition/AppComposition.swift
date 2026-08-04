@@ -1,6 +1,7 @@
 @preconcurrency import AVFoundation
 import ComposableArchitecture
 import Foundation
+@preconcurrency import MediaPlayer
 
 /// Holds the concrete values assembled by the application entry point.
 ///
@@ -15,6 +16,7 @@ struct AppComposition {
     let playbackTransport: PlaybackTransportClient
     let playbackTimeline: PlaybackTimelineClient
     let playbackObservation: PlaybackObservationClient
+    let playbackNowPlaying: PlaybackNowPlayingClient
     let playbackShuffle: PlaybackShuffleClient
     let libraryMediaStore: LibraryMediaStoreClient
     let audioMetadata: AudioMetadataClient
@@ -53,6 +55,9 @@ struct AppComposition {
         let playbackEngine = AVPlayerPlaybackEngine.live(
             player: player,
             preparer: preparer
+        )
+        let playbackNowPlaying = PlaybackNowPlayingClient.live(
+            infoCenter: MPNowPlayingInfoCenter.default()
         )
         let crescendoSupportURL = applicationSupportURL.appending(
             path: "Crescendo"
@@ -147,6 +152,7 @@ struct AppComposition {
             playbackTransport: playbackEngine.transport,
             playbackTimeline: playbackEngine.timeline,
             playbackObservation: playbackEngine.observation,
+            playbackNowPlaying: playbackNowPlaying,
             playbackShuffle: PlaybackShuffleClient(
                 shuffle: { $0.shuffled() }
             ),
@@ -168,6 +174,7 @@ struct AppComposition {
             $0.playbackTransport = playbackTransport
             $0.playbackTimeline = playbackTimeline
             $0.playbackObservation = playbackObservation
+            $0.playbackNowPlaying = playbackNowPlaying
             $0.playbackShuffle = playbackShuffle
             $0.libraryMediaStore = libraryMediaStore
             $0.audioMetadata = audioMetadata
