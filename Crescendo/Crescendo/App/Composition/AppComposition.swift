@@ -37,7 +37,8 @@ struct AppComposition {
     ///   - audiusAPIKey: The generated bundle value used to validate Audius.
     ///   - player: The single player shared by the selected playback engine.
     ///   - preparer: The explicit AVPlayer resource-validation mechanism.
-    ///   - data: The HTTP transport shared by configured remote providers.
+    ///   - data: The HTTP transport shared by configured remote providers and
+    ///     optional Now Playing artwork.
     ///   - applicationSupportURL: The system Application Support directory.
     /// - Returns: Concrete initial state and dependency values for the root store.
     static func live(
@@ -56,8 +57,10 @@ struct AppComposition {
             player: player,
             preparer: preparer
         )
+        let nowPlayingImage = NowPlayingImageClient.live(data: data)
         let playbackNowPlaying = PlaybackNowPlayingClient.live(
-            infoCenter: MPNowPlayingInfoCenter.default()
+            infoCenter: MPNowPlayingInfoCenter.default(),
+            image: nowPlayingImage
         )
         let crescendoSupportURL = applicationSupportURL.appending(
             path: "Crescendo"
