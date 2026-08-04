@@ -1,4 +1,3 @@
-@preconcurrency import AVFoundation
 import ComposableArchitecture
 import Foundation
 import Testing
@@ -44,21 +43,7 @@ struct LibraryVerticalSliceTests {
             [LibraryCatalogClient.Snapshot]()
         )
         let loadedPlaybackURLs = LockIsolated<[URL]>([])
-        let applicationSupportURL = URL.temporaryDirectory.appending(
-            path: "LibraryVerticalSliceTests-\(UUID().uuidString)"
-        )
-        let composition = AppComposition.live(
-            jamendoClientID: nil,
-            audiusAPIKey: nil,
-            player: AVPlayer(),
-            preparer: AVPlayerItemPreparer(
-                loadIsPlayable: { _ in true },
-                makeItem: { _ in AVPlayerItemFixture.make() }
-            ),
-            data: { _ in throw MusicProviderError.network },
-            applicationSupportURL: applicationSupportURL
-        )
-        let store = Store(initialState: composition.initialState) {
+        let store = Store(initialState: makeInitialState()) {
             AppReducer()
         } withDependencies: {
             $0.uuid = .incrementing
@@ -149,5 +134,38 @@ struct LibraryVerticalSliceTests {
         #expect(store.playback.queue.current?.currentTrack == importedTrack)
         #expect(store.playback.session.status == .playing)
         #expect(store.playback.transition == nil)
+    }
+
+    private func makeInitialState() -> AppReducer.State {
+        AppReducer.State(
+            selectedTab: .search,
+            search: SearchReducer.State(providerIDs: [.library]),
+            library: LibraryReducer.State(
+                library: Library(items: []),
+                catalog: .init(entries: []),
+                loadStatus: .idle,
+                path: [],
+                isFileImporterPresented: false,
+                recovery: nil,
+                importBatch: nil,
+                fileSelectionFailure: nil
+            ),
+            playback: PlaybackReducer.State(
+                queue: PlaybackQueueReducer.State(current: nil),
+                timeline: PlaybackTimelineReducer.State(
+                    confirmedPosition: 0,
+                    duration: nil,
+                    isSeekable: false,
+                    interaction: .idle
+                ),
+                session: PlaybackSessionReducer.State(
+                    status: .idle,
+                    pendingStatusChange: nil
+                ),
+                transition: nil,
+                failureNotice: nil,
+                isPlayerPresented: false
+            )
+        )
     }
 }
