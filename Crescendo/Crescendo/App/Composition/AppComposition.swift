@@ -62,35 +62,12 @@ struct AppComposition {
             infoCenter: MPNowPlayingInfoCenter.default(),
             image: nowPlayingImage
         )
-        let crescendoSupportURL = applicationSupportURL.appending(
-            path: "Crescendo"
-        )
-        let libraryRootURL = crescendoSupportURL.appending(path: "Library")
-        let libraryFileSystem = ManagedLibraryFileSystem(
-            rootURL: libraryRootURL
-        )
-        let securityScopedFileCopy = SecurityScopedFileCopyClient.live(
-            fileSystem: libraryFileSystem
-        )
-        let libraryMediaStore = LibraryMediaStoreClient.live(
-            fileSystem: libraryFileSystem,
-            securityScopedFileCopy: securityScopedFileCopy
-        )
-        let libraryCatalogStore = LibraryCatalogStore(
-            catalogURL: libraryFileSystem.catalogURL,
-            catalogFile: LibraryCatalogFileClient.live(
-                fileSystem: libraryFileSystem
-            )
-        )
-        let libraryCatalog = LibraryCatalogClient.live(
-            store: libraryCatalogStore
+        let library = LibraryComposition(
+            applicationSupportURL: applicationSupportURL
         )
         var searchProviderIDs: [ProviderID] = [.library]
         var searchClientsByProvider: [ProviderID: ProviderSearchClient] = [
-            .library: .live(
-                libraryCatalog: libraryCatalog,
-                libraryMediaStore: libraryMediaStore
-            )
+            .library: library.librarySearch
         ]
 
         if let jamendoConfiguration = JamendoConfiguration(
@@ -159,9 +136,9 @@ struct AppComposition {
             playbackShuffle: PlaybackShuffleClient(
                 shuffle: { $0.shuffled() }
             ),
-            libraryMediaStore: libraryMediaStore,
-            audioMetadata: .live(),
-            libraryCatalog: libraryCatalog
+            libraryMediaStore: library.libraryMediaStore,
+            audioMetadata: library.audioMetadata,
+            libraryCatalog: library.libraryCatalog
         )
     }
 
