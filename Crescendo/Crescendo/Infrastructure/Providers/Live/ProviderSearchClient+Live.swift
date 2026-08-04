@@ -75,6 +75,37 @@ extension ProviderSearchClient {
 
     // MARK: - Jamendo
 
+    /// Creates a Jamendo search client when the supplied bundle value is valid.
+    ///
+    /// Construction performs no request. Invalid configuration returns `nil` so
+    /// application composition can omit only Jamendo while retaining other
+    /// providers.
+    ///
+    /// - Parameters:
+    ///   - jamendoClientID: The optional generated bundle value.
+    ///   - data: The shared HTTP transport operation.
+    /// - Returns: A configured provider-neutral search client, or `nil` when the
+    ///   bundle value is invalid.
+    static func live(
+        jamendoClientID: String?,
+        data:
+            @escaping @Sendable (URLRequest) async throws -> (
+                Data,
+                URLResponse
+            )
+    ) -> Self? {
+        let configuration = JamendoConfiguration(
+            clientID: jamendoClientID
+        )
+        guard let configuration else { return nil }
+        return .live(
+            jamendo: JamendoAPI(
+                configuration: configuration,
+                data: data
+            )
+        )
+    }
+
     /// Creates the provider-neutral search adapter backed by Jamendo.
     ///
     /// The adapter owns Jamendo continuation decoding, result-count pagination,

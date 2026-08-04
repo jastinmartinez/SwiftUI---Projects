@@ -130,6 +130,32 @@ struct ProviderSearchClientJamendoTests {
         #expect(continuation.offset == 2)
     }
 
+    @Test
+    func blankClientIDDoesNotCreateLiveClient() {
+        let client = ProviderSearchClient.live(
+            jamendoClientID: "   ",
+            data: { _ in
+                Issue.record("Invalid configuration must not perform transport work")
+                throw MusicProviderError.network
+            }
+        )
+
+        #expect(client == nil)
+    }
+
+    @Test
+    func validClientIDCreatesLiveClientWithoutPerformingTransport() throws {
+        let client = ProviderSearchClient.live(
+            jamendoClientID: "test-client",
+            data: { _ in
+                Issue.record("Construction must not perform transport work")
+                throw MusicProviderError.network
+            }
+        )
+
+        _ = try #require(client)
+    }
+
     // MARK: - Helpers
 
     private static func makeConfiguration() throws -> JamendoConfiguration {
