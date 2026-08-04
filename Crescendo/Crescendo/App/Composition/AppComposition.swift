@@ -1,7 +1,6 @@
 @preconcurrency import AVFoundation
 import ComposableArchitecture
 import Foundation
-@preconcurrency import MediaPlayer
 
 /// Holds the concrete values assembled by the application entry point.
 ///
@@ -53,14 +52,10 @@ struct AppComposition {
             ),
         applicationSupportURL: URL
     ) -> Self {
-        let playbackEngine = AVPlayerPlaybackEngine.live(
+        let playback = PlaybackComposition(
             player: player,
-            preparer: preparer
-        )
-        let nowPlayingImage = NowPlayingImageClient.live(data: data)
-        let playbackNowPlaying = PlaybackNowPlayingClient.live(
-            infoCenter: MPNowPlayingInfoCenter.default(),
-            image: nowPlayingImage
+            preparer: preparer,
+            data: data
         )
         let library = LibraryComposition(
             applicationSupportURL: applicationSupportURL
@@ -128,14 +123,12 @@ struct AppComposition {
             providerSearchClients: ProviderClientRegistry(
                 clients: searchClientsByProvider
             ),
-            playbackItem: playbackEngine.item,
-            playbackTransport: playbackEngine.transport,
-            playbackTimeline: playbackEngine.timeline,
-            playbackObservation: playbackEngine.observation,
-            playbackNowPlaying: playbackNowPlaying,
-            playbackShuffle: PlaybackShuffleClient(
-                shuffle: { $0.shuffled() }
-            ),
+            playbackItem: playback.playbackItem,
+            playbackTransport: playback.playbackTransport,
+            playbackTimeline: playback.playbackTimeline,
+            playbackObservation: playback.playbackObservation,
+            playbackNowPlaying: playback.playbackNowPlaying,
+            playbackShuffle: playback.playbackShuffle,
             libraryMediaStore: library.libraryMediaStore,
             audioMetadata: library.audioMetadata,
             libraryCatalog: library.libraryCatalog
